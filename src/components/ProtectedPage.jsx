@@ -22,12 +22,14 @@ function ProtectedPage() {
             console.log("=== USER DETAILS FROM CLERK (FRONTEND) ===");
             console.log("User ID:", user.id);
             console.log("Email:", user.emailAddresses[0]?.emailAddress);
+            console.log("Phone:", user.phoneNumbers[0]?.phoneNumber);
             console.log("First Name:", user.firstName);
             console.log("Last Name:", user.lastName);
             console.log("Full Name:", user.fullName);
             console.log("Profile Image:", user.imageUrl);
             console.log("Created At:", user.createdAt);
             console.log("External Accounts:", user.externalAccounts);
+            console.log("Phone Numbers:", user.phoneNumbers);
             console.log("Full User Object:", user);
             console.log("==========================================");
         }
@@ -80,6 +82,10 @@ function ProtectedPage() {
                 <p>
                     <strong>Email:</strong>{" "}
                     {user?.emailAddresses[0]?.emailAddress}
+                </p>
+                <p>
+                    <strong>Phone:</strong>{" "}
+                    {user?.phoneNumbers[0]?.phoneNumber || "Not provided"}
                 </p>
                 <p>
                     <strong>Name:</strong> {user?.fullName}
@@ -157,6 +163,10 @@ function ProtectedPage() {
                     <h3>Backend User Data:</h3>
                     <p>
                         <strong>Email:</strong> {backendUserData.email}
+                    </p>
+                    <p>
+                        <strong>Phone:</strong>{" "}
+                        {backendUserData.phone || "Not provided"}
                     </p>
                     <p>
                         <strong>Name:</strong> {backendUserData.fullName}
