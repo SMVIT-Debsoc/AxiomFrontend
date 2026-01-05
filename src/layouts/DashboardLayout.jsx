@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { UserButton, useUser, SignedIn, RedirectToSignIn, useAuth } from '@clerk/clerk-react';
 import {
@@ -17,6 +17,9 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdminApi } from '../services/api';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
@@ -33,15 +36,29 @@ export default function DashboardLayout() {
     const { user, isLoaded, isSignedIn } = useUser();
     const { getToken } = useAuth();
 
-    // Check admin status to show admin link
+    // Check admin status to show admin link (silently - 403 is expected for non-admins)
     useEffect(() => {
         const checkAdmin = async () => {
             if (isSignedIn) {
                 try {
                     const token = await getToken();
-                    const response = await AdminApi.getProfile(token);
-                    setIsAdmin(response.success && !!response.admin);
+                    // Direct fetch to avoid logging expected 403 errors
+                    const response = await fetch(`${API_BASE_URL}/admin/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        setIsAdmin(data.success && !!data.admin);
+                    } else {
+                        // 403 is expected for non-admins, silently set to false
+                        setIsAdmin(false);
+                    }
                 } catch (e) {
+                    // Network error or other issue - assume not admin
                     setIsAdmin(false);
                 }
             }
