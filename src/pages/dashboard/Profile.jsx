@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { User, Mail, School, Hash, Save, Loader2, Phone } from 'lucide-react';
 import { UserApi } from '../../services/api';
 
 export default function Profile() {
     const { user, isLoaded } = useUser();
+    const { getToken } = useAuth();
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
@@ -15,6 +16,7 @@ export default function Profile() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (isLoaded && user) {
@@ -33,14 +35,24 @@ export default function Profile() {
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         setSuccess(false);
+        setError(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
+        setError(null);
         try {
-            // Simulate API call
-            // await UserApi.updateProfile(formData, await getToken());
+            const token = await getToken();
+
+            // Sync with Backend
+            await UserApi.updateProfile({
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                college: formData.college,
+                usn: formData.usn,
+                mobile: formData.mobile
+            }, token);
 
             // Ensure we update Clerk metadata if we are using it for storage
             await user.update({
@@ -57,6 +69,7 @@ export default function Profile() {
             setTimeout(() => setSuccess(false), 3000);
         } catch (error) {
             console.error("Failed to update profile", error);
+            setError("Failed to save changes. Please try again later.");
         } finally {
             setSaving(false);
         }
@@ -66,6 +79,11 @@ export default function Profile() {
 
     return (
         <div className="max-w-2xl mx-auto">
+            {error && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg flex items-center gap-2">
+                    <span className="font-bold">Error:</span> {error}
+                </div>
+            )}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">My Profile</h1>
                 {!user.publicMetadata?.college && (

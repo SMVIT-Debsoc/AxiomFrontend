@@ -16,32 +16,12 @@ export default function DashboardEvents() {
             try {
                 const token = await getToken();
                 // Fallback for demo if backend not running or no events
-                try {
-                    const data = await EventApi.list(token);
-                    if (data.success) {
-                        setEvents(data.data.events || []);
-                    } else {
-                        throw new Error("Failed to fetch");
-                    }
-                } catch (err) {
-                    console.warn("Backend fetch failed, using mock data", err);
-                    setEvents([
-                        {
-                            id: 'mock-1',
-                            name: 'Axiom Pre-Worlds 2026',
-                            startDate: '2026-03-01T09:00:00Z',
-                            status: 'UPCOMING',
-                            description: 'The ultimate prep tournament before Worlds. 5 rounds of intense debating.'
-                        },
-                        {
-                            id: 'mock-2',
-                            name: 'Novice Night',
-                            startDate: '2026-02-15T18:00:00Z',
-                            status: 'ONGOING',
-                            description: 'A friendly evening tournament for freshers.'
-                        }
-                    ]);
-                }
+                const data = await EventApi.list(token);
+                // Ensure we handle the array response correctly
+                // API might return data directly or wrapped in { data: ... }
+                // Based on standard axios/fetch wrappers, let's assume standard response
+                const eventList = Array.isArray(data) ? data : (data.data || []);
+                setEvents(eventList);
             } catch (err) {
                 setError(err.message);
             } finally {
