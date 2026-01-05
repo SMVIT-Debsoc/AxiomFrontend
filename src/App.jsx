@@ -11,6 +11,7 @@ import Leaderboard from "./pages/dashboard/Leaderboard";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import {OnboardingGuard} from "./components/OnboardingGuard";
+import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
 
 // Role selection pages
 import RoleSelectPage from "./pages/RoleSelectPage";
@@ -27,6 +28,12 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
+                {/* Auth redirect handler - processes admin/user routing after sign-in */}
+                <Route
+                    path="/auth-redirect"
+                    element={<AuthRedirectHandler />}
+                />
+
                 {/* Public Routes */}
                 <Route element={<MainLayout />}>
                     <Route path="/" element={<Home />} />

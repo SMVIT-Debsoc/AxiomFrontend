@@ -4,12 +4,14 @@ import {motion, AnimatePresence} from "framer-motion";
 import {Menu, X, Rocket} from "lucide-react";
 import {useAuth, UserButton} from "@clerk/clerk-react";
 import {cn} from "../lib/utils";
+import {AdminApi} from "../services/api";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
-    const {isSignedIn} = useAuth();
+    const {isSignedIn, getToken} = useAuth();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -19,6 +21,24 @@ export default function Navbar() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
+    // Check if user is admin
+    useEffect(() => {
+        const checkAdminStatus = async () => {
+            if (!isSignedIn) {
+                setIsAdmin(false);
+                return;
+            }
+            try {
+                const token = await getToken();
+                const response = await AdminApi.getProfile(token);
+                setIsAdmin(response.success && response.admin);
+            } catch (e) {
+                setIsAdmin(false);
+            }
+        };
+        checkAdminStatus();
+    }, [isSignedIn, getToken]);
+
     const navLinks = [
         {name: "Home", path: "/"},
         {name: "Tournaments", path: "/events"},
@@ -26,7 +46,11 @@ export default function Navbar() {
     ];
 
     if (isSignedIn) {
-        navLinks.push({name: "Dashboard", path: "/dashboard"});
+        // Admin goes to /admin, regular users go to /dashboard
+        navLinks.push({
+            name: "Dashboard",
+            path: isAdmin ? "/admin" : "/dashboard",
+        });
     }
 
     return (

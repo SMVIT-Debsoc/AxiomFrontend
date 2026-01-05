@@ -28,9 +28,9 @@ export default function LoginSelectPage() {
             return;
         }
 
-        // Store secret key in session storage for later verification
-        sessionStorage.setItem("adminSecretKey", secretKey);
-        sessionStorage.setItem("pendingRole", "admin");
+        // Store secret key in localStorage (persists across OAuth redirects)
+        localStorage.setItem("adminSecretKey", secretKey);
+        localStorage.setItem("pendingRole", "admin");
 
         // Navigate to sign-in with admin role
         navigate("/sign-in?role=admin");

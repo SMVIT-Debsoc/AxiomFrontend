@@ -24,24 +24,31 @@ export function AdminGuard({children}) {
             try {
                 const token = await getToken();
 
-                // First, check if this is a new admin trying to onboard
-                const pendingRole = sessionStorage.getItem("pendingRole");
-                const secretKey = sessionStorage.getItem("adminSecretKey");
+                // First, check if this is a new admin trying to onboard (from localStorage)
+                const pendingRole = localStorage.getItem("pendingRole");
+                const secretKey = localStorage.getItem("adminSecretKey");
 
                 if (pendingRole === "admin" && secretKey) {
                     // Try to onboard as admin
                     try {
-                        await AdminApi.onboard(secretKey, token);
-                        // Clear session storage
-                        sessionStorage.removeItem("pendingRole");
-                        sessionStorage.removeItem("adminSecretKey");
-                        setIsAdmin(true);
-                        setChecking(false);
-                        return;
+                        const response = await AdminApi.onboard(
+                            secretKey,
+                            token
+                        );
+                        // Clear localStorage
+                        localStorage.removeItem("pendingRole");
+                        localStorage.removeItem("adminSecretKey");
+
+                        if (response.success) {
+                            setIsAdmin(true);
+                            setChecking(false);
+                            return;
+                        }
                     } catch (onboardError) {
                         // If onboarding fails, check if already an admin
                         console.log(
-                            "Onboard failed, checking existing admin status"
+                            "Onboard failed, checking existing admin status:",
+                            onboardError.message
                         );
                     }
                 }
@@ -59,9 +66,9 @@ export function AdminGuard({children}) {
                     "Admin verification failed. You may not have admin access."
                 );
             } finally {
-                // Clear any pending admin session data
-                sessionStorage.removeItem("pendingRole");
-                sessionStorage.removeItem("adminSecretKey");
+                // Clear any pending admin data
+                localStorage.removeItem("pendingRole");
+                localStorage.removeItem("adminSecretKey");
                 setChecking(false);
             }
         };

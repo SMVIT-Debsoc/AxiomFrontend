@@ -123,12 +123,6 @@ export default function AdminLayout() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <Link
-                            to="/dashboard"
-                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            Switch to User View
-                        </Link>
                         <div className="text-right hidden sm:block">
                             <p className="text-sm font-medium">
                                 {user?.fullName}
