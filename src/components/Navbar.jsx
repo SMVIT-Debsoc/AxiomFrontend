@@ -1,39 +1,41 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Rocket } from 'lucide-react';
-import { useAuth, UserButton } from '@clerk/clerk-react';
-import { cn } from '../lib/utils';
+import {useState, useEffect} from "react";
+import {Link, useLocation} from "react-router-dom";
+import {motion, AnimatePresence} from "framer-motion";
+import {Menu, X, Rocket} from "lucide-react";
+import {useAuth, UserButton} from "@clerk/clerk-react";
+import {cn} from "../lib/utils";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const location = useLocation();
-    const { isSignedIn } = useAuth();
+    const {isSignedIn} = useAuth();
 
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 20);
         };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
     const navLinks = [
-        { name: 'Home', path: '/' },
-        { name: 'Tournaments', path: '/events' },
-        { name: 'About', path: '/about' },
+        {name: "Home", path: "/"},
+        {name: "Tournaments", path: "/events"},
+        {name: "About", path: "/about"},
     ];
 
     if (isSignedIn) {
-        navLinks.push({ name: 'Dashboard', path: '/dashboard' });
+        navLinks.push({name: "Dashboard", path: "/dashboard"});
     }
 
     return (
         <nav
             className={cn(
-                'fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent',
-                scrolled ? 'bg-background/80 backdrop-blur-md border-border py-4' : 'bg-transparent py-6'
+                "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent",
+                scrolled
+                    ? "bg-background/80 backdrop-blur-md border-border py-4"
+                    : "bg-transparent py-6"
             )}
         >
             <div className="container mx-auto px-6 flex items-center justify-between">
@@ -54,8 +56,10 @@ export default function Navbar() {
                             key={link.path}
                             to={link.path}
                             className={cn(
-                                'text-sm font-medium transition-colors hover:text-primary',
-                                location.pathname === link.path ? 'text-white' : 'text-muted-foreground'
+                                "text-sm font-medium transition-colors hover:text-primary",
+                                location.pathname === link.path
+                                    ? "text-white"
+                                    : "text-muted-foreground"
                             )}
                         >
                             {link.name}
@@ -98,9 +102,9 @@ export default function Navbar() {
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
+                        initial={{opacity: 0, height: 0}}
+                        animate={{opacity: 1, height: "auto"}}
+                        exit={{opacity: 0, height: 0}}
                         className="md:hidden border-t border-border bg-background"
                     >
                         <div className="container mx-auto px-6 py-6 flex flex-col gap-4">

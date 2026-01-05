@@ -15,25 +15,25 @@ export function OnboardingGuard({children}) {
             if (isLoaded && user) {
                 try {
                     const token = await getToken();
-                    
+
                     // Check if admin onboarding is pending
-                    const pendingRole = sessionStorage.getItem('pendingRole');
-                    const secretKey = sessionStorage.getItem('adminSecretKey');
-                    
-                    if (pendingRole === 'admin' && secretKey) {
+                    const pendingRole = sessionStorage.getItem("pendingRole");
+                    const secretKey = sessionStorage.getItem("adminSecretKey");
+
+                    if (pendingRole === "admin" && secretKey) {
                         try {
                             // Try to onboard as admin
                             await AdminApi.onboard(secretKey, token);
                             // Clear session and redirect to admin dashboard
-                            sessionStorage.removeItem('pendingRole');
-                            sessionStorage.removeItem('adminSecretKey');
-                            navigate('/admin', {replace: true});
+                            sessionStorage.removeItem("pendingRole");
+                            sessionStorage.removeItem("adminSecretKey");
+                            navigate("/admin", {replace: true});
                             return;
                         } catch (error) {
-                            console.error('Admin onboarding failed:', error);
+                            console.error("Admin onboarding failed:", error);
                             // Clear invalid admin session
-                            sessionStorage.removeItem('pendingRole');
-                            sessionStorage.removeItem('adminSecretKey');
+                            sessionStorage.removeItem("pendingRole");
+                            sessionStorage.removeItem("adminSecretKey");
                         }
                     }
 

@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
-import { ArrowRight, Zap, Trophy, BarChart3, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import {motion} from "framer-motion";
+import {ArrowRight, Zap, Trophy, BarChart3, Users} from "lucide-react";
+import {Link} from "react-router-dom";
 
 export default function Home() {
     return (
@@ -8,9 +8,9 @@ export default function Home() {
             {/* Hero Section */}
             <section className="py-20 md:py-32 flex flex-col items-center text-center">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
+                    initial={{opacity: 0, y: 20}}
+                    animate={{opacity: 1, y: 0}}
+                    transition={{duration: 0.5}}
                 >
                     <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20 mb-6 inline-block">
                         High-Performance Tournament Management
@@ -22,13 +22,22 @@ export default function Home() {
                         </span>
                     </h1>
                     <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto mb-10">
-                        Axiom automates pairings, tabulations, and room allocations so you can focus on the debate. Built for university circuits and competitive leagues.
+                        Axiom automates pairings, tabulations, and room
+                        allocations so you can focus on the debate. Built for
+                        university circuits and competitive leagues.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link to="/get-started" className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-[0_0_30px_-5px_rgba(139,92,246,0.5)]">
-                            Start Tourney <ArrowRight className="ml-2 w-4 h-4" />
+                        <Link
+                            to="/get-started"
+                            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-[0_0_30px_-5px_rgba(139,92,246,0.5)]"
+                        >
+                            Start Tourney{" "}
+                            <ArrowRight className="ml-2 w-4 h-4" />
                         </Link>
-                        <Link to="/about" className="inline-flex items-center justify-center px-8 py-3 rounded-lg border border-border hover:bg-muted transition-colors">
+                        <Link
+                            to="/about"
+                            className="inline-flex items-center justify-center px-8 py-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                        >
                             How it Works
                         </Link>
                     </div>
@@ -62,13 +71,13 @@ export default function Home() {
     );
 }
 
-function FeatureCard({ icon, title, description, delay }) {
+function FeatureCard({icon, title, description, delay}) {
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay, duration: 0.5 }}
+            initial={{opacity: 0, y: 20}}
+            whileInView={{opacity: 1, y: 0}}
+            viewport={{once: true}}
+            transition={{delay, duration: 0.5}}
             className="p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-colors group"
         >
             <div className="mb-4 bg-muted w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">

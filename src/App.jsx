@@ -38,11 +38,11 @@ function App() {
                         path="/about"
                         element={<Placeholder title="About Axiom" />}
                     />
-                    
+
                     {/* Role selection routes */}
                     <Route path="/get-started" element={<RoleSelectPage />} />
                     <Route path="/login-select" element={<LoginSelectPage />} />
-                    
+
                     {/* Clerk auth routes - need wildcard for SSO callbacks */}
                     <Route path="/sign-in/*" element={<SignInPage />} />
                     <Route path="/sign-up/*" element={<SignUpPage />} />
@@ -79,12 +79,30 @@ function App() {
                 >
                     <Route index element={<AdminDashboard />} />
                     <Route path="events" element={<AdminEvents />} />
-                    <Route path="events/:id" element={<AdminPlaceholder title="Event Details" />} />
-                    <Route path="rounds" element={<AdminPlaceholder title="Round Management" />} />
-                    <Route path="participants" element={<AdminPlaceholder title="Participants" />} />
-                    <Route path="rooms" element={<AdminPlaceholder title="Room Management" />} />
-                    <Route path="results" element={<AdminPlaceholder title="Results & Scores" />} />
-                    <Route path="settings" element={<AdminPlaceholder title="Admin Settings" />} />
+                    <Route
+                        path="events/:id"
+                        element={<AdminPlaceholder title="Event Details" />}
+                    />
+                    <Route
+                        path="rounds"
+                        element={<AdminPlaceholder title="Round Management" />}
+                    />
+                    <Route
+                        path="participants"
+                        element={<AdminPlaceholder title="Participants" />}
+                    />
+                    <Route
+                        path="rooms"
+                        element={<AdminPlaceholder title="Room Management" />}
+                    />
+                    <Route
+                        path="results"
+                        element={<AdminPlaceholder title="Results & Scores" />}
+                    />
+                    <Route
+                        path="settings"
+                        element={<AdminPlaceholder title="Admin Settings" />}
+                    />
                 </Route>
             </Routes>
         </BrowserRouter>
