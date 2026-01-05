@@ -21,6 +21,7 @@ export default function AdminEvents() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingEvent, setEditingEvent] = useState(null);
 
     useEffect(() => {
         fetchEvents();
@@ -41,6 +42,21 @@ export default function AdminEvents() {
     const filteredEvents = events.filter((event) =>
         event.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const handleDeleteEvent = async (id) => {
+        if (!confirm("Are you sure you want to delete this event? All associated rounds and debates will be lost.")) return;
+        try {
+            const token = await getToken();
+            const response = await AdminApi.deleteEvent(id, token);
+            if (response.success) {
+                setEvents(events.filter(e => e.id !== id));
+            } else {
+                alert(response.error || "Failed to delete event");
+            }
+        } catch (error) {
+            alert("Error deleting event");
+        }
+    };
 
     if (loading) {
         return (
@@ -173,15 +189,18 @@ export default function AdminEvents() {
                                             <button
                                                 className="p-2 rounded-lg hover:bg-muted transition-colors"
                                                 title="Edit"
+                                                onClick={() => setEditingEvent(event)}
                                             >
                                                 <Edit className="w-4 h-4 text-muted-foreground" />
                                             </button>
                                             <button
+                                                onClick={() => handleDeleteEvent(event.id)}
                                                 className="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
                                                 title="Delete"
                                             >
                                                 <Trash2 className="w-4 h-4 text-red-500" />
                                             </button>
+
                                         </div>
                                     </td>
                                 </motion.tr>
@@ -197,6 +216,17 @@ export default function AdminEvents() {
                     onClose={() => setShowCreateModal(false)}
                     onCreated={() => {
                         setShowCreateModal(false);
+                        fetchEvents();
+                    }}
+                />
+            )}
+
+            {editingEvent && (
+                <EditEventModal
+                    event={editingEvent}
+                    onClose={() => setEditingEvent(null)}
+                    onUpdated={() => {
+                        setEditingEvent(null);
                         fetchEvents();
                     }}
                 />
@@ -327,6 +357,129 @@ function CreateEventModal({ onClose, onCreated }) {
                             className="flex-1 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
                         >
                             {loading ? "Creating..." : "Create Event"}
+                        </button>
+                    </div>
+                </form>
+            </motion.div>
+        </div>
+    );
+}
+ 
+function EditEventModal({ event, onClose, onUpdated }) {
+    const { getToken } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        name: event.name || "",
+        description: event.description || "",
+        startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : "",
+        endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : "",
+        status: event.status || "UPCOMING"
+    });
+ 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const token = await getToken();
+            const response = await AdminApi.updateEvent(event.id, formData, token);
+            if (response.success) {
+                onUpdated();
+            } else {
+                alert(response.error || "Failed to update event");
+            }
+        } catch (error) {
+            alert("Error updating event");
+        } finally {
+            setLoading(false);
+        }
+    };
+ 
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-card border border-border rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto"
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold">Edit Event</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                         <Trash2 className="w-5 h-5 text-muted-foreground rotate-45" />
+                    </button>
+                </div>
+ 
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium mb-1 block">Event Name</label>
+                        <input
+                            type="text"
+                            required
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
+                        />
+                    </div>
+ 
+                    <div>
+                        <label className="text-sm font-medium mb-1 block">Description</label>
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none resize-none"
+                            rows={3}
+                        />
+                    </div>
+ 
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-medium mb-1 block">Start Date</label>
+                            <input
+                                type="datetime-local"
+                                required
+                                value={formData.startDate}
+                                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium mb-1 block">End Date</label>
+                            <input
+                                type="datetime-local"
+                                required
+                                value={formData.endDate}
+                                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
+                            />
+                        </div>
+                    </div>
+ 
+                    <div>
+                        <label className="text-sm font-medium mb-1 block">Status</label>
+                        <select
+                            value={formData.status}
+                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
+                        >
+                            <option value="UPCOMING">Upcoming</option>
+                            <option value="ONGOING">Ongoing</option>
+                            <option value="COMPLETED">Completed</option>
+                        </select>
+                    </div>
+ 
+                    <div className="flex gap-3 pt-6 border-t border-border mt-6">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors opacity-70"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-2 px-8 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
+                        >
+                            {loading ? "Updating..." : "Save Changes"}
                         </button>
                     </div>
                 </form>

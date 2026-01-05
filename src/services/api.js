@@ -61,6 +61,7 @@ export const UserApi = {
             null,
             token
         ),
+    deleteParticipant: (id, token) => apiRequest(`/users/${id}`, "DELETE", null, token),
 };
 
 // Event Endpoints

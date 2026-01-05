@@ -1,5 +1,5 @@
-import {useState, useEffect} from "react";
-import {useUser, useAuth} from "@clerk/clerk-react";
+import { useState, useEffect } from "react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import {
     User,
     Mail,
@@ -10,11 +10,11 @@ import {
     Phone,
     CheckCircle,
 } from "lucide-react";
-import {UserApi} from "../../services/api";
+import { UserApi } from "../../services/api";
 
 export default function Profile() {
-    const {user, isLoaded} = useUser();
-    const {getToken} = useAuth();
+    const { user, isLoaded } = useUser();
+    const { getToken } = useAuth();
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
@@ -69,7 +69,7 @@ export default function Profile() {
     }, [isLoaded, user, getToken]);
 
     const handleChange = (e) => {
-        setFormData({...formData, [e.target.name]: e.target.value});
+        setFormData({ ...formData, [e.target.name]: e.target.value });
         setSuccess(false);
         setError(null);
     };
@@ -116,7 +116,7 @@ export default function Profile() {
             </div>
         );
 
-    const isProfileComplete = formData.college && formData.usn;
+    const isProfileComplete = formData.college && formData.mobile;
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -137,8 +137,8 @@ export default function Profile() {
                 {!isProfileComplete && (
                     <div className="mt-4 bg-amber-500/10 border border-amber-500/20 text-amber-500 p-4 rounded-lg flex items-center gap-3">
                         <span className="font-bold">⚠️ Action Required</span>
-                        Please complete your College and USN to access all
-                        features.
+                        Please complete your College and Mobile Number to access
+                        all features.
                     </div>
                 )}
                 <p className="text-muted-foreground mt-1">

@@ -43,6 +43,21 @@ export default function AdminParticipants() {
         p.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const handleDelete = async (id, name) => {
+        if (!confirm(`Are you sure you want to delete participant: ${name}?`)) return;
+        try {
+            const token = await getToken();
+            const response = await UserApi.deleteParticipant(id, token);
+            if (response.success) {
+                setParticipants(participants.filter(p => p.id !== id));
+            } else {
+                alert(response.error || "Failed to delete participant");
+            }
+        } catch (error) {
+            alert("Error deleting participant");
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -132,15 +147,25 @@ export default function AdminParticipants() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${p.isProfileComplete
-                                                    ? 'bg-green-500/10 text-green-500'
-                                                    : 'bg-amber-500/10 text-amber-500'
+                                                ? 'bg-green-500/10 text-green-500'
+                                                : 'bg-amber-500/10 text-amber-500'
                                                 }`}>
                                                 {p.isProfileComplete ? 'Complete' : 'Incomplete'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100">
+                                                <button
+                                                    onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
+                                                    className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Delete Participant"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => alert(`More actions for ${p.firstName} coming soon (Edit, Role Change).`)}
+                                                    className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                                                >
                                                     <MoreVertical className="w-4 h-4 text-muted-foreground" />
                                                 </button>
                                             </div>

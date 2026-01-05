@@ -1,11 +1,11 @@
-import {useState, useEffect} from "react";
-import {useUser, useAuth} from "@clerk/clerk-react";
-import {useNavigate, useLocation} from "react-router-dom";
-import {UserApi} from "../services/api";
+import { useState, useEffect } from "react";
+import { useUser, useAuth } from "@clerk/clerk-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { UserApi } from "../services/api";
 
-export function OnboardingGuard({children}) {
-    const {user, isLoaded} = useUser();
-    const {getToken} = useAuth();
+export function OnboardingGuard({ children }) {
+    const { user, isLoaded } = useUser();
+    const { getToken } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [checking, setChecking] = useState(true);
@@ -22,14 +22,15 @@ export function OnboardingGuard({children}) {
                     // Check if profile is complete based on backend response
                     const isProfileComplete =
                         response.user?.isProfileComplete ||
-                        (response.user?.college && response.user?.usn);
+                        (response.user?.college && response.user?.mobile);
+
 
                     const isOnProfilePage =
                         location.pathname === "/dashboard/profile";
 
                     if (!isProfileComplete && !isOnProfilePage) {
                         // If profile is incomplete and not on profile page, redirect to profile
-                        navigate("/dashboard/profile", {replace: true});
+                        navigate("/dashboard/profile", { replace: true });
                     }
                 } catch (error) {
                     console.error("Error syncing user profile:", error);

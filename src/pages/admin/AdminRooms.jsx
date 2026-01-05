@@ -19,6 +19,8 @@ export default function AdminRooms() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingRoom, setEditingRoom] = useState(null);
+    const [users, setUsers] = useState([]);
 
     useEffect(() => {
         fetchRooms();
@@ -27,12 +29,19 @@ export default function AdminRooms() {
     const fetchRooms = async () => {
         try {
             const token = await getToken();
-            const response = await AdminApi.apiRequest("/rooms", "GET", null, token);
-            if (response.success) {
-                setRooms(response.rooms || []);
+            const [roomsRes, usersRes] = await Promise.all([
+                AdminApi.apiRequest("/rooms", "GET", null, token),
+                AdminApi.apiRequest("/users", "GET", null, token)
+            ]);
+
+            if (roomsRes.success) {
+                setRooms(roomsRes.rooms || []);
+            }
+            if (usersRes.success) {
+                setUsers(usersRes.users || []);
             }
         } catch (error) {
-            console.error("Failed to fetch rooms:", error);
+            console.error("Failed to fetch rooms/users:", error);
         } finally {
             setLoading(false);
         }
@@ -46,12 +55,26 @@ export default function AdminRooms() {
         if (!confirm("Are you sure you want to delete this room?")) return;
         try {
             const token = await getToken();
-            const response = await AdminApi.deleteRoom(id, token);
+            const response = await AdminApi.apiRequest(`/rooms/${id}`, "DELETE", null, token);
             if (response.success) {
                 setRooms(rooms.filter(r => r.id !== id));
             }
         } catch (error) {
             alert("Failed to delete room");
+        }
+    };
+
+    const handleAssignJudge = async (debateId, adjudicatorId) => {
+        try {
+            const token = await getToken();
+            const response = await AdminApi.apiRequest(`/debates/${debateId}`, "PUT", { adjudicatorId }, token);
+            if (response.success) {
+                fetchRooms();
+            } else {
+                alert(response.error || "Failed to assign judge");
+            }
+        } catch (error) {
+            alert("Error assigning judge");
         }
     };
 
@@ -122,9 +145,13 @@ export default function AdminRooms() {
                                     <MapPin className="w-6 h-6 text-purple-500" />
                                 </div>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground">
+                                    <button
+                                        onClick={() => setEditingRoom(room)}
+                                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground"
+                                    >
                                         <Edit className="w-4 h-4" />
                                     </button>
+
                                     <button
                                         onClick={() => handleDelete(room.id)}
                                         className="p-2 rounded-lg hover:bg-red-500/10 text-red-500"
@@ -134,9 +161,29 @@ export default function AdminRooms() {
                                 </div>
                             </div>
                             <h3 className="text-lg font-bold mb-1">{room.name}</h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Users className="w-4 h-4" />
-                                <span>Capacity: {room.capacity} people</span>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Users className="w-4 h-4" />
+                                    <span>Capacity: {room.capacity} people</span>
+                                </div>
+
+                                <div className="pt-3 border-t border-border">
+                                    <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1.5 block">Active Adjudicator</label>
+                                    {room.debates?.[0] ? (
+                                        <select
+                                            value={room.debates[0].adjudicator?.id || ""}
+                                            onChange={(e) => handleAssignJudge(room.debates[0].id, e.target.value)}
+                                            className="w-full text-xs bg-background border border-border rounded-lg px-2 py-1.5 outline-none focus:border-purple-500 transition-colors"
+                                        >
+                                            <option value="">Assign Judge</option>
+                                            {users.map(u => (
+                                                <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground italic">No active debate in this room</p>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     ))}
@@ -148,6 +195,18 @@ export default function AdminRooms() {
                     onClose={() => setShowCreateModal(false)}
                     onCreated={() => {
                         setShowCreateModal(false);
+                        fetchRooms();
+                    }}
+                    users={users}
+                />
+            )}
+
+            {editingRoom && (
+                <EditRoomModal
+                    room={editingRoom}
+                    onClose={() => setEditingRoom(null)}
+                    onUpdated={() => {
+                        setEditingRoom(null);
                         fetchRooms();
                     }}
                 />
@@ -227,6 +286,84 @@ function CreateRoomModal({ onClose, onCreated }) {
                             className="flex-1 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
                         >
                             {loading ? "Creating..." : "Create Room"}
+                        </button>
+                    </div>
+                </form>
+            </motion.div>
+        </div>
+    );
+}
+
+function EditRoomModal({ room, onClose, onUpdated }) {
+    const { getToken } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        name: room.name || "",
+        capacity: room.capacity || 2
+    });
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const token = await getToken();
+            const response = await AdminApi.apiRequest(`/rooms/${room.id}`, "PUT", formData, token);
+            if (response.success) {
+                onUpdated();
+            } else {
+                alert(response.error || "Failed to update room");
+            }
+        } catch (error) {
+            alert("Error updating room");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-card border border-border rounded-2xl p-6 w-full max-w-md mx-4"
+            >
+                <h2 className="text-xl font-bold mb-4">Edit Room</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium mb-1 block">Room Name</label>
+                        <input
+                            type="text"
+                            required
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium mb-1 block">Capacity</label>
+                        <input
+                            type="number"
+                            required
+                            min="2"
+                            value={formData.capacity}
+                            onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
+                        />
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
+                        >
+                            {loading ? "Updating..." : "Save Changes"}
                         </button>
                     </div>
                 </form>
