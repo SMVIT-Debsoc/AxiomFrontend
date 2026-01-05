@@ -113,13 +113,17 @@ export default function Navbar() {
                     )}
                 </div>
 
-                {/* Mobile Menu Toggle */}
-                <button
-                    className="md:hidden text-foreground"
-                    onClick={() => setIsOpen(!isOpen)}
-                >
-                    {isOpen ? <X /> : <Menu />}
-                </button>
+                {/* Mobile Menu Toggle + User Button */}
+                <div className="md:hidden flex items-center gap-4">
+                    {isSignedIn && <UserButton afterSignOutUrl="/" />}
+                    <button
+                        className="text-foreground p-1"
+                        onClick={() => setIsOpen(!isOpen)}
+                        aria-label={isOpen ? "Close menu" : "Open menu"}
+                    >
+                        {isOpen ? <X /> : <Menu />}
+                    </button>
+                </div>
             </div>
 
             {/* Mobile Menu */}
@@ -129,40 +133,64 @@ export default function Navbar() {
                         initial={{opacity: 0, height: 0}}
                         animate={{opacity: 1, height: "auto"}}
                         exit={{opacity: 0, height: 0}}
-                        className="md:hidden border-t border-border bg-background"
+                        transition={{duration: 0.3, ease: "easeInOut"}}
+                        className="md:hidden border-t border-border bg-background/95 backdrop-blur-md overflow-hidden"
                     >
-                        <div className="container mx-auto px-6 py-6 flex flex-col gap-4">
-                            {navLinks.map((link) => (
-                                <Link
+                        <div className="container mx-auto px-6 py-6 flex flex-col gap-2">
+                            {navLinks.map((link, index) => (
+                                <motion.div
                                     key={link.path}
-                                    to={link.path}
-                                    onClick={() => setIsOpen(false)}
-                                    className="text-lg font-medium text-foreground py-2"
+                                    initial={{opacity: 0, x: -20}}
+                                    animate={{opacity: 1, x: 0}}
+                                    transition={{
+                                        delay: index * 0.05,
+                                        duration: 0.3,
+                                    }}
                                 >
-                                    {link.name}
-                                </Link>
+                                    <Link
+                                        to={link.path}
+                                        onClick={() => setIsOpen(false)}
+                                        className="block text-lg font-medium text-foreground py-3 px-2 rounded-lg hover:bg-muted transition-colors"
+                                    >
+                                        {link.name}
+                                    </Link>
+                                </motion.div>
                             ))}
-                            <hr className="border-border my-2" />
-                            {isSignedIn ? (
-                                <div className="flex items-center gap-2 py-2">
-                                    <UserButton afterSignOutUrl="/" showName />
-                                </div>
-                            ) : (
+                            {!isSignedIn && (
                                 <>
-                                    <Link
-                                        to="/login-select"
-                                        onClick={() => setIsOpen(false)}
-                                        className="text-lg font-medium text-muted-foreground py-2"
+                                    <hr className="border-border my-2" />
+                                    <motion.div
+                                        initial={{opacity: 0, x: -20}}
+                                        animate={{opacity: 1, x: 0}}
+                                        transition={{
+                                            delay: navLinks.length * 0.05,
+                                            duration: 0.3,
+                                        }}
                                     >
-                                        Sign In
-                                    </Link>
-                                    <Link
-                                        to="/get-started"
-                                        onClick={() => setIsOpen(false)}
-                                        className="text-lg font-medium text-primary py-2"
+                                        <Link
+                                            to="/login-select"
+                                            onClick={() => setIsOpen(false)}
+                                            className="block text-lg font-medium text-muted-foreground py-3 px-2 rounded-lg hover:bg-muted transition-colors"
+                                        >
+                                            Sign In
+                                        </Link>
+                                    </motion.div>
+                                    <motion.div
+                                        initial={{opacity: 0, x: -20}}
+                                        animate={{opacity: 1, x: 0}}
+                                        transition={{
+                                            delay: (navLinks.length + 1) * 0.05,
+                                            duration: 0.3,
+                                        }}
                                     >
-                                        Get Started
-                                    </Link>
+                                        <Link
+                                            to="/get-started"
+                                            onClick={() => setIsOpen(false)}
+                                            className="block text-lg font-medium text-primary py-3 px-2 rounded-lg hover:bg-primary/10 transition-colors"
+                                        >
+                                            Get Started
+                                        </Link>
+                                    </motion.div>
                                 </>
                             )}
                         </div>

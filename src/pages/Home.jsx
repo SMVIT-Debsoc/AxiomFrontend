@@ -1,8 +1,11 @@
 import {motion} from "framer-motion";
 import {ArrowRight, Zap, Trophy, BarChart3, Users} from "lucide-react";
 import {Link} from "react-router-dom";
+import {useAuth} from "@clerk/clerk-react";
 
 export default function Home() {
+    const {isSignedIn} = useAuth();
+
     return (
         <div className="container mx-auto px-6">
             {/* Hero Section */}
@@ -28,7 +31,7 @@ export default function Home() {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link
-                            to="/get-started"
+                            to={isSignedIn ? "/dashboard" : "/get-started"}
                             className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-[0_0_30px_-5px_rgba(139,92,246,0.5)]"
                         >
                             Start Tourney{" "}
