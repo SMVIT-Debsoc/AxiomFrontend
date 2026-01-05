@@ -25,7 +25,7 @@ export default function Home() {
                         Axiom automates pairings, tabulations, and room allocations so you can focus on the debate. Built for university circuits and competitive leagues.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link to="/sign-up" className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-[0_0_30px_-5px_rgba(139,92,246,0.5)]">
+                        <Link to="/get-started" className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-[0_0_30px_-5px_rgba(139,92,246,0.5)]">
                             Start Tourney <ArrowRight className="ml-2 w-4 h-4" />
                         </Link>
                         <Link to="/about" className="inline-flex items-center justify-center px-8 py-3 rounded-lg border border-border hover:bg-muted transition-colors">

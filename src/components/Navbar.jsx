@@ -70,13 +70,13 @@ export default function Navbar() {
                     ) : (
                         <>
                             <Link
-                                to="/sign-in"
+                                to="/login-select"
                                 className="text-sm font-medium text-muted-foreground hover:text-white transition-colors"
                             >
                                 Sign In
                             </Link>
                             <Link
-                                to="/sign-up"
+                                to="/get-started"
                                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-[0_0_20px_-5px_rgba(139,92,246,0.5)] hover:shadow-[0_0_25px_-5px_rgba(139,92,246,0.7)]"
                             >
                                 Get Started
@@ -122,14 +122,14 @@ export default function Navbar() {
                             ) : (
                                 <>
                                     <Link
-                                        to="/sign-in"
+                                        to="/login-select"
                                         onClick={() => setIsOpen(false)}
                                         className="text-lg font-medium text-muted-foreground py-2"
                                     >
                                         Sign In
                                     </Link>
                                     <Link
-                                        to="/sign-up"
+                                        to="/get-started"
                                         onClick={() => setIsOpen(false)}
                                         className="text-lg font-medium text-primary py-2"
                                     >
