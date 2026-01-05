@@ -1,39 +1,75 @@
-import { useState, useEffect } from 'react';
-import { useUser, useAuth } from '@clerk/clerk-react';
-import { User, Mail, School, Hash, Save, Loader2, Phone } from 'lucide-react';
-import { UserApi } from '../../services/api';
+import {useState, useEffect} from "react";
+import {useUser, useAuth} from "@clerk/clerk-react";
+import {
+    User,
+    Mail,
+    School,
+    Hash,
+    Save,
+    Loader2,
+    Phone,
+    CheckCircle,
+} from "lucide-react";
+import {UserApi} from "../../services/api";
 
 export default function Profile() {
-    const { user, isLoaded } = useUser();
-    const { getToken } = useAuth();
+    const {user, isLoaded} = useUser();
+    const {getToken} = useAuth();
     const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        college: '',
-        usn: '',
-        mobile: ''
+        firstName: "",
+        lastName: "",
+        college: "",
+        usn: "",
+        mobile: "",
     });
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (isLoaded && user) {
-            // In a real app, we would fetch the profile from our backend DB 
-            // which might have more fields than Clerk (like College/USN)
-            setFormData({
-                firstName: user.firstName || '',
-                lastName: user.lastName || '',
-                college: user.publicMetadata?.college || '',
-                usn: user.publicMetadata?.usn || '',
-                mobile: user.publicMetadata?.mobile || user.primaryPhoneNumber?.phoneNumber || ''
-            });
-        }
-    }, [isLoaded, user]);
+        const fetchProfile = async () => {
+            if (isLoaded && user) {
+                try {
+                    setLoading(true);
+                    const token = await getToken();
+
+                    // Fetch profile from backend database (this also syncs/creates user if needed)
+                    const response = await UserApi.getProfile(token);
+                    const dbUser = response.user;
+
+                    // Populate form with backend data, falling back to Clerk data
+                    setFormData({
+                        firstName: dbUser?.firstName || user.firstName || "",
+                        lastName: dbUser?.lastName || user.lastName || "",
+                        college: dbUser?.college || "",
+                        usn: dbUser?.usn || "",
+                        mobile:
+                            dbUser?.mobile ||
+                            user.primaryPhoneNumber?.phoneNumber ||
+                            "",
+                    });
+                } catch (err) {
+                    console.error("Error fetching profile:", err);
+                    // Fallback to Clerk data if backend fetch fails
+                    setFormData({
+                        firstName: user.firstName || "",
+                        lastName: user.lastName || "",
+                        college: "",
+                        usn: "",
+                        mobile: user.primaryPhoneNumber?.phoneNumber || "",
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchProfile();
+    }, [isLoaded, user, getToken]);
 
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setFormData({...formData, [e.target.name]: e.target.value});
         setSuccess(false);
         setError(null);
     };
@@ -45,24 +81,22 @@ export default function Profile() {
         try {
             const token = await getToken();
 
-            // Sync with Backend
-            await UserApi.updateProfile({
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                college: formData.college,
-                usn: formData.usn,
-                mobile: formData.mobile
-            }, token);
+            // Sync with Backend (this will upsert the user)
+            await UserApi.updateProfile(
+                {
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    college: formData.college,
+                    usn: formData.usn,
+                    mobile: formData.mobile,
+                },
+                token
+            );
 
-            // Ensure we update Clerk metadata if we are using it for storage
+            // Also update Clerk user data for consistency
             await user.update({
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                publicMetadata: {
-                    college: formData.college,
-                    usn: formData.usn,
-                    mobile: formData.mobile
-                }
             });
 
             setSuccess(true);
@@ -75,10 +109,24 @@ export default function Profile() {
         }
     };
 
-    if (!isLoaded) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin" /></div>;
+    if (!isLoaded || loading)
+        return (
+            <div className="p-10 flex justify-center">
+                <Loader2 className="animate-spin" />
+            </div>
+        );
+
+    const isProfileComplete = formData.college && formData.usn;
 
     return (
         <div className="max-w-2xl mx-auto">
+            {success && (
+                <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 text-green-500 rounded-lg flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-bold">Success!</span> Your profile has
+                    been saved to the database.
+                </div>
+            )}
             {error && (
                 <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg flex items-center gap-2">
                     <span className="font-bold">Error:</span> {error}
@@ -86,13 +134,16 @@ export default function Profile() {
             )}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">My Profile</h1>
-                {!user.publicMetadata?.college && (
+                {!isProfileComplete && (
                     <div className="mt-4 bg-amber-500/10 border border-amber-500/20 text-amber-500 p-4 rounded-lg flex items-center gap-3">
                         <span className="font-bold">⚠️ Action Required</span>
-                        Please complete your profile to access all features.
+                        Please complete your College and USN to access all
+                        features.
                     </div>
                 )}
-                <p className="text-muted-foreground mt-1">Manage your personal information and tournament identity.</p>
+                <p className="text-muted-foreground mt-1">
+                    Manage your personal information and tournament identity.
+                </p>
             </div>
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
@@ -107,7 +158,9 @@ export default function Profile() {
                         <h2 className="text-xl font-bold">
                             {formData.firstName} {formData.lastName}
                         </h2>
-                        <p className="opacity-80">{user.primaryEmailAddress?.emailAddress}</p>
+                        <p className="opacity-80">
+                            {user.primaryEmailAddress?.emailAddress}
+                        </p>
                     </div>
                 </div>
 
@@ -115,7 +168,8 @@ export default function Profile() {
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
-                                <User className="w-4 h-4 text-muted-foreground" /> First Name
+                                <User className="w-4 h-4 text-muted-foreground" />{" "}
+                                First Name
                             </label>
                             <input
                                 name="firstName"
@@ -127,7 +181,8 @@ export default function Profile() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
-                                <User className="w-4 h-4 text-muted-foreground" /> Last Name
+                                <User className="w-4 h-4 text-muted-foreground" />{" "}
+                                Last Name
                             </label>
                             <input
                                 name="lastName"
@@ -141,7 +196,8 @@ export default function Profile() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
-                            <School className="w-4 h-4 text-muted-foreground" /> College / Institution
+                            <School className="w-4 h-4 text-muted-foreground" />{" "}
+                            College / Institution
                         </label>
                         <input
                             name="college"
@@ -155,7 +211,8 @@ export default function Profile() {
                     <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
-                                <Hash className="w-4 h-4 text-muted-foreground" /> USN / Student ID
+                                <Hash className="w-4 h-4 text-muted-foreground" />{" "}
+                                USN / Student ID
                             </label>
                             <input
                                 name="usn"
@@ -167,11 +224,14 @@ export default function Profile() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
-                                <Mail className="w-4 h-4 text-muted-foreground" /> Email (Read Only)
+                                <Mail className="w-4 h-4 text-muted-foreground" />{" "}
+                                Email (Read Only)
                             </label>
                             <input
                                 disabled
-                                value={user.primaryEmailAddress?.emailAddress || ''}
+                                value={
+                                    user.primaryEmailAddress?.emailAddress || ""
+                                }
                                 className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-muted-foreground cursor-not-allowed"
                             />
                         </div>
@@ -179,7 +239,8 @@ export default function Profile() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-muted-foreground" /> Mobile Number
+                            <Phone className="w-4 h-4 text-muted-foreground" />{" "}
+                            Mobile Number
                         </label>
                         <input
                             name="mobile"
@@ -196,7 +257,11 @@ export default function Profile() {
                             disabled={saving}
                             className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all disabled:opacity-50"
                         >
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {saving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Save className="w-4 h-4" />
+                            )}
                             Save Changes
                         </button>
 
