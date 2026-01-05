@@ -1,7 +1,15 @@
 import {useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {motion} from "framer-motion";
-import {User, Shield, ArrowRight, Key, AlertCircle} from "lucide-react";
+import {
+    User,
+    Shield,
+    ArrowRight,
+    Key,
+    AlertCircle,
+    Loader2,
+} from "lucide-react";
+import {AdminApi} from "../services/api";
 
 export default function LoginSelectPage() {
     const navigate = useNavigate();
@@ -9,6 +17,7 @@ export default function LoginSelectPage() {
     const [showSecretKeyInput, setShowSecretKeyInput] = useState(false);
     const [secretKey, setSecretKey] = useState("");
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleRoleSelect = (role) => {
         setSelectedRole(role);
@@ -22,18 +31,32 @@ export default function LoginSelectPage() {
         }
     };
 
-    const handleAdminContinue = () => {
+    const handleAdminContinue = async () => {
         if (!secretKey.trim()) {
             setError("Please enter the admin secret key");
             return;
         }
 
-        // Store secret key in localStorage (persists across OAuth redirects)
-        localStorage.setItem("adminSecretKey", secretKey);
-        localStorage.setItem("pendingRole", "admin");
+        setLoading(true);
+        setError("");
 
-        // Navigate to sign-in with admin role
-        navigate("/sign-in?role=admin");
+        try {
+            // Validate the secret key BEFORE allowing sign-in
+            const response = await AdminApi.validateKey(secretKey);
+
+            if (response.success && response.valid) {
+                // Key is valid, store and proceed to sign-in
+                localStorage.setItem("adminSecretKey", secretKey);
+                localStorage.setItem("pendingRole", "admin");
+                navigate("/sign-in?role=admin");
+            } else {
+                setError("Invalid admin secret key. Access denied.");
+            }
+        } catch (err) {
+            setError("Invalid admin secret key. Access denied.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -143,9 +166,17 @@ export default function LoginSelectPage() {
 
                             <button
                                 onClick={handleAdminContinue}
-                                className="w-full mt-4 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+                                disabled={loading || !secretKey.trim()}
+                                className="w-full mt-4 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                Continue to Sign In
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Validating...
+                                    </>
+                                ) : (
+                                    "Continue to Sign In"
+                                )}
                             </button>
                         </div>
 

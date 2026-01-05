@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {useUser, useAuth} from "@clerk/clerk-react";
 import {useNavigate} from "react-router-dom";
-import {Loader2} from "lucide-react";
+import {Loader2, ShieldX} from "lucide-react";
 import {AdminApi, UserApi} from "../services/api";
 
 /**
@@ -14,6 +14,7 @@ export function AuthRedirectHandler() {
     const {getToken} = useAuth();
     const navigate = useNavigate();
     const [status, setStatus] = useState("Verifying your credentials...");
+    const [accessDenied, setAccessDenied] = useState(false);
 
     useEffect(() => {
         const handleRedirect = async () => {
@@ -74,14 +75,10 @@ export function AuthRedirectHandler() {
                             return;
                         }
 
-                        // Invalid secret key
+                        // Invalid secret key - show access denied
                         localStorage.removeItem("pendingRole");
                         localStorage.removeItem("adminSecretKey");
-                        setStatus("Invalid admin credentials. Redirecting...");
-                        setTimeout(
-                            () => navigate("/dashboard", {replace: true}),
-                            1500
-                        );
+                        setAccessDenied(true);
                         return;
                     }
                 }
@@ -116,6 +113,42 @@ export function AuthRedirectHandler() {
 
         handleRedirect();
     }, [isLoaded, user, getToken, navigate]);
+
+    // Show access denied screen for invalid admin secret key
+    if (accessDenied) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="text-center max-w-md px-4">
+                    <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
+                        <ShieldX className="w-10 h-10 text-red-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+                    <p className="text-muted-foreground mb-6">
+                        The admin secret key you entered is incorrect. You are
+                        not authorized to access the admin dashboard.
+                    </p>
+                    <div className="space-y-3">
+                        <button
+                            onClick={() =>
+                                navigate("/dashboard", {replace: true})
+                            }
+                            className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+                        >
+                            Continue as Debater
+                        </button>
+                        <button
+                            onClick={() =>
+                                navigate("/login-select", {replace: true})
+                            }
+                            className="w-full py-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background">
