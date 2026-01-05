@@ -1,4 +1,4 @@
-import {BrowserRouter, Routes, Route} from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import Home from "./pages/Home";
 import Placeholder from "./pages/Placeholder";
@@ -10,19 +10,33 @@ import Profile from "./pages/dashboard/Profile";
 import Leaderboard from "./pages/dashboard/Leaderboard";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
-import {OnboardingGuard} from "./components/OnboardingGuard";
-import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
+import { OnboardingGuard } from "./components/OnboardingGuard";
+import { AuthRedirectHandler } from "./components/AuthRedirectHandler";
 
 // Role selection pages
 import RoleSelectPage from "./pages/RoleSelectPage";
 import LoginSelectPage from "./pages/LoginSelectPage";
 
 // Admin imports
-import {AdminGuard} from "./components/AdminGuard";
+import { AdminGuard } from "./components/AdminGuard";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminEvents from "./pages/admin/AdminEvents";
+import AdminEventDetails from "./pages/admin/AdminEventDetails";
+import AdminRoundManagement from "./pages/admin/AdminRoundManagement";
+import AdminRounds from "./pages/admin/AdminRounds";
+import AdminResultSubmission from "./pages/admin/AdminResultSubmission";
+
+import AdminResults from "./pages/admin/AdminResults";
+import AdminParticipants from "./pages/admin/AdminParticipants";
+
+
+
+
+import AdminRooms from "./pages/admin/AdminRooms";
 import AdminPlaceholder from "./pages/admin/AdminPlaceholder";
+
+
 
 function App() {
     return (
@@ -88,24 +102,39 @@ function App() {
                     <Route path="events" element={<AdminEvents />} />
                     <Route
                         path="events/:id"
-                        element={<AdminPlaceholder title="Event Details" />}
+                        element={<AdminEventDetails />}
                     />
+
                     <Route
                         path="rounds"
-                        element={<AdminPlaceholder title="Round Management" />}
+                        element={<AdminRounds />}
                     />
+                    <Route
+                        path="rounds/:id"
+                        element={<AdminRoundManagement />}
+                    />
+
+
                     <Route
                         path="participants"
-                        element={<AdminPlaceholder title="Participants" />}
+                        element={<AdminParticipants />}
                     />
+
                     <Route
                         path="rooms"
-                        element={<AdminPlaceholder title="Room Management" />}
+                        element={<AdminRooms />}
                     />
+
                     <Route
                         path="results"
-                        element={<AdminPlaceholder title="Results & Scores" />}
+                        element={<AdminResults />}
                     />
+                    <Route
+                        path="results/:id"
+                        element={<AdminResultSubmission />}
+                    />
+
+
                     <Route
                         path="settings"
                         element={<AdminPlaceholder title="Admin Settings" />}

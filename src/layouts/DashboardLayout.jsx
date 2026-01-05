@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { UserButton, useUser, SignedIn, RedirectToSignIn, useAuth } from '@clerk/clerk-react';
 import {
     LayoutDashboard,
     Calendar,
@@ -8,11 +9,14 @@ import {
     LogOut,
     Menu,
     X,
-    Trophy
+    Trophy,
+    ShieldCheck
 } from 'lucide-react';
+
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserButton, useUser, SignedIn, RedirectToSignIn } from '@clerk/clerk-react';
+import { AdminApi } from '../services/api';
+
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: 'Overview', path: '/dashboard' },
@@ -24,14 +28,38 @@ const sidebarItems = [
 
 export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
     const { user, isLoaded, isSignedIn } = useUser();
+    const { getToken } = useAuth();
+
+    // Check admin status to show admin link
+    useEffect(() => {
+        const checkAdmin = async () => {
+            if (isSignedIn) {
+                try {
+                    const token = await getToken();
+                    const response = await AdminApi.getProfile(token);
+                    setIsAdmin(response.success && !!response.admin);
+                } catch (e) {
+                    setIsAdmin(false);
+                }
+            }
+        };
+        checkAdmin();
+    }, [isSignedIn, getToken]);
 
     if (!isLoaded) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
     if (!isSignedIn) {
         return <RedirectToSignIn />;
     }
+
+    const currentSidebarItems = [...sidebarItems];
+    if (isAdmin) {
+        currentSidebarItems.push({ icon: ShieldCheck, label: 'Admin Panel', path: '/admin' });
+    }
+
 
     return (
         <div className="min-h-screen bg-background text-foreground flex">
@@ -58,7 +86,7 @@ export default function DashboardLayout() {
                 </div>
 
                 <div className="flex-1 py-6 flex flex-col gap-2 px-3">
-                    {sidebarItems.map((item) => {
+                    {currentSidebarItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         const Icon = item.icon;
 

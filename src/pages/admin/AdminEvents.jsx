@@ -1,5 +1,5 @@
-import {useState, useEffect} from "react";
-import {motion} from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
     Calendar,
     Plus,
@@ -10,12 +10,13 @@ import {
     Eye,
     Loader2,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {Link} from "react-router-dom";
-import {EventApi} from "../../services/api";
+import { useAuth } from "@clerk/clerk-react";
+import { Link } from "react-router-dom";
+import { AdminApi, EventApi } from "../../services/api";
+
 
 export default function AdminEvents() {
-    const {getToken} = useAuth();
+    const { getToken } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -118,9 +119,9 @@ export default function AdminEvents() {
                             {filteredEvents.map((event, index) => (
                                 <motion.tr
                                     key={event.id}
-                                    initial={{opacity: 0}}
-                                    animate={{opacity: 1}}
-                                    transition={{delay: index * 0.05}}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: index * 0.05 }}
                                     className="hover:bg-muted/20 transition-colors"
                                 >
                                     <td className="px-6 py-4">
@@ -149,14 +150,13 @@ export default function AdminEvents() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span
-                                            className={`text-xs font-bold px-2 py-1 rounded ${
-                                                event.status === "ONGOING"
-                                                    ? "bg-green-500/10 text-green-500"
-                                                    : event.status ===
-                                                      "UPCOMING"
+                                            className={`text-xs font-bold px-2 py-1 rounded ${event.status === "ONGOING"
+                                                ? "bg-green-500/10 text-green-500"
+                                                : event.status ===
+                                                    "UPCOMING"
                                                     ? "bg-blue-500/10 text-blue-500"
                                                     : "bg-gray-500/10 text-gray-500"
-                                            }`}
+                                                }`}
                                         >
                                             {event.status}
                                         </span>
@@ -205,8 +205,8 @@ export default function AdminEvents() {
     );
 }
 
-function CreateEventModal({onClose, onCreated}) {
-    const {getToken} = useAuth();
+function CreateEventModal({ onClose, onCreated }) {
+    const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
@@ -221,20 +221,12 @@ function CreateEventModal({onClose, onCreated}) {
 
         try {
             const token = await getToken();
-            const response = await fetch("http://localhost:3000/api/events", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(formData),
-            });
+            const response = await AdminApi.createEvent(formData, token);
 
-            if (response.ok) {
+            if (response.success) {
                 onCreated();
             } else {
-                const data = await response.json();
-                alert(data.error || "Failed to create event");
+                alert(response.error || "Failed to create event");
             }
         } catch (error) {
             console.error("Failed to create event:", error);
@@ -242,13 +234,14 @@ function CreateEventModal({onClose, onCreated}) {
         } finally {
             setLoading(false);
         }
+
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <motion.div
-                initial={{opacity: 0, scale: 0.95}}
-                animate={{opacity: 1, scale: 1}}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="bg-card border border-border rounded-2xl p-6 w-full max-w-md mx-4"
             >
                 <h2 className="text-xl font-bold mb-4">Create New Event</h2>
@@ -262,7 +255,7 @@ function CreateEventModal({onClose, onCreated}) {
                             required
                             value={formData.name}
                             onChange={(e) =>
-                                setFormData({...formData, name: e.target.value})
+                                setFormData({ ...formData, name: e.target.value })
                             }
                             className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             placeholder="Axiom 2026"

@@ -1,5 +1,5 @@
-import {useState} from "react";
-import {Outlet, Link, useLocation} from "react-router-dom";
+import { useState } from "react";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import {
     LayoutDashboard,
     Calendar,
@@ -11,31 +11,33 @@ import {
     ClipboardList,
     MapPin,
 } from "lucide-react";
-import {cn} from "../lib/utils";
-import {motion} from "framer-motion";
-import {UserButton, useUser} from "@clerk/clerk-react";
+import { cn } from "../lib/utils";
+import { motion } from "framer-motion";
+import { UserButton, useUser } from "@clerk/clerk-react";
 
 const sidebarItems = [
-    {icon: LayoutDashboard, label: "Dashboard", path: "/admin"},
-    {icon: Calendar, label: "Events", path: "/admin/events"},
-    {icon: ClipboardList, label: "Rounds", path: "/admin/rounds"},
-    {icon: Users, label: "Participants", path: "/admin/participants"},
-    {icon: MapPin, label: "Rooms", path: "/admin/rooms"},
-    {icon: Trophy, label: "Results", path: "/admin/results"},
-    {icon: Settings, label: "Settings", path: "/admin/settings"},
+    { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+    { icon: Calendar, label: "Events", path: "/admin/events" },
+    { icon: ClipboardList, label: "Rounds", path: "/admin/rounds" },
+    { icon: Users, label: "Participants", path: "/admin/participants" },
+    { icon: MapPin, label: "Rooms", path: "/admin/rooms" },
+    { icon: Trophy, label: "Results", path: "/admin/results" },
+    { icon: Settings, label: "Settings", path: "/admin/settings" },
+    { icon: Users, label: "User View", path: "/dashboard" },
 ];
+
 
 export default function AdminLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const location = useLocation();
-    const {user} = useUser();
+    const { user } = useUser();
 
     return (
         <div className="min-h-screen bg-background text-foreground flex">
             {/* Sidebar */}
             <motion.aside
-                initial={{x: 0}}
-                animate={{width: sidebarOpen ? 260 : 80}}
+                initial={{ x: 0 }}
+                animate={{ width: sidebarOpen ? 260 : 80 }}
                 className="fixed md:relative z-30 h-screen border-r border-border bg-card/50 backdrop-blur-xl hidden md:flex flex-col"
             >
                 <div className="h-16 flex items-center px-6 border-b border-border/50">
