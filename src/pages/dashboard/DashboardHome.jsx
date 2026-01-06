@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import {useState, useEffect} from "react";
+import {motion} from "framer-motion";
 import {
     Trophy,
     TrendingUp,
@@ -14,15 +14,15 @@ import {
     Shield,
     Swords,
 } from "lucide-react";
-import { useAuth, useUser } from "@clerk/clerk-react";
-import { UserApi, EventApi, DebateApi, CheckInApi } from "../../services/api";
-import { Link } from "react-router-dom";
-import { useToast } from "../../components/ui/Toast";
-import { cn } from "../../lib/utils";
+import {useAuth, useUser} from "@clerk/clerk-react";
+import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
+import {Link} from "react-router-dom";
+import {useToast} from "../../components/ui/Toast";
+import {cn} from "../../lib/utils";
 
 export default function DashboardHome() {
-    const { getToken } = useAuth();
-    const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+    const {getToken} = useAuth();
+    const {user: clerkUser, isLoaded: clerkLoaded} = useUser();
     const toast = useToast();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -45,9 +45,21 @@ export default function DashboardHome() {
                 const profileResponse = await UserApi.getProfile(token);
                 setUserData(profileResponse.user);
 
-                // Fetch events to find active one
-                const eventsResponse = await EventApi.list(token, "ONGOING");
-                const events = eventsResponse.events || [];
+                // Fetch events to find active one (ONGOING first, then UPCOMING)
+                let eventsResponse = await EventApi.list(token, "ONGOING");
+                let events = eventsResponse.events || [];
+
+                // If no ongoing events, check for upcoming ones
+                if (events.length === 0) {
+                    eventsResponse = await EventApi.list(token, "UPCOMING");
+                    events = eventsResponse.events || [];
+                }
+
+                // If still no events, fetch all events
+                if (events.length === 0) {
+                    eventsResponse = await EventApi.list(token);
+                    events = eventsResponse.events || [];
+                }
 
                 if (events.length > 0) {
                     const event = events[0];
@@ -150,10 +162,10 @@ export default function DashboardHome() {
             value:
                 userData?.stats?.totalDebates > 0
                     ? `${Math.round(
-                        (userData.stats.wonDebates /
-                            userData.stats.totalDebates) *
-                        100
-                    )}%`
+                          (userData.stats.wonDebates /
+                              userData.stats.totalDebates) *
+                              100
+                      )}%`
                     : "0%",
             color: "text-violet-600",
         },
@@ -214,16 +226,26 @@ export default function DashboardHome() {
             {/* Active Event Card */}
             {activeEvent ? (
                 <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className="bg-[#F97316] text-white p-6 rounded-3xl shadow-lg relative overflow-hidden"
+                    initial={{y: 20, opacity: 0}}
+                    animate={{y: 0, opacity: 1}}
+                    className={cn(
+                        "text-white p-6 rounded-3xl shadow-lg relative overflow-hidden",
+                        activeEvent.status === "ONGOING"
+                            ? "bg-[#F97316]"
+                            : activeEvent.status === "UPCOMING"
+                            ? "bg-[#3B82F6]"
+                            : "bg-[#6B7280]"
+                    )}
                 >
                     <Link
                         to={`/dashboard/events/${activeEvent.id}`}
                         className="block relative z-10"
                     >
                         <div className="flex items-center gap-2 mb-1 opacity-90 text-sm font-medium">
-                            <Calendar className="w-4 h-4" /> ACTIVE EVENT
+                            <Calendar className="w-4 h-4" />
+                            {activeEvent.status === "ONGOING"
+                                ? "ACTIVE EVENT"
+                                : activeEvent.status}
                         </div>
                         <h2 className="text-2xl font-bold mb-1">
                             {activeEvent.name}
@@ -273,10 +295,11 @@ export default function DashboardHome() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div
-                                    className={`w-12 h-12 rounded-full flex items-center justify-center ${checkInStatus?.status === "PRESENT"
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                        checkInStatus?.status === "PRESENT"
                                             ? "bg-green-100 text-green-600"
                                             : "bg-amber-100 text-amber-600"
-                                        }`}
+                                    }`}
                                 >
                                     {checkInStatus?.status === "PRESENT" ? (
                                         <CheckCircle2 className="w-6 h-6" />
@@ -303,10 +326,11 @@ export default function DashboardHome() {
                                 </div>
                             </div>
                             <span
-                                className={`px-3 py-1 rounded-full text-xs font-bold ${checkInStatus?.status === "PRESENT"
+                                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                    checkInStatus?.status === "PRESENT"
                                         ? "bg-green-100 text-green-700"
                                         : "bg-amber-100 text-amber-700"
-                                    }`}
+                                }`}
                             >
                                 {checkInStatus?.status === "PRESENT"
                                     ? "Present"
@@ -336,7 +360,7 @@ export default function DashboardHome() {
                                         console.error("Check-in error:", err);
                                         toast.error(
                                             err.message ||
-                                            "Failed to check in. Please try again."
+                                                "Failed to check in. Please try again."
                                         );
                                     } finally {
                                         setCheckingIn(false);
