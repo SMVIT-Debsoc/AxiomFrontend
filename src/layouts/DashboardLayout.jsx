@@ -14,11 +14,14 @@ import {
     Menu,
     Trophy,
     ShieldCheck,
+    Sun,
+    Moon,
 } from "lucide-react";
 
 import {cn} from "../lib/utils";
 import {motion} from "framer-motion";
 import {AdminApi} from "../services/api";
+import {useTheme} from "../contexts/ThemeContext";
 
 const API_BASE_URL =
     import.meta.env.VITE_API_URL || "http://localhost:3000/api";
@@ -36,6 +39,7 @@ export default function DashboardLayout() {
     const location = useLocation();
     const {user, isLoaded, isSignedIn} = useUser();
     const {getToken} = useAuth();
+    const {theme, toggleTheme} = useTheme();
 
     // Check admin status to show admin link (silently - 403 is expected for non-admins)
     useEffect(() => {
@@ -173,7 +177,32 @@ export default function DashboardLayout() {
                         <span className="font-bold text-lg">Axiom</span>
                     </div>
 
-                    <div className="flex items-center gap-4 ml-auto">
+                    <div className="flex items-center gap-3 ml-auto">
+                        {/* Theme Toggle Button */}
+                        <motion.button
+                            onClick={toggleTheme}
+                            className="relative p-2 rounded-xl bg-muted/50 hover:bg-muted border border-border"
+                            whileTap={{scale: 0.95}}
+                            whileHover={{scale: 1.05}}
+                        >
+                            <motion.div
+                                initial={false}
+                                animate={{
+                                    rotate: theme === "dark" ? 0 : 180,
+                                }}
+                                transition={{
+                                    duration: 0.5,
+                                    ease: [0.22, 1, 0.36, 1],
+                                }}
+                            >
+                                {theme === "dark" ? (
+                                    <Moon className="w-5 h-5 text-muted-foreground" />
+                                ) : (
+                                    <Sun className="w-5 h-5 text-amber-500" />
+                                )}
+                            </motion.div>
+                        </motion.button>
+
                         <div className="text-right hidden sm:block">
                             <p className="text-sm font-medium">
                                 {user.fullName}
