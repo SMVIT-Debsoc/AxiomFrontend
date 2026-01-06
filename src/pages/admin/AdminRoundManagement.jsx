@@ -5,10 +5,8 @@ import {
     Users,
     Activity,
     MapPin,
-    Play,
     Loader2,
     ArrowLeft,
-    CheckCircle2,
     Clock,
     UserPlus,
     XCircle,
@@ -16,8 +14,6 @@ import {
     Zap,
     Home,
     Search,
-    Wifi,
-    WifiOff,
     Trophy,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
@@ -38,6 +34,7 @@ export default function AdminRoundManagement() {
     const [activeTab, setActiveTab] = useState("checkins");
     const [showAllocateModal, setShowAllocateModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [processingId, setProcessingId] = useState(null);
 
     // Memoize fetchRoundData for useEffect dependency
     const fetchRoundData = useCallback(async () => {
@@ -135,6 +132,7 @@ export default function AdminRoundManagement() {
     });
 
     const handleGeneratePairings = async (type) => {
+        if (loading) return;
         if (
             !confirm(
                 `Generate ${type} pairings? This will end the check-in period.`
@@ -172,6 +170,7 @@ export default function AdminRoundManagement() {
     };
 
     const handleAllocateRooms = async (formData) => {
+        if (loading) return;
         setLoading(true);
         try {
             const token = await getToken();
@@ -197,6 +196,7 @@ export default function AdminRoundManagement() {
     };
 
     const handleUpdateStatus = async (newStatus) => {
+        if (loading) return;
         try {
             const token = await getToken();
             const response = await AdminApi.apiRequest(
@@ -214,6 +214,8 @@ export default function AdminRoundManagement() {
     };
 
     const handleManualCheckIn = async (userId, currentStatus) => {
+        if (processingId) return; // Block if any action is in progress
+        setProcessingId(userId);
         const newStatus = currentStatus === "PRESENT" ? "ABSENT" : "PRESENT";
         try {
             const token = await getToken();
@@ -238,6 +240,8 @@ export default function AdminRoundManagement() {
             }
         } catch (error) {
             alert("Failed to update check-in status");
+        } finally {
+            setProcessingId(null);
         }
     };
 
@@ -247,7 +251,7 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/debates/${debateId}`,
                 "PUT",
-                { judgeName }, // Send as judgeName string
+                { judgeName },
                 token
             );
             if (response.success) {
@@ -257,7 +261,6 @@ export default function AdminRoundManagement() {
                             ? {
                                 ...d,
                                 judgeName,
-                                // Clear adjudicatorId relation if switching to manual name
                                 adjudicatorId: null,
                                 adjudicator: null,
                             }
@@ -265,7 +268,6 @@ export default function AdminRoundManagement() {
                     )
                 );
             } else {
-                // Silent fail or toast error
                 console.error(response.error || "Failed to assign judge");
             }
         } catch (error) {
@@ -274,6 +276,8 @@ export default function AdminRoundManagement() {
     };
 
     const handleTogglePublish = async () => {
+        if (loading) return;
+        setLoading(true);
         try {
             const token = await getToken();
             const newStatus = !round.pairingsPublished;
@@ -293,6 +297,8 @@ export default function AdminRoundManagement() {
             }
         } catch (error) {
             alert("Failed to toggle publish status");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -331,12 +337,13 @@ export default function AdminRoundManagement() {
                     {debates.length > 0 && (
                         <button
                             onClick={handleTogglePublish}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${round.pairingsPublished
+                            disabled={loading}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${round.pairingsPublished
                                 ? "bg-green-500/10 text-green-500 border border-green-500/20"
                                 : "bg-amber-500 text-white hover:bg-amber-600"
                                 }`}
                         >
-                            <Users className="w-4 h-4" />
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
                             {round.pairingsPublished
                                 ? "Draw Public"
                                 : "Publish Draw"}
@@ -353,9 +360,12 @@ export default function AdminRoundManagement() {
                                             : "power-match"
                                     )
                                 }
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors"
+                                disabled={loading}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {round.roundNumber === 1 ? (
+                                {loading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : round.roundNumber === 1 ? (
                                     <Dice5 className="w-4 h-4" />
                                 ) : (
                                     <Zap className="w-4 h-4" />
@@ -366,7 +376,8 @@ export default function AdminRoundManagement() {
                     ) : (
                         <button
                             onClick={() => setShowAllocateModal(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+                            disabled={loading}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Home className="w-4 h-4" />
                             Allocate Rooms
@@ -381,6 +392,7 @@ export default function AdminRoundManagement() {
                     onConfirm={handleAllocateRooms}
                     totalDebates={debates.length}
                     rooms={rooms}
+                    loading={loading}
                 />
             )}
 
@@ -564,7 +576,7 @@ export default function AdminRoundManagement() {
                                                     searchTerm.toLowerCase()
                                                 )
                                     )
-                                    .slice(0, 100) // Performance cap for 100k
+                                    .slice(0, 100)
                                     .map((user) => {
                                         const checkIn = checkIns.find(
                                             (ci) => ci.userId === user.id
@@ -619,8 +631,12 @@ export default function AdminRoundManagement() {
                                                                 status
                                                             )
                                                         }
-                                                        className="text-xs font-medium text-purple-500 hover:text-purple-600 transition-colors"
+                                                        disabled={processingId === user.id}
+                                                        className="text-xs font-medium text-purple-500 hover:text-purple-600 transition-colors disabled:opacity-50 disabled:cursor-wait"
                                                     >
+                                                        {processingId === user.id && (
+                                                            <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
+                                                        )}
                                                         Mark{" "}
                                                         {status === "PRESENT"
                                                             ? "Absent"
@@ -670,7 +686,7 @@ export default function AdminRoundManagement() {
                                         ?.toLowerCase()
                                         .includes(searchTerm.toLowerCase())
                             )
-                            .slice(0, 50) // Performance cap
+                            .slice(0, 50)
                             .map((debate) => (
                                 <div
                                     key={debate.id}
@@ -961,7 +977,7 @@ export default function AdminRoundManagement() {
     );
 }
 
-function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms }) {
+function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }) {
     const [selectedRoomIds, setSelectedRoomIds] = useState(
         rooms.map((r) => r.id)
     );
@@ -1256,8 +1272,10 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms }) {
                             </button>
                             <button
                                 type="submit"
-                                className="flex-[2] py-3 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 shadow-lg shadow-purple-500/25 transition-all"
+                                disabled={loading}
+                                className="flex-[2] py-3 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
+                                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                                 Start Allocation
                             </button>
                         </div>
