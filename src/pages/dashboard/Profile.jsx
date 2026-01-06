@@ -262,17 +262,17 @@ export default function Profile({isOnboarding = false}) {
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
                 {/* Banner/Header */}
-                <div className="bg-[#6D28D9] p-6 text-white flex items-center gap-4">
+                <div className="bg-[#6D28D9] p-4 text-white flex items-center gap-3">
                     <img
                         src={user.imageUrl}
                         alt="Profile"
-                        className="w-20 h-20 rounded-full border-4 border-white/20 object-cover"
+                        className="w-14 h-14 rounded-full border-2 border-white/20 object-cover flex-shrink-0"
                     />
-                    <div>
-                        <h2 className="text-xl font-bold">
+                    <div className="min-w-0 flex-1">
+                        <h2 className="text-lg font-bold truncate">
                             {formData.firstName} {formData.lastName}
                         </h2>
-                        <p className="opacity-80">
+                        <p className="opacity-80 text-sm truncate">
                             {user.primaryEmailAddress?.emailAddress}
                         </p>
                     </div>
@@ -398,7 +398,12 @@ export default function Profile({isOnboarding = false}) {
                                 name="gender"
                                 value={formData.gender || ""}
                                 onChange={handleChange}
-                                className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                className="w-full max-w-xs bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none"
+                                style={{
+                                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                                    backgroundRepeat: "no-repeat",
+                                    backgroundPosition: "right 12px center",
+                                }}
                             >
                                 <option value="">Prefer not to say</option>
                                 <option value="male">Male</option>

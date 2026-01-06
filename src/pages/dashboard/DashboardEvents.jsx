@@ -39,16 +39,11 @@ export default function DashboardEvents() {
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Tournaments</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Register for upcoming debates or view past results.
-                    </p>
-                </div>
-                <button className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
-                    Join with Code
-                </button>
+            <div>
+                <h1 className="text-3xl font-bold">Tournaments</h1>
+                <p className="text-muted-foreground mt-1">
+                    Register for upcoming debates or view past results.
+                </p>
             </div>
 
             {error && (

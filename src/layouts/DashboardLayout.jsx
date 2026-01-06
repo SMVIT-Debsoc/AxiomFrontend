@@ -11,17 +11,17 @@ import {
     LayoutDashboard,
     Calendar,
     Users,
-    Settings,
-    LogOut,
     Menu,
-    X,
     Trophy,
     ShieldCheck,
+    Sun,
+    Moon,
 } from "lucide-react";
 
 import {cn} from "../lib/utils";
-import {motion, AnimatePresence} from "framer-motion";
+import {motion} from "framer-motion";
 import {AdminApi} from "../services/api";
+import {useTheme} from "../contexts/ThemeContext";
 
 const API_BASE_URL =
     import.meta.env.VITE_API_URL || "http://localhost:3000/api";
@@ -31,16 +31,15 @@ const sidebarItems = [
     {icon: Calendar, label: "Events", path: "/dashboard/events"},
     {icon: Users, label: "My Profile", path: "/dashboard/profile"},
     {icon: Trophy, label: "Leaderboard", path: "/dashboard/leaderboard"},
-    {icon: Settings, label: "Settings", path: "/dashboard/settings"},
 ];
 
 export default function DashboardLayout() {
-    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
     const {user, isLoaded, isSignedIn} = useUser();
     const {getToken} = useAuth();
+    const {theme, toggleTheme} = useTheme();
 
     // Check admin status to show admin link (silently - 403 is expected for non-admins)
     useEffect(() => {
@@ -94,85 +93,6 @@ export default function DashboardLayout() {
 
     return (
         <div className="min-h-screen bg-background text-foreground flex">
-            {/* Mobile Sidebar Overlay */}
-            <AnimatePresence>
-                {mobileSidebarOpen && (
-                    <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
-                        exit={{opacity: 0}}
-                        className="md:hidden fixed inset-0 z-20 bg-black/50"
-                        onClick={() => setMobileSidebarOpen(false)}
-                    />
-                )}
-            </AnimatePresence>
-
-            {/* Mobile Sidebar */}
-            <AnimatePresence>
-                {mobileSidebarOpen && (
-                    <motion.aside
-                        initial={{x: -280}}
-                        animate={{x: 0}}
-                        exit={{x: -280}}
-                        transition={{duration: 0.3, ease: "easeInOut"}}
-                        className="md:hidden fixed z-30 h-screen w-[280px] border-r border-border bg-card backdrop-blur-xl flex flex-col"
-                    >
-                        <div className="h-16 flex items-center justify-between px-6 border-b border-border/50">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
-                                    A
-                                </div>
-                                <span className="font-bold text-xl">Axiom</span>
-                            </div>
-                            <button
-                                onClick={() => setMobileSidebarOpen(false)}
-                                className="text-muted-foreground hover:text-foreground"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 py-6 flex flex-col gap-2 px-3">
-                            {currentSidebarItems.map((item, index) => {
-                                const isActive =
-                                    location.pathname === item.path;
-                                const Icon = item.icon;
-
-                                return (
-                                    <motion.div
-                                        key={item.path}
-                                        initial={{opacity: 0, x: -20}}
-                                        animate={{opacity: 1, x: 0}}
-                                        transition={{
-                                            delay: index * 0.05,
-                                            duration: 0.3,
-                                        }}
-                                    >
-                                        <Link
-                                            to={item.path}
-                                            onClick={() =>
-                                                setMobileSidebarOpen(false)
-                                            }
-                                            className={cn(
-                                                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group",
-                                                isActive
-                                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                            )}
-                                        >
-                                            <Icon className="w-5 h-5" />
-                                            <span className="font-medium">
-                                                {item.label}
-                                            </span>
-                                        </Link>
-                                    </motion.div>
-                                );
-                            })}
-                        </div>
-                    </motion.aside>
-                )}
-            </AnimatePresence>
-
             {/* Desktop Sidebar */}
             <motion.aside
                 initial={{x: 0}}
@@ -250,17 +170,39 @@ export default function DashboardLayout() {
             <div className="flex-1 flex flex-col h-screen overflow-hidden">
                 {/* Top Header */}
                 <header className="h-16 border-b border-border bg-background/50 backdrop-blur-md flex items-center justify-between px-6 z-10">
-                    <div className="md:hidden">
-                        {/* Mobile Menu Trigger */}
-                        <button
-                            onClick={() => setMobileSidebarOpen(true)}
-                            className="p-1"
-                        >
-                            <Menu className="w-6 h-6 cursor-pointer" />
-                        </button>
+                    <div className="md:hidden flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
+                            A
+                        </div>
+                        <span className="font-bold text-lg">Axiom</span>
                     </div>
 
-                    <div className="flex items-center gap-4 ml-auto">
+                    <div className="flex items-center gap-3 ml-auto">
+                        {/* Theme Toggle Button */}
+                        <motion.button
+                            onClick={toggleTheme}
+                            className="relative p-2 rounded-xl bg-muted/50 hover:bg-muted border border-border"
+                            whileTap={{scale: 0.95}}
+                            whileHover={{scale: 1.05}}
+                        >
+                            <motion.div
+                                initial={false}
+                                animate={{
+                                    rotate: theme === "dark" ? 0 : 180,
+                                }}
+                                transition={{
+                                    duration: 0.5,
+                                    ease: [0.22, 1, 0.36, 1],
+                                }}
+                            >
+                                {theme === "dark" ? (
+                                    <Moon className="w-5 h-5 text-muted-foreground" />
+                                ) : (
+                                    <Sun className="w-5 h-5 text-amber-500" />
+                                )}
+                            </motion.div>
+                        </motion.button>
+
                         <div className="text-right hidden sm:block">
                             <p className="text-sm font-medium">
                                 {user.fullName}

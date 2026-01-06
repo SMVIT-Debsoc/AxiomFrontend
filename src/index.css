@@ -3,7 +3,9 @@
 @tailwind utilities;
 
 @layer base {
-    :root {
+    /* Dark theme (default) */
+    :root,
+    .dark {
         --background: 240 10% 3.9%;
         --foreground: 0 0% 98%;
 
@@ -34,6 +36,39 @@
 
         --radius: 0.75rem;
     }
+
+    /* Light theme */
+    .light {
+        --background: 0 0% 100%;
+        --foreground: 240 10% 3.9%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 240 10% 3.9%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 240 10% 3.9%;
+
+        --primary: 263.4 70% 50.4%;
+        --primary-foreground: 210 40% 98%;
+
+        --secondary: 240 4.8% 95.9%;
+        --secondary-foreground: 240 5.9% 10%;
+
+        --muted: 240 4.8% 95.9%;
+        --muted-foreground: 240 3.8% 46.1%;
+
+        --accent: 240 4.8% 95.9%;
+        --accent-foreground: 240 5.9% 10%;
+
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+
+        --border: 240 5.9% 90%;
+        --input: 240 5.9% 90%;
+        --ring: 263.4 70% 50.4%;
+
+        --radius: 0.75rem;
+    }
 }
 
 @layer base {
@@ -44,6 +79,36 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    /* Smooth color transitions for theme change */
+    *,
+    *::before,
+    *::after {
+        transition: background-color 0.4s ease, border-color 0.4s ease,
+            color 0.3s ease, box-shadow 0.3s ease, fill 0.3s ease,
+            stroke 0.3s ease;
+    }
+
+    /* Exclude animations and transforms from theme transition */
+    .no-theme-transition,
+    .no-theme-transition * {
+        transition: none !important;
+    }
+}
+
+/* Custom select dropdown styling */
+select option {
+    @apply bg-background text-foreground py-2;
+}
+
+.dark select option {
+    background-color: #1a1a1b;
+    color: #fafafa;
+}
+
+.light select option {
+    background-color: #ffffff;
+    color: #0a0a0b;
 }
 
 /* Clerk UserButton popup smooth animation */

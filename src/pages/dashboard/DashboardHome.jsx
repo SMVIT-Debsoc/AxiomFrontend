@@ -125,7 +125,7 @@ export default function DashboardHome() {
         {
             label: "Debates",
             value: userData?.stats?.totalDebates || 0,
-            color: "text-foreground",
+            color: "text-gray-800",
         },
         {
             label: "Wins",
@@ -142,7 +142,7 @@ export default function DashboardHome() {
                               100
                       )}%`
                     : "0%",
-            color: "text-primary",
+            color: "text-violet-600",
         },
     ];
 
@@ -159,9 +159,17 @@ export default function DashboardHome() {
             {/* Profile Header */}
             <div className="bg-[#6D28D9] text-white p-6 rounded-3xl shadow-lg">
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                        {initials}
-                    </div>
+                    {clerkUser?.imageUrl ? (
+                        <img
+                            src={clerkUser.imageUrl}
+                            alt={displayName}
+                            className="w-16 h-16 rounded-full object-cover border-2 border-white/30"
+                        />
+                    ) : (
+                        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                            {initials}
+                        </div>
+                    )}
                     <div>
                         <h1 className="text-xl font-bold">{displayName}</h1>
                         <p className="text-white/80 text-sm">{college}</p>
@@ -182,7 +190,7 @@ export default function DashboardHome() {
                             <div className={`text-xl font-bold ${stat.color}`}>
                                 {stat.value}
                             </div>
-                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">
+                            <div className="text-[10px] uppercase tracking-wide text-gray-500 mt-1">
                                 {stat.label}
                             </div>
                         </div>
@@ -248,50 +256,97 @@ export default function DashboardHome() {
                                 `Round ${currentRound.roundNumber}`}
                         </span>
                     </div>
-                    <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div
-                                className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border shadow-sm">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                        checkInStatus?.status === "PRESENT"
+                                            ? "bg-green-100 text-green-600"
+                                            : "bg-amber-100 text-amber-600"
+                                    }`}
+                                >
+                                    {checkInStatus?.status === "PRESENT" ? (
+                                        <CheckCircle2 className="w-6 h-6" />
+                                    ) : (
+                                        <XCircle className="w-6 h-6" />
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-800 dark:text-gray-100">
+                                        {checkInStatus?.status === "PRESENT"
+                                            ? "Checked In"
+                                            : "Not Checked In"}
+                                    </p>
+                                    {checkInStatus?.checkedInAt && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            {new Date(
+                                                checkInStatus.checkedInAt
+                                            ).toLocaleTimeString([], {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <span
+                                className={`px-3 py-1 rounded-full text-xs font-bold ${
                                     checkInStatus?.status === "PRESENT"
-                                        ? "bg-green-100 text-green-600"
-                                        : "bg-amber-100 text-amber-600"
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-amber-100 text-amber-700"
                                 }`}
                             >
-                                {checkInStatus?.status === "PRESENT" ? (
-                                    <CheckCircle2 className="w-6 h-6" />
-                                ) : (
-                                    <XCircle className="w-6 h-6" />
-                                )}
-                            </div>
-                            <div>
-                                <p className="font-bold text-foreground">
-                                    {checkInStatus?.status === "PRESENT"
-                                        ? "Checked In"
-                                        : "Not Checked In"}
-                                </p>
-                                {checkInStatus?.checkedInAt && (
-                                    <p className="text-xs text-muted-foreground">
-                                        {new Date(
-                                            checkInStatus.checkedInAt
-                                        ).toLocaleTimeString([], {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                        })}
-                                    </p>
-                                )}
-                            </div>
+                                {checkInStatus?.status === "PRESENT"
+                                    ? "Present"
+                                    : "Pending"}
+                            </span>
                         </div>
-                        <span
-                            className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                checkInStatus?.status === "PRESENT"
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-amber-100 text-amber-700"
-                            }`}
-                        >
-                            {checkInStatus?.status === "PRESENT"
-                                ? "Present"
-                                : "Pending"}
-                        </span>
+
+                        {/* Check-In Button - Show when not checked in */}
+                        {checkInStatus?.status !== "PRESENT" && (
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        setCheckingIn(true);
+                                        const token = await getToken();
+                                        const response =
+                                            await CheckInApi.checkIn(
+                                                currentRound.id,
+                                                token
+                                            );
+                                        if (response.success) {
+                                            setCheckInStatus(response.checkIn);
+                                            toast.success(
+                                                "Successfully checked in!"
+                                            );
+                                        }
+                                    } catch (err) {
+                                        console.error("Check-in error:", err);
+                                        toast.error(
+                                            err.message ||
+                                                "Failed to check in. Please try again."
+                                        );
+                                    } finally {
+                                        setCheckingIn(false);
+                                    }
+                                }}
+                                disabled={checkingIn}
+                                className="w-full mt-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {checkingIn ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Checking In...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Check In Now
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
