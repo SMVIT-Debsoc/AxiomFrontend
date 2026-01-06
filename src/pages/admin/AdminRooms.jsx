@@ -64,10 +64,10 @@ export default function AdminRooms() {
         }
     };
 
-    const handleAssignJudge = async (debateId, adjudicatorId) => {
+    const handleAssignJudge = async (debateId, judgeName) => {
         try {
             const token = await getToken();
-            const response = await AdminApi.apiRequest(`/debates/${debateId}`, "PUT", { adjudicatorId }, token);
+            const response = await AdminApi.apiRequest(`/debates/${debateId}`, "PUT", { judgeName }, token);
             if (response.success) {
                 fetchRooms();
             } else {
@@ -170,16 +170,18 @@ export default function AdminRooms() {
                                 <div className="pt-3 border-t border-border">
                                     <label className="text-[10px] uppercase font-bold text-muted-foreground mb-1.5 block">Active Adjudicator</label>
                                     {room.debates?.[0] ? (
-                                        <select
-                                            value={room.debates[0].adjudicator?.id || ""}
-                                            onChange={(e) => handleAssignJudge(room.debates[0].id, e.target.value)}
+                                        <input
+                                            type="text"
+                                            defaultValue={room.debates[0].judgeName || (room.debates[0].adjudicator ? `${room.debates[0].adjudicator.firstName} ${room.debates[0].adjudicator.lastName}` : "")}
+                                            onBlur={(e) => handleAssignJudge(room.debates[0].id, e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.currentTarget.blur();
+                                                }
+                                            }}
                                             className="w-full text-xs bg-background border border-border rounded-lg px-2 py-1.5 outline-none focus:border-purple-500 transition-colors"
-                                        >
-                                            <option value="">Assign Judge</option>
-                                            {users.map(u => (
-                                                <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                                            ))}
-                                        </select>
+                                            placeholder="Enter judge name"
+                                        />
                                     ) : (
                                         <p className="text-xs text-muted-foreground italic">No active debate in this room</p>
                                     )}
