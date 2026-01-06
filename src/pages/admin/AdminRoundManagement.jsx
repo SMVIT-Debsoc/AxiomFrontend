@@ -19,11 +19,13 @@ import {
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
 import { useRoundSocket } from "../../hooks/useSocket";
+import { useToast } from "../../components/ui/Toast";
 
 export default function AdminRoundManagement() {
     const { id: roundId } = useParams();
     const { getToken } = useAuth();
     const navigate = useNavigate();
+    const { toast } = useToast();
 
     const [round, setRound] = useState(null);
     const [checkIns, setCheckIns] = useState([]);
@@ -70,6 +72,7 @@ export default function AdminRoundManagement() {
             if (roomsRes.success) setRooms(roomsRes.rooms || []);
             if (usersRes.success) setUsers(usersRes.users || []);
         } catch (error) {
+            toast.error("Error", "Failed to load round data");
             console.error("Failed to fetch round data:", error);
         } finally {
             setLoading(false);
@@ -154,16 +157,17 @@ export default function AdminRoundManagement() {
             );
             if (response.success) {
                 const eliminatedMsg = response.data.eliminated ? ` (${response.data.eliminated} users eliminated based on losses)` : "";
-                alert(
+                toast.success(
+                    "Pairings Generated",
                     `Successfully generated ${response.data.pairingsCreated} pairings!${eliminatedMsg}`
                 );
                 await fetchRoundData();
                 setActiveTab("debates");
             } else {
-                alert(response.error || "Failed to generate pairings");
+                toast.error("Generation Failed", response.error || "Failed to generate pairings");
             }
         } catch (error) {
-            alert("Error generating pairings");
+            toast.error("Error", "Error generating pairings");
         } finally {
             setLoading(false);
         }
@@ -182,14 +186,14 @@ export default function AdminRoundManagement() {
             );
 
             if (response.success) {
-                alert(`Allocated rooms and time slots successfully!`);
+                toast.success("Rooms Allocated", "Allocated rooms and time slots successfully!");
                 await fetchRoundData();
                 setShowAllocateModal(false);
             } else {
-                alert(response.error || "Failed to allocate rooms");
+                toast.error("Allocation Failed", response.error || "Failed to allocate rooms");
             }
         } catch (error) {
-            alert("Error allocating rooms");
+            toast.error("Error", "Error allocating rooms");
         } finally {
             setLoading(false);
         }
@@ -207,9 +211,10 @@ export default function AdminRoundManagement() {
             );
             if (response.success) {
                 setRound({ ...round, status: newStatus });
+                toast.success("Status Updated", `Round status updated to ${newStatus}`);
             }
         } catch (error) {
-            alert("Failed to update round status");
+            toast.error("Error", "Failed to update round status");
         }
     };
 
@@ -237,9 +242,10 @@ export default function AdminRoundManagement() {
                         return [...prev, { userId, status: newStatus }];
                     }
                 });
+                toast.success("Check-in Updated", `User marked as ${newStatus}`);
             }
         } catch (error) {
-            alert("Failed to update check-in status");
+            toast.error("Error", "Failed to update check-in status");
         } finally {
             setProcessingId(null);
         }
@@ -268,9 +274,10 @@ export default function AdminRoundManagement() {
                     )
                 );
             } else {
-                console.error(response.error || "Failed to assign judge");
+                toast.error("Assignment Failed", response.error || "Failed to assign judge");
             }
         } catch (error) {
+            toast.error("Error", "Error assigning judge");
             console.error("Error assigning judge", error);
         }
     };
@@ -289,14 +296,15 @@ export default function AdminRoundManagement() {
             );
             if (response.success) {
                 setRound({ ...round, pairingsPublished: newStatus });
-                alert(
+                toast.success(
+                    "Visibility Updated",
                     newStatus
                         ? "Pairings are now visible to debaters!"
                         : "Pairings are now hidden from debaters."
                 );
             }
         } catch (error) {
-            alert("Failed to toggle publish status");
+            toast.error("Error", "Failed to toggle publish status");
         } finally {
             setLoading(false);
         }
@@ -978,6 +986,7 @@ export default function AdminRoundManagement() {
 }
 
 function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }) {
+    const { toast } = useToast();
     const [selectedRoomIds, setSelectedRoomIds] = useState(
         rooms.map((r) => r.id)
     );
@@ -1004,7 +1013,7 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }
     const handleSubmit = (e) => {
         e.preventDefault();
         if (selectedRoomIds.length === 0) {
-            alert("Please select at least one room.");
+            toast.error("Selection Required", "Please select at least one room.");
             return;
         }
         onConfirm({
