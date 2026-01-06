@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import {useState, useEffect} from "react";
+import {Link} from "react-router-dom";
+import {motion} from "framer-motion";
 import {
     Activity,
     Calendar,
@@ -8,13 +8,13 @@ import {
     Search,
     Loader2,
     Clock,
-    CheckCircle2
+    CheckCircle2,
 } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
-import { AdminApi, EventApi } from "../../services/api";
+import {useAuth} from "@clerk/clerk-react";
+import {AdminApi, EventApi} from "../../services/api";
 
 export default function AdminRounds() {
-    const { getToken } = useAuth();
+    const {getToken} = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -28,15 +28,24 @@ export default function AdminRounds() {
                     const eventList = response.events || [];
 
                     // For each event, fetch its rounds
-                    const eventsWithRounds = await Promise.all(eventList.map(async (event) => {
-                        const roundRes = await AdminApi.apiRequest(`/rounds/event/${event.id}`, "GET", null, token);
-                        return {
-                            ...event,
-                            rounds: roundRes.success ? roundRes.rounds : []
-                        };
-                    }));
+                    const eventsWithRounds = await Promise.all(
+                        eventList.map(async (event) => {
+                            const roundRes = await AdminApi.apiRequest(
+                                `/rounds/event/${event.id}`,
+                                "GET",
+                                null,
+                                token
+                            );
+                            return {
+                                ...event,
+                                rounds: roundRes.success ? roundRes.rounds : [],
+                            };
+                        })
+                    );
 
-                    setEvents(eventsWithRounds.filter(e => e.rounds.length > 0));
+                    setEvents(
+                        eventsWithRounds.filter((e) => e.rounds.length > 0)
+                    );
                 }
             } catch (error) {
                 console.error("Failed to fetch rounds data:", error);
@@ -48,9 +57,12 @@ export default function AdminRounds() {
         fetchAllData();
     }, []);
 
-    const filteredEvents = events.filter(e =>
-        e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.rounds.some(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    const filteredEvents = events.filter(
+        (e) =>
+            e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            e.rounds.some((r) =>
+                r.name.toLowerCase().includes(searchQuery.toLowerCase())
+            )
     );
 
     if (loading) {
@@ -65,7 +77,9 @@ export default function AdminRounds() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold">Round Management</h1>
-                <p className="text-muted-foreground mt-1">Manage tournament rounds and pairings across all events</p>
+                <p className="text-muted-foreground mt-1">
+                    Manage tournament rounds and pairings across all events
+                </p>
             </div>
 
             <div className="relative">
@@ -82,9 +96,16 @@ export default function AdminRounds() {
             {filteredEvents.length === 0 ? (
                 <div className="text-center py-20 bg-card border border-border rounded-2xl">
                     <Activity className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-20" />
-                    <h3 className="text-xl font-bold mb-2">No Active Rounds Found</h3>
-                    <p className="text-muted-foreground mb-6">Create rounds within an event to manage them here.</p>
-                    <Link to="/admin/events" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500 text-white font-medium">
+                    <h3 className="text-xl font-bold mb-2">
+                        No Active Rounds Found
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                        Create rounds within an event to manage them here.
+                    </p>
+                    <Link
+                        to="/admin/events"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500 text-white font-medium"
+                    >
                         Go to Events
                     </Link>
                 </div>
@@ -94,7 +115,9 @@ export default function AdminRounds() {
                         <div key={event.id} className="space-y-4">
                             <div className="flex items-center gap-2 px-1">
                                 <Calendar className="w-4 h-4 text-purple-500" />
-                                <h3 className="font-bold text-lg">{event.name}</h3>
+                                <h3 className="font-bold text-lg">
+                                    {event.name}
+                                </h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {event.rounds.map((round) => (
@@ -107,17 +130,34 @@ export default function AdminRounds() {
                                             <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center font-bold text-purple-500">
                                                 {round.roundNumber}
                                             </div>
-                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${round.status === 'ONGOING' ? 'bg-green-500/10 text-green-500' :
-                                                    round.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
-                                                }`}>
+                                            <span
+                                                className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                                                    round.status === "ONGOING"
+                                                        ? "bg-green-500/10 text-green-500"
+                                                        : round.status ===
+                                                          "COMPLETED"
+                                                        ? "bg-blue-500/10 text-blue-500"
+                                                        : "bg-muted text-muted-foreground"
+                                                }`}
+                                            >
                                                 {round.status}
                                             </span>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold mb-1 group-hover:text-purple-500 transition-colors uppercase tracking-tight">{round.name}</h4>
+                                            <h4 className="font-bold mb-1 group-hover:text-purple-500 transition-colors uppercase tracking-tight">
+                                                {round.name}
+                                            </h4>
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                                 <Clock className="w-3" />
-                                                Check-in: {new Date(round.checkInStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                Check-in:{" "}
+                                                {new Date(
+                                                    round.checkInStartTime
+                                                ).toLocaleTimeString("en-IN", {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                    timeZone: "Asia/Kolkata",
+                                                })}{" "}
+                                                IST
                                             </div>
                                         </div>
                                         <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-purple-500">

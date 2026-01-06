@@ -317,10 +317,12 @@ export default function DashboardHome() {
                                         <p className="text-xs text-gray-500 dark:text-gray-400">
                                             {new Date(
                                                 checkInStatus.checkedInAt
-                                            ).toLocaleTimeString([], {
+                                            ).toLocaleTimeString("en-IN", {
                                                 hour: "2-digit",
                                                 minute: "2-digit",
+                                                timeZone: "Asia/Kolkata",
                                             })}
+                                            {" IST"}
                                         </p>
                                     )}
                                 </div>

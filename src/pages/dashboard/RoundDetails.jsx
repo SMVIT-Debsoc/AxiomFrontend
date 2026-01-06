@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import {useState, useEffect} from "react";
+import {useParams, Link} from "react-router-dom";
+import {motion} from "framer-motion";
 import {
     ArrowLeft,
     Loader2,
@@ -16,15 +16,15 @@ import {
     Swords,
     Timer,
 } from "lucide-react";
-import { useAuth, useUser } from "@clerk/clerk-react";
-import { RoundApi, CheckInApi, DebateApi, UserApi } from "../../services/api";
-import { useToast } from "../../components/ui/Toast";
-import { cn } from "../../lib/utils";
+import {useAuth, useUser} from "@clerk/clerk-react";
+import {RoundApi, CheckInApi, DebateApi, UserApi} from "../../services/api";
+import {useToast} from "../../components/ui/Toast";
+import {cn} from "../../lib/utils";
 
 export default function RoundDetails() {
-    const { eventId, roundId } = useParams();
-    const { getToken } = useAuth();
-    const { user: clerkUser } = useUser();
+    const {eventId, roundId} = useParams();
+    const {getToken} = useAuth();
+    const {user: clerkUser} = useUser();
     const toast = useToast();
 
     const [round, setRound] = useState(null);
@@ -81,7 +81,10 @@ export default function RoundDetails() {
             // Fetch all debates if pairings published
             try {
                 if (roundResponse.round?.pairingsPublished) {
-                    const allDebatesRes = await DebateApi.getByRound(roundId, token);
+                    const allDebatesRes = await DebateApi.getByRound(
+                        roundId,
+                        token
+                    );
                     if (allDebatesRes.success) {
                         setAllDebates(allDebatesRes.debates || []);
                     }
@@ -205,8 +208,8 @@ export default function RoundDetails() {
                                 round.status === "ONGOING"
                                     ? "bg-green-500"
                                     : round.status === "COMPLETED"
-                                        ? "bg-gray-500"
-                                        : "bg-blue-500"
+                                    ? "bg-gray-500"
+                                    : "bg-blue-500"
                             )}
                         >
                             {round.status}
@@ -251,15 +254,19 @@ export default function RoundDetails() {
                     {/* Motion Display */}
                     {round.motion && round.pairingsPublished && (
                         <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{opacity: 0, y: 10}}
+                            animate={{opacity: 1, y: 0}}
                             className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-6"
                         >
                             <div className="flex items-center gap-2 text-amber-500 mb-3">
                                 <Gavel className="w-5 h-5" />
-                                <span className="font-semibold text-sm">MOTION</span>
+                                <span className="font-semibold text-sm">
+                                    MOTION
+                                </span>
                             </div>
-                            <p className="text-lg font-medium">{round.motion}</p>
+                            <p className="text-lg font-medium">
+                                {round.motion}
+                            </p>
                         </motion.div>
                     )}
 
@@ -279,17 +286,20 @@ export default function RoundDetails() {
                                     <span>
                                         {new Date(
                                             round.checkInStartTime
-                                        ).toLocaleTimeString([], {
+                                        ).toLocaleTimeString("en-IN", {
                                             hour: "2-digit",
                                             minute: "2-digit",
+                                            timeZone: "Asia/Kolkata",
                                         })}
                                         {" - "}
                                         {new Date(
                                             round.checkInEndTime
-                                        ).toLocaleTimeString([], {
+                                        ).toLocaleTimeString("en-IN", {
                                             hour: "2-digit",
                                             minute: "2-digit",
+                                            timeZone: "Asia/Kolkata",
                                         })}
+                                        {" IST"}
                                     </span>
                                 </div>
 
@@ -316,7 +326,9 @@ export default function RoundDetails() {
                                         ) : (
                                             <CheckCircle2 className="w-5 h-5" />
                                         )}
-                                        {checkingIn ? "Checking In..." : "Check In Now"}
+                                        {checkingIn
+                                            ? "Checking In..."
+                                            : "Check In Now"}
                                     </button>
                                 ) : (
                                     <div className="flex items-center gap-3 p-4 bg-muted rounded-xl text-muted-foreground">
@@ -327,7 +339,7 @@ export default function RoundDetails() {
                                             </p>
                                             <p className="text-sm">
                                                 {new Date() <
-                                                    new Date(round.checkInStartTime)
+                                                new Date(round.checkInStartTime)
                                                     ? "Check-in has not started yet"
                                                     : "Check-in window has closed"}
                                             </p>
@@ -341,8 +353,8 @@ export default function RoundDetails() {
                     {/* Waiting for Draws */}
                     {isCheckedIn && !round.pairingsPublished && (
                         <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{opacity: 0, y: 10}}
+                            animate={{opacity: 1, y: 0}}
                             className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 text-center"
                         >
                             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -352,8 +364,8 @@ export default function RoundDetails() {
                                 Waiting for Draws
                             </h3>
                             <p className="text-muted-foreground">
-                                You're checked in! Please wait for the draws to be
-                                published.
+                                You're checked in! Please wait for the draws to
+                                be published.
                             </p>
                         </motion.div>
                     )}
@@ -361,8 +373,8 @@ export default function RoundDetails() {
                     {/* Pairing / Debate Details */}
                     {round.pairingsPublished && myDebate && userPosition && (
                         <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{opacity: 0, y: 10}}
+                            animate={{opacity: 1, y: 0}}
                             className="space-y-4"
                         >
                             {/* Your Position */}
@@ -403,8 +415,14 @@ export default function RoundDetails() {
                                                 Your Opponent
                                             </p>
                                             <p className="font-semibold">
-                                                {userPosition.opponent?.firstName}{" "}
-                                                {userPosition.opponent?.lastName}
+                                                {
+                                                    userPosition.opponent
+                                                        ?.firstName
+                                                }{" "}
+                                                {
+                                                    userPosition.opponent
+                                                        ?.lastName
+                                                }
                                             </p>
                                             <p className="text-sm text-muted-foreground">
                                                 {userPosition.opponent?.college}
@@ -413,12 +431,14 @@ export default function RoundDetails() {
                                         <div
                                             className={cn(
                                                 "ml-auto px-3 py-1 rounded-full text-xs font-bold",
-                                                userPosition.opponentPosition === "GOV"
+                                                userPosition.opponentPosition ===
+                                                    "GOV"
                                                     ? "bg-green-500/10 text-green-500"
                                                     : "bg-red-500/10 text-red-500"
                                             )}
                                         >
-                                            {userPosition.opponentPosition === "GOV"
+                                            {userPosition.opponentPosition ===
+                                            "GOV"
                                                 ? "GOV"
                                                 : "OPP"}
                                         </div>
@@ -448,15 +468,22 @@ export default function RoundDetails() {
                                                     Adjudicator
                                                 </p>
                                                 <p className="font-semibold">
-                                                    {myDebate.adjudicator.firstName}{" "}
-                                                    {myDebate.adjudicator.lastName}
+                                                    {
+                                                        myDebate.adjudicator
+                                                            .firstName
+                                                    }{" "}
+                                                    {
+                                                        myDebate.adjudicator
+                                                            .lastName
+                                                    }
                                                 </p>
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Time Slot */}
-                                    {(myDebate.startTime || myDebate.endTime) && (
+                                    {(myDebate.startTime ||
+                                        myDebate.endTime) && (
                                         <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
                                             <Clock className="w-5 h-5 text-blue-500" />
                                             <div>
@@ -467,20 +494,33 @@ export default function RoundDetails() {
                                                     {myDebate.startTime &&
                                                         new Date(
                                                             myDebate.startTime
-                                                        ).toLocaleTimeString([], {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })}
+                                                        ).toLocaleTimeString(
+                                                            "en-IN",
+                                                            {
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                                timeZone:
+                                                                    "Asia/Kolkata",
+                                                            }
+                                                        )}
                                                     {myDebate.startTime &&
                                                         myDebate.endTime &&
                                                         " - "}
                                                     {myDebate.endTime &&
                                                         new Date(
                                                             myDebate.endTime
-                                                        ).toLocaleTimeString([], {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })}
+                                                        ).toLocaleTimeString(
+                                                            "en-IN",
+                                                            {
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                                timeZone:
+                                                                    "Asia/Kolkata",
+                                                            }
+                                                        )}
+                                                    {(myDebate.startTime ||
+                                                        myDebate.endTime) &&
+                                                        " IST"}
                                                 </p>
                                             </div>
                                         </div>
@@ -494,11 +534,13 @@ export default function RoundDetails() {
                     {round.pairingsPublished && !myDebate && (
                         <div className="bg-muted/50 rounded-xl p-6 text-center">
                             <XCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                            <h3 className="font-semibold mb-2">No Debate Assigned</h3>
+                            <h3 className="font-semibold mb-2">
+                                No Debate Assigned
+                            </h3>
                             <p className="text-muted-foreground text-sm">
-                                You don't have a debate assigned for this round. This
-                                could be because you weren't checked in or there was an
-                                odd number of participants.
+                                You don't have a debate assigned for this round.
+                                This could be because you weren't checked in or
+                                there was an odd number of participants.
                             </p>
                         </div>
                     )}
@@ -521,9 +563,12 @@ export default function RoundDetails() {
                     {!round.pairingsPublished ? (
                         <div className="text-center py-12 bg-muted/20 rounded-xl">
                             <Swords className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                            <h3 className="font-bold text-lg mb-2">Draws Not Published</h3>
+                            <h3 className="font-bold text-lg mb-2">
+                                Draws Not Published
+                            </h3>
                             <p className="text-muted-foreground">
-                                The pairings for this round have not been released yet.
+                                The pairings for this round have not been
+                                released yet.
                             </p>
                         </div>
                     ) : allDebates.length === 0 ? (
@@ -532,21 +577,28 @@ export default function RoundDetails() {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {allDebates.map(debate => (
-                                <div key={debate.id} className="bg-card border border-border rounded-xl p-4">
+                            {allDebates.map((debate) => (
+                                <div
+                                    key={debate.id}
+                                    className="bg-card border border-border rounded-xl p-4"
+                                >
                                     <div className="flex items-center justify-between gap-4 mb-4">
                                         <div className="w-[45%] text-center">
                                             <p className="font-bold text-sm truncate">
-                                                {debate.debater1.firstName} {debate.debater1.lastName}
+                                                {debate.debater1.firstName}{" "}
+                                                {debate.debater1.lastName}
                                             </p>
                                             <span className="text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded">
                                                 GOV
                                             </span>
                                         </div>
-                                        <div className="text-muted-foreground font-black text-xs">VS</div>
+                                        <div className="text-muted-foreground font-black text-xs">
+                                            VS
+                                        </div>
                                         <div className="w-[45%] text-center">
                                             <p className="font-bold text-sm truncate">
-                                                {debate.debater2.firstName} {debate.debater2.lastName}
+                                                {debate.debater2.firstName}{" "}
+                                                {debate.debater2.lastName}
                                             </p>
                                             <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded">
                                                 OPP
@@ -556,11 +608,15 @@ export default function RoundDetails() {
                                     <div className="flex items-center justify-between pt-3 border-t border-border text-xs text-muted-foreground">
                                         <div className="flex items-center gap-1">
                                             <MapPin className="w-3 h-3" />
-                                            {debate.room ? debate.room.name : "No Room"}
+                                            {debate.room
+                                                ? debate.room.name
+                                                : "No Room"}
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Gavel className="w-3 h-3" />
-                                            {debate.adjudicator ? `${debate.adjudicator.firstName} ${debate.adjudicator.lastName}` : "TBD"}
+                                            {debate.adjudicator
+                                                ? `${debate.adjudicator.firstName} ${debate.adjudicator.lastName}`
+                                                : "TBD"}
                                         </div>
                                     </div>
                                 </div>

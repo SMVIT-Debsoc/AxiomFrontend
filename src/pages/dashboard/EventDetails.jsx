@@ -330,12 +330,14 @@ export default function EventDetails() {
                                                                 ? `Check-in: ${new Date(
                                                                       round.checkInStartTime
                                                                   ).toLocaleTimeString(
-                                                                      [],
+                                                                      "en-IN",
                                                                       {
                                                                           hour: "2-digit",
                                                                           minute: "2-digit",
+                                                                          timeZone:
+                                                                              "Asia/Kolkata",
                                                                       }
-                                                                  )}`
+                                                                  )} IST`
                                                                 : "Time TBD"}
                                                         </p>
                                                     </div>

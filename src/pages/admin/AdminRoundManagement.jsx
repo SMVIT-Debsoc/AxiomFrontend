@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import {useState, useEffect, useCallback} from "react";
+import {useParams, useNavigate} from "react-router-dom";
+import {motion} from "framer-motion";
 import {
     Users,
     Activity,
@@ -16,16 +16,16 @@ import {
     Search,
     Trophy,
 } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
-import { AdminApi } from "../../services/api";
-import { useRoundSocket } from "../../hooks/useSocket";
-import { useToast } from "../../components/ui/Toast";
+import {useAuth} from "@clerk/clerk-react";
+import {AdminApi} from "../../services/api";
+import {useRoundSocket} from "../../hooks/useSocket";
+import {useToast} from "../../components/ui/Toast";
 
 export default function AdminRoundManagement() {
-    const { id: roundId } = useParams();
-    const { getToken } = useAuth();
+    const {id: roundId} = useParams();
+    const {getToken} = useAuth();
     const navigate = useNavigate();
-    const { toast } = useToast();
+    const {toast} = useToast();
 
     const [round, setRound] = useState(null);
     const [checkIns, setCheckIns] = useState([]);
@@ -93,7 +93,7 @@ export default function AdminRoundManagement() {
                 if (existing) {
                     return prev.map((ci) =>
                         ci.userId === data.userId
-                            ? { ...ci, status: data.status }
+                            ? {...ci, status: data.status}
                             : ci
                     );
                 }
@@ -122,12 +122,12 @@ export default function AdminRoundManagement() {
                 prev.map((d) =>
                     d.id === data.debateId
                         ? {
-                            ...d,
-                            winnerId: data.winnerId,
-                            debater1Score: data.debater1Score,
-                            debater2Score: data.debater2Score,
-                            status: "COMPLETED",
-                        }
+                              ...d,
+                              winnerId: data.winnerId,
+                              debater1Score: data.debater1Score,
+                              debater2Score: data.debater2Score,
+                              status: "COMPLETED",
+                          }
                         : d
                 )
             );
@@ -156,7 +156,9 @@ export default function AdminRoundManagement() {
                 token
             );
             if (response.success) {
-                const eliminatedMsg = response.data.eliminated ? ` (${response.data.eliminated} users eliminated based on losses)` : "";
+                const eliminatedMsg = response.data.eliminated
+                    ? ` (${response.data.eliminated} users eliminated based on losses)`
+                    : "";
                 toast.success(
                     "Pairings Generated",
                     `Successfully generated ${response.data.pairingsCreated} pairings!${eliminatedMsg}`
@@ -164,7 +166,10 @@ export default function AdminRoundManagement() {
                 await fetchRoundData();
                 setActiveTab("debates");
             } else {
-                toast.error("Generation Failed", response.error || "Failed to generate pairings");
+                toast.error(
+                    "Generation Failed",
+                    response.error || "Failed to generate pairings"
+                );
             }
         } catch (error) {
             toast.error("Error", "Error generating pairings");
@@ -186,11 +191,17 @@ export default function AdminRoundManagement() {
             );
 
             if (response.success) {
-                toast.success("Rooms Allocated", "Allocated rooms and time slots successfully!");
+                toast.success(
+                    "Rooms Allocated",
+                    "Allocated rooms and time slots successfully!"
+                );
                 await fetchRoundData();
                 setShowAllocateModal(false);
             } else {
-                toast.error("Allocation Failed", response.error || "Failed to allocate rooms");
+                toast.error(
+                    "Allocation Failed",
+                    response.error || "Failed to allocate rooms"
+                );
             }
         } catch (error) {
             toast.error("Error", "Error allocating rooms");
@@ -206,12 +217,15 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/rounds/${roundId}`,
                 "PUT",
-                { status: newStatus },
+                {status: newStatus},
                 token
             );
             if (response.success) {
-                setRound({ ...round, status: newStatus });
-                toast.success("Status Updated", `Round status updated to ${newStatus}`);
+                setRound({...round, status: newStatus});
+                toast.success(
+                    "Status Updated",
+                    `Round status updated to ${newStatus}`
+                );
             }
         } catch (error) {
             toast.error("Error", "Failed to update round status");
@@ -227,7 +241,7 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/check-in/round/${roundId}/user/${userId}`,
                 "PUT",
-                { status: newStatus },
+                {status: newStatus},
                 token
             );
             if (response.success) {
@@ -235,14 +249,19 @@ export default function AdminRoundManagement() {
                     const exists = prev.find((ci) => ci.userId === userId);
                     if (exists) {
                         return prev.map((ci) =>
-                            ci.userId === userId ? { ...ci, status: newStatus } : ci
+                            ci.userId === userId
+                                ? {...ci, status: newStatus}
+                                : ci
                         );
                     } else {
                         // Add new check-in record purely for UI state
-                        return [...prev, { userId, status: newStatus }];
+                        return [...prev, {userId, status: newStatus}];
                     }
                 });
-                toast.success("Check-in Updated", `User marked as ${newStatus}`);
+                toast.success(
+                    "Check-in Updated",
+                    `User marked as ${newStatus}`
+                );
             }
         } catch (error) {
             toast.error("Error", "Failed to update check-in status");
@@ -257,7 +276,7 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/debates/${debateId}`,
                 "PUT",
-                { judgeName },
+                {judgeName},
                 token
             );
             if (response.success) {
@@ -265,16 +284,19 @@ export default function AdminRoundManagement() {
                     debates.map((d) =>
                         d.id === debateId
                             ? {
-                                ...d,
-                                judgeName,
-                                adjudicatorId: null,
-                                adjudicator: null,
-                            }
+                                  ...d,
+                                  judgeName,
+                                  adjudicatorId: null,
+                                  adjudicator: null,
+                              }
                             : d
                     )
                 );
             } else {
-                toast.error("Assignment Failed", response.error || "Failed to assign judge");
+                toast.error(
+                    "Assignment Failed",
+                    response.error || "Failed to assign judge"
+                );
             }
         } catch (error) {
             toast.error("Error", "Error assigning judge");
@@ -291,11 +313,11 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/rounds/${roundId}`,
                 "PUT",
-                { pairingsPublished: newStatus },
+                {pairingsPublished: newStatus},
                 token
             );
             if (response.success) {
-                setRound({ ...round, pairingsPublished: newStatus });
+                setRound({...round, pairingsPublished: newStatus});
                 toast.success(
                     "Visibility Updated",
                     newStatus
@@ -346,12 +368,17 @@ export default function AdminRoundManagement() {
                         <button
                             onClick={handleTogglePublish}
                             disabled={loading}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${round.pairingsPublished
-                                ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                                : "bg-amber-500 text-white hover:bg-amber-600"
-                                }`}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                round.pairingsPublished
+                                    ? "bg-green-500/10 text-green-500 border border-green-500/20"
+                                    : "bg-amber-500 text-white hover:bg-amber-600"
+                            }`}
                         >
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                            {loading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Users className="w-4 h-4" />
+                            )}
                             {round.pairingsPublished
                                 ? "Draw Public"
                                 : "Publish Draw"}
@@ -435,7 +462,10 @@ export default function AdminRoundManagement() {
                             <p className="text-sm font-medium">
                                 {new Date(
                                     round.checkInStartTime
-                                ).toLocaleString()}
+                                ).toLocaleString("en-IN", {
+                                    timeZone: "Asia/Kolkata",
+                                })}{" "}
+                                IST
                             </p>
                         </div>
                         <div>
@@ -443,27 +473,30 @@ export default function AdminRoundManagement() {
                                 Ends
                             </p>
                             <p className="text-sm font-medium">
-                                {new Date(
-                                    round.checkInEndTime
-                                ).toLocaleString()}
+                                {new Date(round.checkInEndTime).toLocaleString(
+                                    "en-IN",
+                                    {timeZone: "Asia/Kolkata"}
+                                )}{" "}
+                                IST
                             </p>
                         </div>
                         <div className="pt-2">
                             <span
-                                className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${new Date() > new Date(round.checkInEndTime)
-                                    ? "bg-red-500/10 text-red-500"
-                                    : new Date() <
-                                        new Date(round.checkInStartTime)
+                                className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
+                                    new Date() > new Date(round.checkInEndTime)
+                                        ? "bg-red-500/10 text-red-500"
+                                        : new Date() <
+                                          new Date(round.checkInStartTime)
                                         ? "bg-blue-500/10 text-blue-500"
                                         : "bg-green-500/10 text-green-500"
-                                    }`}
+                                }`}
                             >
                                 {new Date() > new Date(round.checkInEndTime)
                                     ? "Window Closed"
                                     : new Date() <
-                                        new Date(round.checkInStartTime)
-                                        ? "Window Not Open"
-                                        : "Window Open"}
+                                      new Date(round.checkInStartTime)
+                                    ? "Window Not Open"
+                                    : "Window Open"}
                             </span>
                         </div>
                     </div>
@@ -475,28 +508,31 @@ export default function AdminRoundManagement() {
                 <div className="flex">
                     <button
                         onClick={() => setActiveTab("checkins")}
-                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${activeTab === "checkins"
-                            ? "border-purple-500 text-purple-500 bg-purple-500/5"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
+                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${
+                            activeTab === "checkins"
+                                ? "border-purple-500 text-purple-500 bg-purple-500/5"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
                     >
                         Check-ins ({checkIns.length})
                     </button>
                     <button
                         onClick={() => setActiveTab("debates")}
-                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${activeTab === "debates"
-                            ? "border-purple-500 text-purple-500 bg-purple-500/5"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
+                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${
+                            activeTab === "debates"
+                                ? "border-purple-500 text-purple-500 bg-purple-500/5"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
                     >
                         Debates ({debates.length})
                     </button>
                     <button
                         onClick={() => setActiveTab("results")}
-                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${activeTab === "results"
-                            ? "border-purple-500 text-purple-500 bg-purple-500/5"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
+                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${
+                            activeTab === "results"
+                                ? "border-purple-500 text-purple-500 bg-purple-500/5"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
                     >
                         Results
                     </button>
@@ -505,12 +541,13 @@ export default function AdminRoundManagement() {
                     <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-purple-500 transition-colors" />
                     <input
                         type="text"
-                        placeholder={`Search ${activeTab === "checkins"
-                            ? "participants"
-                            : activeTab === "results"
+                        placeholder={`Search ${
+                            activeTab === "checkins"
+                                ? "participants"
+                                : activeTab === "results"
                                 ? "results"
                                 : "debates"
-                            }...`}
+                        }...`}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10 pr-4 py-2 bg-muted/30 border border-border rounded-xl text-xs focus:border-purple-500 outline-none transition-all w-full md:w-64"
@@ -616,11 +653,12 @@ export default function AdminRoundManagement() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <span
-                                                            className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${status ===
+                                                            className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                                                                status ===
                                                                 "PRESENT"
-                                                                ? "bg-green-500/10 text-green-500"
-                                                                : "bg-red-500/10 text-red-500"
-                                                                }`}
+                                                                    ? "bg-green-500/10 text-green-500"
+                                                                    : "bg-red-500/10 text-red-500"
+                                                            }`}
                                                         >
                                                             {status}
                                                         </span>
@@ -639,10 +677,14 @@ export default function AdminRoundManagement() {
                                                                 status
                                                             )
                                                         }
-                                                        disabled={processingId === user.id}
+                                                        disabled={
+                                                            processingId ===
+                                                            user.id
+                                                        }
                                                         className="text-xs font-medium text-purple-500 hover:text-purple-600 transition-colors disabled:opacity-50 disabled:cursor-wait"
                                                     >
-                                                        {processingId === user.id && (
+                                                        {processingId ===
+                                                            user.id && (
                                                             <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
                                                         )}
                                                         Mark{" "}
@@ -744,7 +786,8 @@ export default function AdminRoundManagement() {
                                                 {debate.debater1.firstName[0]}
                                             </div>
                                             <p className="font-bold text-sm truncate">
-                                                {debate.debater1.firstName} {debate.debater1.lastName}
+                                                {debate.debater1.firstName}{" "}
+                                                {debate.debater1.lastName}
                                             </p>
                                         </div>
                                         <div className="font-black text-2xl text-muted-foreground/20 italic pt-6">
@@ -758,7 +801,8 @@ export default function AdminRoundManagement() {
                                                 {debate.debater2.firstName[0]}
                                             </div>
                                             <p className="font-bold text-sm truncate">
-                                                {debate.debater2.firstName} {debate.debater2.lastName}
+                                                {debate.debater2.firstName}{" "}
+                                                {debate.debater2.lastName}
                                             </p>
                                         </div>
                                     </div>
@@ -787,11 +831,11 @@ export default function AdminRoundManagement() {
                                             <Clock className="w-3" />
                                             {debate.startTime
                                                 ? new Date(
-                                                    debate.startTime
-                                                ).toLocaleTimeString([], {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                })
+                                                      debate.startTime
+                                                  ).toLocaleTimeString([], {
+                                                      hour: "2-digit",
+                                                      minute: "2-digit",
+                                                  })
                                                 : "TBD"}
                                         </div>
                                         <button
@@ -868,7 +912,7 @@ export default function AdminRoundManagement() {
                                                             <span
                                                                 className={
                                                                     debate.winnerId ===
-                                                                        debate.debater1Id
+                                                                    debate.debater1Id
                                                                         ? "text-green-500 font-bold"
                                                                         : ""
                                                                 }
@@ -885,7 +929,7 @@ export default function AdminRoundManagement() {
                                                             <span
                                                                 className={
                                                                     debate.winnerId ===
-                                                                        debate.debater2Id
+                                                                    debate.debater2Id
                                                                         ? "text-green-500 font-bold"
                                                                         : ""
                                                                 }
@@ -901,12 +945,12 @@ export default function AdminRoundManagement() {
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
                                                     {debate.status ===
-                                                        "COMPLETED" ? (
+                                                    "COMPLETED" ? (
                                                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted/50 border border-border text-xs font-mono">
                                                             <span
                                                                 className={
                                                                     debate.winnerId ===
-                                                                        debate.debater1Id
+                                                                    debate.debater1Id
                                                                         ? "text-green-500 font-bold"
                                                                         : ""
                                                                 }
@@ -921,7 +965,7 @@ export default function AdminRoundManagement() {
                                                             <span
                                                                 className={
                                                                     debate.winnerId ===
-                                                                        debate.debater2Id
+                                                                    debate.debater2Id
                                                                         ? "text-green-500 font-bold"
                                                                         : ""
                                                                 }
@@ -939,17 +983,17 @@ export default function AdminRoundManagement() {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {debate.status ===
-                                                        "COMPLETED" ? (
+                                                    "COMPLETED" ? (
                                                         <div className="flex items-center gap-2 text-sm font-bold text-purple-500">
                                                             <Trophy className="w-3.5 h-3.5" />
                                                             {debate.winnerId ===
-                                                                debate.debater1Id
+                                                            debate.debater1Id
                                                                 ? debate
-                                                                    .debater1
-                                                                    .firstName
+                                                                      .debater1
+                                                                      .firstName
                                                                 : debate
-                                                                    .debater2
-                                                                    .firstName}
+                                                                      .debater2
+                                                                      .firstName}
                                                         </div>
                                                     ) : (
                                                         <span className="text-xs text-muted-foreground">
@@ -967,7 +1011,7 @@ export default function AdminRoundManagement() {
                                                         className="text-xs font-bold text-purple-500 hover:text-purple-600 transition-colors"
                                                     >
                                                         {debate.status ===
-                                                            "COMPLETED"
+                                                        "COMPLETED"
                                                             ? "Edit"
                                                             : "Enter Result"}
                                                     </button>
@@ -979,14 +1023,19 @@ export default function AdminRoundManagement() {
                         </table>
                     </div>
                 </div>
-            )
-            }
-        </div >
+            )}
+        </div>
     );
 }
 
-function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }) {
-    const { toast } = useToast();
+function AllocateRoomsModal({
+    onClose,
+    onConfirm,
+    totalDebates,
+    rooms,
+    loading,
+}) {
+    const {toast} = useToast();
     const [selectedRoomIds, setSelectedRoomIds] = useState(
         rooms.map((r) => r.id)
     );
@@ -1013,7 +1062,10 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }
     const handleSubmit = (e) => {
         e.preventDefault();
         if (selectedRoomIds.length === 0) {
-            toast.error("Selection Required", "Please select at least one room.");
+            toast.error(
+                "Selection Required",
+                "Please select at least one room."
+            );
             return;
         }
         onConfirm({
@@ -1029,14 +1081,14 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }
     for (let i = 0; i < Math.min(debatesPerRoom, 3); i++) {
         const start = new Date(baseTime + i * totalInterval * 60000);
         const end = new Date(start.getTime() + debateDuration * 60000);
-        previewSlots.push({ start, end });
+        previewSlots.push({start, end});
     }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
             <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
+                initial={{opacity: 0, scale: 0.95, y: 20}}
+                animate={{opacity: 1, scale: 1, y: 0}}
                 className="bg-card border border-border rounded-3xl p-8 w-full max-w-2xl shadow-2xl my-8"
             >
                 <div className="flex items-center justify-between mb-6">
@@ -1080,7 +1132,7 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }
                                                 startTime: e.target.value,
                                             })
                                         }
-                                        style={{ colorScheme: "dark" }}
+                                        style={{colorScheme: "dark"}}
                                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-muted/30 border border-border focus:border-purple-500 outline-none transition-all"
                                     />
                                 </div>
@@ -1205,18 +1257,20 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }
                                         key={room.id}
                                         type="button"
                                         onClick={() => toggleRoom(room.id)}
-                                        className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left flex items-center gap-2 ${selectedRoomIds.includes(room.id)
-                                            ? "bg-purple-500/10 border-purple-500 text-purple-500"
-                                            : "bg-muted/30 border-border text-muted-foreground"
-                                            }`}
+                                        className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left flex items-center gap-2 ${
+                                            selectedRoomIds.includes(room.id)
+                                                ? "bg-purple-500/10 border-purple-500 text-purple-500"
+                                                : "bg-muted/30 border-border text-muted-foreground"
+                                        }`}
                                     >
                                         <div
-                                            className={`w-2 h-2 rounded-full ${selectedRoomIds.includes(
-                                                room.id
-                                            )
-                                                ? "bg-purple-500"
-                                                : "bg-muted-foreground/30"
-                                                }`}
+                                            className={`w-2 h-2 rounded-full ${
+                                                selectedRoomIds.includes(
+                                                    room.id
+                                                )
+                                                    ? "bg-purple-500"
+                                                    : "bg-muted-foreground/30"
+                                            }`}
                                         />
                                         {room.name}
                                     </button>
@@ -1285,7 +1339,9 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }
                                 disabled={loading}
                                 className="flex-[2] py-3 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {loading && (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                )}
                                 Start Allocation
                             </button>
                         </div>
