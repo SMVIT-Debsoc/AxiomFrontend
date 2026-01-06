@@ -1,4 +1,4 @@
-import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import Placeholder from "./pages/Placeholder";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -12,17 +12,17 @@ import RoundDetails from "./pages/dashboard/RoundDetails";
 import Results from "./pages/dashboard/Results";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
-import {OnboardingGuard} from "./components/OnboardingGuard";
-import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
-import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
-import {ToastProvider} from "./components/ui/Toast";
+import { OnboardingGuard } from "./components/OnboardingGuard";
+import { ProfileCompletionGuard } from "./components/ProfileCompletionGuard";
+import { AuthRedirectHandler } from "./components/AuthRedirectHandler";
+import { ToastProvider } from "./components/ui/Toast";
 
 // Role selection pages
 import RoleSelectPage from "./pages/RoleSelectPage";
 import LoginSelectPage from "./pages/LoginSelectPage";
 
 // Admin imports
-import {AdminGuard} from "./components/AdminGuard";
+import { AdminGuard } from "./components/AdminGuard";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminEvents from "./pages/admin/AdminEvents";
