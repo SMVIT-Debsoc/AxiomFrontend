@@ -1,6 +1,6 @@
-import {useState, useEffect} from "react";
-import {useParams, Link} from "react-router-dom";
-import {motion} from "framer-motion";
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     ArrowLeft,
     Loader2,
@@ -16,15 +16,15 @@ import {
     Swords,
     Timer,
 } from "lucide-react";
-import {useAuth, useUser} from "@clerk/clerk-react";
-import {RoundApi, CheckInApi, DebateApi, UserApi} from "../../services/api";
-import {useToast} from "../../components/ui/Toast";
-import {cn} from "../../lib/utils";
+import { useAuth, useUser } from "@clerk/clerk-react";
+import { RoundApi, CheckInApi, DebateApi, UserApi } from "../../services/api";
+import { useToast } from "../../components/ui/Toast";
+import { cn } from "../../lib/utils";
 
 export default function RoundDetails() {
-    const {eventId, roundId} = useParams();
-    const {getToken} = useAuth();
-    const {user: clerkUser} = useUser();
+    const { eventId, roundId } = useParams();
+    const { getToken } = useAuth();
+    const { user: clerkUser } = useUser();
     const toast = useToast();
 
     const [round, setRound] = useState(null);
@@ -34,6 +34,8 @@ export default function RoundDetails() {
     const [loading, setLoading] = useState(true);
     const [checkingIn, setCheckingIn] = useState(false);
     const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState("my-debate");
+    const [allDebates, setAllDebates] = useState([]);
 
     const fetchData = async () => {
         try {
@@ -74,6 +76,18 @@ export default function RoundDetails() {
                 }
             } catch (e) {
                 // No debates yet
+            }
+
+            // Fetch all debates if pairings published
+            try {
+                if (roundResponse.round?.pairingsPublished) {
+                    const allDebatesRes = await DebateApi.getByRound(roundId, token);
+                    if (allDebatesRes.success) {
+                        setAllDebates(allDebatesRes.debates || []);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch all debates", e);
             }
 
             setError(null);
@@ -191,8 +205,8 @@ export default function RoundDetails() {
                                 round.status === "ONGOING"
                                     ? "bg-green-500"
                                     : round.status === "COMPLETED"
-                                    ? "bg-gray-500"
-                                    : "bg-blue-500"
+                                        ? "bg-gray-500"
+                                        : "bg-blue-500"
                             )}
                         >
                             {round.status}
@@ -205,269 +219,355 @@ export default function RoundDetails() {
                 </div>
             </div>
 
-            {/* Motion Display */}
-            {round.motion && round.pairingsPublished && (
-                <motion.div
-                    initial={{opacity: 0, y: 10}}
-                    animate={{opacity: 1, y: 0}}
-                    className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-6"
+            {/* Tabs */}
+            <div className="flex items-center justify-center gap-6 border-b border-border mb-6">
+                <button
+                    onClick={() => setActiveTab("my-debate")}
+                    className={cn(
+                        "pb-3 text-sm font-medium border-b-2 transition-colors",
+                        activeTab === "my-debate"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
                 >
-                    <div className="flex items-center gap-2 text-amber-500 mb-3">
-                        <Gavel className="w-5 h-5" />
-                        <span className="font-semibold text-sm">MOTION</span>
-                    </div>
-                    <p className="text-lg font-medium">{round.motion}</p>
-                </motion.div>
-            )}
-
-            {/* Check-in Section */}
-            {round.checkInStartTime && round.checkInEndTime && (
-                <div className="bg-card border border-border rounded-xl p-6">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-primary" />
-                        Check-in
-                    </h3>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                                Check-in Window:
-                            </span>
-                            <span>
-                                {new Date(
-                                    round.checkInStartTime
-                                ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
-                                {" - "}
-                                {new Date(
-                                    round.checkInEndTime
-                                ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
-                            </span>
-                        </div>
-
-                        {isCheckedIn ? (
-                            <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500">
-                                <CheckCircle2 className="w-6 h-6" />
-                                <div>
-                                    <p className="font-semibold">
-                                        You're Checked In!
-                                    </p>
-                                    <p className="text-sm opacity-80">
-                                        Marked as present for this round
-                                    </p>
-                                </div>
-                            </div>
-                        ) : isCheckInOpen() ? (
-                            <button
-                                onClick={handleCheckIn}
-                                disabled={checkingIn}
-                                className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {checkingIn ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                ) : (
-                                    <CheckCircle2 className="w-5 h-5" />
-                                )}
-                                {checkingIn ? "Checking In..." : "Check In Now"}
-                            </button>
-                        ) : (
-                            <div className="flex items-center gap-3 p-4 bg-muted rounded-xl text-muted-foreground">
-                                <Clock className="w-6 h-6" />
-                                <div>
-                                    <p className="font-semibold">
-                                        Check-in Not Available
-                                    </p>
-                                    <p className="text-sm">
-                                        {new Date() <
-                                        new Date(round.checkInStartTime)
-                                            ? "Check-in has not started yet"
-                                            : "Check-in window has closed"}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Waiting for Draws */}
-            {isCheckedIn && !round.pairingsPublished && (
-                <motion.div
-                    initial={{opacity: 0, y: 10}}
-                    animate={{opacity: 1, y: 0}}
-                    className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 text-center"
+                    My Debate
+                </button>
+                <button
+                    onClick={() => setActiveTab("draws")}
+                    className={cn(
+                        "pb-3 text-sm font-medium border-b-2 transition-colors",
+                        activeTab === "draws"
+                            ? "border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
                 >
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <Timer className="w-8 h-8 text-blue-500 animate-pulse" />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2">
-                        Waiting for Draws
-                    </h3>
-                    <p className="text-muted-foreground">
-                        You're checked in! Please wait for the draws to be
-                        published.
-                    </p>
-                </motion.div>
-            )}
+                    Full Draw
+                </button>
+            </div>
 
-            {/* Pairing / Debate Details */}
-            {round.pairingsPublished && myDebate && userPosition && (
-                <motion.div
-                    initial={{opacity: 0, y: 10}}
-                    animate={{opacity: 1, y: 0}}
-                    className="space-y-4"
-                >
-                    {/* Your Position */}
-                    <div className="bg-card border border-border rounded-xl overflow-hidden">
-                        <div
-                            className={cn(
-                                "p-4 text-white flex items-center gap-3",
-                                userPosition.position === "GOV"
-                                    ? "bg-gradient-to-r from-green-600 to-emerald-600"
-                                    : "bg-gradient-to-r from-red-600 to-rose-600"
-                            )}
+            {/* My Debate Tab */}
+            {activeTab === "my-debate" && (
+                <div className="space-y-6">
+                    {/* Motion Display */}
+                    {round.motion && round.pairingsPublished && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-6"
                         >
-                            {userPosition.position === "GOV" ? (
-                                <Shield className="w-6 h-6" />
-                            ) : (
-                                <Swords className="w-6 h-6" />
-                            )}
-                            <div>
-                                <p className="text-sm opacity-80">
-                                    Your Position
-                                </p>
-                                <p className="font-bold text-lg">
-                                    {userPosition.position === "GOV"
-                                        ? "Government"
-                                        : "Opposition"}
-                                </p>
+                            <div className="flex items-center gap-2 text-amber-500 mb-3">
+                                <Gavel className="w-5 h-5" />
+                                <span className="font-semibold text-sm">MOTION</span>
+                            </div>
+                            <p className="text-lg font-medium">{round.motion}</p>
+                        </motion.div>
+                    )}
+
+                    {/* Check-in Section */}
+                    {round.checkInStartTime && round.checkInEndTime && (
+                        <div className="bg-card border border-border rounded-xl p-6">
+                            <h3 className="font-semibold mb-4 flex items-center gap-2">
+                                <Clock className="w-5 h-5 text-primary" />
+                                Check-in
+                            </h3>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">
+                                        Check-in Window:
+                                    </span>
+                                    <span>
+                                        {new Date(
+                                            round.checkInStartTime
+                                        ).toLocaleTimeString([], {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                        {" - "}
+                                        {new Date(
+                                            round.checkInEndTime
+                                        ).toLocaleTimeString([], {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                    </span>
+                                </div>
+
+                                {isCheckedIn ? (
+                                    <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500">
+                                        <CheckCircle2 className="w-6 h-6" />
+                                        <div>
+                                            <p className="font-semibold">
+                                                You're Checked In!
+                                            </p>
+                                            <p className="text-sm opacity-80">
+                                                Marked as present for this round
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : isCheckInOpen() ? (
+                                    <button
+                                        onClick={handleCheckIn}
+                                        disabled={checkingIn}
+                                        className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {checkingIn ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <CheckCircle2 className="w-5 h-5" />
+                                        )}
+                                        {checkingIn ? "Checking In..." : "Check In Now"}
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-3 p-4 bg-muted rounded-xl text-muted-foreground">
+                                        <Clock className="w-6 h-6" />
+                                        <div>
+                                            <p className="font-semibold">
+                                                Check-in Not Available
+                                            </p>
+                                            <p className="text-sm">
+                                                {new Date() <
+                                                    new Date(round.checkInStartTime)
+                                                    ? "Check-in has not started yet"
+                                                    : "Check-in window has closed"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                    )}
 
-                        <div className="p-4 space-y-4">
-                            {/* Opponent */}
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                                    <User className="w-6 h-6 text-muted-foreground" />
-                                </div>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Your Opponent
-                                    </p>
-                                    <p className="font-semibold">
-                                        {userPosition.opponent?.firstName}{" "}
-                                        {userPosition.opponent?.lastName}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {userPosition.opponent?.college}
-                                    </p>
-                                </div>
+                    {/* Waiting for Draws */}
+                    {isCheckedIn && !round.pairingsPublished && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 text-center"
+                        >
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
+                                <Timer className="w-8 h-8 text-blue-500 animate-pulse" />
+                            </div>
+                            <h3 className="font-semibold text-lg mb-2">
+                                Waiting for Draws
+                            </h3>
+                            <p className="text-muted-foreground">
+                                You're checked in! Please wait for the draws to be
+                                published.
+                            </p>
+                        </motion.div>
+                    )}
+
+                    {/* Pairing / Debate Details */}
+                    {round.pairingsPublished && myDebate && userPosition && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-4"
+                        >
+                            {/* Your Position */}
+                            <div className="bg-card border border-border rounded-xl overflow-hidden">
                                 <div
                                     className={cn(
-                                        "ml-auto px-3 py-1 rounded-full text-xs font-bold",
-                                        userPosition.opponentPosition === "GOV"
-                                            ? "bg-green-500/10 text-green-500"
-                                            : "bg-red-500/10 text-red-500"
+                                        "p-4 text-white flex items-center gap-3",
+                                        userPosition.position === "GOV"
+                                            ? "bg-gradient-to-r from-green-600 to-emerald-600"
+                                            : "bg-gradient-to-r from-red-600 to-rose-600"
                                     )}
                                 >
-                                    {userPosition.opponentPosition === "GOV"
-                                        ? "GOV"
-                                        : "OPP"}
+                                    {userPosition.position === "GOV" ? (
+                                        <Shield className="w-6 h-6" />
+                                    ) : (
+                                        <Swords className="w-6 h-6" />
+                                    )}
+                                    <div>
+                                        <p className="text-sm opacity-80">
+                                            Your Position
+                                        </p>
+                                        <p className="font-bold text-lg">
+                                            {userPosition.position === "GOV"
+                                                ? "Government"
+                                                : "Opposition"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 space-y-4">
+                                    {/* Opponent */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                            <User className="w-6 h-6 text-muted-foreground" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">
+                                                Your Opponent
+                                            </p>
+                                            <p className="font-semibold">
+                                                {userPosition.opponent?.firstName}{" "}
+                                                {userPosition.opponent?.lastName}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {userPosition.opponent?.college}
+                                            </p>
+                                        </div>
+                                        <div
+                                            className={cn(
+                                                "ml-auto px-3 py-1 rounded-full text-xs font-bold",
+                                                userPosition.opponentPosition === "GOV"
+                                                    ? "bg-green-500/10 text-green-500"
+                                                    : "bg-red-500/10 text-red-500"
+                                            )}
+                                        >
+                                            {userPosition.opponentPosition === "GOV"
+                                                ? "GOV"
+                                                : "OPP"}
+                                        </div>
+                                    </div>
+
+                                    {/* Room */}
+                                    {myDebate.room && (
+                                        <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                                            <MapPin className="w-5 h-5 text-primary" />
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Room
+                                                </p>
+                                                <p className="font-semibold">
+                                                    {myDebate.room.name}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Adjudicator */}
+                                    {myDebate.adjudicator && (
+                                        <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                                            <Gavel className="w-5 h-5 text-amber-500" />
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Adjudicator
+                                                </p>
+                                                <p className="font-semibold">
+                                                    {myDebate.adjudicator.firstName}{" "}
+                                                    {myDebate.adjudicator.lastName}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Time Slot */}
+                                    {(myDebate.startTime || myDebate.endTime) && (
+                                        <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                                            <Clock className="w-5 h-5 text-blue-500" />
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Time Slot
+                                                </p>
+                                                <p className="font-semibold">
+                                                    {myDebate.startTime &&
+                                                        new Date(
+                                                            myDebate.startTime
+                                                        ).toLocaleTimeString([], {
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                    {myDebate.startTime &&
+                                                        myDebate.endTime &&
+                                                        " - "}
+                                                    {myDebate.endTime &&
+                                                        new Date(
+                                                            myDebate.endTime
+                                                        ).toLocaleTimeString([], {
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+                        </motion.div>
+                    )}
 
-                            {/* Room */}
-                            {myDebate.room && (
-                                <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                                    <MapPin className="w-5 h-5 text-primary" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Room
-                                        </p>
-                                        <p className="font-semibold">
-                                            {myDebate.room.name}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Adjudicator */}
-                            {myDebate.adjudicator && (
-                                <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                                    <Gavel className="w-5 h-5 text-amber-500" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Adjudicator
-                                        </p>
-                                        <p className="font-semibold">
-                                            {myDebate.adjudicator.firstName}{" "}
-                                            {myDebate.adjudicator.lastName}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Time Slot */}
-                            {(myDebate.startTime || myDebate.endTime) && (
-                                <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                                    <Clock className="w-5 h-5 text-blue-500" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Time Slot
-                                        </p>
-                                        <p className="font-semibold">
-                                            {myDebate.startTime &&
-                                                new Date(
-                                                    myDebate.startTime
-                                                ).toLocaleTimeString([], {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                })}
-                                            {myDebate.startTime &&
-                                                myDebate.endTime &&
-                                                " - "}
-                                            {myDebate.endTime &&
-                                                new Date(
-                                                    myDebate.endTime
-                                                ).toLocaleTimeString([], {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                })}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                    {/* No Debate Found */}
+                    {round.pairingsPublished && !myDebate && (
+                        <div className="bg-muted/50 rounded-xl p-6 text-center">
+                            <XCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                            <h3 className="font-semibold mb-2">No Debate Assigned</h3>
+                            <p className="text-muted-foreground text-sm">
+                                You don't have a debate assigned for this round. This
+                                could be because you weren't checked in or there was an
+                                odd number of participants.
+                            </p>
                         </div>
-                    </div>
-                </motion.div>
-            )}
+                    )}
 
-            {/* No Debate Found */}
-            {round.pairingsPublished && !myDebate && (
-                <div className="bg-muted/50 rounded-xl p-6 text-center">
-                    <XCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="font-semibold mb-2">No Debate Assigned</h3>
-                    <p className="text-muted-foreground text-sm">
-                        You don't have a debate assigned for this round. This
-                        could be because you weren't checked in or there was an
-                        odd number of participants.
-                    </p>
+                    {/* View Results Link (Only if my debate is done or round completed) */}
+                    {round.status === "COMPLETED" && (
+                        <Link
+                            to={`/dashboard/events/${eventId}/results`}
+                            className="block w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-center hover:bg-primary/90 transition-colors"
+                        >
+                            View Results
+                        </Link>
+                    )}
                 </div>
             )}
 
-            {/* View Results Link */}
-            {round.status === "COMPLETED" && (
-                <Link
-                    to={`/dashboard/events/${eventId}/results`}
-                    className="block w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-center hover:bg-primary/90 transition-colors"
-                >
-                    View Results
-                </Link>
+            {/* Full Draw Tab */}
+            {activeTab === "draws" && (
+                <div className="space-y-4">
+                    {!round.pairingsPublished ? (
+                        <div className="text-center py-12 bg-muted/20 rounded-xl">
+                            <Swords className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                            <h3 className="font-bold text-lg mb-2">Draws Not Published</h3>
+                            <p className="text-muted-foreground">
+                                The pairings for this round have not been released yet.
+                            </p>
+                        </div>
+                    ) : allDebates.length === 0 ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {allDebates.map(debate => (
+                                <div key={debate.id} className="bg-card border border-border rounded-xl p-4">
+                                    <div className="flex items-center justify-between gap-4 mb-4">
+                                        <div className="w-[45%] text-center">
+                                            <p className="font-bold text-sm truncate">
+                                                {debate.debater1.firstName} {debate.debater1.lastName}
+                                            </p>
+                                            <span className="text-[10px] font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded">
+                                                GOV
+                                            </span>
+                                        </div>
+                                        <div className="text-muted-foreground font-black text-xs">VS</div>
+                                        <div className="w-[45%] text-center">
+                                            <p className="font-bold text-sm truncate">
+                                                {debate.debater2.firstName} {debate.debater2.lastName}
+                                            </p>
+                                            <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded">
+                                                OPP
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-3 border-t border-border text-xs text-muted-foreground">
+                                        <div className="flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" />
+                                            {debate.room ? debate.room.name : "No Room"}
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Gavel className="w-3 h-3" />
+                                            {debate.adjudicator ? `${debate.adjudicator.firstName} ${debate.adjudicator.lastName}` : "TBD"}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );

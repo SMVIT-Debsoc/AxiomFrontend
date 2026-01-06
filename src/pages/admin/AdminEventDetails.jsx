@@ -327,7 +327,7 @@ export default function AdminEventDetails() {
                             </div>
                             <hr className="border-border" />
                             <div className="pt-2">
-                                <Link to={`/events/${eventId}`} className="text-sm text-purple-500 hover:underline flex items-center gap-1">
+                                <Link to={`/dashboard/events/${eventId}`} className="text-sm text-purple-500 hover:underline flex items-center gap-1">
                                     View public page <ChevronRight className="w-3 h-3" />
                                 </Link>
                             </div>
