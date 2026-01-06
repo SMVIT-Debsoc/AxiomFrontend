@@ -399,13 +399,20 @@ export default function AdminEventDetails() {
 function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
     const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
+
+    // Helper to get local datetime string
+    const toLocalDateTimeString = (date) => {
+        const offset = date.getTimezoneOffset() * 60000;
+        const localDate = new Date(date.getTime() - offset);
+        return localDate.toISOString().slice(0, 16);
+    };
     const [formData, setFormData] = useState({
         eventId,
         roundNumber,
         name: `Preliminary Round ${roundNumber}`,
         motion: "",
-        checkInStartTime: new Date().toISOString().slice(0, 16),
-        checkInEndTime: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
+        checkInStartTime: toLocalDateTimeString(new Date()),
+        checkInEndTime: toLocalDateTimeString(new Date(Date.now() + 3600000)),
         status: "UPCOMING"
     });
 
@@ -629,11 +636,20 @@ function EditEventModal({ event, onClose, onUpdated }) {
 function EditRoundModal({ round, onClose, onUpdated }) {
     const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
+    // Helper function to convert UTC to local datetime-local format
+    const toLocalDateTimeString = (utcDate) => {
+        if (!utcDate) return "";
+        const date = new Date(utcDate);
+        const offset = date.getTimezoneOffset() * 60000;
+        const localDate = new Date(date.getTime() - offset);
+        return localDate.toISOString().slice(0, 16);
+    };
+
     const [formData, setFormData] = useState({
         name: round.name || "",
         motion: round.motion || "",
-        checkInStartTime: round.checkInStartTime ? new Date(round.checkInStartTime).toISOString().slice(0, 16) : "",
-        checkInEndTime: round.checkInEndTime ? new Date(round.checkInEndTime).toISOString().slice(0, 16) : "",
+        checkInStartTime: toLocalDateTimeString(round.checkInStartTime),
+        checkInEndTime: toLocalDateTimeString(round.checkInEndTime),
         status: round.status || "UPCOMING",
         pairingsPublished: round.pairingsPublished || false
     });
