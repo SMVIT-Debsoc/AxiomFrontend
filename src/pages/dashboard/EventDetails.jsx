@@ -1,6 +1,6 @@
-import {useState, useEffect} from "react";
-import {useParams, Link} from "react-router-dom";
-import {motion} from "framer-motion";
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     Calendar,
     MapPin,
@@ -14,14 +14,14 @@ import {
     ArrowRight,
     ChevronRight,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {EventApi, RoundApi, CheckInApi} from "../../services/api";
-import {useToast} from "../../components/ui/Toast";
-import {cn} from "../../lib/utils";
+import { useAuth } from "@clerk/clerk-react";
+import { EventApi, RoundApi, CheckInApi } from "../../services/api";
+import { useToast } from "../../components/ui/Toast";
+import { cn } from "../../lib/utils";
 
 export default function EventDetails() {
-    const {id} = useParams();
-    const {getToken} = useAuth();
+    const { id } = useParams();
+    const { getToken } = useAuth();
     const toast = useToast();
     const [event, setEvent] = useState(null);
     const [rounds, setRounds] = useState([]);
@@ -29,6 +29,8 @@ export default function EventDetails() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [checkingIn, setCheckingIn] = useState(false);
+    const [isEnrolled, setIsEnrolled] = useState(false);
+    const [enrolling, setEnrolling] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -47,6 +49,12 @@ export default function EventDetails() {
                 } else {
                     setError("Event not found");
                 }
+
+                // Check enrollment status
+                const enrollmentResponse = await EventApi.getEnrollmentStatus(id, token);
+                if (enrollmentResponse.success) {
+                    setIsEnrolled(enrollmentResponse.isEnrolled);
+                }
             } catch (err) {
                 console.error("Failed to fetch event details", err);
                 setError(err.message);
@@ -57,6 +65,21 @@ export default function EventDetails() {
 
         fetchData();
     }, [id, getToken]);
+
+    const handleEnroll = async () => {
+        try {
+            setEnrolling(true);
+            const token = await getToken();
+            await EventApi.enroll(id, token);
+            toast.success("Enrolled Successfully!", "You have been registered for this event.");
+            setIsEnrolled(true);
+        } catch (err) {
+            console.error("Enrollment failed", err);
+            toast.error("Enrollment Failed", err.message);
+        } finally {
+            setEnrolling(false);
+        }
+    };
 
     const handleCheckIn = async (roundId) => {
         try {
@@ -126,8 +149,8 @@ export default function EventDetails() {
                                     event.status === "ONGOING"
                                         ? "bg-green-500/10 text-green-500 border-green-500/20"
                                         : event.status === "UPCOMING"
-                                        ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                                        : "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                                            ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                            : "bg-gray-500/10 text-gray-500 border-gray-500/20"
                                 )}
                             >
                                 {event.status}
@@ -141,12 +164,41 @@ export default function EventDetails() {
                                     ).toLocaleDateString()}`}
                             </span>
                         </div>
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                            {event.name}
-                        </h1>
-                        <p className="text-lg text-muted-foreground max-w-2xl">
-                            {event.description || "No description available"}
-                        </p>
+                        <div className="flex flex-col md:flex-row gap-6 md:items-start justify-between">
+                            <div>
+                                <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                                    {event.name}
+                                </h1>
+                                <p className="text-lg text-muted-foreground max-w-2xl">
+                                    {event.description ||
+                                        "No description available"}
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleEnroll}
+                                disabled={isEnrolled || enrolling}
+                                className={cn(
+                                    "px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 min-w-[140px]",
+                                    isEnrolled
+                                        ? "bg-green-500 cursor-default hover:translate-y-0 hover:shadow-lg"
+                                        : "bg-primary hover:bg-primary/90"
+                                )}
+                            >
+                                {isEnrolled ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <CheckCircle2 className="w-5 h-5" />
+                                        Enrolled
+                                    </span>
+                                ) : enrolling ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Enrolling...
+                                    </span>
+                                ) : (
+                                    "Enroll Now"
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -175,8 +227,8 @@ export default function EventDetails() {
             <div className="min-h-[400px]">
                 {activeTab === "overview" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         className="grid md:grid-cols-3 gap-6"
                     >
                         <div className="md:col-span-2 space-y-6">
@@ -216,14 +268,14 @@ export default function EventDetails() {
                                                         <p className="text-xs text-muted-foreground">
                                                             {round.checkInStartTime
                                                                 ? `Check-in: ${new Date(
-                                                                      round.checkInStartTime
-                                                                  ).toLocaleTimeString(
-                                                                      [],
-                                                                      {
-                                                                          hour: "2-digit",
-                                                                          minute: "2-digit",
-                                                                      }
-                                                                  )}`
+                                                                    round.checkInStartTime
+                                                                ).toLocaleTimeString(
+                                                                    [],
+                                                                    {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    }
+                                                                )}`
                                                                 : "Time TBD"}
                                                         </p>
                                                     </div>
@@ -235,9 +287,9 @@ export default function EventDetails() {
                                                             "COMPLETED"
                                                             ? "bg-green-500/10 text-green-500"
                                                             : round.status ===
-                                                              "ONGOING"
-                                                            ? "bg-amber-500/10 text-amber-500"
-                                                            : "bg-primary/10 text-primary"
+                                                                "ONGOING"
+                                                                ? "bg-amber-500/10 text-amber-500"
+                                                                : "bg-primary/10 text-primary"
                                                     )}
                                                 >
                                                     {round.status}
@@ -305,8 +357,8 @@ export default function EventDetails() {
 
                 {activeTab === "rounds" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         className="space-y-4"
                     >
                         {rounds.length === 0 ? (
@@ -330,8 +382,8 @@ export default function EventDetails() {
                                             <p className="text-muted-foreground text-sm">
                                                 {round.checkInStartTime
                                                     ? `Check-in: ${new Date(
-                                                          round.checkInStartTime
-                                                      ).toLocaleString()}`
+                                                        round.checkInStartTime
+                                                    ).toLocaleString()}`
                                                     : "Time TBD"}
                                             </p>
                                         </div>
@@ -342,9 +394,9 @@ export default function EventDetails() {
                                                     round.status === "COMPLETED"
                                                         ? "bg-green-500/10 text-green-500"
                                                         : round.status ===
-                                                          "ONGOING"
-                                                        ? "bg-amber-500/10 text-amber-500"
-                                                        : "bg-primary/10 text-primary"
+                                                            "ONGOING"
+                                                            ? "bg-amber-500/10 text-amber-500"
+                                                            : "bg-primary/10 text-primary"
                                                 )}
                                             >
                                                 {round.status}
@@ -380,8 +432,8 @@ export default function EventDetails() {
 
                 {activeTab === "participants" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         className="text-center py-8"
                     >
                         <Users className="w-16 h-16 mx-auto mb-4 text-primary/50" />
@@ -403,8 +455,8 @@ export default function EventDetails() {
 
                 {activeTab === "results" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         className="text-center py-8"
                     >
                         <Trophy className="w-16 h-16 mx-auto mb-4 text-amber-500/50" />

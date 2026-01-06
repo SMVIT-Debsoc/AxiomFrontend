@@ -78,6 +78,9 @@ export const EventApi = {
     getById: (id, token) => apiRequest(`/events/${id}`, "GET", null, token),
     getParticipants: (eventId, token) =>
         apiRequest(`/events/${eventId}/participants`, "GET", null, token),
+    enroll: (id, token) => apiRequest(`/events/${id}/enroll`, "POST", null, token),
+    getEnrollmentStatus: (id, token) =>
+        apiRequest(`/events/${id}/enrollment-status`, "GET", null, token),
 };
 
 // Round Endpoints
@@ -91,7 +94,7 @@ export const RoundApi = {
 // Check-In Endpoints
 export const CheckInApi = {
     checkIn: (roundId, token) =>
-        apiRequest("/check-in", "POST", {roundId}, token),
+        apiRequest("/check-in", "POST", { roundId }, token),
     getMyStatus: (roundId, token) =>
         apiRequest(`/check-in/round/${roundId}/me`, "GET", null, token),
 };
@@ -123,11 +126,11 @@ export const AdminApi = {
     getProfile: (token) => apiRequest("/admin/me", "GET", null, token),
 
     onboard: (secretKey, token) =>
-        apiRequest("/admin/onboard", "POST", {secretKey}, token),
+        apiRequest("/admin/onboard", "POST", { secretKey }, token),
     getDashboard: (token) => apiRequest("/admin/dashboard", "GET", null, token),
     // Public endpoint - validates secret key before sign-in
     validateKey: (secretKey) =>
-        apiRequest("/admin/validate-key", "POST", {secretKey}, null),
+        apiRequest("/admin/validate-key", "POST", { secretKey }, null),
 
     // Advanced Admin Controls
     createEvent: (data, token) => apiRequest("/events", "POST", data, token),
@@ -159,7 +162,7 @@ export const AdminApi = {
         apiRequest(
             `/pairing/${roundId}/allocate-rooms`,
             "POST",
-            {timeSlots},
+            { timeSlots },
             token
         ),
 
