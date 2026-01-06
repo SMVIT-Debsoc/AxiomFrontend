@@ -1080,6 +1080,7 @@ function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms, loading }
                                                 startTime: e.target.value,
                                             })
                                         }
+                                        style={{ colorScheme: "dark" }}
                                         className="w-full pl-10 pr-4 py-3 rounded-xl bg-muted/30 border border-border focus:border-purple-500 outline-none transition-all"
                                     />
                                 </div>

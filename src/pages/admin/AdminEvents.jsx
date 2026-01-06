@@ -323,6 +323,7 @@ function CreateEventModal({ onClose, onCreated }) {
                                         startDate: e.target.value,
                                     })
                                 }
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -339,6 +340,7 @@ function CreateEventModal({ onClose, onCreated }) {
                                         endDate: e.target.value,
                                     })
                                 }
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -364,7 +366,7 @@ function CreateEventModal({ onClose, onCreated }) {
         </div>
     );
 }
- 
+
 function EditEventModal({ event, onClose, onUpdated }) {
     const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
@@ -375,7 +377,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
         endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : "",
         status: event.status || "UPCOMING"
     });
- 
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -393,7 +395,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
             setLoading(false);
         }
     };
- 
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <motion.div
@@ -404,10 +406,10 @@ function EditEventModal({ event, onClose, onUpdated }) {
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold">Edit Event</h2>
                     <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
-                         <Trash2 className="w-5 h-5 text-muted-foreground rotate-45" />
+                        <Trash2 className="w-5 h-5 text-muted-foreground rotate-45" />
                     </button>
                 </div>
- 
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="text-sm font-medium mb-1 block">Event Name</label>
@@ -419,7 +421,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
                             className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                         />
                     </div>
- 
+
                     <div>
                         <label className="text-sm font-medium mb-1 block">Description</label>
                         <textarea
@@ -429,7 +431,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
                             rows={3}
                         />
                     </div>
- 
+
                     <div className="grid md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium mb-1 block">Start Date</label>
@@ -438,6 +440,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
                                 required
                                 value={formData.startDate}
                                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -448,11 +451,12 @@ function EditEventModal({ event, onClose, onUpdated }) {
                                 required
                                 value={formData.endDate}
                                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
                     </div>
- 
+
                     <div>
                         <label className="text-sm font-medium mb-1 block">Status</label>
                         <select
@@ -465,7 +469,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
                             <option value="COMPLETED">Completed</option>
                         </select>
                     </div>
- 
+
                     <div className="flex gap-3 pt-6 border-t border-border mt-6">
                         <button
                             type="button"

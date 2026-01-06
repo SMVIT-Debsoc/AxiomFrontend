@@ -449,6 +449,7 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
                                 required
                                 value={formData.checkInStartTime}
                                 onChange={(e) => setFormData({ ...formData, checkInStartTime: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -459,6 +460,7 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
                                 required
                                 value={formData.checkInEndTime}
                                 onChange={(e) => setFormData({ ...formData, checkInEndTime: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -557,6 +559,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
                                 required
                                 value={formData.startDate}
                                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -567,6 +570,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
                                 required
                                 value={formData.endDate}
                                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -681,6 +685,7 @@ function EditRoundModal({ round, onClose, onUpdated }) {
                                 required
                                 value={formData.checkInStartTime}
                                 onChange={(e) => setFormData({ ...formData, checkInStartTime: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -691,6 +696,7 @@ function EditRoundModal({ round, onClose, onUpdated }) {
                                 required
                                 value={formData.checkInEndTime}
                                 onChange={(e) => setFormData({ ...formData, checkInEndTime: e.target.value })}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
