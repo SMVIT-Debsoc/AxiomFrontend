@@ -1,56 +1,53 @@
-import { useState, useEffect } from "react";
-import { useUser, useAuth } from "@clerk/clerk-react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { UserApi } from "../services/api";
+import {useState, useEffect} from "react";
+import {useUser, useAuth} from "@clerk/clerk-react";
+import {useNavigate, useLocation} from "react-router-dom";
+import {UserApi} from "../services/api";
 
-export function OnboardingGuard({ children }) {
-    const { user, isLoaded } = useUser();
-    const { getToken } = useAuth();
+/**
+ * OnboardingGuard - Handles user authentication and syncs user to backend.
+ * Does NOT handle profile completion redirects (that's ProfileCompletionGuard's job).
+ */
+export function OnboardingGuard({children}) {
+    const {user, isLoaded} = useUser();
+    const {getToken} = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [checking, setChecking] = useState(true);
 
     useEffect(() => {
-        const syncAndCheckProfile = async () => {
+        const syncUser = async () => {
             if (isLoaded && user) {
                 try {
                     const token = await getToken();
-
                     // Sync user with backend database (creates user if doesn't exist)
-                    const response = await UserApi.getProfile(token);
-
-                    // Check if profile is complete based on backend response
-                    const isProfileComplete =
-                        response.user?.isProfileComplete ||
-                        (response.user?.college && response.user?.mobile);
-
-
-                    const isOnProfilePage =
-                        location.pathname === "/dashboard/profile";
-
-                    if (!isProfileComplete && !isOnProfilePage) {
-                        // If profile is incomplete and not on profile page, redirect to profile
-                        navigate("/dashboard/profile", { replace: true });
-                    }
+                    await UserApi.getProfile(token);
                 } catch (error) {
                     console.error("Error syncing user profile:", error);
-                    // Even if sync fails, allow access but user might need to complete profile
                 }
                 setChecking(false);
             } else if (isLoaded && !user) {
+                // Not authenticated, redirect to login
+                navigate("/login-select", {replace: true});
                 setChecking(false);
             }
         };
 
-        syncAndCheckProfile();
-    }, [isLoaded, user, location.pathname, navigate, getToken]);
+        syncUser();
+    }, [isLoaded, user, navigate, getToken]);
 
     if (checking || !isLoaded) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background">
-                Loading...
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-muted-foreground">Loading...</p>
+                </div>
             </div>
         );
+    }
+
+    if (!user) {
+        return null;
     }
 
     return children;

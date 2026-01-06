@@ -29,13 +29,21 @@ export default function Leaderboard() {
                 const token = await getToken();
                 const response = await StatsApi.getLeaderboard(token, null, 50);
 
-                // Handle the API response structure
-                const data = response.leaderboard || response.data || [];
-                setLeaderboard(data);
+                // Handle the API response structure - backend returns data.leaderboard
+                let data = [];
+                if (response.success && response.data?.leaderboard) {
+                    data = response.data.leaderboard;
+                } else if (Array.isArray(response.leaderboard)) {
+                    data = response.leaderboard;
+                } else if (Array.isArray(response.data)) {
+                    data = response.data;
+                }
+                setLeaderboard(Array.isArray(data) ? data : []);
                 setError(null);
             } catch (err) {
                 console.error("Failed to fetch leaderboard:", err);
                 setError(err.message);
+                setLeaderboard([]);
             } finally {
                 setLoading(false);
             }
@@ -45,11 +53,12 @@ export default function Leaderboard() {
     }, [getToken]);
 
     // Filter leaderboard based on search query
-    const filteredLeaderboard = leaderboard.filter((user) => {
-        const name = `${user.firstName || ""} ${
-            user.lastName || ""
+    const filteredLeaderboard = leaderboard.filter((entry) => {
+        const userData = entry.user || entry;
+        const name = `${userData.firstName || ""} ${
+            userData.lastName || ""
         }`.toLowerCase();
-        const college = (user.college || "").toLowerCase();
+        const college = (userData.college || "").toLowerCase();
         const query = searchQuery.toLowerCase();
         return name.includes(query) || college.includes(query);
     });
@@ -58,20 +67,35 @@ export default function Leaderboard() {
     const top3 = filteredLeaderboard.slice(0, 3);
     const hasTop3 = top3.length >= 3;
 
-    // Generate avatar URL based on name
-    const getAvatarUrl = (user) => {
-        const seed = `${user.firstName || "User"}${user.lastName || ""}`;
+    // Generate avatar URL based on name (handles nested user object)
+    const getAvatarUrl = (entry) => {
+        const userData = entry.user || entry;
+        const seed = `${userData.firstName || "User"}${
+            userData.lastName || ""
+        }`;
         return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
             seed
         )}`;
     };
 
-    // Get display name
-    const getDisplayName = (user) => {
+    // Get display name (handles nested user object)
+    const getDisplayName = (entry) => {
+        const userData = entry.user || entry;
         return (
-            `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+            `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
             "Anonymous"
         );
+    };
+
+    // Get stats (handles nested stats object)
+    const getStats = (entry) => {
+        return entry.stats || {totalScore: 0, winRate: 0, wins: 0, losses: 0};
+    };
+
+    // Get college (handles nested user object)
+    const getCollege = (entry) => {
+        const userData = entry.user || entry;
+        return userData.college || "N/A";
     };
 
     if (loading) {
@@ -157,7 +181,9 @@ export default function Leaderboard() {
                                         {getDisplayName(top3[1])}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {top3[1].totalScore?.toFixed(0) || 0}{" "}
+                                        {getStats(top3[1]).totalScore?.toFixed(
+                                            0
+                                        ) || 0}{" "}
                                         pts
                                     </p>
                                 </div>
@@ -181,7 +207,9 @@ export default function Leaderboard() {
                                         {getDisplayName(top3[0])}
                                     </p>
                                     <p className="text-primary font-bold">
-                                        {top3[0].totalScore?.toFixed(0) || 0}{" "}
+                                        {getStats(top3[0]).totalScore?.toFixed(
+                                            0
+                                        ) || 0}{" "}
                                         pts
                                     </p>
                                 </div>
@@ -205,7 +233,9 @@ export default function Leaderboard() {
                                         {getDisplayName(top3[2])}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {top3[2].totalScore?.toFixed(0) || 0}{" "}
+                                        {getStats(top3[2]).totalScore?.toFixed(
+                                            0
+                                        ) || 0}{" "}
                                         pts
                                     </p>
                                 </div>
@@ -251,9 +281,13 @@ export default function Leaderboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {filteredLeaderboard.map((user, index) => (
+                                    {filteredLeaderboard.map((entry, index) => (
                                         <motion.tr
-                                            key={user.id || index}
+                                            key={
+                                                entry.user?.id ||
+                                                entry.id ||
+                                                index
+                                            }
                                             initial={{opacity: 0}}
                                             animate={{opacity: 1}}
                                             className="group hover:bg-muted/20 transition-colors"
@@ -267,34 +301,40 @@ export default function Leaderboard() {
                                                             : "text-muted-foreground"
                                                     )}
                                                 >
-                                                    #{index + 1}
+                                                    #{entry.rank || index + 1}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <img
-                                                        src={getAvatarUrl(user)}
+                                                        src={getAvatarUrl(
+                                                            entry
+                                                        )}
                                                         className="w-8 h-8 rounded-full bg-muted"
                                                         alt={getDisplayName(
-                                                            user
+                                                            entry
                                                         )}
                                                     />
                                                     <span className="font-semibold">
-                                                        {getDisplayName(user)}
+                                                        {getDisplayName(entry)}
                                                     </span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 hidden md:table-cell text-muted-foreground">
-                                                {user.college || "N/A"}
+                                                {getCollege(entry)}
                                             </td>
                                             <td className="px-6 py-4 text-right font-medium text-muted-foreground">
-                                                {user.winRate?.toFixed(0) || 0}%
+                                                {getStats(
+                                                    entry
+                                                ).winRate?.toFixed(0) || 0}
+                                                %
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <span className="font-bold text-foreground">
-                                                    {user.totalScore?.toFixed(
-                                                        0
-                                                    ) || 0}
+                                                    {getStats(
+                                                        entry
+                                                    ).totalScore?.toFixed(0) ||
+                                                        0}
                                                 </span>
                                             </td>
                                         </motion.tr>

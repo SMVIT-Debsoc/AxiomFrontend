@@ -274,9 +274,42 @@ export default function DashboardLayout() {
                 </header>
 
                 {/* Scrollable Main Content */}
-                <main className="flex-1 overflow-y-auto p-6 md:p-10 scroll-smooth">
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10 pb-24 md:pb-10 scroll-smooth">
                     <Outlet />
                 </main>
+
+                {/* Mobile Bottom Navigation */}
+                <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 safe-area-inset-bottom">
+                    <div className="flex items-center justify-around py-2">
+                        {currentSidebarItems.slice(0, 5).map((item) => {
+                            const isActive = location.pathname === item.path;
+                            const Icon = item.icon;
+
+                            return (
+                                <Link
+                                    key={item.path}
+                                    to={item.path}
+                                    className={cn(
+                                        "flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all",
+                                        isActive
+                                            ? "text-primary"
+                                            : "text-muted-foreground"
+                                    )}
+                                >
+                                    <Icon
+                                        className={cn(
+                                            "w-5 h-5",
+                                            isActive && "scale-110"
+                                        )}
+                                    />
+                                    <span className="text-[10px] font-medium">
+                                        {item.label}
+                                    </span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </nav>
             </div>
         </div>
     );

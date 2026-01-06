@@ -10,14 +10,20 @@ import {
     MapPin,
     Loader2,
     XCircle,
+    ChevronRight,
+    Shield,
+    Swords,
 } from "lucide-react";
 import {useAuth, useUser} from "@clerk/clerk-react";
 import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
 import {Link} from "react-router-dom";
+import {useToast} from "../../components/ui/Toast";
+import {cn} from "../../lib/utils";
 
 export default function DashboardHome() {
     const {getToken} = useAuth();
     const {user: clerkUser, isLoaded: clerkLoaded} = useUser();
+    const toast = useToast();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [userData, setUserData] = useState(null);
@@ -25,6 +31,7 @@ export default function DashboardHome() {
     const [nextDebate, setNextDebate] = useState(null);
     const [checkInStatus, setCheckInStatus] = useState(null);
     const [currentRound, setCurrentRound] = useState(null);
+    const [checkingIn, setCheckingIn] = useState(false);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
