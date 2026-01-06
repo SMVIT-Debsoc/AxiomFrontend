@@ -1,6 +1,6 @@
-import {useState, useEffect, useCallback} from "react";
-import {useParams, useNavigate} from "react-router-dom";
-import {motion} from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     Users,
     Activity,
@@ -18,14 +18,15 @@ import {
     Search,
     Wifi,
     WifiOff,
+    Trophy,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {AdminApi} from "../../services/api";
-import {useRoundSocket} from "../../hooks/useSocket";
+import { useAuth } from "@clerk/clerk-react";
+import { AdminApi } from "../../services/api";
+import { useRoundSocket } from "../../hooks/useSocket";
 
 export default function AdminRoundManagement() {
-    const {id: roundId} = useParams();
-    const {getToken} = useAuth();
+    const { id: roundId } = useParams();
+    const { getToken } = useAuth();
     const navigate = useNavigate();
 
     const [round, setRound] = useState(null);
@@ -92,7 +93,7 @@ export default function AdminRoundManagement() {
                 if (existing) {
                     return prev.map((ci) =>
                         ci.userId === data.userId
-                            ? {...ci, status: data.status}
+                            ? { ...ci, status: data.status }
                             : ci
                     );
                 }
@@ -121,12 +122,12 @@ export default function AdminRoundManagement() {
                 prev.map((d) =>
                     d.id === data.debateId
                         ? {
-                              ...d,
-                              winnerId: data.winnerId,
-                              debater1Score: data.debater1Score,
-                              debater2Score: data.debater2Score,
-                              status: "COMPLETED",
-                          }
+                            ...d,
+                            winnerId: data.winnerId,
+                            debater1Score: data.debater1Score,
+                            debater2Score: data.debater2Score,
+                            status: "COMPLETED",
+                        }
                         : d
                 )
             );
@@ -154,8 +155,9 @@ export default function AdminRoundManagement() {
                 token
             );
             if (response.success) {
+                const eliminatedMsg = response.data.eliminated ? ` (${response.data.eliminated} users eliminated based on losses)` : "";
                 alert(
-                    `Successfully generated ${response.data.pairingsCreated} pairings!`
+                    `Successfully generated ${response.data.pairingsCreated} pairings!${eliminatedMsg}`
                 );
                 await fetchRoundData();
                 setActiveTab("debates");
@@ -200,11 +202,11 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/rounds/${roundId}`,
                 "PUT",
-                {status: newStatus},
+                { status: newStatus },
                 token
             );
             if (response.success) {
-                setRound({...round, status: newStatus});
+                setRound({ ...round, status: newStatus });
             }
         } catch (error) {
             alert("Failed to update round status");
@@ -218,28 +220,34 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/check-in/round/${roundId}/user/${userId}`,
                 "PUT",
-                {status: newStatus},
+                { status: newStatus },
                 token
             );
             if (response.success) {
-                setCheckIns(
-                    checkIns.map((ci) =>
-                        ci.userId === userId ? {...ci, status: newStatus} : ci
-                    )
-                );
+                setCheckIns((prev) => {
+                    const exists = prev.find((ci) => ci.userId === userId);
+                    if (exists) {
+                        return prev.map((ci) =>
+                            ci.userId === userId ? { ...ci, status: newStatus } : ci
+                        );
+                    } else {
+                        // Add new check-in record purely for UI state
+                        return [...prev, { userId, status: newStatus }];
+                    }
+                });
             }
         } catch (error) {
             alert("Failed to update check-in status");
         }
     };
 
-    const handleAssignJudge = async (debateId, adjudicatorId) => {
+    const handleAssignJudge = async (debateId, judgeName) => {
         try {
             const token = await getToken();
             const response = await AdminApi.apiRequest(
                 `/debates/${debateId}`,
                 "PUT",
-                {adjudicatorId},
+                { judgeName }, // Send as judgeName string
                 token
             );
             if (response.success) {
@@ -247,20 +255,21 @@ export default function AdminRoundManagement() {
                     debates.map((d) =>
                         d.id === debateId
                             ? {
-                                  ...d,
-                                  adjudicatorId,
-                                  adjudicator: users.find(
-                                      (u) => u.id === adjudicatorId
-                                  ),
-                              }
+                                ...d,
+                                judgeName,
+                                // Clear adjudicatorId relation if switching to manual name
+                                adjudicatorId: null,
+                                adjudicator: null,
+                            }
                             : d
                     )
                 );
             } else {
-                alert(response.error || "Failed to assign judge");
+                // Silent fail or toast error
+                console.error(response.error || "Failed to assign judge");
             }
         } catch (error) {
-            alert("Error assigning judge");
+            console.error("Error assigning judge", error);
         }
     };
 
@@ -271,11 +280,11 @@ export default function AdminRoundManagement() {
             const response = await AdminApi.apiRequest(
                 `/rounds/${roundId}`,
                 "PUT",
-                {pairingsPublished: newStatus},
+                { pairingsPublished: newStatus },
                 token
             );
             if (response.success) {
-                setRound({...round, pairingsPublished: newStatus});
+                setRound({ ...round, pairingsPublished: newStatus });
                 alert(
                     newStatus
                         ? "Pairings are now visible to debaters!"
@@ -322,11 +331,10 @@ export default function AdminRoundManagement() {
                     {debates.length > 0 && (
                         <button
                             onClick={handleTogglePublish}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-                                round.pairingsPublished
-                                    ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                                    : "bg-amber-500 text-white hover:bg-amber-600"
-                            }`}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${round.pairingsPublished
+                                ? "bg-green-500/10 text-green-500 border border-green-500/20"
+                                : "bg-amber-500 text-white hover:bg-amber-600"
+                                }`}
                         >
                             <Users className="w-4 h-4" />
                             {round.pairingsPublished
@@ -422,21 +430,20 @@ export default function AdminRoundManagement() {
                         </div>
                         <div className="pt-2">
                             <span
-                                className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
-                                    new Date() > new Date(round.checkInEndTime)
-                                        ? "bg-red-500/10 text-red-500"
-                                        : new Date() <
-                                          new Date(round.checkInStartTime)
+                                className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${new Date() > new Date(round.checkInEndTime)
+                                    ? "bg-red-500/10 text-red-500"
+                                    : new Date() <
+                                        new Date(round.checkInStartTime)
                                         ? "bg-blue-500/10 text-blue-500"
                                         : "bg-green-500/10 text-green-500"
-                                }`}
+                                    }`}
                             >
                                 {new Date() > new Date(round.checkInEndTime)
                                     ? "Window Closed"
                                     : new Date() <
-                                      new Date(round.checkInStartTime)
-                                    ? "Window Not Open"
-                                    : "Window Open"}
+                                        new Date(round.checkInStartTime)
+                                        ? "Window Not Open"
+                                        : "Window Open"}
                             </span>
                         </div>
                     </div>
@@ -448,34 +455,42 @@ export default function AdminRoundManagement() {
                 <div className="flex">
                     <button
                         onClick={() => setActiveTab("checkins")}
-                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${
-                            activeTab === "checkins"
-                                ? "border-purple-500 text-purple-500 bg-purple-500/5"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
+                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${activeTab === "checkins"
+                            ? "border-purple-500 text-purple-500 bg-purple-500/5"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                            }`}
                     >
                         Check-ins ({checkIns.length})
                     </button>
                     <button
                         onClick={() => setActiveTab("debates")}
-                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${
-                            activeTab === "debates"
-                                ? "border-purple-500 text-purple-500 bg-purple-500/5"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
+                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${activeTab === "debates"
+                            ? "border-purple-500 text-purple-500 bg-purple-500/5"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                            }`}
                     >
                         Debates ({debates.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("results")}
+                        className={`px-6 py-4 font-bold text-sm transition-all border-b-2 ${activeTab === "results"
+                            ? "border-purple-500 text-purple-500 bg-purple-500/5"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                            }`}
+                    >
+                        Results
                     </button>
                 </div>
                 <div className="relative group px-4 pb-2 md:pb-0">
                     <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-purple-500 transition-colors" />
                     <input
                         type="text"
-                        placeholder={`Search ${
-                            activeTab === "checkins"
-                                ? "participants"
+                        placeholder={`Search ${activeTab === "checkins"
+                            ? "participants"
+                            : activeTab === "results"
+                                ? "results"
                                 : "debates"
-                        }...`}
+                            }...`}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10 pr-4 py-2 bg-muted/30 border border-border rounded-xl text-xs focus:border-purple-500 outline-none transition-all w-full md:w-64"
@@ -484,7 +499,7 @@ export default function AdminRoundManagement() {
             </div>
 
             {/* Tab Content */}
-            {activeTab === "checkins" ? (
+            {activeTab === "checkins" && (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                     <div className="p-4 bg-muted/20 border-b border-border flex items-center justify-between">
                         <div className="flex gap-4 text-xs font-bold uppercase text-muted-foreground">
@@ -581,12 +596,11 @@ export default function AdminRoundManagement() {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
                                                         <span
-                                                            className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
-                                                                status ===
+                                                            className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${status ===
                                                                 "PRESENT"
-                                                                    ? "bg-green-500/10 text-green-500"
-                                                                    : "bg-red-500/10 text-red-500"
-                                                            }`}
+                                                                ? "bg-green-500/10 text-green-500"
+                                                                : "bg-red-500/10 text-red-500"
+                                                                }`}
                                                         >
                                                             {status}
                                                         </span>
@@ -626,7 +640,9 @@ export default function AdminRoundManagement() {
                         </div>
                     )}
                 </div>
-            ) : (
+            )}
+
+            {activeTab === "debates" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {debates.length === 0 ? (
                         <div className="md:col-span-2 p-12 text-center border-2 border-dashed border-border rounded-3xl">
@@ -697,22 +713,28 @@ export default function AdminRoundManagement() {
 
                                     <div className="flex items-center justify-between gap-4 mb-6">
                                         <div className="flex-1 text-center">
+                                            <span className="inline-block mb-2 px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/20 text-blue-500 uppercase tracking-widest">
+                                                GOV
+                                            </span>
                                             <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-2 text-blue-500 font-bold">
                                                 {debate.debater1.firstName[0]}
                                             </div>
                                             <p className="font-bold text-sm truncate">
-                                                {debate.debater1.firstName}
+                                                {debate.debater1.firstName} {debate.debater1.lastName}
                                             </p>
                                         </div>
-                                        <div className="font-black text-2xl text-muted-foreground/20 italic">
+                                        <div className="font-black text-2xl text-muted-foreground/20 italic pt-6">
                                             VS
                                         </div>
                                         <div className="flex-1 text-center">
+                                            <span className="inline-block mb-2 px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/20 text-purple-500 uppercase tracking-widest">
+                                                OPP
+                                            </span>
                                             <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-2 text-purple-500 font-bold">
                                                 {debate.debater2.firstName[0]}
                                             </div>
                                             <p className="font-bold text-sm truncate">
-                                                {debate.debater2.firstName}
+                                                {debate.debater2.firstName} {debate.debater2.lastName}
                                             </p>
                                         </div>
                                     </div>
@@ -722,25 +744,18 @@ export default function AdminRoundManagement() {
                                             <Users className="w-3 h-3" />{" "}
                                             Adjudicator (Judge)
                                         </label>
-                                        <select
-                                            value={debate.adjudicatorId || ""}
+                                        <input
+                                            type="text"
+                                            value={debate.judgeName || ""}
                                             onChange={(e) =>
                                                 handleAssignJudge(
                                                     debate.id,
                                                     e.target.value
                                                 )
                                             }
-                                            className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:border-purple-500 outline-none transition-all"
-                                        >
-                                            <option value="">
-                                                Select Judge...
-                                            </option>
-                                            {users.map((u) => (
-                                                <option key={u.id} value={u.id}>
-                                                    {u.firstName} {u.lastName}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            placeholder="Enter Judge Name"
+                                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:border-purple-500 outline-none transition-all placeholder:text-muted-foreground/50"
+                                        />
                                     </div>
 
                                     <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
@@ -748,11 +763,11 @@ export default function AdminRoundManagement() {
                                             <Clock className="w-3" />
                                             {debate.startTime
                                                 ? new Date(
-                                                      debate.startTime
-                                                  ).toLocaleTimeString([], {
-                                                      hour: "2-digit",
-                                                      minute: "2-digit",
-                                                  })
+                                                    debate.startTime
+                                                ).toLocaleTimeString([], {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })
                                                 : "TBD"}
                                         </div>
                                         <button
@@ -771,11 +786,182 @@ export default function AdminRoundManagement() {
                     )}
                 </div>
             )}
-        </div>
+
+            {activeTab === "results" && (
+                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                                <tr>
+                                    <th className="px-6 py-4 text-left">
+                                        Matchup
+                                    </th>
+                                    <th className="px-6 py-4 text-center">
+                                        Scores
+                                    </th>
+                                    <th className="px-6 py-4 text-left">
+                                        Winner
+                                    </th>
+                                    <th className="px-6 py-4 text-right">
+                                        Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {debates.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan="4"
+                                            className="px-6 py-12 text-center text-muted-foreground"
+                                        >
+                                            No results available.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    debates
+                                        .filter(
+                                            (debate) =>
+                                                !searchTerm ||
+                                                `${debate.debater1.firstName} ${debate.debater1.lastName}`
+                                                    .toLowerCase()
+                                                    .includes(
+                                                        searchTerm.toLowerCase()
+                                                    ) ||
+                                                `${debate.debater2.firstName} ${debate.debater2.lastName}`
+                                                    .toLowerCase()
+                                                    .includes(
+                                                        searchTerm.toLowerCase()
+                                                    )
+                                        )
+                                        .map((debate) => (
+                                            <tr
+                                                key={debate.id}
+                                                className="hover:bg-muted/20 transition-colors"
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="text-sm font-medium">
+                                                            <span
+                                                                className={
+                                                                    debate.winnerId ===
+                                                                        debate.debater1Id
+                                                                        ? "text-green-500 font-bold"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                {
+                                                                    debate
+                                                                        .debater1
+                                                                        .firstName
+                                                                }
+                                                            </span>
+                                                            <span className="text-muted-foreground mx-2">
+                                                                vs
+                                                            </span>
+                                                            <span
+                                                                className={
+                                                                    debate.winnerId ===
+                                                                        debate.debater2Id
+                                                                        ? "text-green-500 font-bold"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                {
+                                                                    debate
+                                                                        .debater2
+                                                                        .firstName
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {debate.status ===
+                                                        "COMPLETED" ? (
+                                                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted/50 border border-border text-xs font-mono">
+                                                            <span
+                                                                className={
+                                                                    debate.winnerId ===
+                                                                        debate.debater1Id
+                                                                        ? "text-green-500 font-bold"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                {
+                                                                    debate.debater1Score
+                                                                }
+                                                            </span>
+                                                            <span className="text-muted-foreground">
+                                                                -
+                                                            </span>
+                                                            <span
+                                                                className={
+                                                                    debate.winnerId ===
+                                                                        debate.debater2Id
+                                                                        ? "text-green-500 font-bold"
+                                                                        : ""
+                                                                }
+                                                            >
+                                                                {
+                                                                    debate.debater2Score
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground italic">
+                                                            Pending
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {debate.status ===
+                                                        "COMPLETED" ? (
+                                                        <div className="flex items-center gap-2 text-sm font-bold text-purple-500">
+                                                            <Trophy className="w-3.5 h-3.5" />
+                                                            {debate.winnerId ===
+                                                                debate.debater1Id
+                                                                ? debate
+                                                                    .debater1
+                                                                    .firstName
+                                                                : debate
+                                                                    .debater2
+                                                                    .firstName}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            -
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={() =>
+                                                            navigate(
+                                                                `/admin/results/${debate.id}`
+                                                            )
+                                                        }
+                                                        className="text-xs font-bold text-purple-500 hover:text-purple-600 transition-colors"
+                                                    >
+                                                        {debate.status ===
+                                                            "COMPLETED"
+                                                            ? "Edit"
+                                                            : "Enter Result"}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )
+            }
+        </div >
     );
 }
 
-function AllocateRoomsModal({onClose, onConfirm, totalDebates, rooms}) {
+function AllocateRoomsModal({ onClose, onConfirm, totalDebates, rooms }) {
     const [selectedRoomIds, setSelectedRoomIds] = useState(
         rooms.map((r) => r.id)
     );
@@ -818,14 +1004,14 @@ function AllocateRoomsModal({onClose, onConfirm, totalDebates, rooms}) {
     for (let i = 0; i < Math.min(debatesPerRoom, 3); i++) {
         const start = new Date(baseTime + i * totalInterval * 60000);
         const end = new Date(start.getTime() + debateDuration * 60000);
-        previewSlots.push({start, end});
+        previewSlots.push({ start, end });
     }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
             <motion.div
-                initial={{opacity: 0, scale: 0.95, y: 20}}
-                animate={{opacity: 1, scale: 1, y: 0}}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
                 className="bg-card border border-border rounded-3xl p-8 w-full max-w-2xl shadow-2xl my-8"
             >
                 <div className="flex items-center justify-between mb-6">
@@ -993,20 +1179,18 @@ function AllocateRoomsModal({onClose, onConfirm, totalDebates, rooms}) {
                                         key={room.id}
                                         type="button"
                                         onClick={() => toggleRoom(room.id)}
-                                        className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left flex items-center gap-2 ${
-                                            selectedRoomIds.includes(room.id)
-                                                ? "bg-purple-500/10 border-purple-500 text-purple-500"
-                                                : "bg-muted/30 border-border text-muted-foreground"
-                                        }`}
+                                        className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all text-left flex items-center gap-2 ${selectedRoomIds.includes(room.id)
+                                            ? "bg-purple-500/10 border-purple-500 text-purple-500"
+                                            : "bg-muted/30 border-border text-muted-foreground"
+                                            }`}
                                     >
                                         <div
-                                            className={`w-2 h-2 rounded-full ${
-                                                selectedRoomIds.includes(
-                                                    room.id
-                                                )
-                                                    ? "bg-purple-500"
-                                                    : "bg-muted-foreground/30"
-                                            }`}
+                                            className={`w-2 h-2 rounded-full ${selectedRoomIds.includes(
+                                                room.id
+                                            )
+                                                ? "bg-purple-500"
+                                                : "bg-muted-foreground/30"
+                                                }`}
                                         />
                                         {room.name}
                                     </button>
