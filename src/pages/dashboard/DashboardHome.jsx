@@ -1,5 +1,5 @@
-import {useState, useEffect} from "react";
-import {motion} from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
     Trophy,
     TrendingUp,
@@ -14,15 +14,15 @@ import {
     Shield,
     Swords,
 } from "lucide-react";
-import {useAuth, useUser} from "@clerk/clerk-react";
-import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
-import {Link} from "react-router-dom";
-import {useToast} from "../../components/ui/Toast";
-import {cn} from "../../lib/utils";
+import { useAuth, useUser } from "@clerk/clerk-react";
+import { UserApi, EventApi, DebateApi, CheckInApi } from "../../services/api";
+import { Link } from "react-router-dom";
+import { useToast } from "../../components/ui/Toast";
+import { cn } from "../../lib/utils";
 
 export default function DashboardHome() {
-    const {getToken} = useAuth();
-    const {user: clerkUser, isLoaded: clerkLoaded} = useUser();
+    const { getToken } = useAuth();
+    const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
     const toast = useToast();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -53,17 +53,30 @@ export default function DashboardHome() {
                     const event = events[0];
                     setActiveEvent(event);
 
-                    // Find ongoing round
-                    const ongoingRound = event.rounds?.find(
+                    // Find active or latest round (Ongoing > Upcoming > Latest)
+                    let targetRound = event.rounds?.find(
                         (r) => r.status === "ONGOING"
                     );
-                    if (ongoingRound) {
-                        setCurrentRound(ongoingRound);
+
+                    if (!targetRound) {
+                        // If no ongoing round, find the next upcoming one
+                        targetRound = event.rounds?.find(
+                            (r) => r.status === "UPCOMING"
+                        );
+                    }
+
+                    if (!targetRound && event.rounds?.length > 0) {
+                        // If no active rounds, show the latest round (e.g. last completed)
+                        targetRound = event.rounds[event.rounds.length - 1];
+                    }
+
+                    if (targetRound) {
+                        setCurrentRound(targetRound);
 
                         // Check user's check-in status for this round
                         try {
                             const checkIn = await CheckInApi.getMyStatus(
-                                ongoingRound.id,
+                                targetRound.id,
                                 token
                             );
                             setCheckInStatus(checkIn.checkIn);
@@ -137,10 +150,10 @@ export default function DashboardHome() {
             value:
                 userData?.stats?.totalDebates > 0
                     ? `${Math.round(
-                          (userData.stats.wonDebates /
-                              userData.stats.totalDebates) *
-                              100
-                      )}%`
+                        (userData.stats.wonDebates /
+                            userData.stats.totalDebates) *
+                        100
+                    )}%`
                     : "0%",
             color: "text-violet-600",
         },
@@ -201,8 +214,8 @@ export default function DashboardHome() {
             {/* Active Event Card */}
             {activeEvent ? (
                 <motion.div
-                    initial={{y: 20, opacity: 0}}
-                    animate={{y: 0, opacity: 1}}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
                     className="bg-[#F97316] text-white p-6 rounded-3xl shadow-lg relative overflow-hidden"
                 >
                     <Link
@@ -260,11 +273,10 @@ export default function DashboardHome() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div
-                                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                        checkInStatus?.status === "PRESENT"
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center ${checkInStatus?.status === "PRESENT"
                                             ? "bg-green-100 text-green-600"
                                             : "bg-amber-100 text-amber-600"
-                                    }`}
+                                        }`}
                                 >
                                     {checkInStatus?.status === "PRESENT" ? (
                                         <CheckCircle2 className="w-6 h-6" />
@@ -291,11 +303,10 @@ export default function DashboardHome() {
                                 </div>
                             </div>
                             <span
-                                className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                    checkInStatus?.status === "PRESENT"
+                                className={`px-3 py-1 rounded-full text-xs font-bold ${checkInStatus?.status === "PRESENT"
                                         ? "bg-green-100 text-green-700"
                                         : "bg-amber-100 text-amber-700"
-                                }`}
+                                    }`}
                             >
                                 {checkInStatus?.status === "PRESENT"
                                     ? "Present"
@@ -325,7 +336,7 @@ export default function DashboardHome() {
                                         console.error("Check-in error:", err);
                                         toast.error(
                                             err.message ||
-                                                "Failed to check in. Please try again."
+                                            "Failed to check in. Please try again."
                                         );
                                     } finally {
                                         setCheckingIn(false);
