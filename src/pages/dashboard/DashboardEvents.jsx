@@ -98,12 +98,14 @@ export default function DashboardEvents() {
                                             {event.name}
                                         </h3>
                                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                                            {event.description || "Debate Competition"}
+                                            {event.description ||
+                                                "Debate Competition"}
                                         </p>
                                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
                                             <span className="flex items-center gap-1">
                                                 <Trophy className="w-3.5 h-3.5" />
-                                                {event.rounds?.length || 0} Rounds
+                                                {event.rounds?.length || 0}{" "}
+                                                Rounds
                                             </span>
                                         </div>
                                     </div>
