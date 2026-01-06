@@ -26,10 +26,12 @@ export default function AdminEventDetails() {
     const [event, setEvent] = useState(null);
     const [rounds, setRounds] = useState([]);
     const [stats, setStats] = useState(null);
+    const [participants, setParticipants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showCreateRound, setShowCreateRound] = useState(false);
     const [showEditEvent, setShowEditEvent] = useState(false);
     const [editingRound, setEditingRound] = useState(null);
+    const [activeTab, setActiveTab] = useState("rounds");
 
     useEffect(() => {
         fetchData();
@@ -38,15 +40,17 @@ export default function AdminEventDetails() {
     const fetchData = async () => {
         try {
             const token = await getToken();
-            const [eventRes, roundsRes, statsRes] = await Promise.all([
+            const [eventRes, roundsRes, statsRes, participantsRes] = await Promise.all([
                 EventApi.getById(eventId, token),
                 AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token),
-                AdminApi.apiRequest(`/stats/event/${eventId}`, "GET", null, token)
+                AdminApi.apiRequest(`/stats/event/${eventId}`, "GET", null, token),
+                EventApi.getParticipants(eventId, token)
             ]);
 
             if (eventRes.success) setEvent(eventRes.event);
             if (roundsRes.success) setRounds(roundsRes.rounds || []);
             if (statsRes.success) setStats(statsRes.data);
+            if (participantsRes.success) setParticipants(participantsRes.participants || []);
         } catch (error) {
             console.error("Failed to fetch event data:", error);
         } finally {
@@ -144,90 +148,163 @@ export default function AdminEventDetails() {
                 ))}
             </div>
 
-            {/* Content Tabs-like sections */}
-            <div className="grid lg:grid-cols-3 gap-8">
-                {/* Rounds List */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold">Tournament Rounds</h2>
-                    </div>
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-6 border-b border-border mb-6">
+                <button
+                    onClick={() => setActiveTab("rounds")}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "rounds"
+                        ? "border-purple-500 text-purple-500"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                >
+                    Rounds
+                </button>
+                <button
+                    onClick={() => setActiveTab("participants")}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "participants"
+                        ? "border-purple-500 text-purple-500"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                >
+                    Participants ({participants.length})
+                </button>
+            </div>
 
-                    {rounds.length === 0 ? (
-                        <div className="p-12 text-center border-2 border-dashed border-border rounded-3xl bg-muted/20">
-                            <Activity className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-20" />
-                            <h3 className="font-bold text-lg">No Rounds Created</h3>
-                            <p className="text-muted-foreground mb-6">Start your tournament by creating the first round.</p>
-                            <button
-                                onClick={() => setShowCreateRound(true)}
-                                className="px-4 py-2 rounded-lg bg-muted border border-border hover:bg-muted/80 font-medium transition-all"
-                            >
-                                Create Round 1
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {rounds.map((round, idx) => (
-                                <Link
-                                    key={round.id}
-                                    to={`/admin/rounds/${round.id}`}
-                                    className="block group bg-card border border-border rounded-2xl p-4 hover:border-purple-500/50 transition-all"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center font-bold text-purple-500">
-                                                {round.roundNumber}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-bold">{round.name}</h4>
-                                                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                                                    <span className="flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" />
-                                                        {new Date(round.checkInStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                    <span className={`w-1 h-1 rounded-full bg-border`} />
-                                                    <span className={`capitalize ${round.status === 'ONGOING' ? 'text-green-500' :
-                                                        round.status === 'COMPLETED' ? 'text-blue-500' : 'text-muted-foreground'
-                                                        }`}>
-                                                        {round.status.toLowerCase()}
-                                                    </span>
-                                                    {round.pairingsPublished && (
-                                                        <>
-                                                            <span className="w-1 h-1 rounded-full bg-border" />
-                                                            <span className="text-[10px] font-bold uppercase text-green-500">Public</span>
-                                                        </>
-                                                    )}
+            <div className="grid lg:grid-cols-3 gap-8">
+                {/* Main Content Column */}
+                <div className="lg:col-span-2 space-y-6">
+                    {activeTab === "rounds" ? (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold">Tournament Rounds</h2>
+                            </div>
+
+                            {rounds.length === 0 ? (
+                                <div className="p-12 text-center border-2 border-dashed border-border rounded-3xl bg-muted/20">
+                                    <Activity className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-20" />
+                                    <h3 className="font-bold text-lg">No Rounds Created</h3>
+                                    <p className="text-muted-foreground mb-6">Start your tournament by creating the first round.</p>
+                                    <button
+                                        onClick={() => setShowCreateRound(true)}
+                                        className="px-4 py-2 rounded-lg bg-muted border border-border hover:bg-muted/80 font-medium transition-all"
+                                    >
+                                        Create Round 1
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {rounds.map((round) => (
+                                        <Link
+                                            key={round.id}
+                                            to={`/admin/rounds/${round.id}`}
+                                            className="block group bg-card border border-border rounded-2xl p-4 hover:border-purple-500/50 transition-all"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center font-bold text-purple-500">
+                                                        {round.roundNumber}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold">{round.name}</h4>
+                                                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                                                            <span className="flex items-center gap-1">
+                                                                <Clock className="w-3 h-3" />
+                                                                {new Date(round.checkInStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                            <span className={`w-1 h-1 rounded-full bg-border`} />
+                                                            <span className={`capitalize ${round.status === 'ONGOING' ? 'text-green-500' :
+                                                                round.status === 'COMPLETED' ? 'text-blue-500' : 'text-muted-foreground'
+                                                                }`}>
+                                                                {round.status.toLowerCase()}
+                                                            </span>
+                                                            {round.pairingsPublished && (
+                                                                <>
+                                                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                                                    <span className="text-[10px] font-bold uppercase text-green-500">Public</span>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setEditingRound(round);
+                                                        }}
+                                                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
+                                                    >
+                                                        <Settings className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            handleDeleteRound(round.id);
+                                                        }}
+                                                        className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                    >
+                                                        <XCircle className="w-4 h-4" />
+                                                    </button>
+                                                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-purple-500 transition-colors" />
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setEditingRound(round);
-                                                }}
-                                                className="p-2 rounded-lg hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
-                                            >
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    handleDeleteRound(round.id);
-                                                }}
-                                                className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-purple-500 transition-colors" />
-                                        </div>
+                                            {round.motion && (
+                                                <div className="mt-4 p-3 rounded-lg bg-muted/50 text-sm italic text-muted-foreground border-l-2 border-purple-500/30">
+                                                    "{round.motion}"
+                                                </div>
+                                            )}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold">Enrolled Participants</h2>
+                            </div>
+
+                            {participants.length === 0 ? (
+                                <div className="p-12 text-center border-2 border-dashed border-border rounded-3xl bg-muted/20">
+                                    <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-20" />
+                                    <h3 className="font-bold text-lg">No Participants Yet</h3>
+                                    <p className="text-muted-foreground">Share the event code or link to get debaters to enroll.</p>
+                                </div>
+                            ) : (
+                                <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-left">Debater</th>
+                                                    <th className="px-6 py-4 text-left">College</th>
+                                                    <th className="px-6 py-4 text-left">Email</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border">
+                                                {participants.map((p) => (
+                                                    <tr key={p.id} className="hover:bg-muted/20 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center font-bold text-purple-500 text-xs">
+                                                                    {p.firstName?.[0]}{p.lastName?.[0]}
+                                                                </div>
+                                                                <span className="font-medium">{p.firstName} {p.lastName}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                                                            {p.college || "N/A"}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                                                            {p.email}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    {round.motion && (
-                                        <div className="mt-4 p-3 rounded-lg bg-muted/50 text-sm italic text-muted-foreground border-l-2 border-purple-500/30">
-                                            "{round.motion}"
-                                        </div>
-                                    )}
-                                </Link>
-                            ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
