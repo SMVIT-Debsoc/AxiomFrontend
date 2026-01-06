@@ -262,17 +262,17 @@ export default function Profile({isOnboarding = false}) {
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
                 {/* Banner/Header */}
-                <div className="bg-[#6D28D9] p-6 text-white flex items-center gap-4">
+                <div className="bg-[#6D28D9] p-4 text-white flex items-center gap-3">
                     <img
                         src={user.imageUrl}
                         alt="Profile"
-                        className="w-20 h-20 rounded-full border-4 border-white/20 object-cover"
+                        className="w-14 h-14 rounded-full border-2 border-white/20 object-cover flex-shrink-0"
                     />
-                    <div>
-                        <h2 className="text-xl font-bold">
+                    <div className="min-w-0 flex-1">
+                        <h2 className="text-lg font-bold truncate">
                             {formData.firstName} {formData.lastName}
                         </h2>
-                        <p className="opacity-80">
+                        <p className="opacity-80 text-sm truncate">
                             {user.primaryEmailAddress?.emailAddress}
                         </p>
                     </div>
