@@ -421,7 +421,15 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
         setLoading(true);
         try {
             const token = await getToken();
-            const response = await AdminApi.createRound(formData, token);
+
+            // Convert datetime-local strings to ISO format
+            const submitData = {
+                ...formData,
+                checkInStartTime: formData.checkInStartTime ? new Date(formData.checkInStartTime).toISOString() : null,
+                checkInEndTime: formData.checkInEndTime ? new Date(formData.checkInEndTime).toISOString() : null
+            };
+
+            const response = await AdminApi.createRound(submitData, token);
             if (response.success) {
                 onCreated();
             } else {
@@ -659,7 +667,15 @@ function EditRoundModal({ round, onClose, onUpdated }) {
         setLoading(true);
         try {
             const token = await getToken();
-            const response = await AdminApi.updateRound(round.id, formData, token);
+
+            // Convert datetime-local strings to ISO format
+            const submitData = {
+                ...formData,
+                checkInStartTime: formData.checkInStartTime ? new Date(formData.checkInStartTime).toISOString() : null,
+                checkInEndTime: formData.checkInEndTime ? new Date(formData.checkInEndTime).toISOString() : null
+            };
+
+            const response = await AdminApi.updateRound(round.id, submitData, token);
             if (response.success) {
                 onUpdated();
             } else {
