@@ -40,17 +40,32 @@ export default function AdminEventDetails() {
     const fetchData = async () => {
         try {
             const token = await getToken();
-            const [eventRes, roundsRes, statsRes, participantsRes] = await Promise.all([
+            const results = await Promise.allSettled([
                 EventApi.getById(eventId, token),
                 AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token),
                 AdminApi.apiRequest(`/stats/event/${eventId}`, "GET", null, token),
                 EventApi.getParticipants(eventId, token)
             ]);
 
-            if (eventRes.success) setEvent(eventRes.event);
-            if (roundsRes.success) setRounds(roundsRes.rounds || []);
-            if (statsRes.success) setStats(statsRes.data);
-            if (participantsRes.success) setParticipants(participantsRes.participants || []);
+            const [eventRes, roundsRes, statsRes, participantsRes] = results;
+
+            if (eventRes.status === "fulfilled" && eventRes.value.success) {
+                setEvent(eventRes.value.event);
+            } else {
+                console.error("Event fetch failed:", eventRes);
+            }
+
+            if (roundsRes.status === "fulfilled" && roundsRes.value.success) {
+                setRounds(roundsRes.value.rounds || []);
+            }
+
+            if (statsRes.status === "fulfilled" && statsRes.value.success) {
+                setStats(statsRes.value.data);
+            }
+
+            if (participantsRes.status === "fulfilled" && participantsRes.value.success) {
+                setParticipants(participantsRes.value.participants || []);
+            }
         } catch (error) {
             console.error("Failed to fetch event data:", error);
         } finally {

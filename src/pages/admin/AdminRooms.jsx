@@ -29,16 +29,19 @@ export default function AdminRooms() {
     const fetchRooms = async () => {
         try {
             const token = await getToken();
-            const [roomsRes, usersRes] = await Promise.all([
+            const results = await Promise.allSettled([
                 AdminApi.apiRequest("/rooms", "GET", null, token),
                 AdminApi.apiRequest("/users", "GET", null, token)
             ]);
 
-            if (roomsRes.success) {
-                setRooms(roomsRes.rooms || []);
+            const [roomsRes, usersRes] = results;
+
+            if (roomsRes.status === "fulfilled" && roomsRes.value.success) {
+                setRooms(roomsRes.value.rooms || []);
             }
-            if (usersRes.success) {
-                setUsers(usersRes.users || []);
+
+            if (usersRes.status === "fulfilled" && usersRes.value.success) {
+                setUsers(usersRes.value.users || []);
             }
         } catch (error) {
             console.error("Failed to fetch rooms/users:", error);
