@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useCallback} from "react";
 import {useParams, Link} from "react-router-dom";
 import {motion} from "framer-motion";
 import {
@@ -11,6 +11,7 @@ import {
     TrendingUp,
     XCircle,
     CheckCircle2,
+    RefreshCw,
 } from "lucide-react";
 import {useAuth, useUser} from "@clerk/clerk-react";
 import {
@@ -21,6 +22,7 @@ import {
     StatsApi,
 } from "../../services/api";
 import {cn} from "../../lib/utils";
+import {useEventSocket} from "../../hooks/useSocket";
 
 export default function Results() {
     const {eventId} = useParams();
@@ -35,63 +37,76 @@ export default function Results() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("my-results");
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const token = await getToken();
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const token = await getToken();
 
-                // Fetch event details with rounds
-                const eventResponse = await EventApi.get(eventId, token);
-                if (eventResponse.success && eventResponse.event) {
-                    setEvent(eventResponse.event);
-                    setRounds(eventResponse.event.rounds || []);
-                }
-
-                // Fetch current user
-                const userResponse = await UserApi.getProfile(token);
-                if (userResponse.success) {
-                    setCurrentUser(userResponse.user);
-                }
-
-                // Fetch my debates
-                try {
-                    const debatesResponse = await DebateApi.getMyDebates(token);
-                    if (debatesResponse.success) {
-                        setMyDebates(debatesResponse.debates || []);
-                    }
-                } catch (e) {
-                    // No debates yet
-                }
-
-                // Fetch leaderboard
-                try {
-                    const leaderboardResponse = await StatsApi.getLeaderboard(
-                        token,
-                        eventId,
-                        100
-                    );
-                    if (
-                        leaderboardResponse.success &&
-                        leaderboardResponse.data?.leaderboard
-                    ) {
-                        setLeaderboard(leaderboardResponse.data.leaderboard);
-                    } else if (Array.isArray(leaderboardResponse.leaderboard)) {
-                        setLeaderboard(leaderboardResponse.leaderboard);
-                    }
-                } catch (e) {
-                    // Leaderboard might not be available
-                    setLeaderboard([]);
-                }
-            } catch (err) {
-                console.error("Failed to fetch results", err);
-            } finally {
-                setLoading(false);
+            // Fetch event details with rounds
+            const eventResponse = await EventApi.get(eventId, token);
+            if (eventResponse.success && eventResponse.event) {
+                setEvent(eventResponse.event);
+                setRounds(eventResponse.event.rounds || []);
             }
-        };
 
-        fetchData();
+            // Fetch current user
+            const userResponse = await UserApi.getProfile(token);
+            if (userResponse.success) {
+                setCurrentUser(userResponse.user);
+            }
+
+            // Fetch my debates
+            try {
+                const debatesResponse = await DebateApi.getMyDebates(token);
+                if (debatesResponse.success) {
+                    setMyDebates(debatesResponse.debates || []);
+                }
+            } catch (e) {
+                // No debates yet
+            }
+
+            // Fetch leaderboard
+            try {
+                const leaderboardResponse = await StatsApi.getLeaderboard(
+                    token,
+                    eventId,
+                    100
+                );
+                if (
+                    leaderboardResponse.success &&
+                    leaderboardResponse.data?.leaderboard
+                ) {
+                    setLeaderboard(leaderboardResponse.data.leaderboard);
+                } else if (Array.isArray(leaderboardResponse.leaderboard)) {
+                    setLeaderboard(leaderboardResponse.leaderboard);
+                }
+            } catch (e) {
+                // Leaderboard might not be available
+                setLeaderboard([]);
+            }
+        } catch (err) {
+            console.error("Failed to fetch results", err);
+        } finally {
+            setLoading(false);
+        }
     }, [eventId, getToken]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    // Real-time updates via WebSocket
+    useEventSocket(eventId, {
+        onDebateResult: (data) => {
+            console.log("[Socket] Debate result received:", data);
+            // Refresh results when a debate is completed
+            fetchData();
+        },
+        onLeaderboardUpdate: () => {
+            console.log("[Socket] Leaderboard updated");
+            fetchData();
+        },
+    });
 
     // Filter debates for completed rounds of this event
     const getMyEventDebates = () => {

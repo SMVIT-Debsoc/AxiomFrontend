@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useCallback} from "react";
 import {motion} from "framer-motion";
 import {
     Trophy,
@@ -9,10 +9,12 @@ import {
     ArrowDown,
     User,
     Loader2,
+    RefreshCw,
 } from "lucide-react";
 import {cn} from "../../lib/utils";
 import {useAuth} from "@clerk/clerk-react";
 import {StatsApi} from "../../services/api";
+import {useSocket, SocketEvents} from "../../hooks/useSocket";
 
 export default function Leaderboard() {
     const {getToken} = useAuth();
@@ -21,36 +23,47 @@ export default function Leaderboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const {subscribe} = useSocket();
+
+    const fetchLeaderboard = useCallback(async () => {
+        try {
+            setLoading(true);
+            const token = await getToken();
+            const response = await StatsApi.getLeaderboard(token, null, 50);
+
+            // Handle the API response structure - backend returns data.leaderboard
+            let data = [];
+            if (response.success && response.data?.leaderboard) {
+                data = response.data.leaderboard;
+            } else if (Array.isArray(response.leaderboard)) {
+                data = response.leaderboard;
+            } else if (Array.isArray(response.data)) {
+                data = response.data;
+            }
+            setLeaderboard(Array.isArray(data) ? data : []);
+            setError(null);
+        } catch (err) {
+            console.error("Failed to fetch leaderboard:", err);
+            setError(err.message);
+            setLeaderboard([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [getToken]);
 
     useEffect(() => {
-        const fetchLeaderboard = async () => {
-            try {
-                setLoading(true);
-                const token = await getToken();
-                const response = await StatsApi.getLeaderboard(token, null, 50);
-
-                // Handle the API response structure - backend returns data.leaderboard
-                let data = [];
-                if (response.success && response.data?.leaderboard) {
-                    data = response.data.leaderboard;
-                } else if (Array.isArray(response.leaderboard)) {
-                    data = response.leaderboard;
-                } else if (Array.isArray(response.data)) {
-                    data = response.data;
-                }
-                setLeaderboard(Array.isArray(data) ? data : []);
-                setError(null);
-            } catch (err) {
-                console.error("Failed to fetch leaderboard:", err);
-                setError(err.message);
-                setLeaderboard([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchLeaderboard();
-    }, [getToken]);
+    }, [fetchLeaderboard]);
+
+    // Subscribe to leaderboard updates
+    useEffect(() => {
+        const unsubscribe = subscribe(SocketEvents.LEADERBOARD_UPDATE, () => {
+            console.log("[Socket] Leaderboard update received");
+            fetchLeaderboard();
+        });
+
+        return () => unsubscribe?.();
+    }, [subscribe, fetchLeaderboard]);
 
     // Filter leaderboard based on search query
     const filteredLeaderboard = leaderboard.filter((entry) => {
