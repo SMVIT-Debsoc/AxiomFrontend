@@ -61,7 +61,8 @@ export const UserApi = {
             null,
             token
         ),
-    deleteParticipant: (id, token) => apiRequest(`/users/${id}`, "DELETE", null, token),
+    deleteParticipant: (id, token) =>
+        apiRequest(`/users/${id}`, "DELETE", null, token),
 };
 
 // Event Endpoints
@@ -75,6 +76,8 @@ export const EventApi = {
         ),
     get: (id, token) => apiRequest(`/events/${id}`, "GET", null, token),
     getById: (id, token) => apiRequest(`/events/${id}`, "GET", null, token),
+    getParticipants: (eventId, token) =>
+        apiRequest(`/events/${eventId}/participants`, "GET", null, token),
 };
 
 // Round Endpoints
@@ -85,11 +88,10 @@ export const RoundApi = {
     getById: (id, token) => apiRequest(`/rounds/${id}`, "GET", null, token),
 };
 
-
 // Check-In Endpoints
 export const CheckInApi = {
     checkIn: (roundId, token) =>
-        apiRequest("/check-in", "POST", { roundId }, token),
+        apiRequest("/check-in", "POST", {roundId}, token),
     getMyStatus: (roundId, token) =>
         apiRequest(`/check-in/round/${roundId}/me`, "GET", null, token),
 };
@@ -121,27 +123,30 @@ export const AdminApi = {
     getProfile: (token) => apiRequest("/admin/me", "GET", null, token),
 
     onboard: (secretKey, token) =>
-        apiRequest("/admin/onboard", "POST", { secretKey }, token),
+        apiRequest("/admin/onboard", "POST", {secretKey}, token),
     getDashboard: (token) => apiRequest("/admin/dashboard", "GET", null, token),
     // Public endpoint - validates secret key before sign-in
     validateKey: (secretKey) =>
-        apiRequest("/admin/validate-key", "POST", { secretKey }, null),
+        apiRequest("/admin/validate-key", "POST", {secretKey}, null),
 
     // Advanced Admin Controls
     createEvent: (data, token) => apiRequest("/events", "POST", data, token),
     updateEvent: (id, data, token) =>
         apiRequest(`/events/${id}`, "PUT", data, token),
-    deleteEvent: (id, token) => apiRequest(`/events/${id}`, "DELETE", null, token),
+    deleteEvent: (id, token) =>
+        apiRequest(`/events/${id}`, "DELETE", null, token),
 
     createRound: (data, token) => apiRequest("/rounds", "POST", data, token),
     updateRound: (id, data, token) =>
         apiRequest(`/rounds/${id}`, "PUT", data, token),
-    deleteRound: (id, token) => apiRequest(`/rounds/${id}`, "DELETE", null, token),
+    deleteRound: (id, token) =>
+        apiRequest(`/rounds/${id}`, "DELETE", null, token),
 
     createRoom: (data, token) => apiRequest("/rooms", "POST", data, token),
     updateRoom: (id, data, token) =>
         apiRequest(`/rooms/${id}`, "PUT", data, token),
-    deleteRoom: (id, token) => apiRequest(`/rooms/${id}`, "DELETE", null, token),
+    deleteRoom: (id, token) =>
+        apiRequest(`/rooms/${id}`, "DELETE", null, token),
 
     // Matchmaking / Pairings
     previewPairings: (roundId, token) =>
@@ -151,9 +156,13 @@ export const AdminApi = {
     generatePowerMatchPairings: (roundId, token) =>
         apiRequest(`/pairing/${roundId}/power-match`, "POST", null, token),
     allocateRooms: (roundId, timeSlots, token) =>
-        apiRequest(`/pairing/${roundId}/allocate-rooms`, "POST", { timeSlots }, token),
+        apiRequest(
+            `/pairing/${roundId}/allocate-rooms`,
+            "POST",
+            {timeSlots},
+            token
+        ),
 
     submitResult: (debateId, data, token) =>
         apiRequest(`/debates/${debateId}/result`, "POST", data, token),
 };
-

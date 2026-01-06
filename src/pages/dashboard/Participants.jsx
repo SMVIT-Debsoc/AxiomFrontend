@@ -11,7 +11,7 @@ import {
     CheckCircle,
 } from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
-import {UserApi, EventApi} from "../../services/api";
+import {EventApi} from "../../services/api";
 import {cn} from "../../lib/utils";
 
 export default function Participants() {
@@ -36,14 +36,13 @@ export default function Participants() {
                     setEvent(eventResponse.event);
                 }
 
-                // Fetch all users (participants)
-                const usersResponse = await UserApi.list(token, 500, 0);
-                if (usersResponse.success) {
-                    // Filter only users with complete profiles
-                    const registeredUsers = (usersResponse.users || []).filter(
-                        (user) => user.isProfileComplete
-                    );
-                    setParticipants(registeredUsers);
+                // Fetch event participants (users who have checked in)
+                const participantsResponse = await EventApi.getParticipants(
+                    eventId,
+                    token
+                );
+                if (participantsResponse.success) {
+                    setParticipants(participantsResponse.participants || []);
                 }
             } catch (err) {
                 console.error("Failed to fetch participants", err);

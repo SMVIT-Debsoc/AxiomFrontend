@@ -4,7 +4,9 @@ import {motion, AnimatePresence} from "framer-motion";
 import {Menu, X, Rocket} from "lucide-react";
 import {useAuth, UserButton} from "@clerk/clerk-react";
 import {cn} from "../lib/utils";
-import {AdminApi} from "../services/api";
+
+const API_BASE_URL =
+    import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
@@ -21,7 +23,7 @@ export default function Navbar() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    // Check if user is admin
+    // Check if user is admin (silent - 403 expected for non-admins)
     useEffect(() => {
         const checkAdminStatus = async () => {
             if (!isSignedIn) {
@@ -30,8 +32,19 @@ export default function Navbar() {
             }
             try {
                 const token = await getToken();
-                const response = await AdminApi.getProfile(token);
-                setIsAdmin(response.success && response.admin);
+                // Use direct fetch to avoid console error logging for expected 403
+                const response = await fetch(`${API_BASE_URL}/admin/me`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setIsAdmin(data.success && !!data.admin);
+                } else {
+                    setIsAdmin(false);
+                }
             } catch (e) {
                 setIsAdmin(false);
             }
