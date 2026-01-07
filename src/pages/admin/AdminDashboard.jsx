@@ -76,7 +76,7 @@ export default function AdminDashboard() {
     return (
         <div className="space-y-8 pb-10">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold">Admin Dashboard</h1>
                     <p className="text-muted-foreground mt-1">
@@ -85,7 +85,7 @@ export default function AdminDashboard() {
                 </div>
                 <Link
                     to="/admin/events"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors w-full md:w-auto"
                 >
                     <Plus className="w-4 h-4" />
                     Create Event
@@ -184,35 +184,96 @@ export default function AdminDashboard() {
                             <p>No events yet</p>
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            {recentEvents.map((event) => (
-                                <Link
-                                    key={event.id}
-                                    to={`/admin/events/${event.id}`}
-                                    className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                            <Calendar className="w-5 h-5 text-purple-500" />
+                        <>
+                            {/* Desktop View */}
+                            <div className="hidden md:block overflow-x-auto no-scrollbar">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
+                                            <th className="px-4 pb-3 font-semibold">Event</th>
+                                            <th className="px-4 pb-3 font-semibold text-right whitespace-nowrap">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {recentEvents.map((event) => (
+                                            <tr key={event.id} className="group hover:bg-muted/50 transition-colors">
+                                                <td className="px-4 py-3">
+                                                    <Link
+                                                        to={`/admin/events/${event.id}`}
+                                                        className="flex items-center gap-3"
+                                                    >
+                                                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                                            <Calendar className="w-5 h-5 text-purple-500" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="font-medium truncate">{event.name}</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {new Date(
+                                                                    event.startDate
+                                                                ).toLocaleDateString()}
+                                                            </p>
+                                                        </div>
+                                                    </Link>
+                                                </td>
+                                                <td className="px-4 py-3 text-right whitespace-nowrap">
+                                                    <Link to={`/admin/events/${event.id}`}>
+                                                        <span
+                                                            className={`text-xs font-bold px-2 py-1 rounded ${event.status ===
+                                                                "ONGOING"
+                                                                ? "bg-green-500/10 text-green-500"
+                                                                : event.status ===
+                                                                    "UPCOMING"
+                                                                    ? "bg-blue-500/10 text-blue-500"
+                                                                    : "bg-gray-500/10 text-gray-500"
+                                                                }`}
+                                                        >
+                                                            {event.status}
+                                                        </span>
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile View */}
+                            <div className="md:hidden space-y-3">
+                                {recentEvents.map((event) => (
+                                    <Link
+                                        key={event.id}
+                                        to={`/admin/events/${event.id}`}
+                                        className="block p-3 rounded-xl bg-muted/30 border border-border hover:bg-muted/50 transition-all"
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                                    <Calendar className="w-4 h-4 text-purple-500" />
+                                                </div>
+                                                <span
+                                                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${event.status ===
+                                                        "ONGOING"
+                                                        ? "bg-green-500/10 text-green-500"
+                                                        : event.status ===
+                                                            "UPCOMING"
+                                                            ? "bg-blue-500/10 text-blue-500"
+                                                            : "bg-gray-500/10 text-gray-500"
+                                                        }`}
+                                                >
+                                                    {event.status}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-medium">{event.name}</p>
+                                        <div className="space-y-1">
+                                            <p className="font-medium text-sm truncate">{event.name}</p>
                                             <p className="text-xs text-muted-foreground">
                                                 {new Date(event.startDate).toLocaleDateString()}
                                             </p>
                                         </div>
-                                    </div>
-                                    <span className={`text-xs font-bold px-2 py-1 rounded ${event.status === "ONGOING"
-                                        ? "bg-green-500/10 text-green-500"
-                                        : event.status === "UPCOMING"
-                                            ? "bg-blue-500/10 text-blue-500"
-                                            : "bg-gray-500/10 text-gray-500"
-                                        }`}>
-                                        {event.status}
-                                    </span>
-                                </Link>
-                            ))}
-                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             </div>
@@ -234,40 +295,87 @@ export default function AdminDashboard() {
                         <p>No debates recorded recently</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
-                                    <th className="pb-3 font-semibold">Debaters</th>
-                                    <th className="pb-3 font-semibold">Round</th>
-                                    <th className="pb-3 font-semibold">Status</th>
-                                    <th className="pb-3 font-semibold text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {recentDebates.slice(0, 5).map((debate) => (
-                                    <tr key={debate.id} className="group">
-                                        <td className="py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex -space-x-2">
-                                                    <div className="w-8 h-8 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-blue-500">
-                                                        {debate.debater1.firstName?.[0] || "U"}
+                    <>
+                        {/* Desktop View */}
+                        <div className="hidden md:block overflow-x-auto no-scrollbar">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
+                                        <th className="px-4 pb-3 font-semibold whitespace-nowrap">Debaters</th>
+                                        <th className="px-4 pb-3 font-semibold whitespace-nowrap">Round</th>
+                                        <th className="px-4 pb-3 font-semibold whitespace-nowrap">Status</th>
+                                        <th className="px-4 pb-3 font-semibold text-right whitespace-nowrap">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {recentDebates.slice(0, 5).map((debate) => (
+                                        <tr key={debate.id} className="group hover:bg-muted/50 transition-colors">
+                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex -space-x-2">
+                                                        {debate.debater1.imageUrl ? (
+                                                            <img
+                                                                src={debate.debater1.imageUrl}
+                                                                alt={debate.debater1.firstName}
+                                                                className="w-8 h-8 rounded-full border-2 border-card object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-8 h-8 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-blue-500">
+                                                                {debate.debater1.firstName?.[0] || "U"}
+                                                            </div>
+                                                        )}
+                                                        {debate.debater2.imageUrl ? (
+                                                            <img
+                                                                src={debate.debater2.imageUrl}
+                                                                alt={debate.debater2.firstName}
+                                                                className="w-8 h-8 rounded-full border-2 border-card object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-8 h-8 rounded-full bg-purple-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-purple-500">
+                                                                {debate.debater2.firstName?.[0] || "U"}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div className="w-8 h-8 rounded-full bg-purple-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-purple-500">
-                                                        {debate.debater2.firstName?.[0] || "U"}
-                                                    </div>
+                                                    <span className="text-sm font-medium">
+                                                        {debate.debater1.firstName} vs {debate.debater2.firstName}
+                                                    </span>
                                                 </div>
-                                                <span className="text-sm font-medium">
-                                                    {debate.debater1.firstName} vs {debate.debater2.firstName}
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                <span className="text-sm text-muted-foreground">
+                                                    Round {debate.round.roundNumber}
                                                 </span>
-                                            </div>
-                                        </td>
-                                        <td className="py-4">
-                                            <span className="text-sm text-muted-foreground">
-                                                Round {debate.round.roundNumber}
-                                            </span>
-                                        </td>
-                                        <td className="py-4">
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${debate.status === 'COMPLETED'
+                                                    ? 'bg-green-500/10 text-green-500'
+                                                    : debate.status === 'ONGOING'
+                                                        ? 'bg-amber-500/10 text-amber-500'
+                                                        : 'bg-blue-500/10 text-blue-500'
+                                                    }`}>
+                                                    {debate.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 text-right whitespace-nowrap">
+                                                <Link
+                                                    to={`/admin/results/${debate.id}`}
+                                                    className="text-xs font-semibold text-purple-500 hover:text-purple-600 transition-colors"
+                                                >
+                                                    Manage
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile View */}
+                        <div className="md:hidden space-y-4">
+                            {recentDebates.slice(0, 5).map((debate) => (
+                                <div key={debate.id} className="p-4 rounded-xl bg-muted/30 border border-border space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
                                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${debate.status === 'COMPLETED'
                                                 ? 'bg-green-500/10 text-green-500'
                                                 : debate.status === 'ONGOING'
@@ -276,21 +384,53 @@ export default function AdminDashboard() {
                                                 }`}>
                                                 {debate.status}
                                             </span>
-                                        </td>
-                                        <td className="py-4 text-right">
-                                            <Link
-                                                to={`/admin/results/${debate.id}`}
-                                                className="text-xs font-semibold text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                Manage
-                                            </Link>
+                                            <span className="text-xs text-muted-foreground">
+                                                Round {debate.round.roundNumber}
+                                            </span>
+                                        </div>
+                                        <Link
+                                            to={`/admin/results/${debate.id}`}
+                                            className="text-xs font-bold text-purple-500"
+                                        >
+                                            Manage
+                                        </Link>
+                                    </div>
 
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex -space-x-2 flex-shrink-0">
+                                            {debate.debater1.imageUrl ? (
+                                                <img
+                                                    src={debate.debater1.imageUrl}
+                                                    alt={debate.debater1.firstName}
+                                                    className="w-10 h-10 rounded-full border-2 border-card object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-xs font-bold text-blue-500">
+                                                    {debate.debater1.firstName?.[0] || "U"}
+                                                </div>
+                                            )}
+                                            {debate.debater2.imageUrl ? (
+                                                <img
+                                                    src={debate.debater2.imageUrl}
+                                                    alt={debate.debater2.firstName}
+                                                    className="w-10 h-10 rounded-full border-2 border-card object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-card flex items-center justify-center text-xs font-bold text-purple-500">
+                                                    {debate.debater2.firstName?.[0] || "U"}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-sm">
+                                                {debate.debater1.firstName} <span className="text-muted-foreground font-normal text-xs">vs</span> {debate.debater2.firstName}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 )}
             </div>
         </div>

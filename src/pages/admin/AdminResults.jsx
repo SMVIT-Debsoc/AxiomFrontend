@@ -137,7 +137,7 @@ export default function AdminResults() {
                             <Trophy className="w-6 h-6" />
                         </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${event.status === 'ONGOING' ? 'bg-green-500/10 text-green-500' :
-                                event.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
+                            event.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
                             }`}>
                             {event.status}
                         </span>
@@ -183,7 +183,7 @@ export default function AdminResults() {
                         </div>
                         <div className="flex items-center gap-4">
                             <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${round.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500' :
-                                    round.status === 'ONGOING' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
+                                round.status === 'ONGOING' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
                                 }`}>
                                 {round.status}
                             </span>
@@ -196,79 +196,129 @@ export default function AdminResults() {
     );
 
     const renderResults = () => (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
-                        <tr>
-                            <th className="px-6 py-4 text-left">Matchup</th>
-                            <th className="px-6 py-4 text-center">Scores</th>
-                            <th className="px-6 py-4 text-left">Winner</th>
-                            <th className="px-6 py-4 text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {filteredDebates.length === 0 ? (
-                            <tr><td colSpan="4" className="text-center py-8 text-muted-foreground">No debates found.</td></tr>
-                        ) : (
-                            filteredDebates.map((debate) => (
-                                <tr key={debate.id} className="hover:bg-muted/10">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3 text-sm font-medium">
-                                            <span className={debate.winnerId === debate.debater1Id ? "text-green-500 font-bold" : ""}>
-                                                {debate.debater1.firstName} {debate.debater1.lastName}
-                                            </span>
-                                            <span className="text-muted-foreground text-xs">VS</span>
-                                            <span className={debate.winnerId === debate.debater2Id ? "text-green-500 font-bold" : ""}>
-                                                {debate.debater2.firstName} {debate.debater2.lastName}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        {debate.status === 'COMPLETED' ? (
-                                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted/50 border border-border text-xs font-mono">
+        <>
+            {/* Desktop View (Table) */}
+            <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
+                <div className="overflow-x-auto no-scrollbar">
+                    <table className="w-full">
+                        <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                            <tr>
+                                <th className="px-6 py-4 text-left">Matchup</th>
+                                <th className="px-6 py-4 text-center">Scores</th>
+                                <th className="px-6 py-4 text-left">Winner</th>
+                                <th className="px-6 py-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {filteredDebates.length === 0 ? (
+                                <tr><td colSpan="4" className="text-center py-8 text-muted-foreground">No debates found.</td></tr>
+                            ) : (
+                                filteredDebates.map((debate) => (
+                                    <tr key={debate.id} className="hover:bg-muted/10">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3 text-sm font-medium">
                                                 <span className={debate.winnerId === debate.debater1Id ? "text-green-500 font-bold" : ""}>
-                                                    {debate.debater1Score}
+                                                    {debate.debater1.firstName} {debate.debater1.lastName}
                                                 </span>
-                                                <span className="text-muted-foreground">-</span>
+                                                <span className="text-muted-foreground text-xs">VS</span>
                                                 <span className={debate.winnerId === debate.debater2Id ? "text-green-500 font-bold" : ""}>
-                                                    {debate.debater2Score}
+                                                    {debate.debater2.firstName} {debate.debater2.lastName}
                                                 </span>
                                             </div>
-                                        ) : (
-                                            <span className="text-[10px] text-muted-foreground italic">Pending</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {debate.winnerId ? (
-                                            <div className="flex items-center gap-2 text-sm font-bold text-green-600">
-                                                <Trophy className="w-3 h-3" />
-                                                {debate.winnerId === debate.debater1Id ? debate.debater1.firstName : debate.debater2.firstName}
-                                            </div>
-                                        ) : <span className="text-xs text-muted-foreground">-</span>}
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => navigate(`/admin/results/${debate.id}`)}
-                                            className="text-xs font-bold text-purple-500 hover:text-purple-600 px-3 py-1 bg-purple-500/10 rounded hover:bg-purple-500/20 transition-colors"
-                                        >
-                                            {debate.status === 'COMPLETED' ? 'Edit' : 'Enter'}
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {debate.status === 'COMPLETED' ? (
+                                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted/50 border border-border text-xs font-mono">
+                                                    <span className={debate.winnerId === debate.debater1Id ? "text-green-500 font-bold" : ""}>
+                                                        {debate.debater1Score}
+                                                    </span>
+                                                    <span className="text-muted-foreground">-</span>
+                                                    <span className={debate.winnerId === debate.debater2Id ? "text-green-500 font-bold" : ""}>
+                                                        {debate.debater2Score}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-[10px] text-muted-foreground italic">Pending</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {debate.winnerId ? (
+                                                <div className="flex items-center gap-2 text-sm font-bold text-green-600">
+                                                    <Trophy className="w-3 h-3" />
+                                                    {debate.winnerId === debate.debater1Id ? debate.debater1.firstName : debate.debater2.firstName}
+                                                </div>
+                                            ) : <span className="text-xs text-muted-foreground">-</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                onClick={() => navigate(`/admin/results/${debate.id}`)}
+                                                className="text-xs font-bold text-purple-500 hover:text-purple-600 px-3 py-1 bg-purple-500/10 rounded hover:bg-purple-500/20 transition-colors"
+                                            >
+                                                {debate.status === 'COMPLETED' ? 'Edit' : 'Enter'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
+
+            {/* Mobile View (Cards) */}
+            <div className="md:hidden space-y-4">
+                {filteredDebates.length === 0 ? (
+                    <div className="text-center py-12 bg-muted/5 rounded-xl border border-dashed border-border">
+                        <p className="text-muted-foreground">No debates found.</p>
+                    </div>
+                ) : (
+                    filteredDebates.map((debate) => (
+                        <div key={debate.id} className="bg-card border border-border rounded-xl p-4 flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Matchup</span>
+                                {debate.status === 'COMPLETED' ? (
+                                    <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded font-bold">COMPLETED</span>
+                                ) : (
+                                    <span className="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded font-bold">PENDING</span>
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2">
+                                <div className={`flex-1 text-center min-w-0 ${debate.winnerId === debate.debater1Id ? "text-green-500 font-bold" : ""}`}>
+                                    <p className="text-sm font-medium truncate">{debate.debater1.firstName} {debate.debater1.lastName}</p>
+                                    {debate.status === 'COMPLETED' && (
+                                        <p className="text-lg font-mono font-bold mt-1">{debate.debater1Score}</p>
+                                    )}
+                                </div>
+
+                                <div className="px-2 text-muted-foreground text-xs font-black flex-shrink-0">VS</div>
+
+                                <div className={`flex-1 text-center min-w-0 ${debate.winnerId === debate.debater2Id ? "text-green-500 font-bold" : ""}`}>
+                                    <p className="text-sm font-medium truncate">{debate.debater2.firstName} {debate.debater2.lastName}</p>
+                                    {debate.status === 'COMPLETED' && (
+                                        <p className="text-lg font-mono font-bold mt-1">{debate.debater2Score}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => navigate(`/admin/results/${debate.id}`)}
+                                className="w-full py-2.5 rounded-lg text-sm font-bold bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-colors"
+                            >
+                                {debate.status === 'COMPLETED' ? 'Edit Result' : 'Enter Result'}
+                            </button>
+                        </div>
+                    ))
+                )}
+            </div>
+        </>
     );
 
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1 flex-wrap">
                     <span className={viewMode === 'events' ? "text-foreground font-medium" : ""}>Events</span>
                     {viewMode !== 'events' && (
                         <>
@@ -286,14 +336,14 @@ export default function AdminResults() {
                     )}
                 </div>
 
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
                         {viewMode !== 'events' && (
-                            <button onClick={handleBack} className="p-2 hover:bg-muted rounded-lg transition-colors">
+                            <button onClick={handleBack} className="p-2 hover:bg-muted rounded-lg transition-colors mt-1">
                                 <ArrowLeft className="w-5 h-5" />
                             </button>
                         )}
-                        <h1 className="text-3xl font-bold">
+                        <h1 className="text-3xl font-bold break-words min-w-0">
                             {viewMode === 'events' ? 'Results & Scores' :
                                 viewMode === 'rounds' ? 'Select Round' :
                                     `${selectedRound?.name} Results`}

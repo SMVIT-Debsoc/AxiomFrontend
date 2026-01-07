@@ -78,7 +78,7 @@ export default function AdminEvents() {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors w-full md:w-auto"
                 >
                     <Plus className="w-4 h-4" />
                     Create Event
@@ -114,100 +114,175 @@ export default function AdminEvents() {
                     </button>
                 </div>
             ) : (
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
-                            <tr>
-                                <th className="px-6 py-4 text-left">Event</th>
-                                <th className="px-6 py-4 text-left hidden md:table-cell">
-                                    Date
-                                </th>
-                                <th className="px-6 py-4 text-left hidden md:table-cell">
-                                    Rounds
-                                </th>
-                                <th className="px-6 py-4 text-left">Status</th>
-                                <th className="px-6 py-4 text-right">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {filteredEvents.map((event, index) => (
-                                <motion.tr
-                                    key={event.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    className="hover:bg-muted/20 transition-colors"
-                                >
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                                <Calendar className="w-5 h-5 text-purple-500" />
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold">
-                                                    {event.name}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground line-clamp-1">
-                                                    {event.description ||
-                                                        "No description"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 hidden md:table-cell text-muted-foreground">
-                                        {new Date(
-                                            event.startDate
-                                        ).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-6 py-4 hidden md:table-cell text-muted-foreground">
-                                        {event.rounds?.length || 0} rounds
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span
-                                            className={`text-xs font-bold px-2 py-1 rounded ${event.status === "ONGOING"
-                                                ? "bg-green-500/10 text-green-500"
-                                                : event.status ===
-                                                    "UPCOMING"
-                                                    ? "bg-blue-500/10 text-blue-500"
-                                                    : "bg-gray-500/10 text-gray-500"
-                                                }`}
+                <>
+                    {/* Desktop View */}
+                    <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden">
+                        <div className="overflow-x-auto no-scrollbar">
+                            <table className="w-full">
+                                <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                                    <tr>
+                                        <th className="px-4 py-4 text-left">Event</th>
+                                        <th className="px-4 py-4 text-left whitespace-nowrap">
+                                            Date
+                                        </th>
+                                        <th className="px-4 py-4 text-left whitespace-nowrap">
+                                            Rounds
+                                        </th>
+                                        <th className="px-4 py-4 text-left whitespace-nowrap">Status</th>
+                                        <th className="px-4 py-4 text-right whitespace-nowrap">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {filteredEvents.map((event, index) => (
+                                        <motion.tr
+                                            key={event.id}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            className="hover:bg-muted/20 transition-colors"
                                         >
-                                            {event.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <Link
-                                                to={`/admin/events/${event.id}`}
-                                                className="p-2 rounded-lg hover:bg-muted transition-colors"
-                                                title="View"
-                                            >
-                                                <Eye className="w-4 h-4 text-muted-foreground" />
-                                            </Link>
-                                            <button
-                                                className="p-2 rounded-lg hover:bg-muted transition-colors"
-                                                title="Edit"
-                                                onClick={() => setEditingEvent(event)}
-                                            >
-                                                <Edit className="w-4 h-4 text-muted-foreground" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteEvent(event.id)}
-                                                className="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="w-4 h-4 text-red-500" />
-                                            </button>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                                        <Calendar className="w-5 h-5 text-purple-500" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold truncate">
+                                                            {event.name}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground line-clamp-1">
+                                                            {event.description ||
+                                                                "No description"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                                                {new Date(
+                                                    event.startDate
+                                                ).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                                                {event.rounds?.length || 0} rounds
+                                            </td>
+                                            <td className="px-4 py-4 whitespace-nowrap">
+                                                <span
+                                                    className={`text-xs font-bold px-2 py-1 rounded ${event.status === "ONGOING"
+                                                        ? "bg-green-500/10 text-green-500"
+                                                        : event.status ===
+                                                            "UPCOMING"
+                                                            ? "bg-blue-500/10 text-blue-500"
+                                                            : "bg-gray-500/10 text-gray-500"
+                                                        }`}
+                                                >
+                                                    {event.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Link
+                                                        to={`/admin/events/${event.id}`}
+                                                        className="p-2 rounded-lg hover:bg-muted transition-colors"
+                                                        title="View"
+                                                    >
+                                                        <Eye className="w-4 h-4 text-muted-foreground" />
+                                                    </Link>
+                                                    <button
+                                                        className="p-2 rounded-lg hover:bg-muted transition-colors"
+                                                        title="Edit"
+                                                        onClick={() => setEditingEvent(event)}
+                                                    >
+                                                        <Edit className="w-4 h-4 text-muted-foreground" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteEvent(event.id)}
+                                                        className="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
+                    {/* Mobile View (Cards) */}
+                    <div className="md:hidden space-y-4">
+                        {filteredEvents.map((event, index) => (
+                            <motion.div
+                                key={event.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="bg-card border border-border rounded-xl p-4 flex flex-col gap-4"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                                            <Calendar className="w-5 h-5 text-purple-500" />
                                         </div>
-                                    </td>
-                                </motion.tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                        <div className="min-w-0">
+                                            <h3 className="font-semibold truncate pr-2">
+                                                {event.name}
+                                            </h3>
+                                            <p className="text-xs text-muted-foreground">
+                                                {new Date(event.startDate).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span
+                                        className={`text-[10px] font-bold px-2 py-1 rounded flex-shrink-0 ${event.status === "ONGOING"
+                                            ? "bg-green-500/10 text-green-500"
+                                            : event.status === "UPCOMING"
+                                                ? "bg-blue-500/10 text-blue-500"
+                                                : "bg-gray-500/10 text-gray-500"
+                                            }`}
+                                    >
+                                        {event.status}
+                                    </span>
+                                </div>
+
+                                {event.description && (
+                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                        {event.description}
+                                    </p>
+                                )}
+
+                                <div className="flex items-center justify-between pt-2 border-t border-border mt-auto">
+                                    <span className="text-xs text-muted-foreground font-medium">
+                                        {event.rounds?.length || 0} rounds
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <Link
+                                            to={`/admin/events/${event.id}`}
+                                            className="p-2 rounded-lg hover:bg-muted transition-colors"
+                                        >
+                                            <Eye className="w-4 h-4 text-muted-foreground" />
+                                        </Link>
+                                        <button
+                                            className="p-2 rounded-lg hover:bg-muted transition-colors"
+                                            onClick={() => setEditingEvent(event)}
+                                        >
+                                            <Edit className="w-4 h-4 text-muted-foreground" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteEvent(event.id)}
+                                            className="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </>
             )}
 
             {/* Create Event Modal */}

@@ -1,39 +1,47 @@
-import {useState, useEffect, useCallback} from "react";
-import {useParams, Link} from "react-router-dom";
-import {motion} from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     Calendar,
-    MapPin,
-    Users,
     Trophy,
     Clock,
     ArrowLeft,
     CheckCircle2,
     Loader2,
     AlertCircle,
-    ArrowRight,
     ChevronRight,
-    Wifi,
-    WifiOff,
+    Search as SearchIcon,
+    School,
+    User,
+    Crown,
+    TrendingUp,
+    XCircle,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {EventApi, RoundApi, CheckInApi} from "../../services/api";
-import {useToast} from "../../components/ui/Toast";
-import {cn} from "../../lib/utils";
-import {useEventSocket} from "../../hooks/useSocket";
+import { useAuth } from "@clerk/clerk-react";
+import { EventApi, DebateApi, UserApi, StatsApi } from "../../services/api";
+import { useToast } from "../../components/ui/Toast";
+import { cn } from "../../lib/utils";
+import { useEventSocket } from "../../hooks/useSocket";
 
 export default function EventDetails() {
-    const {id} = useParams();
-    const {getToken} = useAuth();
+    const { id } = useParams();
+    const { getToken } = useAuth();
     const toast = useToast();
     const [event, setEvent] = useState(null);
     const [rounds, setRounds] = useState([]);
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState("overview"); // overview | rounds | participants | results
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [checkingIn, setCheckingIn] = useState(false);
     const [isEnrolled, setIsEnrolled] = useState(false);
     const [enrolling, setEnrolling] = useState(false);
+
+    // New State for inline tabs
+    const [participants, setParticipants] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [myDebates, setMyDebates] = useState([]);
+    const [leaderboard, setLeaderboard] = useState([]);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [resultSubTab, setResultSubTab] = useState("my-results");
 
     // Fetch data function for reuse
     const fetchData = useCallback(async () => {
@@ -61,6 +69,50 @@ export default function EventDetails() {
             if (enrollmentResponse.success) {
                 setIsEnrolled(enrollmentResponse.isEnrolled);
             }
+
+            // Fetch Participants
+            try {
+                const partsParams = await EventApi.getParticipants(id, token);
+                if (partsParams.success) {
+                    setParticipants(partsParams.participants || []);
+                }
+            } catch (e) {
+                console.error("Failed to fetch participants", e);
+            }
+
+            // Fetch User Profile (for ID check)
+            try {
+                const userResponse = await UserApi.getProfile(token);
+                if (userResponse.success) {
+                    setCurrentUser(userResponse.user);
+                }
+            } catch (e) {
+                console.error("Failed to fetch profile", e);
+            }
+
+            // Fetch My Debates
+            try {
+                const myDebatesResponse = await DebateApi.getMyDebates(token);
+                if (myDebatesResponse.success) {
+                    setMyDebates(myDebatesResponse.debates || []);
+                }
+            } catch (e) {
+                // Silently fail if no debates found or error
+                console.log("No debates or error fetching debates", e);
+            }
+
+            // Fetch Leaderboard
+            try {
+                const leadResponse = await StatsApi.getLeaderboard(token, id, 100);
+                if (leadResponse.success && leadResponse.data?.leaderboard) {
+                    setLeaderboard(leadResponse.data.leaderboard);
+                } else if (leadResponse.leaderboard && Array.isArray(leadResponse.leaderboard)) {
+                    setLeaderboard(leadResponse.leaderboard);
+                }
+            } catch (e) {
+                console.error("Failed to fetch leaderboard", e);
+            }
+
         } catch (err) {
             console.error("Failed to fetch event details", err);
             setError(err.message);
@@ -82,11 +134,11 @@ export default function EventDetails() {
                 prev.map((r) =>
                     r.id === data.roundId
                         ? {
-                              ...r,
-                              status: data.status,
-                              checkInStartTime: data.checkInStartTime,
-                              checkInEndTime: data.checkInEndTime,
-                          }
+                            ...r,
+                            status: data.status,
+                            checkInStartTime: data.checkInStartTime,
+                            checkInEndTime: data.checkInEndTime,
+                        }
                         : r
                 )
             );
@@ -100,7 +152,7 @@ export default function EventDetails() {
             setRounds((prev) =>
                 prev.map((r) =>
                     r.id === data.roundId
-                        ? {...r, pairingsPublished: data.published}
+                        ? { ...r, pairingsPublished: data.published }
                         : r
                 )
             );
@@ -117,9 +169,12 @@ export default function EventDetails() {
                 "Result Submitted",
                 "A debate result has been submitted."
             );
+            // Refresh data on result
+            fetchData();
         },
         onLeaderboardUpdate: () => {
             console.log("[Socket] Leaderboard updated");
+            fetchData();
         },
     });
 
@@ -133,30 +188,16 @@ export default function EventDetails() {
                 "You have been registered for this event."
             );
             setIsEnrolled(true);
+            // Refresh participants list
+            const partsParams = await EventApi.getParticipants(id, token);
+            if (partsParams.success) {
+                setParticipants(partsParams.participants || []);
+            }
         } catch (err) {
             console.error("Enrollment failed", err);
             toast.error("Enrollment Failed", err.message);
         } finally {
             setEnrolling(false);
-        }
-    };
-
-    const handleCheckIn = async (roundId) => {
-        try {
-            setCheckingIn(true);
-            const token = await getToken();
-            await CheckInApi.checkIn(roundId, token);
-            toast.success("Checked In!", "You have been marked as present.");
-            // Refresh the event data
-            const eventResponse = await EventApi.get(id, token);
-            if (eventResponse.success && eventResponse.event) {
-                setRounds(eventResponse.event.rounds || []);
-            }
-        } catch (err) {
-            console.error("Check-in failed", err);
-            toast.error("Check-in Failed", err.message);
-        } finally {
-            setCheckingIn(false);
         }
     };
 
@@ -209,8 +250,8 @@ export default function EventDetails() {
                                     event.status === "ONGOING"
                                         ? "bg-green-500/10 text-green-500 border-green-500/20"
                                         : event.status === "UPCOMING"
-                                        ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                                        : "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                                            ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                            : "bg-gray-500/10 text-gray-500 border-gray-500/20"
                                 )}
                             >
                                 {event.status}
@@ -287,8 +328,8 @@ export default function EventDetails() {
             <div className="min-h-[400px]">
                 {activeTab === "overview" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         className="grid md:grid-cols-3 gap-6"
                     >
                         <div className="md:col-span-2 space-y-6">
@@ -328,16 +369,16 @@ export default function EventDetails() {
                                                         <p className="text-xs text-muted-foreground">
                                                             {round.checkInStartTime
                                                                 ? `Check-in: ${new Date(
-                                                                      round.checkInStartTime
-                                                                  ).toLocaleTimeString(
-                                                                      "en-IN",
-                                                                      {
-                                                                          hour: "2-digit",
-                                                                          minute: "2-digit",
-                                                                          timeZone:
-                                                                              "Asia/Kolkata",
-                                                                      }
-                                                                  )} IST`
+                                                                    round.checkInStartTime
+                                                                ).toLocaleTimeString(
+                                                                    "en-IN",
+                                                                    {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                        timeZone:
+                                                                            "Asia/Kolkata",
+                                                                    }
+                                                                )} IST`
                                                                 : "Time TBD"}
                                                         </p>
                                                     </div>
@@ -349,9 +390,9 @@ export default function EventDetails() {
                                                             "COMPLETED"
                                                             ? "bg-green-500/10 text-green-500"
                                                             : round.status ===
-                                                              "ONGOING"
-                                                            ? "bg-amber-500/10 text-amber-500"
-                                                            : "bg-primary/10 text-primary"
+                                                                "ONGOING"
+                                                                ? "bg-amber-500/10 text-amber-500"
+                                                                : "bg-primary/10 text-primary"
                                                     )}
                                                 >
                                                     {round.status}
@@ -419,8 +460,8 @@ export default function EventDetails() {
 
                 {activeTab === "rounds" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
                         className="space-y-4"
                     >
                         {rounds.length === 0 ? (
@@ -444,8 +485,8 @@ export default function EventDetails() {
                                             <p className="text-muted-foreground text-sm">
                                                 {round.checkInStartTime
                                                     ? `Check-in: ${new Date(
-                                                          round.checkInStartTime
-                                                      ).toLocaleString()}`
+                                                        round.checkInStartTime
+                                                    ).toLocaleString()}`
                                                     : "Time TBD"}
                                             </p>
                                         </div>
@@ -456,9 +497,9 @@ export default function EventDetails() {
                                                     round.status === "COMPLETED"
                                                         ? "bg-green-500/10 text-green-500"
                                                         : round.status ===
-                                                          "ONGOING"
-                                                        ? "bg-amber-500/10 text-amber-500"
-                                                        : "bg-primary/10 text-primary"
+                                                            "ONGOING"
+                                                            ? "bg-amber-500/10 text-amber-500"
+                                                            : "bg-primary/10 text-primary"
                                                 )}
                                             >
                                                 {round.status}
@@ -494,48 +535,310 @@ export default function EventDetails() {
 
                 {activeTab === "participants" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
-                        className="text-center py-8"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="space-y-6"
                     >
-                        <Users className="w-16 h-16 mx-auto mb-4 text-primary/50" />
-                        <h3 className="text-xl font-bold mb-2">
-                            View All Participants
-                        </h3>
-                        <p className="text-muted-foreground mb-6">
-                            See all registered debaters for this event
-                        </p>
-                        <Link
-                            to={`/dashboard/events/${id}/participants`}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-                        >
-                            View Participants
-                            <ArrowRight className="w-4 h-4" />
-                        </Link>
+                        {/* Search Bar */}
+                        <div className="relative">
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Search by name or college..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-3 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                            />
+                        </div>
+
+                        {/* Participants List */}
+                        <div className="space-y-3">
+                            {participants.filter((p) => {
+                                const fullName = `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase();
+                                const college = (p.college || "").toLowerCase();
+                                const query = searchQuery.toLowerCase();
+                                return fullName.includes(query) || college.includes(query);
+                            }).length === 0 ? (
+                                <div className="text-center py-12 bg-card border border-border rounded-xl">
+                                    <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                                    <p className="text-muted-foreground">
+                                        {searchQuery
+                                            ? "No participants found matching your search."
+                                            : "No participants registered yet."}
+                                    </p>
+                                </div>
+                            ) : (
+                                participants.filter((p) => {
+                                    const fullName = `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase();
+                                    const college = (p.college || "").toLowerCase();
+                                    const query = searchQuery.toLowerCase();
+                                    return fullName.includes(query) || college.includes(query);
+                                }).map((participant, index) => (
+                                    <motion.div
+                                        key={participant.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.03 }}
+                                        className="bg-card border border-border rounded-xl p-4 hover:border-primary/30 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            {/* Avatar */}
+                                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                                {(participant.firstName?.[0] || "") +
+                                                    (participant.lastName?.[0] || "")}
+                                            </div>
+
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-semibold truncate">
+                                                        {participant.firstName}{" "}
+                                                        {participant.lastName}
+                                                    </p>
+                                                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                    <School className="w-4 h-4" />
+                                                    <span className="truncate">
+                                                        {participant.college ||
+                                                            "No college"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))
+                            )}
+                        </div>
                     </motion.div>
                 )}
 
                 {activeTab === "results" && (
                     <motion.div
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
-                        className="text-center py-8"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="space-y-6"
                     >
-                        <Trophy className="w-16 h-16 mx-auto mb-4 text-amber-500/50" />
-                        <h3 className="text-xl font-bold mb-2">
-                            View Results & Leaderboard
-                        </h3>
-                        <p className="text-muted-foreground mb-6">
-                            Check your debate results and see the overall
-                            standings
-                        </p>
-                        <Link
-                            to={`/dashboard/events/${id}/results`}
-                            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-                        >
-                            View Results
-                            <ArrowRight className="w-4 h-4" />
-                        </Link>
+                        {/* Sub-tabs for Results */}
+                        <div className="flex items-center gap-4 border-b border-border">
+                            <button
+                                onClick={() => setResultSubTab("my-results")}
+                                className={cn(
+                                    "pb-3 text-sm font-medium transition-all border-b-2",
+                                    resultSubTab === "my-results"
+                                        ? "border-primary text-primary"
+                                        : "border-transparent text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                My Results
+                            </button>
+                            <button
+                                onClick={() => setResultSubTab("leaderboard")}
+                                className={cn(
+                                    "pb-3 text-sm font-medium transition-all border-b-2",
+                                    resultSubTab === "leaderboard"
+                                        ? "border-primary text-primary"
+                                        : "border-transparent text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                Leaderboard
+                            </button>
+                        </div>
+
+                        {resultSubTab === "my-results" && (
+                            <div className="space-y-4">
+                                {myDebates.filter(d => rounds.map(r => r.id).includes(d.roundId)).length === 0 ? (
+                                    <div className="text-center py-12 bg-card border border-border rounded-xl">
+                                        <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                                        <p className="text-muted-foreground">
+                                            No debate results yet for this event.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    myDebates.filter(d => rounds.map(r => r.id).includes(d.roundId)).map((debate, index) => {
+                                        const round = rounds.find(
+                                            (r) => r.id === debate.roundId
+                                        );
+                                        const isWinner =
+                                            debate.winnerId === currentUser?.id;
+                                        const isDebater1 =
+                                            debate.debater1Id === currentUser?.id;
+                                        const opponent = isDebater1
+                                            ? debate.debater2
+                                            : debate.debater1;
+                                        const myScore = isDebater1
+                                            ? debate.debater1Score
+                                            : debate.debater2Score;
+                                        const opponentScore = isDebater1
+                                            ? debate.debater2Score
+                                            : debate.debater1Score;
+
+                                        return (
+                                            <motion.div
+                                                key={debate.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.05 }}
+                                                className={cn(
+                                                    "bg-card border rounded-xl p-4",
+                                                    debate.status === "COMPLETED" &&
+                                                        isWinner
+                                                        ? "border-green-500/30"
+                                                        : debate.status === "COMPLETED"
+                                                            ? "border-red-500/30"
+                                                            : "border-border"
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium">
+                                                            {round?.name ||
+                                                                `Round ${round?.roundNumber ||
+                                                                "?"
+                                                                }`}
+                                                        </span>
+                                                    </div>
+                                                    {debate.status === "COMPLETED" && (
+                                                        <div
+                                                            className={cn(
+                                                                "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
+                                                                isWinner
+                                                                    ? "bg-green-500/10 text-green-500"
+                                                                    : "bg-red-500/10 text-red-500"
+                                                            )}
+                                                        >
+                                                            {isWinner ? (
+                                                                <>
+                                                                    <CheckCircle2 className="w-3 h-3" />
+                                                                    WIN
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <XCircle className="w-3 h-3" />
+                                                                    LOSS
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {debate.status !== "COMPLETED" && (
+                                                        <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                                                            {debate.status}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                                        <User className="w-5 h-5 text-muted-foreground" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="font-medium">
+                                                            vs {opponent?.firstName}{" "}
+                                                            {opponent?.lastName}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {opponent?.college}
+                                                        </p>
+                                                    </div>
+                                                    {debate.status === "COMPLETED" &&
+                                                        myScore !== null && (
+                                                            <div className="text-right">
+                                                                <p className="text-lg font-bold">
+                                                                    {myScore} -{" "}
+                                                                    {opponentScore}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Score
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
+
+                        {resultSubTab === "leaderboard" && (
+                            <div className="space-y-3">
+                                {leaderboard.length === 0 ? (
+                                    <div className="text-center py-12 bg-card border border-border rounded-xl">
+                                        <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                                        <p className="text-muted-foreground">
+                                            Leaderboard will be available once results are
+                                            submitted.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    leaderboard.map((entry, index) => {
+                                        const isCurrentUser =
+                                            entry.user?.id === currentUser?.id;
+
+                                        return (
+                                            <motion.div
+                                                key={entry.user?.id || index}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.03 }}
+                                                className={cn(
+                                                    "flex items-center gap-4 p-4 rounded-xl",
+                                                    isCurrentUser
+                                                        ? "bg-primary/10 border-2 border-primary/30"
+                                                        : "bg-card border border-border"
+                                                )}
+                                            >
+                                                {/* Rank */}
+                                                <div
+                                                    className={cn(
+                                                        "w-10 h-10 rounded-full flex items-center justify-center font-bold",
+                                                        index === 0
+                                                            ? "bg-amber-500 text-white"
+                                                            : index === 1
+                                                                ? "bg-gray-400 text-white"
+                                                                : index === 2
+                                                                    ? "bg-amber-700 text-white"
+                                                                    : "bg-muted text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {index === 0 ? (
+                                                        <Crown className="w-5 h-5" />
+                                                    ) : (
+                                                        index + 1
+                                                    )}
+                                                </div>
+
+                                                {/* User Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <p
+                                                        className={cn(
+                                                            "font-semibold truncate",
+                                                            isCurrentUser && "text-primary"
+                                                        )}
+                                                    >
+                                                        {entry.user?.firstName} {entry.user?.lastName}
+                                                        {isCurrentUser && " (You)"}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground truncate">
+                                                        {entry.user?.college}
+                                                    </p>
+                                                </div>
+
+                                                {/* Stats */}
+                                                <div className="text-right">
+                                                    <p className="font-bold text-lg">
+                                                        {entry.stats?.wins}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {entry.stats?.wins === 1 ? "Win" : "Wins"}
+                                                    </p>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </div>

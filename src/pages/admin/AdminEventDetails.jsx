@@ -1,6 +1,6 @@
-import {useState, useEffect} from "react";
-import {useParams, Link, useNavigate} from "react-router-dom";
-import {motion} from "framer-motion";
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     Calendar,
     Clock,
@@ -16,12 +16,12 @@ import {
     XCircle,
     Info,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {AdminApi, EventApi} from "../../services/api";
+import { useAuth } from "@clerk/clerk-react";
+import { AdminApi, EventApi } from "../../services/api";
 
 export default function AdminEventDetails() {
-    const {id: eventId} = useParams();
-    const {getToken} = useAuth();
+    const { id: eventId } = useParams();
+    const { getToken } = useAuth();
     const navigate = useNavigate();
     const [event, setEvent] = useState(null);
     const [rounds, setRounds] = useState([]);
@@ -142,35 +142,34 @@ export default function AdminEventDetails() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4 w-full md:w-auto">
                     <button
                         onClick={() => navigate("/admin/events")}
-                        className="p-2 hover:bg-muted rounded-lg transition-colors"
+                        className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-bold">{event.name}</h1>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <h1 className="text-2xl md:text-3xl font-bold truncate">{event.name}</h1>
                             <span
-                                className={`text-xs font-bold px-2 py-1 rounded ${
-                                    event.status === "ONGOING"
-                                        ? "bg-green-500/10 text-green-500"
-                                        : event.status === "UPCOMING"
+                                className={`text-xs font-bold px-2 py-1 rounded flex-shrink-0 ${event.status === "ONGOING"
+                                    ? "bg-green-500/10 text-green-500"
+                                    : event.status === "UPCOMING"
                                         ? "bg-blue-500/10 text-blue-500"
                                         : "bg-muted text-muted-foreground"
-                                }`}
+                                    }`}
                             >
                                 {event.status}
                             </span>
                         </div>
-                        <p className="text-muted-foreground mt-1">
+                        <p className="text-muted-foreground mt-1 text-sm md:text-base truncate">
                             {event.description || "No description provided"}
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 w-full md:w-auto">
                     <button
                         onClick={() => setShowEditEvent(true)}
                         className="p-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
@@ -180,7 +179,7 @@ export default function AdminEventDetails() {
                     </button>
                     <button
                         onClick={() => setShowCreateRound(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors whitespace-nowrap"
                     >
                         <Plus className="w-4 h-4" />
                         Create Round {rounds.length + 1}
@@ -193,9 +192,9 @@ export default function AdminEventDetails() {
                 {statsCards.map((card, i) => (
                     <motion.div
                         key={i}
-                        initial={{opacity: 0, y: 10}}
-                        animate={{opacity: 1, y: 0}}
-                        transition={{delay: i * 0.1}}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.1 }}
                         className="bg-card border border-border rounded-2xl p-6 flex items-center justify-between"
                     >
                         <div>
@@ -225,21 +224,19 @@ export default function AdminEventDetails() {
             <div className="flex items-center gap-6 border-b border-border mb-6">
                 <button
                     onClick={() => setActiveTab("rounds")}
-                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                        activeTab === "rounds"
-                            ? "border-purple-500 text-purple-500"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "rounds"
+                        ? "border-purple-500 text-purple-500"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
                 >
                     Rounds
                 </button>
                 <button
                     onClick={() => setActiveTab("participants")}
-                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                        activeTab === "participants"
-                            ? "border-purple-500 text-purple-500"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "participants"
+                        ? "border-purple-500 text-purple-500"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
                 >
                     Participants ({participants.length})
                 </button>
@@ -282,16 +279,16 @@ export default function AdminEventDetails() {
                                             className="block group bg-card border border-border rounded-2xl p-4 hover:border-purple-500/50 transition-all"
                                         >
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center font-bold text-purple-500">
+                                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center font-bold text-purple-500 flex-shrink-0">
                                                         {round.roundNumber}
                                                     </div>
-                                                    <div>
-                                                        <h4 className="font-bold">
+                                                    <div className="min-w-0 flex-1">
+                                                        <h4 className="font-bold truncate pr-2">
                                                             {round.name}
                                                         </h4>
-                                                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                                                            <span className="flex items-center gap-1">
+                                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                                                            <span className="flex items-center gap-1 whitespace-nowrap">
                                                                 <Clock className="w-3 h-3" />
                                                                 {new Date(
                                                                     round.checkInStartTime
@@ -307,24 +304,23 @@ export default function AdminEventDetails() {
                                                                 IST
                                                             </span>
                                                             <span
-                                                                className={`w-1 h-1 rounded-full bg-border`}
+                                                                className={`hidden sm:inline-block w-1 h-1 rounded-full bg-border`}
                                                             />
                                                             <span
-                                                                className={`capitalize ${
-                                                                    round.status ===
+                                                                className={`capitalize ${round.status ===
                                                                     "ONGOING"
-                                                                        ? "text-green-500"
-                                                                        : round.status ===
-                                                                          "COMPLETED"
+                                                                    ? "text-green-500"
+                                                                    : round.status ===
+                                                                        "COMPLETED"
                                                                         ? "text-blue-500"
                                                                         : "text-muted-foreground"
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {round.status.toLowerCase()}
                                                             </span>
                                                             {round.pairingsPublished && (
                                                                 <>
-                                                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                                                    <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-border" />
                                                                     <span className="text-[10px] font-bold uppercase text-green-500">
                                                                         Public
                                                                     </span>
@@ -463,11 +459,19 @@ export default function AdminEventDetails() {
                                 <p className="text-sm font-medium">
                                     {new Date(
                                         event.startDate
-                                    ).toLocaleDateString()}{" "}
+                                    ).toLocaleDateString(undefined, {
+                                        weekday: "short",
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                    })}{" "}
                                     at{" "}
                                     {new Date(
                                         event.startDate
-                                    ).toLocaleTimeString()}
+                                    ).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}
                                 </p>
                             </div>
                             <div>
@@ -477,11 +481,19 @@ export default function AdminEventDetails() {
                                 <p className="text-sm font-medium">
                                     {new Date(
                                         event.endDate
-                                    ).toLocaleDateString()}{" "}
+                                    ).toLocaleDateString(undefined, {
+                                        weekday: "short",
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                    })}{" "}
                                     at{" "}
                                     {new Date(
                                         event.endDate
-                                    ).toLocaleTimeString()}
+                                    ).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}
                                 </p>
                             </div>
                             <hr className="border-border" />
@@ -548,8 +560,8 @@ export default function AdminEventDetails() {
     );
 }
 
-function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
-    const {getToken} = useAuth();
+function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
+    const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
 
     // Helper to get IST datetime string for datetime-local input
@@ -610,8 +622,8 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <motion.div
-                initial={{opacity: 0, scale: 0.95}}
-                animate={{opacity: 1, scale: 1}}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="bg-card border border-border rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto"
             >
                 <h2 className="text-xl font-bold mb-6">
@@ -667,7 +679,7 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
                                         checkInStartTime: e.target.value,
                                     })
                                 }
-                                style={{colorScheme: "dark"}}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -685,7 +697,7 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
                                         checkInEndTime: e.target.value,
                                     })
                                 }
-                                style={{colorScheme: "dark"}}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -711,8 +723,8 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
         </div>
     );
 }
-function EditEventModal({event, onClose, onUpdated}) {
-    const {getToken} = useAuth();
+function EditEventModal({ event, onClose, onUpdated }) {
+    const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: event.name || "",
@@ -751,8 +763,8 @@ function EditEventModal({event, onClose, onUpdated}) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-foreground">
             <motion.div
-                initial={{opacity: 0, scale: 0.95}}
-                animate={{opacity: 1, scale: 1}}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="bg-card border border-border rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto"
             >
                 <div className="flex items-center justify-between mb-6">
@@ -775,7 +787,7 @@ function EditEventModal({event, onClose, onUpdated}) {
                             required
                             value={formData.name}
                             onChange={(e) =>
-                                setFormData({...formData, name: e.target.value})
+                                setFormData({ ...formData, name: e.target.value })
                             }
                             className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                         />
@@ -813,7 +825,7 @@ function EditEventModal({event, onClose, onUpdated}) {
                                         startDate: e.target.value,
                                     })
                                 }
-                                style={{colorScheme: "dark"}}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -831,7 +843,7 @@ function EditEventModal({event, onClose, onUpdated}) {
                                         endDate: e.target.value,
                                     })
                                 }
-                                style={{colorScheme: "dark"}}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -879,8 +891,8 @@ function EditEventModal({event, onClose, onUpdated}) {
     );
 }
 
-function EditRoundModal({round, onClose, onUpdated}) {
-    const {getToken} = useAuth();
+function EditRoundModal({ round, onClose, onUpdated }) {
+    const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
     // Helper function to convert UTC to IST datetime-local format
     const toISTDateTimeString = (utcDate) => {
@@ -947,8 +959,8 @@ function EditRoundModal({round, onClose, onUpdated}) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-foreground">
             <motion.div
-                initial={{opacity: 0, scale: 0.95}}
-                animate={{opacity: 1, scale: 1}}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
                 className="bg-card border border-border rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto"
             >
                 <div className="flex items-center justify-between mb-6">
@@ -971,7 +983,7 @@ function EditRoundModal({round, onClose, onUpdated}) {
                             required
                             value={formData.name}
                             onChange={(e) =>
-                                setFormData({...formData, name: e.target.value})
+                                setFormData({ ...formData, name: e.target.value })
                             }
                             className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                         />
@@ -1009,7 +1021,7 @@ function EditRoundModal({round, onClose, onUpdated}) {
                                         checkInStartTime: e.target.value,
                                     })
                                 }
-                                style={{colorScheme: "dark"}}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>
@@ -1027,7 +1039,7 @@ function EditRoundModal({round, onClose, onUpdated}) {
                                         checkInEndTime: e.target.value,
                                     })
                                 }
-                                style={{colorScheme: "dark"}}
+                                style={{ colorScheme: "dark" }}
                                 className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
                             />
                         </div>

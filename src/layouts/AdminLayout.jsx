@@ -1,5 +1,5 @@
-import {useState} from "react";
-import {Outlet, Link, useLocation} from "react-router-dom";
+import { useState } from "react";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import {
     LayoutDashboard,
     Calendar,
@@ -12,26 +12,26 @@ import {
     MapPin,
     X,
 } from "lucide-react";
-import {cn} from "../lib/utils";
-import {motion, AnimatePresence} from "framer-motion";
-import {UserButton, useUser} from "@clerk/clerk-react";
+import { cn } from "../lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { UserButton, useUser } from "@clerk/clerk-react";
 
 const sidebarItems = [
-    {icon: LayoutDashboard, label: "Dashboard", path: "/admin"},
-    {icon: Calendar, label: "Events", path: "/admin/events"},
-    {icon: ClipboardList, label: "Rounds", path: "/admin/rounds"},
-    {icon: Users, label: "Participants", path: "/admin/participants"},
-    {icon: MapPin, label: "Rooms", path: "/admin/rooms"},
-    {icon: Trophy, label: "Results", path: "/admin/results"},
-    {icon: Settings, label: "Settings", path: "/admin/settings"},
-    {icon: Users, label: "User View", path: "/dashboard"},
+    { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+    { icon: Calendar, label: "Events", path: "/admin/events" },
+    { icon: ClipboardList, label: "Rounds", path: "/admin/rounds" },
+    { icon: Users, label: "Participants", path: "/admin/participants" },
+    { icon: MapPin, label: "Rooms", path: "/admin/rooms" },
+    { icon: Trophy, label: "Results", path: "/admin/results" },
+    { icon: Settings, label: "Settings", path: "/admin/settings" },
+    { icon: Users, label: "User View", path: "/dashboard" },
 ];
 
 export default function AdminLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const location = useLocation();
-    const {user} = useUser();
+    const { user } = useUser();
 
     return (
         <div className="min-h-screen bg-background text-foreground flex">
@@ -40,16 +40,16 @@ export default function AdminLayout() {
                 {mobileMenuOpen && (
                     <>
                         <motion.div
-                            initial={{opacity: 0}}
-                            animate={{opacity: 1}}
-                            exit={{opacity: 0}}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
                             onClick={() => setMobileMenuOpen(false)}
                             className="fixed inset-0 bg-black/50 z-40 md:hidden"
                         />
                         <motion.aside
-                            initial={{x: -280}}
-                            animate={{x: 0}}
-                            exit={{x: -280}}
+                            initial={{ x: -280 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: -280 }}
                             transition={{
                                 type: "spring",
                                 damping: 25,
@@ -117,8 +117,8 @@ export default function AdminLayout() {
 
             {/* Desktop Sidebar */}
             <motion.aside
-                initial={{x: 0}}
-                animate={{width: sidebarOpen ? 260 : 80}}
+                initial={{ x: 0 }}
+                animate={{ width: sidebarOpen ? 260 : 80 }}
                 className="fixed md:relative z-30 h-screen border-r border-border bg-card/50 backdrop-blur-xl hidden md:flex flex-col"
             >
                 <div className="h-16 flex items-center px-6 border-b border-border/50">
@@ -219,9 +219,57 @@ export default function AdminLayout() {
                 </header>
 
                 {/* Scrollable Main Content */}
-                <main className="flex-1 overflow-y-auto p-6 md:p-10 scroll-smooth">
+                <main className="flex-1 overflow-y-auto p-4 md:p-10 pb-24 md:pb-10 scroll-smooth">
                     <Outlet />
                 </main>
+
+                {/* Mobile Bottom Navigation */}
+                <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 safe-area-inset-bottom">
+                    <div className="flex items-center justify-around py-2">
+                        {sidebarItems
+                            .filter((item) =>
+                                [
+                                    "/admin",
+                                    "/admin/events",
+                                    "/admin/rounds",
+                                    "/admin/results",
+                                    "/admin/participants",
+                                ].includes(item.path)
+                            )
+                            .map((item) => {
+                                const isActive =
+                                    location.pathname === item.path ||
+                                    (item.path !== "/admin" &&
+                                        location.pathname.startsWith(
+                                            item.path
+                                        ));
+                                const Icon = item.icon;
+
+                                return (
+                                    <Link
+                                        key={item.path}
+                                        to={item.path}
+                                        className={cn(
+                                            "flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all",
+                                            isActive
+                                                ? "text-purple-500"
+                                                : "text-muted-foreground"
+                                        )}
+                                    >
+                                        <Icon
+                                            className={cn(
+                                                "w-5 h-5",
+                                                isActive && "scale-110"
+                                            )}
+                                        />
+                                        <span className="text-[10px] font-medium">
+                                            {item.label}
+                                        </span>
+                                    </Link>
+                                );
+                            })}
+                    </div>
+                </nav>
             </div>
         </div>
     );

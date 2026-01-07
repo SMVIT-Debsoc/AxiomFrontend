@@ -121,8 +121,8 @@ export default function AdminParticipants() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center font-bold text-purple-500">
-                                                    {p.firstName[0]}
-                                                    {p.lastName[0]}
+                                                    {p.firstName?.[0]}
+                                                    {p.lastName?.[0]}
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-sm">
