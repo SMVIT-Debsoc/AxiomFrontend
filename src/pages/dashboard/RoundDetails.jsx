@@ -465,7 +465,11 @@ export default function RoundDetails() {
                 <div className="p-4 space-y-4">
                   {/* Opponent */}
                   <div className="flex items-center gap-4">
-                    <UserAvatar user={userPosition.opponent} size="lg" />
+                    <UserAvatar
+                      user={userPosition.opponent}
+                      imageUrl={userPosition.opponent?.imageUrl}
+                      size="lg"
+                    />
                     <div>
                       <p className="text-sm text-muted-foreground">
                         Your Opponent
@@ -641,7 +645,11 @@ export default function RoundDetails() {
                   <div className="flex items-center justify-between gap-4 mb-4">
                     <div className="w-[45%] flex flex-col items-center gap-2">
                       <div className="relative">
-                        <UserAvatar user={debate.debater1} size="md" />
+                        <UserAvatar
+                          user={debate.debater1}
+                          imageUrl={debate.debater1.imageUrl}
+                          size="md"
+                        />
                         <span className="absolute -bottom-1 -right-1 text-[8px] font-bold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
                           GOV
                         </span>
@@ -656,7 +664,11 @@ export default function RoundDetails() {
                     </div>
                     <div className="w-[45%] flex flex-col items-center gap-2">
                       <div className="relative">
-                        <UserAvatar user={debate.debater2} size="md" />
+                        <UserAvatar
+                          user={debate.debater2}
+                          imageUrl={debate.debater2.imageUrl}
+                          size="md"
+                        />
                         <span className="absolute -bottom-1 -right-1 text-[8px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
                           OPP
                         </span>

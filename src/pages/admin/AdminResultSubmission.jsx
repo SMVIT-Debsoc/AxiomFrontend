@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
+import { UserAvatar } from "../../components/ui/UserAvatar";
 
 export default function AdminResultSubmission() {
     const { id: debateId } = useParams();
@@ -108,9 +109,11 @@ export default function AdminResultSubmission() {
                     {/* Debater 1 */}
                     <div className={`p-8 rounded-3xl border-2 transition-all ${formData.winnerId === debate.debater1Id ? 'border-purple-500 bg-purple-500/5' : 'border-border bg-card'}`}>
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 font-bold text-2xl">
-                                {debate.debater1.firstName[0]}
-                            </div>
+                            <UserAvatar
+                                user={debate.debater1}
+                                imageUrl={debate.debater1.imageUrl}
+                                size="xl"
+                            />
                             <div>
                                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Opponent 1</p>
                                 <h3 className="text-xl font-bold">{debate.debater1.firstName} {debate.debater1.lastName}</h3>
@@ -136,8 +139,8 @@ export default function AdminResultSubmission() {
                                 type="button"
                                 onClick={() => setFormData({ ...formData, winnerId: debate.debater1Id })}
                                 className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${formData.winnerId === debate.debater1Id
-                                        ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
                                     }`}
                             >
                                 {formData.winnerId === debate.debater1Id && <CheckCircle2 className="w-5" />}
@@ -149,9 +152,11 @@ export default function AdminResultSubmission() {
                     {/* Debater 2 */}
                     <div className={`p-8 rounded-3xl border-2 transition-all ${formData.winnerId === debate.debater2Id ? 'border-purple-500 bg-purple-500/5' : 'border-border bg-card'}`}>
                         <div className="flex items-center gap-4 mb-6">
-                            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold text-2xl">
-                                {debate.debater2.firstName[0]}
-                            </div>
+                            <UserAvatar
+                                user={debate.debater2}
+                                imageUrl={debate.debater2.imageUrl}
+                                size="xl"
+                            />
                             <div>
                                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Opponent 2</p>
                                 <h3 className="text-xl font-bold">{debate.debater2.firstName} {debate.debater2.lastName}</h3>
@@ -177,8 +182,8 @@ export default function AdminResultSubmission() {
                                 type="button"
                                 onClick={() => setFormData({ ...formData, winnerId: debate.debater2Id })}
                                 className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${formData.winnerId === debate.debater2Id
-                                        ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
                                     }`}
                             >
                                 {formData.winnerId === debate.debater2Id && <CheckCircle2 className="w-5" />}

@@ -20,6 +20,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
 import { useRoundSocket } from "../../hooks/useSocket";
 import { useToast } from "../../components/ui/Toast";
+import { UserAvatar } from "../../components/ui/UserAvatar";
 
 export default function AdminRoundManagement() {
     const { id: roundId } = useParams();
@@ -864,8 +865,12 @@ export default function AdminRoundManagement() {
                                             <span className="inline-block mb-2 px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/20 text-blue-500 uppercase tracking-widest">
                                                 GOV
                                             </span>
-                                            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-2 text-blue-500 font-bold">
-                                                {debate.debater1.firstName[0]}
+                                            <div className="mx-auto mb-2 flex justify-center">
+                                                <UserAvatar
+                                                    user={debate.debater1}
+                                                    imageUrl={debate.debater1.imageUrl}
+                                                    size="lg"
+                                                />
                                             </div>
                                             <p className="font-bold text-sm truncate">
                                                 {debate.debater1.firstName}{" "}
@@ -879,8 +884,12 @@ export default function AdminRoundManagement() {
                                             <span className="inline-block mb-2 px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/20 text-purple-500 uppercase tracking-widest">
                                                 OPP
                                             </span>
-                                            <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-2 text-purple-500 font-bold">
-                                                {debate.debater2.firstName[0]}
+                                            <div className="mx-auto mb-2 flex justify-center">
+                                                <UserAvatar
+                                                    user={debate.debater2}
+                                                    imageUrl={debate.debater2.imageUrl}
+                                                    size="lg"
+                                                />
                                             </div>
                                             <p className="font-bold text-sm truncate">
                                                 {debate.debater2.firstName}{" "}
