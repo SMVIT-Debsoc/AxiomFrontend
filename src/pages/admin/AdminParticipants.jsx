@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { UserApi } from "../../services/api";
+import { UserAvatar } from "../../components/ui/UserAvatar";
 
 export default function AdminParticipants() {
     const { getToken } = useAuth();
@@ -120,10 +121,7 @@ export default function AdminParticipants() {
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center font-bold text-purple-500">
-                                                    {p.firstName?.[0]}
-                                                    {p.lastName?.[0]}
-                                                </div>
+                                                <UserAvatar user={p} size="md" />
                                                 <div>
                                                     <p className="font-semibold text-sm">
                                                         {p.firstName} {p.lastName}

@@ -1,6 +1,6 @@
-import {useState, useEffect} from "react";
-import {useParams, Link, useNavigate} from "react-router-dom";
-import {motion} from "framer-motion";
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
     Users,
     ArrowLeft,
@@ -10,13 +10,14 @@ import {
     User,
     CheckCircle,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {EventApi} from "../../services/api";
-import {cn} from "../../lib/utils";
+import { useAuth } from "@clerk/clerk-react";
+import { EventApi } from "../../services/api";
+import { cn } from "../../lib/utils";
+import { UserAvatar } from "../../components/ui/UserAvatar";
 
 export default function Participants() {
-    const {eventId} = useParams();
-    const {getToken} = useAuth();
+    const { eventId } = useParams();
+    const { getToken } = useAuth();
     const navigate = useNavigate();
     const [event, setEvent] = useState(null);
     const [participants, setParticipants] = useState([]);
@@ -57,9 +58,8 @@ export default function Participants() {
 
     // Filter participants by search
     const filteredParticipants = participants.filter((p) => {
-        const fullName = `${p.firstName || ""} ${
-            p.lastName || ""
-        }`.toLowerCase();
+        const fullName = `${p.firstName || ""} ${p.lastName || ""
+            }`.toLowerCase();
         const college = (p.college || "").toLowerCase();
         const query = searchQuery.toLowerCase();
         return fullName.includes(query) || college.includes(query);
@@ -134,17 +134,14 @@ export default function Participants() {
                     filteredParticipants.map((participant, index) => (
                         <motion.div
                             key={participant.id}
-                            initial={{opacity: 0, y: 10}}
-                            animate={{opacity: 1, y: 0}}
-                            transition={{delay: index * 0.03}}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.03 }}
                             className="bg-card border border-border rounded-xl p-4 hover:border-primary/30 transition-colors"
                         >
                             <div className="flex items-center gap-4">
                                 {/* Avatar */}
-                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                                    {(participant.firstName?.[0] || "") +
-                                        (participant.lastName?.[0] || "")}
-                                </div>
+                                <UserAvatar user={participant} size="lg" />
 
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">

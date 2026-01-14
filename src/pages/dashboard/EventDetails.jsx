@@ -1,6 +1,6 @@
-import {useState, useEffect, useCallback} from "react";
-import {useParams, Link} from "react-router-dom";
-import {motion, AnimatePresence} from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
   Trophy,
@@ -17,15 +17,16 @@ import {
   TrendingUp,
   XCircle,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {EventApi, DebateApi, UserApi, StatsApi} from "../../services/api";
-import {useToast} from "../../components/ui/Toast";
-import {cn} from "../../lib/utils";
-import {useEventSocket} from "../../hooks/useSocket";
+import { useAuth } from "@clerk/clerk-react";
+import { EventApi, DebateApi, UserApi, StatsApi } from "../../services/api";
+import { useToast } from "../../components/ui/Toast";
+import { cn } from "../../lib/utils";
+import { useEventSocket } from "../../hooks/useSocket";
+import { UserAvatar } from "../../components/ui/UserAvatar";
 
 export default function EventDetails() {
-  const {id} = useParams();
-  const {getToken} = useAuth();
+  const { id } = useParams();
+  const { getToken } = useAuth();
   const toast = useToast();
   const [event, setEvent] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -133,11 +134,11 @@ export default function EventDetails() {
         prev.map((r) =>
           r.id === data.roundId
             ? {
-                ...r,
-                status: data.status,
-                checkInStartTime: data.checkInStartTime,
-                checkInEndTime: data.checkInEndTime,
-              }
+              ...r,
+              status: data.status,
+              checkInStartTime: data.checkInStartTime,
+              checkInEndTime: data.checkInEndTime,
+            }
             : r
         )
       );
@@ -150,7 +151,7 @@ export default function EventDetails() {
       console.log("[Socket] Pairings published:", data);
       setRounds((prev) =>
         prev.map((r) =>
-          r.id === data.roundId ? {...r, pairingsPublished: data.published} : r
+          r.id === data.roundId ? { ...r, pairingsPublished: data.published } : r
         )
       );
       if (data.published) {
@@ -244,8 +245,8 @@ export default function EventDetails() {
                   event.status === "ONGOING"
                     ? "bg-green-500/10 text-green-500 border-green-500/20"
                     : event.status === "UPCOMING"
-                    ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                    : "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                      ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                      : "bg-gray-500/10 text-gray-500 border-gray-500/20"
                 )}
               >
                 {event.status}
@@ -313,7 +314,7 @@ export default function EventDetails() {
               <motion.div
                 layoutId="activeTab"
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                transition={{type: "spring", bounce: 0.2, duration: 0.6}}
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
           </button>
@@ -326,10 +327,10 @@ export default function EventDetails() {
           {activeTab === "overview" && (
             <motion.div
               key="overview"
-              initial={{opacity: 0, y: 10}}
-              animate={{opacity: 1, y: 0}}
-              exit={{opacity: 0, y: -10}}
-              transition={{duration: 0.2}}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="grid md:grid-cols-3 gap-6"
             >
               <div className="md:col-span-2 space-y-6">
@@ -366,12 +367,12 @@ export default function EventDetails() {
                               <p className="text-xs text-muted-foreground">
                                 {round.checkInStartTime
                                   ? `Check-in: ${new Date(
-                                      round.checkInStartTime
-                                    ).toLocaleTimeString("en-IN", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                      timeZone: "Asia/Kolkata",
-                                    })} IST`
+                                    round.checkInStartTime
+                                  ).toLocaleTimeString("en-IN", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    timeZone: "Asia/Kolkata",
+                                  })} IST`
                                   : "Time TBD"}
                               </p>
                             </div>
@@ -382,8 +383,8 @@ export default function EventDetails() {
                               round.status === "COMPLETED"
                                 ? "bg-green-500/10 text-green-500"
                                 : round.status === "ONGOING"
-                                ? "bg-amber-500/10 text-amber-500"
-                                : "bg-primary/10 text-primary"
+                                  ? "bg-amber-500/10 text-amber-500"
+                                  : "bg-primary/10 text-primary"
                             )}
                           >
                             {round.status}
@@ -438,10 +439,10 @@ export default function EventDetails() {
           {activeTab === "rounds" && (
             <motion.div
               key="rounds"
-              initial={{opacity: 0, y: 10}}
-              animate={{opacity: 1, y: 0}}
-              exit={{opacity: 0, y: -10}}
-              transition={{duration: 0.2}}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-4"
             >
               {rounds.length === 0 ? (
@@ -464,8 +465,8 @@ export default function EventDetails() {
                         <p className="text-muted-foreground text-sm">
                           {round.checkInStartTime
                             ? `Check-in: ${new Date(
-                                round.checkInStartTime
-                              ).toLocaleString()}`
+                              round.checkInStartTime
+                            ).toLocaleString()}`
                             : "Time TBD"}
                         </p>
                       </div>
@@ -476,8 +477,8 @@ export default function EventDetails() {
                             round.status === "COMPLETED"
                               ? "bg-green-500/10 text-green-500"
                               : round.status === "ONGOING"
-                              ? "bg-amber-500/10 text-amber-500"
-                              : "bg-primary/10 text-primary"
+                                ? "bg-amber-500/10 text-amber-500"
+                                : "bg-primary/10 text-primary"
                           )}
                         >
                           {round.status}
@@ -512,10 +513,10 @@ export default function EventDetails() {
           {activeTab === "participants" && (
             <motion.div
               key="participants"
-              initial={{opacity: 0, y: 10}}
-              animate={{opacity: 1, y: 0}}
-              exit={{opacity: 0, y: -10}}
-              transition={{duration: 0.2}}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-6"
             >
               {/* Search Bar */}
@@ -533,9 +534,8 @@ export default function EventDetails() {
               {/* Participants List */}
               <div className="space-y-3">
                 {participants.filter((p) => {
-                  const fullName = `${p.firstName || ""} ${
-                    p.lastName || ""
-                  }`.toLowerCase();
+                  const fullName = `${p.firstName || ""} ${p.lastName || ""
+                    }`.toLowerCase();
                   const college = (p.college || "").toLowerCase();
                   const query = searchQuery.toLowerCase();
                   return fullName.includes(query) || college.includes(query);
@@ -551,9 +551,8 @@ export default function EventDetails() {
                 ) : (
                   participants
                     .filter((p) => {
-                      const fullName = `${p.firstName || ""} ${
-                        p.lastName || ""
-                      }`.toLowerCase();
+                      const fullName = `${p.firstName || ""} ${p.lastName || ""
+                        }`.toLowerCase();
                       const college = (p.college || "").toLowerCase();
                       const query = searchQuery.toLowerCase();
                       return (
@@ -563,17 +562,14 @@ export default function EventDetails() {
                     .map((participant, index) => (
                       <motion.div
                         key={participant.id}
-                        initial={{opacity: 0, y: 10}}
-                        animate={{opacity: 1, y: 0}}
-                        transition={{delay: index * 0.03}}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
                         className="bg-card border border-border rounded-xl p-4 hover:border-primary/30 transition-colors"
                       >
                         <div className="flex items-center gap-4">
                           {/* Avatar */}
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {(participant.firstName?.[0] || "") +
-                              (participant.lastName?.[0] || "")}
-                          </div>
+                          <UserAvatar user={participant} size="lg" />
 
                           {/* Info */}
                           <div className="flex-1 min-w-0">
@@ -601,10 +597,10 @@ export default function EventDetails() {
           {activeTab === "results" && (
             <motion.div
               key="results"
-              initial={{opacity: 0, y: 10}}
-              animate={{opacity: 1, y: 0}}
-              exit={{opacity: 0, y: -10}}
-              transition={{duration: 0.2}}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="space-y-6"
             >
               {/* Sub-tabs for Results */}
@@ -641,10 +637,10 @@ export default function EventDetails() {
                   {resultSubTab === "my-results" && (
                     <motion.div
                       key="my-results"
-                      initial={{opacity: 0, x: -10}}
-                      animate={{opacity: 1, x: 0}}
-                      exit={{opacity: 0, x: 10}}
-                      transition={{duration: 0.2}}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2 }}
                       className="space-y-4"
                     >
                       {myDebates.filter((d) =>
@@ -682,16 +678,16 @@ export default function EventDetails() {
                             return (
                               <motion.div
                                 key={debate.id}
-                                initial={{opacity: 0, y: 10}}
-                                animate={{opacity: 1, y: 0}}
-                                transition={{delay: index * 0.05}}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
                                 className={cn(
                                   "bg-card border rounded-xl p-4",
                                   debate.status === "COMPLETED" && isWinner
                                     ? "border-green-500/30"
                                     : debate.status === "COMPLETED"
-                                    ? "border-red-500/30"
-                                    : "border-border"
+                                      ? "border-red-500/30"
+                                      : "border-border"
                                 )}
                               >
                                 <div className="flex items-center justify-between mb-3">
@@ -731,9 +727,7 @@ export default function EventDetails() {
                                 </div>
 
                                 <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                    <User className="w-5 h-5 text-muted-foreground" />
-                                  </div>
+                                  <UserAvatar user={opponent} size="md" />
                                   <div className="flex-1">
                                     <p className="font-medium">
                                       vs {opponent?.firstName}{" "}
@@ -765,10 +759,10 @@ export default function EventDetails() {
                   {resultSubTab === "leaderboard" && (
                     <motion.div
                       key="leaderboard"
-                      initial={{opacity: 0, x: 10}}
-                      animate={{opacity: 1, x: 0}}
-                      exit={{opacity: 0, x: -10}}
-                      transition={{duration: 0.2}}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
                       className="space-y-3"
                     >
                       {leaderboard.length === 0 ? (
@@ -787,9 +781,9 @@ export default function EventDetails() {
                           return (
                             <motion.div
                               key={entry.user?.id || index}
-                              initial={{opacity: 0, y: 10}}
-                              animate={{opacity: 1, y: 0}}
-                              transition={{delay: index * 0.03}}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.03 }}
                               className={cn(
                                 "flex items-center gap-4 p-4 rounded-xl",
                                 isCurrentUser
@@ -804,10 +798,10 @@ export default function EventDetails() {
                                   index === 0
                                     ? "bg-amber-500 text-white"
                                     : index === 1
-                                    ? "bg-gray-400 text-white"
-                                    : index === 2
-                                    ? "bg-amber-700 text-white"
-                                    : "bg-muted text-muted-foreground"
+                                      ? "bg-gray-400 text-white"
+                                      : index === 2
+                                        ? "bg-amber-700 text-white"
+                                        : "bg-muted text-muted-foreground"
                                 )}
                               >
                                 {index === 0 ? (
@@ -816,6 +810,10 @@ export default function EventDetails() {
                                   index + 1
                                 )}
                               </div>
+
+
+                              {/* Avatar */}
+                              <UserAvatar user={entry.user || entry} size="md" />
 
                               {/* User Info */}
                               <div className="flex-1 min-w-0">

@@ -1,5 +1,5 @@
-import {useState, useEffect, useCallback} from "react";
-import {motion} from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Trophy,
   Medal,
@@ -11,19 +11,20 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import {cn} from "../../lib/utils";
-import {useAuth} from "@clerk/clerk-react";
-import {StatsApi} from "../../services/api";
-import {useSocket, SocketEvents} from "../../hooks/useSocket";
+import { cn } from "../../lib/utils";
+import { useAuth } from "@clerk/clerk-react";
+import { StatsApi } from "../../services/api";
+import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import { UserAvatar } from "../../components/ui/UserAvatar";
 
 export default function Leaderboard() {
-  const {getToken} = useAuth();
+  const { getToken } = useAuth();
   const [filter, setFilter] = useState("all-time");
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const {subscribe} = useSocket();
+  const { subscribe } = useSocket();
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -68,9 +69,8 @@ export default function Leaderboard() {
   // Filter leaderboard based on search query
   const filteredLeaderboard = leaderboard.filter((entry) => {
     const userData = entry.user || entry;
-    const name = `${userData.firstName || ""} ${
-      userData.lastName || ""
-    }`.toLowerCase();
+    const name = `${userData.firstName || ""} ${userData.lastName || ""
+      }`.toLowerCase();
     const college = (userData.college || "").toLowerCase();
     const query = searchQuery.toLowerCase();
     return name.includes(query) || college.includes(query);
@@ -80,16 +80,7 @@ export default function Leaderboard() {
   const top3 = filteredLeaderboard.slice(0, 3);
   const hasTop3 = top3.length >= 3;
 
-  // Generate avatar URL based on name (handles nested user object)
-  const getAvatarUrl = (entry) => {
-    const userData = entry.user || entry;
-    if (userData.imageUrl) return userData.imageUrl;
 
-    const seed = `${userData.firstName || "User"}${userData.lastName || ""}`;
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
-      seed
-    )}`;
-  };
 
   // Get display name (handles nested user object)
   const getDisplayName = (entry) => {
@@ -102,7 +93,7 @@ export default function Leaderboard() {
 
   // Get stats (handles nested stats object)
   const getStats = (entry) => {
-    return entry.stats || {totalScore: 0, winRate: 0, wins: 0, losses: 0};
+    return entry.stats || { totalScore: 0, winRate: 0, wins: 0, losses: 0 };
   };
 
   // Get college (handles nested user object)
@@ -172,11 +163,7 @@ export default function Leaderboard() {
               <div className="order-2 md:order-1 flex flex-col items-center">
                 <div className="relative">
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-slate-300 overflow-hidden bg-slate-200">
-                    <img
-                      src={getAvatarUrl(top3[1])}
-                      alt="2nd"
-                      className="w-full h-full object-cover"
-                    />
+                    <UserAvatar user={top3[1].user || top3[1]} size="full" className="w-full h-full" />
                   </div>
                   <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center font-bold text-slate-800">
                     2
@@ -195,11 +182,7 @@ export default function Leaderboard() {
               <div className="order-1 md:order-2 flex flex-col items-center -mt-8">
                 <div className="relative">
                   <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-yellow-400 overflow-hidden bg-yellow-100 shadow-[0_0_30px_-10px_rgba(250,204,21,0.5)]">
-                    <img
-                      src={getAvatarUrl(top3[0])}
-                      alt="1st"
-                      className="w-full h-full object-cover"
-                    />
+                    <UserAvatar user={top3[0].user || top3[0]} size="full" className="w-full h-full" />
                   </div>
                   <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
                     <Trophy className="w-10 h-10 text-yellow-500 fill-yellow-500 drop-shadow-lg" />
@@ -216,11 +199,7 @@ export default function Leaderboard() {
               <div className="order-3 flex flex-col items-center">
                 <div className="relative">
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-amber-600 overflow-hidden bg-amber-100">
-                    <img
-                      src={getAvatarUrl(top3[2])}
-                      alt="3rd"
-                      className="w-full h-full object-cover"
-                    />
+                    <UserAvatar user={top3[2].user || top3[2]} size="full" className="w-full h-full" />
                   </div>
                   <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center font-bold text-white">
                     3
@@ -269,8 +248,8 @@ export default function Leaderboard() {
                   {filteredLeaderboard.map((entry, index) => (
                     <motion.tr
                       key={entry.user?.id || entry.id || index}
-                      initial={{opacity: 0}}
-                      animate={{opacity: 1}}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       className="group hover:bg-muted/20 transition-colors"
                     >
                       <td className="px-3 md:px-6 py-4">
@@ -287,11 +266,9 @@ export default function Leaderboard() {
                       </td>
                       <td className="px-3 md:px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={getAvatarUrl(entry)}
-                            className="w-8 h-8 rounded-full bg-muted"
-                            alt={getDisplayName(entry)}
-                          />
+                          <div className="w-8 h-8 rounded-full bg-muted overflow-hidden">
+                            <UserAvatar user={entry.user || entry} size="sm" />
+                          </div>
                           <span className="font-semibold">
                             {getDisplayName(entry)}
                           </span>
