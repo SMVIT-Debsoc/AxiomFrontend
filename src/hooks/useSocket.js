@@ -14,82 +14,82 @@ export {SocketEvents};
  * @returns {Object} Socket utilities
  */
 export function useSocket({eventId, roundId, autoConnect = true} = {}) {
-    const subscribedRef = useRef(new Set());
+  const subscribedRef = useRef(new Set());
 
-    // Connect on mount
-    useEffect(() => {
-        if (autoConnect) {
-            socketService.connect();
-        }
+  // Connect on mount
+  useEffect(() => {
+    if (autoConnect) {
+      socketService.connect();
+    }
 
-        return () => {
-            // Don't disconnect on unmount - let the singleton manage the connection
-            // Just clean up any subscriptions
-        };
-    }, [autoConnect]);
-
-    // Join/leave event room
-    useEffect(() => {
-        if (eventId) {
-            socketService.joinEvent(eventId);
-        }
-
-        return () => {
-            if (eventId) {
-                socketService.leaveEvent(eventId);
-            }
-        };
-    }, [eventId]);
-
-    // Join/leave round room
-    useEffect(() => {
-        if (roundId) {
-            socketService.joinRound(roundId);
-        }
-
-        return () => {
-            if (roundId) {
-                socketService.leaveRound(roundId);
-            }
-        };
-    }, [roundId]);
-
-    /**
-     * Subscribe to a socket event
-     * @param {string} event - Event name
-     * @param {Function} callback - Event handler
-     */
-    const subscribe = useCallback((event, callback) => {
-        const unsubscribe = socketService.on(event, callback);
-        subscribedRef.current.add({event, callback, unsubscribe});
-        return unsubscribe;
-    }, []);
-
-    /**
-     * Unsubscribe from a socket event
-     */
-    const unsubscribe = useCallback((event, callback) => {
-        socketService.off(event, callback);
-    }, []);
-
-    /**
-     * Check if socket is connected
-     */
-    const isConnected = useCallback(() => {
-        return socketService.isConnected();
-    }, []);
-
-    return {
-        socket: socketService.getSocket(),
-        subscribe,
-        unsubscribe,
-        isConnected,
-        joinEvent: socketService.joinEvent.bind(socketService),
-        leaveEvent: socketService.leaveEvent.bind(socketService),
-        joinRound: socketService.joinRound.bind(socketService),
-        leaveRound: socketService.leaveRound.bind(socketService),
-        SocketEvents,
+    return () => {
+      // Don't disconnect on unmount - let the singleton manage the connection
+      // Just clean up any subscriptions
     };
+  }, [autoConnect]);
+
+  // Join/leave event room
+  useEffect(() => {
+    if (eventId) {
+      socketService.joinEvent(eventId);
+    }
+
+    return () => {
+      if (eventId) {
+        socketService.leaveEvent(eventId);
+      }
+    };
+  }, [eventId]);
+
+  // Join/leave round room
+  useEffect(() => {
+    if (roundId) {
+      socketService.joinRound(roundId);
+    }
+
+    return () => {
+      if (roundId) {
+        socketService.leaveRound(roundId);
+      }
+    };
+  }, [roundId]);
+
+  /**
+   * Subscribe to a socket event
+   * @param {string} event - Event name
+   * @param {Function} callback - Event handler
+   */
+  const subscribe = useCallback((event, callback) => {
+    const unsubscribe = socketService.on(event, callback);
+    subscribedRef.current.add({event, callback, unsubscribe});
+    return unsubscribe;
+  }, []);
+
+  /**
+   * Unsubscribe from a socket event
+   */
+  const unsubscribe = useCallback((event, callback) => {
+    socketService.off(event, callback);
+  }, []);
+
+  /**
+   * Check if socket is connected
+   */
+  const isConnected = useCallback(() => {
+    return socketService.isConnected();
+  }, []);
+
+  return {
+    socket: socketService.getSocket(),
+    subscribe,
+    unsubscribe,
+    isConnected,
+    joinEvent: socketService.joinEvent.bind(socketService),
+    leaveEvent: socketService.leaveEvent.bind(socketService),
+    joinRound: socketService.joinRound.bind(socketService),
+    leaveRound: socketService.leaveRound.bind(socketService),
+    SocketEvents,
+  };
 }
 
 /**
@@ -97,91 +97,92 @@ export function useSocket({eventId, roundId, autoConnect = true} = {}) {
  * Automatically joins the event room and provides callbacks for common events
  */
 export function useEventSocket(eventId, callbacks = {}) {
-    const {subscribe} = useSocket({eventId});
+  const {subscribe} = useSocket({eventId});
 
-    useEffect(() => {
-        if (!eventId) return;
+  useEffect(() => {
+    if (!eventId) return;
 
-        const unsubscribers = [];
+    const unsubscribers = [];
 
-        // Check-in count updates
-        if (callbacks.onCheckInCount) {
-            unsubscribers.push(
-                subscribe(SocketEvents.CHECKIN_COUNT, callbacks.onCheckInCount)
-            );
-        }
+    // Check-in count updates
+    if (callbacks.onCheckInCount) {
+      unsubscribers.push(
+        subscribe(SocketEvents.CHECKIN_COUNT, callbacks.onCheckInCount)
+      );
+    }
 
-        // Round status changes
-        if (callbacks.onRoundStatusChange) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.ROUND_STATUS_CHANGE,
-                    callbacks.onRoundStatusChange
-                )
-            );
-        }
+    // Round created
+    if (callbacks.onRoundCreated) {
+      unsubscribers.push(
+        subscribe(SocketEvents.ROUND_CREATED, callbacks.onRoundCreated)
+      );
+    }
 
-        // Pairings published
-        if (callbacks.onPairingsPublished) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.ROUND_PAIRINGS_PUBLISHED,
-                    callbacks.onPairingsPublished
-                )
-            );
-        }
+    // Round status changes
+    if (callbacks.onRoundStatusChange) {
+      unsubscribers.push(
+        subscribe(
+          SocketEvents.ROUND_STATUS_CHANGE,
+          callbacks.onRoundStatusChange
+        )
+      );
+    }
 
-        // Pairings generated
-        if (callbacks.onPairingsGenerated) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.PAIRINGS_GENERATED,
-                    callbacks.onPairingsGenerated
-                )
-            );
-        }
+    // Pairings published
+    if (callbacks.onPairingsPublished) {
+      unsubscribers.push(
+        subscribe(
+          SocketEvents.ROUND_PAIRINGS_PUBLISHED,
+          callbacks.onPairingsPublished
+        )
+      );
+    }
 
-        // Rooms allocated
-        if (callbacks.onRoomsAllocated) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.ROOMS_ALLOCATED,
-                    callbacks.onRoomsAllocated
-                )
-            );
-        }
+    // Pairings generated
+    if (callbacks.onPairingsGenerated) {
+      unsubscribers.push(
+        subscribe(
+          SocketEvents.PAIRINGS_GENERATED,
+          callbacks.onPairingsGenerated
+        )
+      );
+    }
 
-        // Debate result
-        if (callbacks.onDebateResult) {
-            unsubscribers.push(
-                subscribe(SocketEvents.DEBATE_RESULT, callbacks.onDebateResult)
-            );
-        }
+    // Rooms allocated
+    if (callbacks.onRoomsAllocated) {
+      unsubscribers.push(
+        subscribe(SocketEvents.ROOMS_ALLOCATED, callbacks.onRoomsAllocated)
+      );
+    }
 
-        // Leaderboard update
-        if (callbacks.onLeaderboardUpdate) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.LEADERBOARD_UPDATE,
-                    callbacks.onLeaderboardUpdate
-                )
-            );
-        }
+    // Debate result
+    if (callbacks.onDebateResult) {
+      unsubscribers.push(
+        subscribe(SocketEvents.DEBATE_RESULT, callbacks.onDebateResult)
+      );
+    }
 
-        // Event enrollment
-        if (callbacks.onEventEnrollment) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.EVENT_ENROLLMENT,
-                    callbacks.onEventEnrollment
-                )
-            );
-        }
+    // Leaderboard update
+    if (callbacks.onLeaderboardUpdate) {
+      unsubscribers.push(
+        subscribe(
+          SocketEvents.LEADERBOARD_UPDATE,
+          callbacks.onLeaderboardUpdate
+        )
+      );
+    }
 
-        return () => {
-            unsubscribers.forEach((unsub) => unsub?.());
-        };
-    }, [eventId, callbacks, subscribe]);
+    // Event enrollment
+    if (callbacks.onEventEnrollment) {
+      unsubscribers.push(
+        subscribe(SocketEvents.EVENT_ENROLLMENT, callbacks.onEventEnrollment)
+      );
+    }
+
+    return () => {
+      unsubscribers.forEach((unsub) => unsub?.());
+    };
+  }, [eventId, callbacks, subscribe]);
 }
 
 /**
@@ -189,74 +190,68 @@ export function useEventSocket(eventId, callbacks = {}) {
  * Automatically joins the round room and provides callbacks for common events
  */
 export function useRoundSocket(roundId, callbacks = {}) {
-    const {subscribe} = useSocket({roundId});
+  const {subscribe} = useSocket({roundId});
 
-    useEffect(() => {
-        if (!roundId) return;
+  useEffect(() => {
+    if (!roundId) return;
 
-        const unsubscribers = [];
+    const unsubscribers = [];
 
-        // Check-in updates
-        if (callbacks.onCheckInUpdate) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.CHECKIN_UPDATE,
-                    callbacks.onCheckInUpdate
-                )
-            );
-        }
+    // Check-in updates
+    if (callbacks.onCheckInUpdate) {
+      unsubscribers.push(
+        subscribe(SocketEvents.CHECKIN_UPDATE, callbacks.onCheckInUpdate)
+      );
+    }
 
-        // Round status changes
-        if (callbacks.onRoundStatusChange) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.ROUND_STATUS_CHANGE,
-                    callbacks.onRoundStatusChange
-                )
-            );
-        }
+    // Round status changes
+    if (callbacks.onRoundStatusChange) {
+      unsubscribers.push(
+        subscribe(
+          SocketEvents.ROUND_STATUS_CHANGE,
+          callbacks.onRoundStatusChange
+        )
+      );
+    }
 
-        // Pairings generated
-        if (callbacks.onPairingsGenerated) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.PAIRINGS_GENERATED,
-                    callbacks.onPairingsGenerated
-                )
-            );
-        }
+    // Pairings generated
+    if (callbacks.onPairingsGenerated) {
+      unsubscribers.push(
+        subscribe(
+          SocketEvents.PAIRINGS_GENERATED,
+          callbacks.onPairingsGenerated
+        )
+      );
+    }
 
-        // Pairings published
-        if (callbacks.onPairingsPublished) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.ROUND_PAIRINGS_PUBLISHED,
-                    callbacks.onPairingsPublished
-                )
-            );
-        }
+    // Pairings published
+    if (callbacks.onPairingsPublished) {
+      unsubscribers.push(
+        subscribe(
+          SocketEvents.ROUND_PAIRINGS_PUBLISHED,
+          callbacks.onPairingsPublished
+        )
+      );
+    }
 
-        // Rooms allocated
-        if (callbacks.onRoomsAllocated) {
-            unsubscribers.push(
-                subscribe(
-                    SocketEvents.ROOMS_ALLOCATED,
-                    callbacks.onRoomsAllocated
-                )
-            );
-        }
+    // Rooms allocated
+    if (callbacks.onRoomsAllocated) {
+      unsubscribers.push(
+        subscribe(SocketEvents.ROOMS_ALLOCATED, callbacks.onRoomsAllocated)
+      );
+    }
 
-        // Debate result
-        if (callbacks.onDebateResult) {
-            unsubscribers.push(
-                subscribe(SocketEvents.DEBATE_RESULT, callbacks.onDebateResult)
-            );
-        }
+    // Debate result
+    if (callbacks.onDebateResult) {
+      unsubscribers.push(
+        subscribe(SocketEvents.DEBATE_RESULT, callbacks.onDebateResult)
+      );
+    }
 
-        return () => {
-            unsubscribers.forEach((unsub) => unsub?.());
-        };
-    }, [roundId, callbacks, subscribe]);
+    return () => {
+      unsubscribers.forEach((unsub) => unsub?.());
+    };
+  }, [roundId, callbacks, subscribe]);
 }
 
 export default useSocket;

@@ -128,6 +128,11 @@ export default function EventDetails() {
 
   // Real-time updates via WebSocket
   useEventSocket(id, {
+    onRoundCreated: (data) => {
+      console.log("[Socket] Round created:", data);
+      toast.info("New Round!", "A new round has been added to this event.");
+      fetchData();
+    },
     onRoundStatusChange: (data) => {
       console.log("[Socket] Round status changed:", data);
       // Update the specific round in state
