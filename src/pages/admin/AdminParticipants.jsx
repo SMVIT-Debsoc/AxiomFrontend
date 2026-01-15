@@ -8,7 +8,9 @@ import {
   Mail,
   Shield,
   Trash2,
+  Loader2,
 } from "lucide-react";
+import {useParams} from "react-router-dom";
 import {useAuth} from "@clerk/clerk-react";
 import {UserApi} from "../../services/api";
 import {EventApi} from "../../services/api"; // Added EventApi import
