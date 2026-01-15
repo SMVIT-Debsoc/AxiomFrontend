@@ -22,6 +22,7 @@ import {socketService, SocketEvents} from "../../services/socket";
 import {useToast} from "../../components/ui/Toast";
 import {cn} from "../../lib/utils";
 import {UserAvatar} from "../../components/ui/UserAvatar";
+import {RoundDetailsSkeleton} from "../../components/ui/Skeleton";
 
 export default function RoundDetails() {
   const {eventId, roundId} = useParams();
@@ -216,11 +217,7 @@ export default function RoundDetails() {
   const userPosition = getUserPosition();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <RoundDetailsSkeleton />;
   }
 
   if (error || !round) {
