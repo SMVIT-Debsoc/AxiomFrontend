@@ -178,7 +178,7 @@ export default function Preloader() {
               transition={{delay: 1.4}}
               className="mt-2 text-amber-400/60 text-xs tracking-widest"
             >
-              POWERED BY KHYBER
+              POWERED BY JunnEX
             </motion.p>
           </div>
 
