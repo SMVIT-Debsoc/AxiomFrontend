@@ -296,8 +296,8 @@ export default function DashboardHome() {
                             <div className="flex items-center gap-4">
                                 <div
                                     className={`w-12 h-12 rounded-full flex items-center justify-center ${checkInStatus?.status === "PRESENT"
-                                            ? "bg-green-100 text-green-600"
-                                            : "bg-amber-100 text-amber-600"
+                                        ? "bg-green-100 text-green-600"
+                                        : "bg-amber-100 text-amber-600"
                                         }`}
                                 >
                                     {checkInStatus?.status === "PRESENT" ? (
@@ -328,8 +328,8 @@ export default function DashboardHome() {
                             </div>
                             <span
                                 className={`px-3 py-1 rounded-full text-xs font-bold ${checkInStatus?.status === "PRESENT"
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-amber-100 text-amber-700"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-amber-100 text-amber-700"
                                     }`}
                             >
                                 {checkInStatus?.status === "PRESENT"
@@ -421,9 +421,12 @@ export default function DashboardHome() {
                             >
                                 View Details
                             </Link>
-                            <button className="p-2.5 rounded-xl border border-border hover:bg-muted text-muted-foreground">
+                            <Link
+                                to={`/dashboard/events/${nextDebate.round.eventId}/rounds/${nextDebate.round.id}`}
+                                className="p-2.5 rounded-xl border border-border hover:bg-muted text-muted-foreground transition-colors flex items-center justify-center"
+                            >
                                 <MapPin className="w-5 h-5" />
-                            </button>
+                            </Link>
                         </div>
                     </div>
                 ) : (
