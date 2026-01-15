@@ -39,6 +39,26 @@ export const SocketEvents = {
   // Event enrollment
   EVENT_ENROLLMENT: "event:enrollment",
   EVENT_UPDATE: "event:update",
+  EVENT_UPDATED: "event:updated",
+  EVENT_DELETED: "event:deleted",
+
+  // Global events for lists
+  EVENT_CREATED: "event:created",
+  EVENT_UPDATED_GLOBAL: "event:updated:global",
+  EVENT_DELETED_GLOBAL: "event:deleted:global",
+
+  // User events
+  USER_UPDATED: "user:updated",
+  USER_DELETED: "user:deleted",
+
+  // Round extra events
+  ROUND_UPDATED: "round:updated",
+  ROUND_DELETED: "round:deleted",
+
+  // Debate events extended
+  DEBATE_CREATED: "debate:created",
+  DEBATE_UPDATED: "debate:updated",
+  DEBATE_DELETED: "debate:deleted",
 };
 
 class SocketService {
