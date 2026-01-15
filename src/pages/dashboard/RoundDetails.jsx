@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import {useState, useEffect} from "react";
+import {useParams, Link} from "react-router-dom";
+import {motion} from "framer-motion";
 import {
   ArrowLeft,
   Loader2,
@@ -16,17 +16,17 @@ import {
   Swords,
   Timer,
 } from "lucide-react";
-import { useAuth, useUser } from "@clerk/clerk-react";
-import { RoundApi, CheckInApi, DebateApi, UserApi } from "../../services/api";
-import { socketService, SocketEvents } from "../../services/socket";
-import { useToast } from "../../components/ui/Toast";
-import { cn } from "../../lib/utils";
-import { UserAvatar } from "../../components/ui/UserAvatar";
+import {useAuth, useUser} from "@clerk/clerk-react";
+import {RoundApi, CheckInApi, DebateApi, UserApi} from "../../services/api";
+import {socketService, SocketEvents} from "../../services/socket";
+import {useToast} from "../../components/ui/Toast";
+import {cn} from "../../lib/utils";
+import {UserAvatar} from "../../components/ui/UserAvatar";
 
 export default function RoundDetails() {
-  const { eventId, roundId } = useParams();
-  const { getToken } = useAuth();
-  const { user: clerkUser } = useUser();
+  const {eventId, roundId} = useParams();
+  const {getToken} = useAuth();
+  const {user: clerkUser} = useUser();
   const toast = useToast();
 
   const [round, setRound] = useState(null);
@@ -71,9 +71,7 @@ export default function RoundDetails() {
         const debatesResponse = await DebateApi.getMyDebates(token);
         if (debatesResponse.success) {
           const debates = debatesResponse.debates || [];
-          const myRoundDebate = debates.find(
-            (d) => d.roundId === roundId
-          );
+          const myRoundDebate = debates.find((d) => d.roundId === roundId);
           if (myRoundDebate) {
             setMyDebate(myRoundDebate);
           }
@@ -85,10 +83,7 @@ export default function RoundDetails() {
       // Fetch all debates if pairings published
       try {
         if (roundResponse.round?.pairingsPublished) {
-          const allDebatesRes = await DebateApi.getByRound(
-            roundId,
-            token
-          );
+          const allDebatesRes = await DebateApi.getByRound(roundId, token);
           if (allDebatesRes.success) {
             setAllDebates(allDebatesRes.debates || []);
           }
@@ -196,8 +191,7 @@ export default function RoundDetails() {
   };
 
   const isCheckedIn =
-    checkInStatus?.isCheckedIn ||
-    checkInStatus?.checkIn?.status === "PRESENT";
+    checkInStatus?.isCheckedIn || checkInStatus?.checkIn?.status === "PRESENT";
 
   // Determine user position in debate
   const getUserPosition = () => {
@@ -266,8 +260,8 @@ export default function RoundDetails() {
                 round.status === "ONGOING"
                   ? "bg-green-500"
                   : round.status === "COMPLETED"
-                    ? "bg-gray-500"
-                    : "bg-blue-500"
+                  ? "bg-gray-500"
+                  : "bg-blue-500"
               )}
             >
               {round.status}
@@ -312,25 +306,27 @@ export default function RoundDetails() {
           {/* Motion Display */}
           {round.motion && round.pairingsPublished && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{opacity: 0, y: 20}}
+              animate={{opacity: 1, y: 0}}
+              transition={{duration: 0.4}}
               className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-6"
             >
               <div className="flex items-center gap-2 text-amber-500 mb-3">
                 <Gavel className="w-5 h-5" />
-                <span className="font-semibold text-sm">
-                  MOTION
-                </span>
+                <span className="font-semibold text-sm">MOTION</span>
               </div>
-              <p className="text-lg font-medium">
-                {round.motion}
-              </p>
+              <p className="text-lg font-medium">{round.motion}</p>
             </motion.div>
           )}
 
           {/* Check-in Section */}
           {round.checkInStartTime && round.checkInEndTime && (
-            <div className="bg-card border border-border rounded-xl p-6">
+            <motion.div
+              initial={{opacity: 0, y: 20}}
+              animate={{opacity: 1, y: 0}}
+              transition={{duration: 0.4, delay: 0.1}}
+              className="bg-card border border-border rounded-xl p-6"
+            >
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-primary" />
                 Check-in
@@ -342,21 +338,23 @@ export default function RoundDetails() {
                     Check-in Window:
                   </span>
                   <span>
-                    {new Date(
-                      round.checkInStartTime
-                    ).toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZone: "Asia/Kolkata",
-                    })}
+                    {new Date(round.checkInStartTime).toLocaleTimeString(
+                      "en-IN",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "Asia/Kolkata",
+                      }
+                    )}
                     {" - "}
-                    {new Date(
-                      round.checkInEndTime
-                    ).toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      timeZone: "Asia/Kolkata",
-                    })}
+                    {new Date(round.checkInEndTime).toLocaleTimeString(
+                      "en-IN",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone: "Asia/Kolkata",
+                      }
+                    )}
                     {" IST"}
                   </span>
                 </div>
@@ -365,9 +363,7 @@ export default function RoundDetails() {
                   <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500">
                     <CheckCircle2 className="w-6 h-6" />
                     <div>
-                      <p className="font-semibold">
-                        You're Checked In!
-                      </p>
+                      <p className="font-semibold">You're Checked In!</p>
                       <p className="text-sm opacity-80">
                         Marked as present for this round
                       </p>
@@ -384,20 +380,15 @@ export default function RoundDetails() {
                     ) : (
                       <CheckCircle2 className="w-5 h-5" />
                     )}
-                    {checkingIn
-                      ? "Checking In..."
-                      : "Check In Now"}
+                    {checkingIn ? "Checking In..." : "Check In Now"}
                   </button>
                 ) : (
                   <div className="flex items-center gap-3 p-4 bg-muted rounded-xl text-muted-foreground">
                     <Clock className="w-6 h-6" />
                     <div>
-                      <p className="font-semibold">
-                        Check-in Not Available
-                      </p>
+                      <p className="font-semibold">Check-in Not Available</p>
                       <p className="text-sm">
-                        {new Date() <
-                          new Date(round.checkInStartTime)
+                        {new Date() < new Date(round.checkInStartTime)
                           ? "Check-in has not started yet"
                           : "Check-in window has closed"}
                       </p>
@@ -405,25 +396,23 @@ export default function RoundDetails() {
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Waiting for Draws */}
           {isCheckedIn && !round.pairingsPublished && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{opacity: 0, y: 20}}
+              animate={{opacity: 1, y: 0}}
+              transition={{duration: 0.4, delay: 0.2}}
               className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6 text-center"
             >
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/20 flex items-center justify-center">
                 <Timer className="w-8 h-8 text-blue-500 animate-pulse" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">
-                Waiting for Draws
-              </h3>
+              <h3 className="font-semibold text-lg mb-2">Waiting for Draws</h3>
               <p className="text-muted-foreground">
-                You're checked in! Please wait for the draws to
-                be published.
+                You're checked in! Please wait for the draws to be published.
               </p>
             </motion.div>
           )}
@@ -431,8 +420,9 @@ export default function RoundDetails() {
           {/* Pairing / Debate Details */}
           {round.pairingsPublished && myDebate && userPosition && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{opacity: 0, y: 20}}
+              animate={{opacity: 1, y: 0}}
+              transition={{duration: 0.4, delay: 0.2}}
               className="space-y-4"
             >
               {/* Your Position */}
@@ -451,9 +441,7 @@ export default function RoundDetails() {
                     <Swords className="w-6 h-6" />
                   )}
                   <div>
-                    <p className="text-sm opacity-80">
-                      Your Position
-                    </p>
+                    <p className="text-sm opacity-80">Your Position</p>
                     <p className="font-bold text-lg">
                       {userPosition.position === "GOV"
                         ? "Government"
@@ -475,14 +463,8 @@ export default function RoundDetails() {
                         Your Opponent
                       </p>
                       <p className="font-semibold">
-                        {
-                          userPosition.opponent
-                            ?.firstName
-                        }{" "}
-                        {
-                          userPosition.opponent
-                            ?.lastName
-                        }
+                        {userPosition.opponent?.firstName}{" "}
+                        {userPosition.opponent?.lastName}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {userPosition.opponent?.college}
@@ -491,16 +473,12 @@ export default function RoundDetails() {
                     <div
                       className={cn(
                         "ml-auto px-3 py-1 rounded-full text-xs font-bold",
-                        userPosition.opponentPosition ===
-                          "GOV"
+                        userPosition.opponentPosition === "GOV"
                           ? "bg-green-500/10 text-green-500"
                           : "bg-red-500/10 text-red-500"
                       )}
                     >
-                      {userPosition.opponentPosition ===
-                        "GOV"
-                        ? "GOV"
-                        : "OPP"}
+                      {userPosition.opponentPosition === "GOV" ? "GOV" : "OPP"}
                     </div>
                   </div>
 
@@ -509,12 +487,8 @@ export default function RoundDetails() {
                     <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
                       <MapPin className="w-5 h-5 text-primary" />
                       <div>
-                        <p className="text-sm text-muted-foreground">
-                          Room
-                        </p>
-                        <p className="font-semibold">
-                          {myDebate.room.name}
-                        </p>
+                        <p className="text-sm text-muted-foreground">Room</p>
+                        <p className="font-semibold">{myDebate.room.name}</p>
                       </div>
                     </div>
                   )}
@@ -528,63 +502,46 @@ export default function RoundDetails() {
                           Adjudicator
                         </p>
                         <p className="font-semibold">
-                          {
-                            myDebate.adjudicator
-                              .firstName
-                          }{" "}
-                          {
-                            myDebate.adjudicator
-                              .lastName
-                          }
+                          {myDebate.adjudicator.firstName}{" "}
+                          {myDebate.adjudicator.lastName}
                         </p>
                       </div>
                     </div>
                   )}
 
                   {/* Time Slot */}
-                  {(myDebate.startTime ||
-                    myDebate.endTime) && (
-                      <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                        <Clock className="w-5 h-5 text-blue-500" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            Time Slot
-                          </p>
-                          <p className="font-semibold">
-                            {myDebate.startTime &&
-                              new Date(
-                                myDebate.startTime
-                              ).toLocaleTimeString(
-                                "en-IN",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  timeZone:
-                                    "Asia/Kolkata",
-                                }
-                              )}
-                            {myDebate.startTime &&
-                              myDebate.endTime &&
-                              " - "}
-                            {myDebate.endTime &&
-                              new Date(
-                                myDebate.endTime
-                              ).toLocaleTimeString(
-                                "en-IN",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  timeZone:
-                                    "Asia/Kolkata",
-                                }
-                              )}
-                            {(myDebate.startTime ||
-                              myDebate.endTime) &&
-                              " IST"}
-                          </p>
-                        </div>
+                  {(myDebate.startTime || myDebate.endTime) && (
+                    <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                      <Clock className="w-5 h-5 text-blue-500" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Time Slot
+                        </p>
+                        <p className="font-semibold">
+                          {myDebate.startTime &&
+                            new Date(myDebate.startTime).toLocaleTimeString(
+                              "en-IN",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                timeZone: "Asia/Kolkata",
+                              }
+                            )}
+                          {myDebate.startTime && myDebate.endTime && " - "}
+                          {myDebate.endTime &&
+                            new Date(myDebate.endTime).toLocaleTimeString(
+                              "en-IN",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                timeZone: "Asia/Kolkata",
+                              }
+                            )}
+                          {(myDebate.startTime || myDebate.endTime) && " IST"}
+                        </p>
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -594,13 +551,11 @@ export default function RoundDetails() {
           {round.pairingsPublished && !myDebate && (
             <div className="bg-muted/50 rounded-xl p-6 text-center">
               <XCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="font-semibold mb-2">
-                No Debate Assigned
-              </h3>
+              <h3 className="font-semibold mb-2">No Debate Assigned</h3>
               <p className="text-muted-foreground text-sm">
-                You don't have a debate assigned for this round.
-                This could be because you weren't checked in or
-                there was an odd number of participants.
+                You don't have a debate assigned for this round. This could be
+                because you weren't checked in or there was an odd number of
+                participants.
               </p>
             </div>
           )}
@@ -623,12 +578,9 @@ export default function RoundDetails() {
           {!round.pairingsPublished ? (
             <div className="text-center py-12 bg-muted/20 rounded-xl">
               <Swords className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="font-bold text-lg mb-2">
-                Draws Not Published
-              </h3>
+              <h3 className="font-bold text-lg mb-2">Draws Not Published</h3>
               <p className="text-muted-foreground">
-                The pairings for this round have not been
-                released yet.
+                The pairings for this round have not been released yet.
               </p>
             </div>
           ) : allDebates.length === 0 ? (
@@ -637,9 +589,12 @@ export default function RoundDetails() {
             </div>
           ) : (
             <div className="space-y-3">
-              {allDebates.map((debate) => (
-                <div
+              {allDebates.map((debate, index) => (
+                <motion.div
                   key={debate.id}
+                  initial={{opacity: 0, y: 20}}
+                  animate={{opacity: 1, y: 0}}
+                  transition={{duration: 0.3, delay: index * 0.1}}
                   className="bg-card border border-border rounded-xl p-4"
                 >
                   <div className="flex items-center justify-between gap-4 mb-4">
@@ -655,8 +610,7 @@ export default function RoundDetails() {
                         </span>
                       </div>
                       <p className="font-bold text-sm truncate w-full text-center">
-                        {debate.debater1.firstName}{" "}
-                        {debate.debater1.lastName}
+                        {debate.debater1.firstName} {debate.debater1.lastName}
                       </p>
                     </div>
                     <div className="text-muted-foreground font-black text-xs pt-4">
@@ -674,17 +628,14 @@ export default function RoundDetails() {
                         </span>
                       </div>
                       <p className="font-bold text-sm truncate w-full text-center">
-                        {debate.debater2.firstName}{" "}
-                        {debate.debater2.lastName}
+                        {debate.debater2.firstName} {debate.debater2.lastName}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-3 border-t border-border text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
-                      {debate.room
-                        ? debate.room.name
-                        : "No Room"}
+                      {debate.room ? debate.room.name : "No Room"}
                     </div>
                     <div className="flex items-center gap-1">
                       <Gavel className="w-3 h-3" />
@@ -693,7 +644,7 @@ export default function RoundDetails() {
                         : "TBD"}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
