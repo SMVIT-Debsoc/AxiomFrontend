@@ -15,6 +15,7 @@ import {useNavigate, Link} from "react-router-dom";
 import {AdminApi, EventApi} from "../../services/api";
 import {useToast} from "../../components/ui/Toast";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
+import {useSocket, SocketEvents} from "../../hooks/useSocket";
 
 export default function AdminEvents() {
   const {getToken} = useAuth();
@@ -43,6 +44,29 @@ export default function AdminEvents() {
   useEffect(() => {
     fetchEvents();
   }, [getToken, toast]);
+
+  // Real-time updates
+  const {subscribe} = useSocket();
+  useEffect(() => {
+    const unsubs = [
+      subscribe(SocketEvents.EVENT_CREATED, (data) => {
+        fetchEvents();
+        toast.success(
+          "New Event",
+          `Event "${data.event.name}" has been created.`
+        );
+      }),
+      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, (data) => {
+        fetchEvents();
+        // Optional: toast.info("Event Updated", `Event "${data.event.name}" updated.`);
+      }),
+      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, (data) => {
+        fetchEvents();
+        toast.info("Event Deleted", "An event has been deleted.");
+      }),
+    ];
+    return () => unsubs.forEach((u) => u && u());
+  }, [subscribe]);
 
   const handleCreateEvent = () => {
     navigate("/admin/events/create");

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import {useState, useEffect, useCallback} from "react";
+import {motion} from "framer-motion";
 import {
   Trophy,
   Medal,
@@ -11,15 +11,15 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
-import { useAuth } from "@clerk/clerk-react";
-import { StatsApi, EventApi } from "../../services/api";
-import { useSocket, SocketEvents } from "../../hooks/useSocket";
-import { UserAvatar } from "../../components/ui/UserAvatar";
-import { LeaderboardSkeleton } from "../../components/ui/Skeleton";
+import {cn} from "../../lib/utils";
+import {useAuth} from "@clerk/clerk-react";
+import {StatsApi, EventApi} from "../../services/api";
+import {useSocket, SocketEvents} from "../../hooks/useSocket";
+import {UserAvatar} from "../../components/ui/UserAvatar";
+import {LeaderboardSkeleton} from "../../components/ui/Skeleton";
 
 export default function Leaderboard() {
-  const { getToken } = useAuth();
+  const {getToken} = useAuth();
   const [filter, setFilter] = useState("all-time");
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export default function Leaderboard() {
   const [isEventLoading, setIsEventLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { subscribe } = useSocket();
+  const {subscribe} = useSocket({eventId: activeEvent?.id});
 
   // 1. Fetch Active Event to determine default view
   useEffect(() => {
@@ -114,8 +114,9 @@ export default function Leaderboard() {
   // Filter leaderboard based on search query
   const filteredLeaderboard = leaderboard.filter((entry) => {
     const userData = entry.user || entry;
-    const name = `${userData.firstName || ""} ${userData.lastName || ""
-      }`.toLowerCase();
+    const name = `${userData.firstName || ""} ${
+      userData.lastName || ""
+    }`.toLowerCase();
     const college = (userData.college || "").toLowerCase();
     const query = searchQuery.toLowerCase();
     return name.includes(query) || college.includes(query);
@@ -136,7 +137,7 @@ export default function Leaderboard() {
 
   // Get stats (handles nested stats object)
   const getStats = (entry) => {
-    return entry.stats || { totalScore: 0, winRate: 0, wins: 0, losses: 0 };
+    return entry.stats || {totalScore: 0, winRate: 0, wins: 0, losses: 0};
   };
 
   // Get college (handles nested user object)
@@ -193,9 +194,9 @@ export default function Leaderboard() {
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 period === "Current Event" &&
-                !activeEvent &&
-                !isEventLoading &&
-                "opacity-50 cursor-not-allowed"
+                  !activeEvent &&
+                  !isEventLoading &&
+                  "opacity-50 cursor-not-allowed"
               )}
             >
               {period}
@@ -324,8 +325,8 @@ export default function Leaderboard() {
                   {filteredLeaderboard.map((entry, index) => (
                     <motion.tr
                       key={entry.user?.id || entry.id || index}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
+                      initial={{opacity: 0}}
+                      animate={{opacity: 1}}
                       className="group hover:bg-muted/20 transition-colors"
                     >
                       <td className="px-3 md:px-6 py-4">

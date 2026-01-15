@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import {useState, useEffect} from "react";
+import {motion} from "framer-motion";
 import {
   Trophy,
   TrendingUp,
@@ -16,16 +16,17 @@ import {
   Lock,
   ArrowRight,
 } from "lucide-react";
-import { useAuth, useUser } from "@clerk/clerk-react";
-import { UserApi, EventApi, DebateApi, CheckInApi } from "../../services/api";
-import { Link } from "react-router-dom";
-import { useToast } from "../../components/ui/Toast";
-import { cn } from "../../lib/utils";
-import { DashboardHomeSkeleton } from "../../components/ui/Skeleton";
+import {useAuth, useUser} from "@clerk/clerk-react";
+import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
+import {Link} from "react-router-dom";
+import {useToast} from "../../components/ui/Toast";
+import {cn} from "../../lib/utils";
+import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
+import {useEventSocket} from "../../hooks/useSocket";
 
 export default function DashboardHome() {
-  const { getToken } = useAuth();
-  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const {getToken} = useAuth();
+  const {user: clerkUser, isLoaded: clerkLoaded} = useUser();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,92 +37,118 @@ export default function DashboardHome() {
   const [currentRound, setCurrentRound] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!clerkLoaded) return;
+  // Fetch data function extracted for reuse
+  const fetchDashboardData = async () => {
+    if (!clerkLoaded) return;
 
-      try {
-        setLoading(true);
-        const token = await getToken();
+    try {
+      // Loading state only for initial load, not refreshes
+      // setLoading(true);
+      const token = await getToken();
 
-        // Fetch user profile with stats
+      // Fetch user profile stats if we don't have them
+      if (!userData) {
         const profileResponse = await UserApi.getProfile(token);
         setUserData(profileResponse.user);
-
-        // Fetch events to find active one (ONGOING first, then UPCOMING)
-        let eventsResponse = await EventApi.list(token, "ONGOING");
-        let events = eventsResponse.events || [];
-
-        // If no ongoing events, check for upcoming ones
-        if (events.length === 0) {
-          eventsResponse = await EventApi.list(token, "UPCOMING");
-          events = eventsResponse.events || [];
-        }
-
-        // If still no events, fetch all events
-        if (events.length === 0) {
-          eventsResponse = await EventApi.list(token);
-          events = eventsResponse.events || [];
-        }
-
-        if (events.length > 0) {
-          const event = events[0];
-          setActiveEvent(event);
-
-          // Find active or latest round (Ongoing > Upcoming > Latest)
-          let targetRound = event.rounds?.find((r) => r.status === "ONGOING");
-
-          if (!targetRound) {
-            // If no ongoing round, find the next upcoming one
-            targetRound = event.rounds?.find((r) => r.status === "UPCOMING");
-          }
-
-          if (!targetRound && event.rounds?.length > 0) {
-            // If no active rounds, show the latest round (e.g. last completed)
-            targetRound = event.rounds[event.rounds.length - 1];
-          }
-
-          if (targetRound) {
-            setCurrentRound(targetRound);
-
-            // Check user's check-in status for this round
-            try {
-              const checkIn = await CheckInApi.getMyStatus(
-                targetRound.id,
-                token
-              );
-              setCheckInStatus(checkIn.checkIn);
-            } catch (e) {
-              // User might not have checked in yet
-              setCheckInStatus(null);
-            }
-          }
-        }
-
-        // Fetch user's debates
-        try {
-          const debatesResponse = await DebateApi.getMyDebates(token);
-          const debates = debatesResponse.debates || [];
-          // Find next scheduled debate
-          const scheduled = debates.find((d) => d.status === "SCHEDULED");
-          if (scheduled) {
-            setNextDebate(scheduled);
-          }
-        } catch (e) {
-          // User might not have any debates
-        }
-
-        setError(null);
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
       }
-    };
 
+      // Fetch events to find active one (ONGOING first, then UPCOMING)
+      let eventsResponse = await EventApi.list(token, "ONGOING");
+      let events = eventsResponse.events || [];
+
+      // If no ongoing events, check for upcoming ones
+      if (events.length === 0) {
+        eventsResponse = await EventApi.list(token, "UPCOMING");
+        events = eventsResponse.events || [];
+      }
+
+      // If still no events, fetch all events
+      if (events.length === 0) {
+        eventsResponse = await EventApi.list(token);
+        events = eventsResponse.events || [];
+      }
+
+      if (events.length > 0) {
+        const event = events[0];
+        setActiveEvent(event);
+
+        // Find active or latest round (Ongoing > Upcoming > Latest)
+        let targetRound = event.rounds?.find((r) => r.status === "ONGOING");
+
+        if (!targetRound) {
+          // If no ongoing round, find the next upcoming one
+          targetRound = event.rounds?.find((r) => r.status === "UPCOMING");
+        }
+
+        if (!targetRound && event.rounds?.length > 0) {
+          // If no active rounds, show the latest round (e.g. last completed)
+          targetRound = event.rounds[event.rounds.length - 1];
+        }
+
+        if (targetRound) {
+          setCurrentRound(targetRound);
+
+          // Check user's check-in status for this round
+          try {
+            const checkIn = await CheckInApi.getMyStatus(targetRound.id, token);
+            setCheckInStatus(checkIn.checkIn);
+          } catch (e) {
+            // User might not have checked in yet
+            setCheckInStatus(null);
+          }
+        }
+      }
+
+      // Fetch user's debates
+      try {
+        const debatesResponse = await DebateApi.getMyDebates(token);
+        const debates = debatesResponse.debates || [];
+        // Find next scheduled debate
+        const scheduled = debates.find((d) => d.status === "SCHEDULED");
+        if (scheduled) {
+          setNextDebate(scheduled);
+        } else {
+          setNextDebate(null);
+        }
+      } catch (e) {
+        // User might not have any debates
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+      // Only show error on initial load
+      if (loading) setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDashboardData();
   }, [getToken, clerkLoaded]);
+
+  // Real-time updates
+  useEventSocket(activeEvent?.id, {
+    onRoundStatusChange: (data) => {
+      console.log("Round status changed, refreshing dashboard...", data);
+      toast.info("Update", `Round status updated to ${data.status}`);
+      fetchDashboardData();
+    },
+    onPairingsPublished: (data) => {
+      console.log("Pairings published, refreshing dashboard...", data);
+      if (data.published) {
+        toast.success("Draw Released!", "Pairings have been published.");
+      }
+      fetchDashboardData();
+    },
+    onRoundUpdated: () => {
+      fetchDashboardData();
+    },
+    onDebateCreated: () => {
+      fetchDashboardData();
+    },
+  });
 
   if (loading) {
     return <DashboardHomeSkeleton />;
@@ -155,8 +182,8 @@ export default function DashboardHome() {
       value:
         userData?.stats?.totalDebates > 0
           ? `${Math.round(
-            (userData.stats.wonDebates / userData.stats.totalDebates) * 100
-          )}%`
+              (userData.stats.wonDebates / userData.stats.totalDebates) * 100
+            )}%`
           : "0%",
       color: "text-violet-600",
     },
@@ -217,15 +244,15 @@ export default function DashboardHome() {
       {/* Active Event Card */}
       {activeEvent ? (
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
+          initial={{y: 20, opacity: 0}}
+          animate={{y: 0, opacity: 1}}
           className={cn(
             "text-white p-6 rounded-3xl shadow-lg relative overflow-hidden",
             activeEvent.status === "ONGOING"
               ? "bg-[#F97316]"
               : activeEvent.status === "UPCOMING"
-                ? "bg-[#3B82F6]"
-                : "bg-[#6B7280]"
+              ? "bg-[#3B82F6]"
+              : "bg-[#6B7280]"
           )}
         >
           <Link
@@ -282,10 +309,11 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center ${checkInStatus?.status === "PRESENT"
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    checkInStatus?.status === "PRESENT"
                       ? "bg-green-100 text-green-600"
                       : "bg-amber-100 text-amber-600"
-                    }`}
+                  }`}
                 >
                   {checkInStatus?.status === "PRESENT" ? (
                     <CheckCircle2 className="w-6 h-6" />
@@ -315,10 +343,11 @@ export default function DashboardHome() {
                 </div>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold ${checkInStatus?.status === "PRESENT"
+                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  checkInStatus?.status === "PRESENT"
                     ? "bg-green-100 text-green-700"
                     : "bg-amber-100 text-amber-700"
-                  }`}
+                }`}
               >
                 {checkInStatus?.status === "PRESENT" ? "Present" : "Pending"}
               </span>
@@ -380,8 +409,8 @@ export default function DashboardHome() {
 
           {currentRound.pairingsPublished ? (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{opacity: 0, y: 10}}
+              animate={{opacity: 1, y: 0}}
               className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden"
             >
               <div className="flex justify-between items-start relative z-10 mb-4">

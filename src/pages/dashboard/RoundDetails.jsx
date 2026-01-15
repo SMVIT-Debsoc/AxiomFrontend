@@ -132,13 +132,21 @@ export default function RoundDetails() {
     );
 
     const unsubscribePairings = socketService.on(
-      SocketEvents.PAIRINGS_GENERATED,
-      () => {
+      SocketEvents.ROUND_PAIRINGS_PUBLISHED,
+      (data) => {
+        if (data.published) {
+          toast.success("Draw Released!", "Pairings have been published.");
+        }
         fetchData();
-        toast.info(
-          "Draws Released!",
-          "The pairings for this round have been published."
-        );
+      }
+    );
+
+    const unsubscribeRoundUpdated = socketService.on(
+      SocketEvents.ROUND_UPDATED,
+      (data) => {
+        // Generic update for name/motion
+        setRound((prev) => ({...prev, ...data.round}));
+        toast.info("Round Updated", "Round details have been updated.");
       }
     );
 
@@ -157,6 +165,7 @@ export default function RoundDetails() {
       unsubscribeStatus();
       unsubscribePairings();
       unsubscribeCheckIn();
+      unsubscribeRoundUpdated();
     };
   }, [roundId, getToken, currentUser?.id]);
 

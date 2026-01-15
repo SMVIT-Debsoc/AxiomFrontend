@@ -99,90 +99,111 @@ export function useSocket({eventId, roundId, autoConnect = true} = {}) {
 export function useEventSocket(eventId, callbacks = {}) {
   const {subscribe} = useSocket({eventId});
 
+  // Use ref to keep callbacks current without triggering re-effects
+  const callbacksRef = useRef(callbacks);
+
+  // Update ref whenever callbacks change
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  }, [callbacks]);
+
   useEffect(() => {
     if (!eventId) return;
 
     const unsubscribers = [];
 
+    // Helper to call current callback safely
+    const callHandler = (handlerName, data) => {
+      if (callbacksRef.current[handlerName]) {
+        callbacksRef.current[handlerName](data);
+      }
+    };
+
     // Check-in count updates
-    if (callbacks.onCheckInCount) {
-      unsubscribers.push(
-        subscribe(SocketEvents.CHECKIN_COUNT, callbacks.onCheckInCount)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.CHECKIN_COUNT, (data) =>
+        callHandler("onCheckInCount", data)
+      )
+    );
 
     // Round created
-    if (callbacks.onRoundCreated) {
-      unsubscribers.push(
-        subscribe(SocketEvents.ROUND_CREATED, callbacks.onRoundCreated)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_CREATED, (data) =>
+        callHandler("onRoundCreated", data)
+      )
+    );
 
     // Round status changes
-    if (callbacks.onRoundStatusChange) {
-      unsubscribers.push(
-        subscribe(
-          SocketEvents.ROUND_STATUS_CHANGE,
-          callbacks.onRoundStatusChange
-        )
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_STATUS_CHANGE, (data) =>
+        callHandler("onRoundStatusChange", data)
+      )
+    );
 
     // Pairings published
-    if (callbacks.onPairingsPublished) {
-      unsubscribers.push(
-        subscribe(
-          SocketEvents.ROUND_PAIRINGS_PUBLISHED,
-          callbacks.onPairingsPublished
-        )
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_PAIRINGS_PUBLISHED, (data) =>
+        callHandler("onPairingsPublished", data)
+      )
+    );
 
     // Pairings generated
-    if (callbacks.onPairingsGenerated) {
-      unsubscribers.push(
-        subscribe(
-          SocketEvents.PAIRINGS_GENERATED,
-          callbacks.onPairingsGenerated
-        )
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.PAIRINGS_GENERATED, (data) =>
+        callHandler("onPairingsGenerated", data)
+      )
+    );
 
     // Rooms allocated
-    if (callbacks.onRoomsAllocated) {
-      unsubscribers.push(
-        subscribe(SocketEvents.ROOMS_ALLOCATED, callbacks.onRoomsAllocated)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.ROOMS_ALLOCATED, (data) =>
+        callHandler("onRoomsAllocated", data)
+      )
+    );
 
     // Debate result
-    if (callbacks.onDebateResult) {
-      unsubscribers.push(
-        subscribe(SocketEvents.DEBATE_RESULT, callbacks.onDebateResult)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.DEBATE_RESULT, (data) =>
+        callHandler("onDebateResult", data)
+      )
+    );
 
     // Leaderboard update
-    if (callbacks.onLeaderboardUpdate) {
-      unsubscribers.push(
-        subscribe(
-          SocketEvents.LEADERBOARD_UPDATE,
-          callbacks.onLeaderboardUpdate
-        )
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.LEADERBOARD_UPDATE, (data) =>
+        callHandler("onLeaderboardUpdate", data)
+      )
+    );
 
     // Event enrollment
-    if (callbacks.onEventEnrollment) {
-      unsubscribers.push(
-        subscribe(SocketEvents.EVENT_ENROLLMENT, callbacks.onEventEnrollment)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.EVENT_ENROLLMENT, (data) =>
+        callHandler("onEventEnrollment", data)
+      )
+    );
+
+    // Event updated needs to be handled too if we added it?
+    // Wait, the hook didn't have EVENT_UPDATED before.
+    // I should add it now since I added it to backend.
+
+    // Event updated
+    unsubscribers.push(
+      subscribe(SocketEvents.EVENT_UPDATED, (data) =>
+        callHandler("onEventUpdated", data)
+      )
+    );
+
+    // Event deleted
+    unsubscribers.push(
+      subscribe(SocketEvents.EVENT_DELETED, (data) =>
+        callHandler("onEventDeleted", data)
+      )
+    );
 
     return () => {
       unsubscribers.forEach((unsub) => unsub?.());
     };
-  }, [eventId, callbacks, subscribe]);
+  }, [eventId, subscribe]); // Removed callbacks from dependency
 }
 
 /**
@@ -192,66 +213,107 @@ export function useEventSocket(eventId, callbacks = {}) {
 export function useRoundSocket(roundId, callbacks = {}) {
   const {subscribe} = useSocket({roundId});
 
+  // Use ref to keep callbacks current without triggering re-effects
+  const callbacksRef = useRef(callbacks);
+
+  // Update ref whenever callbacks change
+  useEffect(() => {
+    callbacksRef.current = callbacks;
+  }, [callbacks]);
+
   useEffect(() => {
     if (!roundId) return;
 
     const unsubscribers = [];
 
+    // Helper to call current callback safely
+    const callHandler = (handlerName, data) => {
+      if (callbacksRef.current[handlerName]) {
+        callbacksRef.current[handlerName](data);
+      }
+    };
+
     // Check-in updates
-    if (callbacks.onCheckInUpdate) {
-      unsubscribers.push(
-        subscribe(SocketEvents.CHECKIN_UPDATE, callbacks.onCheckInUpdate)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.CHECKIN_UPDATE, (data) =>
+        callHandler("onCheckInUpdate", data)
+      )
+    );
 
     // Round status changes
-    if (callbacks.onRoundStatusChange) {
-      unsubscribers.push(
-        subscribe(
-          SocketEvents.ROUND_STATUS_CHANGE,
-          callbacks.onRoundStatusChange
-        )
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_STATUS_CHANGE, (data) =>
+        callHandler("onRoundStatusChange", data)
+      )
+    );
 
     // Pairings generated
-    if (callbacks.onPairingsGenerated) {
-      unsubscribers.push(
-        subscribe(
-          SocketEvents.PAIRINGS_GENERATED,
-          callbacks.onPairingsGenerated
-        )
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.PAIRINGS_GENERATED, (data) =>
+        callHandler("onPairingsGenerated", data)
+      )
+    );
 
     // Pairings published
-    if (callbacks.onPairingsPublished) {
-      unsubscribers.push(
-        subscribe(
-          SocketEvents.ROUND_PAIRINGS_PUBLISHED,
-          callbacks.onPairingsPublished
-        )
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_PAIRINGS_PUBLISHED, (data) =>
+        callHandler("onPairingsPublished", data)
+      )
+    );
 
     // Rooms allocated
-    if (callbacks.onRoomsAllocated) {
-      unsubscribers.push(
-        subscribe(SocketEvents.ROOMS_ALLOCATED, callbacks.onRoomsAllocated)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.ROOMS_ALLOCATED, (data) =>
+        callHandler("onRoomsAllocated", data)
+      )
+    );
 
     // Debate result
-    if (callbacks.onDebateResult) {
-      unsubscribers.push(
-        subscribe(SocketEvents.DEBATE_RESULT, callbacks.onDebateResult)
-      );
-    }
+    unsubscribers.push(
+      subscribe(SocketEvents.DEBATE_RESULT, (data) =>
+        callHandler("onDebateResult", data)
+      )
+    );
+
+    // Round updated (generic)
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_UPDATED, (data) =>
+        callHandler("onRoundUpdated", data)
+      )
+    );
+
+    // Round deleted
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_DELETED, (data) =>
+        callHandler("onRoundDeleted", data)
+      )
+    );
+
+    // Debate created
+    unsubscribers.push(
+      subscribe(SocketEvents.DEBATE_CREATED, (data) =>
+        callHandler("onDebateCreated", data)
+      )
+    );
+
+    // Debate updated
+    unsubscribers.push(
+      subscribe(SocketEvents.DEBATE_UPDATED, (data) =>
+        callHandler("onDebateUpdated", data)
+      )
+    );
+
+    // Debate deleted
+    unsubscribers.push(
+      subscribe(SocketEvents.DEBATE_DELETED, (data) =>
+        callHandler("onDebateDeleted", data)
+      )
+    );
 
     return () => {
       unsubscribers.forEach((unsub) => unsub?.());
     };
-  }, [roundId, callbacks, subscribe]);
+  }, [roundId, subscribe]);
 }
 
 export default useSocket;

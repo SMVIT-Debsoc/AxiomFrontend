@@ -177,6 +177,20 @@ export default function EventDetails() {
       console.log("[Socket] Leaderboard updated");
       fetchData();
     },
+    onEventUpdated: (data) => {
+      console.log("[Socket] Event updated:", data);
+      if (data.event) {
+        setEvent((prev) => ({...prev, ...data.event}));
+        toast.info("Event Updated", "Event details have been modified.");
+      } else {
+        fetchData();
+      }
+    },
+    onEventDeleted: () => {
+      toast.error("Event Deleted", "This event has been cancelled or removed.");
+      // Redirect to dashboard logic could be added here, but for now just show toast/error state
+      setError("Event has been deleted.");
+    },
   });
 
   const handleEnroll = async () => {

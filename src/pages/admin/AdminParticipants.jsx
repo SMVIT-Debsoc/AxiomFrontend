@@ -13,7 +13,8 @@ import {
 import {useAuth} from "@clerk/clerk-react";
 import {UserApi} from "../../services/api";
 import {UserAvatar} from "../../components/ui/UserAvatar";
-import {ParticipantsListSkeleton} from "../../components/ui/Skeleton"; // Added ParticipantsListSkeleton import
+import {ParticipantsListSkeleton} from "../../components/ui/Skeleton";
+import {useSocket, SocketEvents} from "../../hooks/useSocket"; // Added ParticipantsListSkeleton import
 
 export default function AdminParticipants() {
   const {getToken} = useAuth();
@@ -21,24 +22,38 @@ export default function AdminParticipants() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    const fetchParticipants = async () => {
-      try {
-        const token = await getToken();
-        // Use UserApi.list to fetch all registered users for the global view
-        const response = await UserApi.list(token);
-        if (response.success) {
-          setParticipants(response.users || []);
-        }
-      } catch (err) {
-        console.error("Failed to fetch participants", err);
-      } finally {
-        setLoading(false);
+  const fetchParticipants = useCallback(async () => {
+    try {
+      const token = await getToken();
+      // Use UserApi.list to fetch all registered users for the global view
+      const response = await UserApi.list(token);
+      if (response.success) {
+        setParticipants(response.users || []);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch participants", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken]);
 
+  useEffect(() => {
     fetchParticipants();
-  }, [getToken]); // Modified dependency array
+  }, [fetchParticipants]);
+
+  // Real-time updates
+  const {subscribe} = useSocket();
+  useEffect(() => {
+    const unsubs = [
+      subscribe(SocketEvents.USER_UPDATED, () => {
+        fetchParticipants();
+      }),
+      subscribe(SocketEvents.USER_DELETED, () => {
+        fetchParticipants();
+      }),
+    ];
+    return () => unsubs.forEach((u) => u && u());
+  }, [subscribe, fetchParticipants]);
 
   const filteredParticipants = participants.filter((p) => {
     // Modified filter logic

@@ -13,6 +13,7 @@ import {
 import {useAuth} from "@clerk/clerk-react";
 import {EventApi} from "../../services/api";
 import {cn} from "../../lib/utils";
+import {useEventSocket} from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 
 export default function Participants() {
@@ -55,6 +56,29 @@ export default function Participants() {
 
     fetchData();
   }, [eventId, getToken]);
+
+  // Real-time updates
+  useEventSocket(eventId, {
+    onEventEnrollment: (data) => {
+      console.log("[Socket] New participant enrolled:", data);
+      // Re-fetch participants
+      const fetchPars = async () => {
+        try {
+          const token = await getToken();
+          const participantsResponse = await EventApi.getParticipants(
+            eventId,
+            token
+          );
+          if (participantsResponse.success) {
+            setParticipants(participantsResponse.participants || []);
+          }
+        } catch (e) {
+          console.error("Socket refresh failed", e);
+        }
+      };
+      fetchPars();
+    },
+  });
 
   // Filter participants by search
   const filteredParticipants = participants.filter((p) => {

@@ -106,6 +106,10 @@ export default function Results() {
       console.log("[Socket] Leaderboard updated");
       fetchData();
     },
+    onRoundStatusChange: (data) => {
+      console.log("[Socket] Round status changed:", data);
+      fetchData();
+    },
   });
 
   // Filter debates for completed rounds of this event
