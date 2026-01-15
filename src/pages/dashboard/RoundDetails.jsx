@@ -650,7 +650,7 @@ export default function RoundDetails() {
                           imageUrl={debate.debater1.imageUrl}
                           size="md"
                         />
-                        <span className="absolute -bottom-1 -right-1 text-[8px] font-bold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">
+                        <span className="absolute -bottom-2 -right-2 text-[10px] font-bold text-white bg-green-600 px-2 py-0.5 rounded-full shadow-sm z-10">
                           GOV
                         </span>
                       </div>
@@ -669,7 +669,7 @@ export default function RoundDetails() {
                           imageUrl={debate.debater2.imageUrl}
                           size="md"
                         />
-                        <span className="absolute -bottom-1 -right-1 text-[8px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                        <span className="absolute -bottom-2 -right-2 text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-sm z-10">
                           OPP
                         </span>
                       </div>
