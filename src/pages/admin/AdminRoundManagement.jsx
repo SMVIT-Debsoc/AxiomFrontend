@@ -15,6 +15,7 @@ import {
     Home,
     Search,
     Trophy,
+    RotateCcw,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
@@ -138,12 +139,12 @@ export default function AdminRoundManagement() {
 
     const handleGeneratePairings = async (type) => {
         if (loading) return;
-        if (
-            !confirm(
-                `Generate ${type} pairings? This will end the check-in period.`
-            )
-        )
-            return;
+        const confirmMessage =
+            debates.length > 0
+                ? "Regenerate pairings? This will DELETE all existing pairings/debates found in this round (except completed ones). This action cannot be undone."
+                : `Generate ${type} pairings? This will end the check-in period.`;
+
+        if (!confirm(confirmMessage)) return;
         setLoading(true);
         try {
             const token = await getToken();
@@ -374,12 +375,12 @@ export default function AdminRoundManagement() {
                     </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     {debates.length > 0 && (
                         <button
                             onClick={handleTogglePublish}
                             disabled={loading}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${round.pairingsPublished
+                            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto ${round.pairingsPublished
                                 ? "bg-green-500/10 text-green-500 border border-green-500/20"
                                 : "bg-amber-500 text-white hover:bg-amber-600"
                                 }`}
@@ -406,7 +407,7 @@ export default function AdminRoundManagement() {
                                     )
                                 }
                                 disabled={loading}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
                             >
                                 {loading ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -419,14 +420,34 @@ export default function AdminRoundManagement() {
                             </button>
                         </>
                     ) : (
-                        <button
-                            onClick={() => setShowAllocateModal(true)}
-                            disabled={loading}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Home className="w-4 h-4" />
-                            Allocate Rooms
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setShowAllocateModal(true)}
+                                disabled={loading}
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
+                            >
+                                <Home className="w-4 h-4" />
+                                Allocate Rooms
+                            </button>
+                            <button
+                                onClick={() =>
+                                    handleGeneratePairings(
+                                        round.roundNumber === 1
+                                            ? "round1"
+                                            : "power-match"
+                                    )
+                                }
+                                disabled={loading}
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
+                            >
+                                {loading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <RotateCcw className="w-4 h-4" />
+                                )}
+                                Regenerate
+                            </button>
+                        </>
                     )}
                 </div>
             </div>
@@ -1218,6 +1239,7 @@ function AllocateRoomsModal({
     const [selectedRoomIds, setSelectedRoomIds] = useState(
         rooms.map((r) => r.id)
     );
+    const [localSubmitting, setLocalSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         startTime: new Date().toISOString().slice(0, 16),
         speakingTime: 5,
@@ -1240,6 +1262,8 @@ function AllocateRoomsModal({
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        if (loading || localSubmitting) return;
+
         if (selectedRoomIds.length === 0) {
             toast.error(
                 "Selection Required",
@@ -1247,6 +1271,7 @@ function AllocateRoomsModal({
             );
             return;
         }
+        setLocalSubmitting(true);
         onConfirm({
             ...formData,
             roomIds: selectedRoomIds,
@@ -1282,9 +1307,9 @@ function AllocateRoomsModal({
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-muted rounded-full transition-colors"
+                        className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-full transition-colors"
                     >
-                        <XCircle className="w-6 h-6 text-muted-foreground" />
+                        <XCircle className="w-6 h-6" />
                     </button>
                 </div>
 
@@ -1513,13 +1538,14 @@ function AllocateRoomsModal({
                             </button>
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || localSubmitting}
                                 className="flex-[2] py-3 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 shadow-lg shadow-purple-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {loading && (
+                                {loading || localSubmitting ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    "Start Allocation"
                                 )}
-                                Start Allocation
                             </button>
                         </div>
                     </div>
