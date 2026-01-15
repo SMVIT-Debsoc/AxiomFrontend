@@ -1,5 +1,5 @@
-import {useState, useEffect, useCallback} from "react";
-import {motion} from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Trophy,
   Medal,
@@ -11,27 +11,71 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import {cn} from "../../lib/utils";
-import {useAuth} from "@clerk/clerk-react";
-import {StatsApi} from "../../services/api";
-import {useSocket, SocketEvents} from "../../hooks/useSocket";
-import {UserAvatar} from "../../components/ui/UserAvatar";
-import {LeaderboardSkeleton} from "../../components/ui/Skeleton";
+import { cn } from "../../lib/utils";
+import { useAuth } from "@clerk/clerk-react";
+import { StatsApi, EventApi } from "../../services/api";
+import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import { UserAvatar } from "../../components/ui/UserAvatar";
+import { LeaderboardSkeleton } from "../../components/ui/Skeleton";
 
 export default function Leaderboard() {
-  const {getToken} = useAuth();
+  const { getToken } = useAuth();
   const [filter, setFilter] = useState("all-time");
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [isEventLoading, setIsEventLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const {subscribe} = useSocket();
+  const { subscribe } = useSocket();
+
+  // 1. Fetch Active Event to determine default view
+  useEffect(() => {
+    const fetchActiveEvent = async () => {
+      try {
+        const token = await getToken();
+        // Priority: ONGOING > UPCOMING > Any
+        let eventsResponse = await EventApi.list(token, "ONGOING");
+        let events = eventsResponse.events || [];
+
+        if (events.length === 0) {
+          eventsResponse = await EventApi.list(token, "UPCOMING");
+          events = eventsResponse.events || [];
+        }
+
+        if (events.length === 0) {
+          eventsResponse = await EventApi.list(token);
+          events = eventsResponse.events || [];
+        }
+
+        if (events.length > 0) {
+          setActiveEvent(events[0]);
+          setActiveEvent(events[0]);
+          setFilter("current-event"); // Default to specific event as requested
+        }
+      } catch (err) {
+        console.error("Failed to fetch active event:", err);
+      } finally {
+        setIsEventLoading(false);
+      }
+    };
+    fetchActiveEvent();
+  }, [getToken]);
 
   const fetchLeaderboard = useCallback(async () => {
+    if (isEventLoading) return; // Wait until we know if there's an event
+
     try {
       setLoading(true);
       const token = await getToken();
-      const response = await StatsApi.getLeaderboard(token, null, 50);
+
+      const eventId = filter === "current-event" ? activeEvent?.id : null;
+
+      // If "This Event" is selected but no event found, show empty or all-time?
+      // For now, if no event, we'll just query with null (All Time) or separate handling
+      // But logically if filter is this-event and activeEvent is null, it means no event exists.
+
+      const response = await StatsApi.getLeaderboard(token, eventId, 50);
 
       // Handle the API response structure - backend returns data.leaderboard
       let data = [];
@@ -51,7 +95,7 @@ export default function Leaderboard() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, filter, activeEvent, isEventLoading]);
 
   useEffect(() => {
     fetchLeaderboard();
@@ -70,9 +114,8 @@ export default function Leaderboard() {
   // Filter leaderboard based on search query
   const filteredLeaderboard = leaderboard.filter((entry) => {
     const userData = entry.user || entry;
-    const name = `${userData.firstName || ""} ${
-      userData.lastName || ""
-    }`.toLowerCase();
+    const name = `${userData.firstName || ""} ${userData.lastName || ""
+      }`.toLowerCase();
     const college = (userData.college || "").toLowerCase();
     const query = searchQuery.toLowerCase();
     return name.includes(query) || college.includes(query);
@@ -93,7 +136,7 @@ export default function Leaderboard() {
 
   // Get stats (handles nested stats object)
   const getStats = (entry) => {
-    return entry.stats || {totalScore: 0, winRate: 0, wins: 0, losses: 0};
+    return entry.stats || { totalScore: 0, winRate: 0, wins: 0, losses: 0 };
   };
 
   // Get college (handles nested user object)
@@ -111,7 +154,9 @@ export default function Leaderboard() {
               <Trophy className="w-8 h-8 text-yellow-500" /> Leaderboard
             </h1>
             <p className="text-muted-foreground mt-1">
-              Top performing debaters across all tournaments.
+              {filter === "current-event" && activeEvent
+                ? `Top performing debaters in ${activeEvent.name}`
+                : "Top performing debaters across all tournaments."}
             </p>
           </div>
         </div>
@@ -128,20 +173,29 @@ export default function Leaderboard() {
             <Trophy className="w-8 h-8 text-yellow-500" /> Leaderboard
           </h1>
           <p className="text-muted-foreground mt-1">
-            Top performing debaters across all tournaments.
+            {filter === "current-event" && activeEvent
+              ? `Top performing debaters in ${activeEvent.name}`
+              : "Top performing debaters across all tournaments."}
           </p>
         </div>
 
         <div className="flex items-center gap-2 bg-card border border-border p-1 rounded-lg">
-          {["All Time", "This Event"].map((period) => (
+          {["All Time", "Current Event"].map((period) => (
             <button
               key={period}
               onClick={() => setFilter(period.toLowerCase().replace(" ", "-"))}
+              disabled={
+                period === "Current Event" && !activeEvent && !isEventLoading
+              }
               className={cn(
                 "px-4 py-2 rounded-md text-sm font-medium transition-all",
                 filter === period.toLowerCase().replace(" ", "-")
                   ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                period === "Current Event" &&
+                !activeEvent &&
+                !isEventLoading &&
+                "opacity-50 cursor-not-allowed"
               )}
             >
               {period}
@@ -270,8 +324,8 @@ export default function Leaderboard() {
                   {filteredLeaderboard.map((entry, index) => (
                     <motion.tr
                       key={entry.user?.id || entry.id || index}
-                      initial={{opacity: 0}}
-                      animate={{opacity: 1}}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       className="group hover:bg-muted/20 transition-colors"
                     >
                       <td className="px-3 md:px-6 py-4">
