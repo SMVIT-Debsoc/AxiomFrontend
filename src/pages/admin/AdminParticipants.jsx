@@ -10,15 +10,12 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
-import {useParams} from "react-router-dom";
 import {useAuth} from "@clerk/clerk-react";
 import {UserApi} from "../../services/api";
-import {EventApi} from "../../services/api"; // Added EventApi import
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {ParticipantsListSkeleton} from "../../components/ui/Skeleton"; // Added ParticipantsListSkeleton import
 
 export default function AdminParticipants() {
-  const {eventId} = useParams(); // Added useParams hook
   const {getToken} = useAuth();
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,21 +25,20 @@ export default function AdminParticipants() {
     const fetchParticipants = async () => {
       try {
         const token = await getToken();
-        // We'll use the user list endpoint for admins
-        const response = await EventApi.getParticipants(eventId, token); // Modified API call
+        // Use UserApi.list to fetch all registered users for the global view
+        const response = await UserApi.list(token);
         if (response.success) {
-          setParticipants(response.participants || []); // Modified response key
+          setParticipants(response.users || []);
         }
       } catch (err) {
-        // Changed error variable name
-        console.error("Failed to fetch participants", err); // Modified error message
+        console.error("Failed to fetch participants", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchParticipants();
-  }, [eventId, getToken]); // Modified dependency array
+  }, [getToken]); // Modified dependency array
 
   const filteredParticipants = participants.filter((p) => {
     // Modified filter logic
