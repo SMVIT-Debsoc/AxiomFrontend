@@ -95,11 +95,13 @@
     -webkit-touch-callout: none;
   }
 
-  /* Root container should fill the screen */
+  /* Root container should fill the screen AND be scrollable for iOS URL bar */
   #root {
     width: 100%;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
+    /* Force content to be slightly taller than viewport to enable scroll */
+    /* This is CRITICAL for iOS Safari URL bar to minimize to pill */
+    min-height: calc(100vh + 1px);
+    min-height: calc(-webkit-fill-available + 1px);
     /* Support for iOS safe areas (notch, home indicator) */
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
@@ -117,12 +119,13 @@
     touch-action: manipulation;
   }
 
-  /* Smooth color transitions for theme change */
+  /* Smooth color transitions for theme change - EXCLUDE text color */
   *,
   *::before,
   *::after {
     transition: background-color 0.4s ease, border-color 0.4s ease,
-      color 0.3s ease, box-shadow 0.3s ease, fill 0.3s ease, stroke 0.3s ease;
+      box-shadow 0.3s ease, fill 0.3s ease, stroke 0.3s ease;
+    /* Removed color transition to prevent text disappearing */
   }
 
   /* Exclude animations and transforms from theme transition */
