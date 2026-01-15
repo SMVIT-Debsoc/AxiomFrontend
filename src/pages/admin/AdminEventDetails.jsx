@@ -85,6 +85,8 @@ export default function AdminEventDetails() {
     onRoundUpdated: () => fetchData(),
     onRoundDeleted: () => fetchData(),
     onEventEnrollment: () => fetchData(),
+    onRoundStatusChange: () => fetchData(),
+    onPairingsPublished: () => fetchData(),
   });
 
   const handleDeleteRound = async (id) => {

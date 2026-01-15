@@ -144,6 +144,7 @@ export default function EventDetails() {
                 status: data.status,
                 checkInStartTime: data.checkInStartTime,
                 checkInEndTime: data.checkInEndTime,
+                pairingsPublished: data.pairingsPublished,
               }
             : r
         )
@@ -169,8 +170,25 @@ export default function EventDetails() {
     },
     onDebateResult: (data) => {
       console.log("[Socket] Debate result:", data);
+
+      // Optimistic update for immediate UI feedback
+      setMyDebates((prev) =>
+        prev.map((d) => {
+          if (d.id === data.debateId) {
+            return {
+              ...d,
+              status: "COMPLETED",
+              winnerId: data.winnerId,
+              debater1Score: data.debater1Score,
+              debater2Score: data.debater2Score,
+            };
+          }
+          return d;
+        })
+      );
+
       toast.info("Result Submitted", "A debate result has been submitted.");
-      // Refresh data on result
+      // Refresh data to ensure full consistency
       fetchData();
     },
     onLeaderboardUpdate: () => {
@@ -393,18 +411,47 @@ export default function EventDetails() {
                               </p>
                             </div>
                           </div>
-                          <span
-                            className={cn(
-                              "text-xs font-bold px-2 py-1 rounded",
-                              round.status === "COMPLETED"
-                                ? "bg-green-500/10 text-green-500"
-                                : round.status === "ONGOING"
-                                ? "bg-amber-500/10 text-amber-500"
-                                : "bg-primary/10 text-primary"
+                          <div className="flex items-center gap-2">
+                            {(() => {
+                              const debate = myDebates.find(
+                                (d) => d.roundId === round.id
+                              );
+                              if (debate?.status === "COMPLETED") {
+                                const isWinner =
+                                  debate.winnerId === currentUser?.id;
+                                return (
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap",
+                                      isWinner
+                                        ? "bg-green-500/10 text-green-500"
+                                        : "bg-red-500/10 text-red-500"
+                                    )}
+                                  >
+                                    {isWinner ? "WON" : "LOST"}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                            {round.pairingsPublished && (
+                              <span className="text-[10px] font-bold px-2 py-1 rounded bg-purple-500/10 text-purple-500 whitespace-nowrap">
+                                Draw Out
+                              </span>
                             )}
-                          >
-                            {round.status}
-                          </span>
+                            <span
+                              className={cn(
+                                "text-xs font-bold px-2 py-1 rounded",
+                                round.status === "COMPLETED"
+                                  ? "bg-green-500/10 text-green-500"
+                                  : round.status === "ONGOING"
+                                  ? "bg-amber-500/10 text-amber-500"
+                                  : "bg-primary/10 text-primary"
+                              )}
+                            >
+                              {round.status}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
