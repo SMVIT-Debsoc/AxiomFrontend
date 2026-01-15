@@ -1,5 +1,5 @@
-import {useState, useEffect} from "react";
-import {motion} from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   Trophy,
   TrendingUp,
@@ -13,17 +13,19 @@ import {
   ChevronRight,
   Shield,
   Swords,
+  Lock,
+  ArrowRight,
 } from "lucide-react";
-import {useAuth, useUser} from "@clerk/clerk-react";
-import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
-import {Link} from "react-router-dom";
-import {useToast} from "../../components/ui/Toast";
-import {cn} from "../../lib/utils";
-import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
+import { useAuth, useUser } from "@clerk/clerk-react";
+import { UserApi, EventApi, DebateApi, CheckInApi } from "../../services/api";
+import { Link } from "react-router-dom";
+import { useToast } from "../../components/ui/Toast";
+import { cn } from "../../lib/utils";
+import { DashboardHomeSkeleton } from "../../components/ui/Skeleton";
 
 export default function DashboardHome() {
-  const {getToken} = useAuth();
-  const {user: clerkUser, isLoaded: clerkLoaded} = useUser();
+  const { getToken } = useAuth();
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -153,8 +155,8 @@ export default function DashboardHome() {
       value:
         userData?.stats?.totalDebates > 0
           ? `${Math.round(
-              (userData.stats.wonDebates / userData.stats.totalDebates) * 100
-            )}%`
+            (userData.stats.wonDebates / userData.stats.totalDebates) * 100
+          )}%`
           : "0%",
       color: "text-violet-600",
     },
@@ -215,15 +217,15 @@ export default function DashboardHome() {
       {/* Active Event Card */}
       {activeEvent ? (
         <motion.div
-          initial={{y: 20, opacity: 0}}
-          animate={{y: 0, opacity: 1}}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           className={cn(
             "text-white p-6 rounded-3xl shadow-lg relative overflow-hidden",
             activeEvent.status === "ONGOING"
               ? "bg-[#F97316]"
               : activeEvent.status === "UPCOMING"
-              ? "bg-[#3B82F6]"
-              : "bg-[#6B7280]"
+                ? "bg-[#3B82F6]"
+                : "bg-[#6B7280]"
           )}
         >
           <Link
@@ -280,11 +282,10 @@ export default function DashboardHome() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    checkInStatus?.status === "PRESENT"
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${checkInStatus?.status === "PRESENT"
                       ? "bg-green-100 text-green-600"
                       : "bg-amber-100 text-amber-600"
-                  }`}
+                    }`}
                 >
                   {checkInStatus?.status === "PRESENT" ? (
                     <CheckCircle2 className="w-6 h-6" />
@@ -314,11 +315,10 @@ export default function DashboardHome() {
                 </div>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  checkInStatus?.status === "PRESENT"
+                className={`px-3 py-1 rounded-full text-xs font-bold ${checkInStatus?.status === "PRESENT"
                     ? "bg-green-100 text-green-700"
                     : "bg-amber-100 text-amber-700"
-                }`}
+                  }`}
               >
                 {checkInStatus?.status === "PRESENT" ? "Present" : "Pending"}
               </span>
@@ -365,6 +365,81 @@ export default function DashboardHome() {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Draw Status Section */}
+      {currentRound && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-bold text-lg">Draw Status</h3>
+            <span className="text-xs text-muted-foreground">
+              {currentRound.name || `Round ${currentRound.roundNumber}`}
+            </span>
+          </div>
+
+          {currentRound.pairingsPublished ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden"
+            >
+              <div className="flex justify-between items-start relative z-10 mb-4">
+                <div>
+                  <h4 className="font-bold text-lg mb-1 flex items-center gap-2">
+                    Draw Released
+                    <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full font-medium">
+                      Public
+                    </span>
+                  </h4>
+                  <p className="text-indigo-100 text-sm opacity-90">
+                    Pairings are now live! Check your room and opponent.
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                  <Swords className="w-5 h-5 text-white" />
+                </div>
+              </div>
+
+              <Link
+                to={`/dashboard/events/${activeEvent.id}/rounds/${currentRound.id}`}
+                className="w-full py-3 rounded-xl bg-white text-indigo-600 font-bold text-sm shadow-lg shadow-black/10 flex items-center justify-center gap-2 relative z-10 hover:bg-indigo-50 transition-colors group"
+              >
+                View Draw
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-2xl -ml-10 -mb-10"></div>
+            </motion.div>
+          ) : (
+            <div className="bg-white dark:bg-card p-5 rounded-2xl border border-border shadow-sm relative overflow-hidden">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h4 className="font-bold text-lg mb-1 text-muted-foreground flex items-center gap-2">
+                    Draw Not Released
+                    <span className="bg-muted text-muted-foreground text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                      Pending
+                    </span>
+                  </h4>
+                  <p className="text-muted-foreground text-sm">
+                    The adjudication core has not released the pairings yet.
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </div>
+
+              <button
+                disabled
+                className="w-full py-3 rounded-xl bg-muted text-muted-foreground font-semibold text-sm border border-transparent cursor-not-allowed opacity-70 flex items-center justify-center gap-2"
+              >
+                Wait for Announcement
+              </button>
+            </div>
+          )}
         </div>
       )}
 
