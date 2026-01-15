@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
 import {AdminApi, EventApi} from "../../services/api";
+import {useEventSocket} from "../../hooks/useSocket";
 
 export default function AdminEventDetails() {
   const {id: eventId} = useParams();
@@ -34,11 +35,7 @@ export default function AdminEventDetails() {
   const [editingRound, setEditingRound] = useState(null);
   const [activeTab, setActiveTab] = useState("rounds");
 
-  useEffect(() => {
-    fetchData();
-  }, [eventId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const token = await getToken();
       const results = await Promise.allSettled([
@@ -75,7 +72,20 @@ export default function AdminEventDetails() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId, getToken]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Real-time updates
+  useEventSocket(eventId, {
+    onEventUpdated: () => fetchData(),
+    onRoundCreated: () => fetchData(),
+    onRoundUpdated: () => fetchData(),
+    onRoundDeleted: () => fetchData(),
+    onEventEnrollment: () => fetchData(),
+  });
 
   const handleDeleteRound = async (id) => {
     if (

@@ -5,6 +5,7 @@ import {useAuth} from "@clerk/clerk-react";
 import {EventApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
+import {useSocket, SocketEvents} from "../../hooks/useSocket";
 
 export default function DashboardEvents() {
   const [events, setEvents] = useState([]);
@@ -29,6 +30,23 @@ export default function DashboardEvents() {
 
     fetchEvents();
   }, [getToken]);
+
+  // Real-time updates
+  const {subscribe} = useSocket();
+  useEffect(() => {
+    const unsubs = [
+      subscribe(SocketEvents.EVENT_CREATED, () => {
+        fetchEvents(); // Optimization: could append to list
+      }),
+      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, () => {
+        fetchEvents();
+      }),
+      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, () => {
+        fetchEvents();
+      }),
+    ];
+    return () => unsubs.forEach((u) => u && u());
+  }, [subscribe]);
 
   if (loading) {
     return (
