@@ -8,9 +8,10 @@ import {
   Edit,
   Trash2,
   Eye,
+  Loader2,
 } from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, Link} from "react-router-dom";
 import {AdminApi, EventApi} from "../../services/api";
 import {useToast} from "../../components/ui/Toast";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
@@ -25,20 +26,21 @@ export default function AdminEvents() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const token = await getToken();
-        const response = await EventApi.list(token);
-        setEvents(response.events || response.data || []);
-      } catch (err) {
-        console.error("Failed to fetch events", err);
-        toast.error("Error", "Failed to load events");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const token = await getToken();
+      const response = await EventApi.list(token);
+      setEvents(response.events || response.data || []);
+    } catch (err) {
+      console.error("Failed to fetch events", err);
+      toast.error("Error", "Failed to load events");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchEvents();
   }, [getToken, toast]);
 
