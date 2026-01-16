@@ -1,5 +1,5 @@
-import {useState, useEffect} from "react";
-import {motion} from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Users,
   Search,
@@ -10,14 +10,13 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {UserApi} from "../../services/api";
-import {UserAvatar} from "../../components/ui/UserAvatar";
-import {ParticipantsListSkeleton} from "../../components/ui/Skeleton";
-import {useSocket, SocketEvents} from "../../hooks/useSocket"; // Added ParticipantsListSkeleton import
+import { useAuth } from "@clerk/clerk-react";
+import { UserApi } from "../../services/api";
+import { UserAvatar } from "../../components/ui/UserAvatar";
+import { useSocket, SocketEvents } from "../../hooks/useSocket";
 
 export default function AdminParticipants() {
-  const {getToken} = useAuth();
+  const { getToken } = useAuth();
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,7 +41,7 @@ export default function AdminParticipants() {
   }, [fetchParticipants]);
 
   // Real-time updates
-  const {subscribe} = useSocket();
+  const { subscribe } = useSocket();
   useEffect(() => {
     const unsubs = [
       subscribe(SocketEvents.USER_UPDATED, () => {
@@ -138,9 +137,9 @@ export default function AdminParticipants() {
                 {filteredParticipants.map((p, index) => (
                   <motion.tr
                     key={p.id}
-                    initial={{opacity: 0}}
-                    animate={{opacity: 1}}
-                    transition={{delay: index * 0.03}}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.03 }}
                     className="hover:bg-muted/20 transition-colors group"
                   >
                     <td className="px-6 py-4">
@@ -169,11 +168,10 @@ export default function AdminParticipants() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
-                          p.isProfileComplete
-                            ? "bg-green-500/10 text-green-500"
-                            : "bg-amber-500/10 text-amber-500"
-                        }`}
+                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${p.isProfileComplete
+                          ? "bg-green-500/10 text-green-500"
+                          : "bg-amber-500/10 text-amber-500"
+                          }`}
                       >
                         {p.isProfileComplete ? "Complete" : "Incomplete"}
                       </span>
