@@ -28,12 +28,9 @@ function getSocketUrl() {
 
 const SOCKET_URL = getSocketUrl();
 
-// Modern AWS App Runner supports WebSocket upgrades.
-// Forcing websocket in production avoids polling issues with multi-instance scaling (400 Bad Request).
-const IS_PRODUCTION = import.meta.env.PROD;
-const SOCKET_TRANSPORTS = IS_PRODUCTION
-    ? ["websocket"]
-    : ["websocket", "polling"];
+// Keep polling fallback enabled in production because some networks/proxies block websocket upgrades.
+// Engine.IO will start with polling and then upgrade to websocket when possible.
+const SOCKET_TRANSPORTS = ["polling", "websocket"];
 
 /**
  * WebSocket Event Types - mirrors backend events
@@ -108,6 +105,7 @@ class SocketService {
 
         this.socket = io(SOCKET_URL, {
             transports: SOCKET_TRANSPORTS,
+            upgrade: true,
             reconnection: true,
             reconnectionAttempts: 15, // More attempts
             reconnectionDelay: 2000,
