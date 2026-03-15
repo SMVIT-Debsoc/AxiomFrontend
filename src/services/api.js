@@ -39,6 +39,7 @@ export async function apiRequest(
         const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
         const url = `${baseUrl}${path}`;
 
+        console.log(`[API Request] Attempting to fetch URL: ${url}`);
         const response = await fetch(url, config);
 
         let data;
@@ -48,7 +49,7 @@ export async function apiRequest(
         } else {
             const text = await response.text();
             throw new Error(
-                `Expected JSON but received: ${text.substring(0, 50)}...`,
+                `Expected JSON but received HTML. URL checked: ${url}. Status: ${response.status}. Response preview: ${text.substring(0, 50)}...`,
             );
         }
 
