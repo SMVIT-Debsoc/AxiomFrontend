@@ -322,7 +322,7 @@ export default function Profile({isOnboarding = false}) {
                   ? "border-amber-500/50"
                   : "border-border"
               }`}
-              placeholder="e.g. Harvard University"
+              placeholder="e.g. Sir MVIT"
             />
           </div>
 
@@ -341,7 +341,7 @@ export default function Profile({isOnboarding = false}) {
                   ? "border-amber-500/50"
                   : "border-border"
               }`}
-              placeholder="+1 234 567 890"
+              placeholder="+91 1234567890"
             />
           </div>
 
@@ -355,11 +355,11 @@ export default function Profile({isOnboarding = false}) {
                 </span>
               </label>
               <input
-                name="usn"
+                name="USN"
                 value={formData.usn}
                 onChange={handleChange}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                placeholder="e.g. 1MS22CS001"
+                placeholder="e.g. 1MVIT26CS001"
               />
             </div>
             <div className="space-y-2">
