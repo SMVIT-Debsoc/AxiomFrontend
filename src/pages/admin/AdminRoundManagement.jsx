@@ -43,11 +43,12 @@ export default function AdminRoundManagement() {
     const debounceTimers = useRef({});
 
     // Memoize fetchRoundData for useEffect dependency
-    const fetchRoundData = useCallback(async () => {
+    const fetchRoundData = useCallback(async (isBackground = false) => {
+        if (!isBackground) setLoading(true);
         try {
             const token = await getToken();
 
-            // 1. Fetch Round Details first to get eventId
+            // 1. Fetch Round Details (now includes debates and checkIns)
             const roundRes = await AdminApi.apiRequest(
                 `/rounds/${roundId}`,
                 "GET",
@@ -56,34 +57,23 @@ export default function AdminRoundManagement() {
             );
 
             if (roundRes.success) {
-                setRound(roundRes.round);
-                const eventId = roundRes.round.eventId;
+                const fetchedRound = roundRes.round;
+                setRound(fetchedRound);
+                setCheckIns(fetchedRound.checkIns || []);
+                setDebates(fetchedRound.debates || []);
+                const eventId = fetchedRound.eventId;
 
-                // 2. Fetch related data in parallel, now knowing the eventId
-                const [checkInsRes, debatesRes, roomsRes, usersRes] = await Promise.all(
-                    [
-                        AdminApi.apiRequest(
-                            `/check-in/round/${roundId}`,
-                            "GET",
-                            null,
-                            token
-                        ),
-                        AdminApi.apiRequest(
-                            `/debates/round/${roundId}`,
-                            "GET",
-                            null,
-                            token
-                        ),
+                // 2. Fetch rooms and users only if we don't have them yet
+                // This saves massive time on round refreshes.
+                if (rooms.length === 0 || users.length === 0) {
+                    const [roomsRes, usersRes] = await Promise.all([
                         AdminApi.apiRequest(`/rooms`, "GET", null, token),
-                        // Fetch only participants for this event
                         EventApi.getParticipants(eventId, token),
-                    ]
-                );
+                    ]);
 
-                if (checkInsRes.success) setCheckIns(checkInsRes.checkIns || []);
-                if (debatesRes.success) setDebates(debatesRes.debates || []);
-                if (roomsRes.success) setRooms(roomsRes.rooms || []);
-                if (usersRes.success) setUsers(usersRes.participants || []);
+                    if (roomsRes.success) setRooms(roomsRes.rooms || []);
+                    if (usersRes.success) setUsers(usersRes.participants || []);
+                }
             }
         } catch (error) {
             toast.error("Error", "Failed to load round data");
@@ -91,17 +81,25 @@ export default function AdminRoundManagement() {
         } finally {
             setLoading(false);
         }
-    }, [roundId, getToken]);
+    }, [roundId, getToken, rooms.length, users.length]);
 
     useEffect(() => {
         fetchRoundData();
+    }, [fetchRoundData]);
+
+    // Debounced fetch for socket updates to prevent spam
+    const fetchTimeoutRef = useRef(null);
+    const debouncedFetch = useCallback(() => {
+        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = setTimeout(() => {
+            fetchRoundData(true);
+        }, 300);
     }, [fetchRoundData]);
 
     // Real-time updates via WebSocket
     useRoundSocket(roundId, {
         onCheckInUpdate: (data) => {
             console.log("[Socket] Check-in update:", data);
-            // Update the specific check-in in state
             setCheckIns((prev) => {
                 const existing = prev.find((ci) => ci.userId === data.userId);
                 if (existing) {
@@ -109,27 +107,24 @@ export default function AdminRoundManagement() {
                         ci.userId === data.userId ? { ...ci, status: data.status } : ci
                     );
                 }
-                // If new check-in, refresh the list
-                fetchRoundData();
+                debouncedFetch();
                 return prev;
             });
         },
         onPairingsGenerated: (data) => {
             console.log("[Socket] Pairings generated:", data);
-            // Refresh debates
             if (data.debates) {
                 setDebates(data.debates);
             } else {
-                fetchRoundData();
+                debouncedFetch();
             }
         },
         onRoomsAllocated: (data) => {
             console.log("[Socket] Rooms allocated:", data);
-            fetchRoundData();
+            debouncedFetch();
         },
         onDebateResult: (data) => {
             console.log("[Socket] Debate result:", data);
-            // Update the specific debate
             setDebates((prev) =>
                 prev.map((d) =>
                     d.id === data.debateId
@@ -158,7 +153,6 @@ export default function AdminRoundManagement() {
         },
         onRoundUpdated: (data) => {
             console.log("[Socket] Round updated:", data);
-            // Full refresh or partial update
             if (data.round) {
                 setRound((prev) => ({ ...prev, ...data.round }));
             }
@@ -219,10 +213,17 @@ export default function AdminRoundManagement() {
             if (response.success) {
                 toast.success(
                     "Rooms Allocated",
-                    "Allocated rooms and time slots successfully!"
+                    `Allocated rooms for ${response.data?.debatesAllocated || 0} debates.`
                 );
+                
+                // Optimistically update debates if returned
+                if (response.data?.debates) {
+                    setDebates(response.data.debates);
+                } else {
+                    fetchRoundData(true); // Background refresh
+                }
+                
                 setShowAllocateModal(false);
-                await fetchRoundData();
             } else {
                 toast.error(
                     "Allocation Failed",
