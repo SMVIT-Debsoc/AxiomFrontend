@@ -16,6 +16,7 @@ import {
   Crown,
   TrendingUp,
   XCircle,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { EventApi, DebateApi, UserApi, StatsApi } from "../../services/api";
@@ -495,6 +496,19 @@ export default function EventDetails() {
                     </div>
                   </div>
                 </div>
+
+                {/* WhatsApp Group Join Button */}
+                {event.whatsappLink && (
+                  <a
+                    href={event.whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-500 font-semibold hover:bg-green-500/20 transition-all"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Join WhatsApp Group
+                  </a>
+                )}
               </div>
             </motion.div>
           )}

@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  MessageCircle,
 } from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
 import {AdminApi, EventApi} from "../../services/api";
@@ -727,6 +728,7 @@ function EditEventModal({event, onClose, onUpdated}) {
       ? new Date(event.endDate).toISOString().slice(0, 16)
       : "",
     status: event.status || "UPCOMING",
+    whatsappLink: event.whatsappLink || "",
   });
 
   const handleSubmit = async (e) => {
@@ -846,6 +848,26 @@ function EditEventModal({event, onClose, onUpdated}) {
               <option value="ONGOING">Ongoing</option>
               <option value="COMPLETED">Completed</option>
             </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-green-500" />
+              WhatsApp Group Link
+              <span className="text-xs text-muted-foreground">(Optional)</span>
+            </label>
+            <input
+              type="url"
+              value={formData.whatsappLink}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  whatsappLink: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 rounded-lg bg-background border border-green-500/30 focus:border-green-500 outline-none"
+              placeholder="https://chat.whatsapp.com/..."
+            />
           </div>
 
           <div className="flex gap-3 pt-6 border-t border-border mt-6">
