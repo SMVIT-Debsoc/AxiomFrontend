@@ -13,7 +13,7 @@ export async function apiRequest(
     endpoint,
     method = "GET",
     body = null,
-    token = null
+    token = null,
 ) {
     const headers = {
         "Content-Type": "application/json",
@@ -33,11 +33,31 @@ export async function apiRequest(
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-        const data = await response.json();
+        const baseUrl = API_BASE_URL.endsWith("/")
+            ? API_BASE_URL.slice(0, -1)
+            : API_BASE_URL;
+        const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+        const url = `${baseUrl}${path}`;
+
+        const response = await fetch(url, config);
+
+        let data;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            throw new Error(
+                `Expected JSON but received: ${text.substring(0, 50)}...`,
+            );
+        }
 
         if (!response.ok) {
-            throw new Error(data.error || "API request failed");
+            throw new Error(
+                data.error ||
+                    data.message ||
+                    `API request failed with status ${response.status}`,
+            );
         }
 
         return data;
@@ -59,7 +79,7 @@ export const UserApi = {
             `/users?limit=${limit}&offset=${offset}`,
             "GET",
             null,
-            token
+            token,
         ),
     deleteParticipant: (id, token) =>
         apiRequest(`/users/${id}`, "DELETE", null, token),
@@ -72,13 +92,14 @@ export const EventApi = {
             `/events${status ? `?status=${status}` : ""}`,
             "GET",
             null,
-            token
+            token,
         ),
     get: (id, token) => apiRequest(`/events/${id}`, "GET", null, token),
     getById: (id, token) => apiRequest(`/events/${id}`, "GET", null, token),
     getParticipants: (eventId, token) =>
         apiRequest(`/events/${eventId}/participants`, "GET", null, token),
-    enroll: (id, token) => apiRequest(`/events/${id}/enroll`, "POST", null, token),
+    enroll: (id, token) =>
+        apiRequest(`/events/${id}/enroll`, "POST", null, token),
     getEnrollmentStatus: (id, token) =>
         apiRequest(`/events/${id}/enrollment-status`, "GET", null, token),
 };
@@ -94,7 +115,7 @@ export const RoundApi = {
 // Check-In Endpoints
 export const CheckInApi = {
     checkIn: (roundId, token) =>
-        apiRequest("/check-in", "POST", { roundId }, token),
+        apiRequest("/check-in", "POST", {roundId}, token),
     getMyStatus: (roundId, token) =>
         apiRequest(`/check-in/round/${roundId}/me`, "GET", null, token),
 };
@@ -126,11 +147,11 @@ export const AdminApi = {
     getProfile: (token) => apiRequest("/admin/me", "GET", null, token),
 
     onboard: (secretKey, token) =>
-        apiRequest("/admin/onboard", "POST", { secretKey }, token),
+        apiRequest("/admin/onboard", "POST", {secretKey}, token),
     getDashboard: (token) => apiRequest("/admin/dashboard", "GET", null, token),
     // Public endpoint - validates secret key before sign-in
     validateKey: (secretKey) =>
-        apiRequest("/admin/validate-key", "POST", { secretKey }, null),
+        apiRequest("/admin/validate-key", "POST", {secretKey}, null),
 
     // Advanced Admin Controls
     createEvent: (data, token) => apiRequest("/events", "POST", data, token),
@@ -162,8 +183,8 @@ export const AdminApi = {
         apiRequest(
             `/pairing/${roundId}/allocate-rooms`,
             "POST",
-            { timeSlots },
-            token
+            {timeSlots},
+            token,
         ),
 
     submitResult: (debateId, data, token) =>
