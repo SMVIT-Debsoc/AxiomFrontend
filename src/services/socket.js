@@ -3,6 +3,12 @@ import {io, Socket} from "socket.io-client";
 const SOCKET_URL =
   import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3000";
 
+// AWS App Runner does NOT support WebSocket upgrades (wss:// fails immediately).
+// In production, force polling-only so Socket.IO uses regular HTTP long-polling.
+// In development, prefer websocket for speed.
+const IS_PRODUCTION = import.meta.env.PROD;
+const SOCKET_TRANSPORTS = IS_PRODUCTION ? ["polling"] : ["websocket", "polling"];
+
 /**
  * WebSocket Event Types - mirrors backend events
  */
@@ -75,10 +81,10 @@ class SocketService {
     }
 
     this.socket = io(SOCKET_URL, {
-      transports: ["websocket", "polling"],
+      transports: SOCKET_TRANSPORTS,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
       timeout: 20000,
     });
 

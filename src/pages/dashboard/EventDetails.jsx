@@ -302,30 +302,43 @@ export default function EventDetails() {
                   {event.description || "No description available"}
                 </p>
               </div>
-              <button
-                onClick={handleEnroll}
-                disabled={isEnrolled || enrolling}
-                className={cn(
-                  "px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 min-w-[140px]",
-                  isEnrolled
-                    ? "bg-green-500 cursor-default hover:translate-y-0 hover:shadow-lg"
-                    : "bg-primary hover:bg-primary/90"
+              <div className="flex flex-col gap-3 flex-shrink-0">
+                <button
+                  onClick={handleEnroll}
+                  disabled={isEnrolled || enrolling}
+                  className={cn(
+                    "px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 min-w-[160px]",
+                    isEnrolled
+                      ? "bg-green-500 cursor-default hover:translate-y-0 hover:shadow-lg"
+                      : "bg-primary hover:bg-primary/90"
+                  )}
+                >
+                  {isEnrolled ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" />
+                      Enrolled
+                    </span>
+                  ) : enrolling ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Enrolling...
+                    </span>
+                  ) : (
+                    "Enroll Now"
+                  )}
+                </button>
+                {event.whatsappLink && (
+                  <a
+                    href={event.whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-green-400 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 min-w-[160px]"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Join WhatsApp
+                  </a>
                 )}
-              >
-                {isEnrolled ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" />
-                    Enrolled
-                  </span>
-                ) : enrolling ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Enrolling...
-                  </span>
-                ) : (
-                  "Enroll Now"
-                )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
