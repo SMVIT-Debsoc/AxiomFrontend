@@ -33,7 +33,7 @@ const API_BASE_URL = isLocalhost
 const sidebarItems = [
     {icon: LayoutDashboard, label: "Overview", path: "/dashboard"},
     {icon: Calendar, label: "Events", path: "/dashboard/events"},
-    {icon: Users, label: "My Profile", path: "/dashboard/profile"},
+    {icon: Users, label: "Profile", path: "/dashboard/profile"},
     {icon: Trophy, label: "Leaderboard", path: "/dashboard/leaderboard"},
 ];
 
@@ -216,7 +216,7 @@ export default function DashboardLayout() {
                 </header>
 
                 {/* Scrollable Main Content */}
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10 pb-24 md:pb-10 scroll-smooth">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-10 pb-24 md:pb-10 scroll-smooth">
                     <Outlet />
                 </main>
 
@@ -245,7 +245,7 @@ export default function DashboardLayout() {
                                         )}
                                     />
                                     <span className="text-[10px] font-medium">
-                                        {item.label}
+                                        {item.label === "Admin Panel" ? "Admin" : item.label}
                                     </span>
                                 </Link>
                             );

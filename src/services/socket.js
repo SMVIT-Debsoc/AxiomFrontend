@@ -4,8 +4,9 @@ const SOCKET_URL =
   import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3000";
 
 // Modern AWS App Runner supports WebSocket upgrades. 
-// Using websocket first avoids polling issues with multi-instance scaling.
-const SOCKET_TRANSPORTS = ["websocket", "polling"];
+// Forcing websocket in production avoids polling issues with multi-instance scaling (400 Bad Request).
+const IS_PRODUCTION = import.meta.env.PROD;
+const SOCKET_TRANSPORTS = IS_PRODUCTION ? ["websocket"] : ["websocket", "polling"];
 
 /**
  * WebSocket Event Types - mirrors backend events
@@ -81,9 +82,11 @@ class SocketService {
     this.socket = io(SOCKET_URL, {
       transports: SOCKET_TRANSPORTS,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15, // More attempts
       reconnectionDelay: 2000,
-      timeout: 20000,
+      reconnectionDelayMax: 10000,
+      timeout: 45000, // Higher timeout for slow cold starts
+      autoConnect: true,
     });
 
     this.socket.on("connect", () => {

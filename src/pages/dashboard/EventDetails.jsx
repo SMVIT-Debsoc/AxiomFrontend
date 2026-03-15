@@ -258,7 +258,7 @@ export default function EventDetails() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 pb-12">
       {/* Header / Breadcrumb */}
       <div>
         <Link
@@ -267,7 +267,7 @@ export default function EventDetails() {
         >
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Tournaments
         </Link>
-        <div className="relative overflow-hidden rounded-3xl bg-card border border-border p-8 md:p-12">
+        <div className="relative overflow-hidden rounded-3xl bg-card border border-border p-6 md:p-12">
           <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
             <Trophy className="w-64 h-64 text-primary" />
           </div>
@@ -295,7 +295,7 @@ export default function EventDetails() {
             </div>
             <div className="flex flex-col md:flex-row gap-6 md:items-start justify-between">
               <div>
-                <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                <h1 className="text-3xl md:text-5xl font-bold mb-4">
                   {event.name}
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-2xl">
@@ -402,7 +402,7 @@ export default function EventDetails() {
                       {rounds.map((round) => (
                         <div
                           key={round.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-muted/30 gap-3"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center border border-border">
@@ -425,7 +425,7 @@ export default function EventDetails() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {(() => {
                               const debate = myDebates.find(
                                 (d) => d.roundId === round.id
