@@ -36,11 +36,19 @@ export default function AdminRoundManagement() {
     const [rooms, setRooms] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState({
+        publishing: false,
+        generating: false,
+        allocating: false,
+    });
     const [activeTab, setActiveTab] = useState("checkins");
     const [showAllocateModal, setShowAllocateModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [processingId, setProcessingId] = useState(null);
     const debounceTimers = useRef({});
+
+    // Track if we've already started fetching rooms/participants
+    const fetchingRef = useRef({ rooms: false, participants: false });
 
     // Memoize fetchRoundData for useEffect dependency
     const fetchRoundData = useCallback(async (isBackground = false) => {
@@ -48,7 +56,7 @@ export default function AdminRoundManagement() {
         try {
             const token = await getToken();
 
-            // 1. Fetch Round Details (now includes debates and checkIns)
+            // 1. Fetch Round Details
             const roundRes = await AdminApi.apiRequest(
                 `/rounds/${roundId}`,
                 "GET",
@@ -63,25 +71,30 @@ export default function AdminRoundManagement() {
                 setDebates(fetchedRound.debates || []);
                 const eventId = fetchedRound.eventId;
 
-                // 2. Fetch rooms and users only if we don't have them yet
-                // This saves massive time on round refreshes.
-                if (rooms.length === 0 || users.length === 0) {
-                    const [roomsRes, usersRes] = await Promise.all([
-                        AdminApi.apiRequest(`/rooms`, "GET", null, token),
-                        EventApi.getParticipants(eventId, token),
-                    ]);
+                // 2. Fetch rooms if missing
+                if (rooms.length === 0 && !fetchingRef.current.rooms) {
+                    fetchingRef.current.rooms = true;
+                    AdminApi.apiRequest(`/rooms`, "GET", null, token).then(res => {
+                        if (res.success) setRooms(res.rooms || []);
+                        fetchingRef.current.rooms = false;
+                    }).catch(() => { fetchingRef.current.rooms = false; });
+                }
 
-                    if (roomsRes.success) setRooms(roomsRes.rooms || []);
-                    if (usersRes.success) setUsers(usersRes.participants || []);
+                // 3. Fetch participants if missing
+                if (users.length === 0 && !fetchingRef.current.users) {
+                    fetchingRef.current.users = true;
+                    EventApi.getParticipants(eventId, token).then(res => {
+                        if (res.success) setUsers(res.participants || []);
+                        fetchingRef.current.users = false;
+                    }).catch(() => { fetchingRef.current.users = false; });
                 }
             }
         } catch (error) {
             toast.error("Error", "Failed to load round data");
-            console.error("Failed to fetch round data:", error);
         } finally {
             setLoading(false);
         }
-    }, [roundId, getToken, rooms.length, users.length]);
+    }, [roundId, getToken]);
 
     useEffect(() => {
         fetchRoundData();
@@ -160,14 +173,14 @@ export default function AdminRoundManagement() {
     });
 
     const handleGeneratePairings = async (type) => {
-        if (loading) return;
         const confirmMessage =
             debates.length > 0
                 ? "Regenerate pairings? This will DELETE all existing pairings/debates found in this round (except completed ones). This action cannot be undone."
                 : `Generate ${type} pairings? This will end the check-in period.`;
 
         if (!confirm(confirmMessage)) return;
-        setLoading(true);
+
+        setActionLoading(prev => ({ ...prev, generating: true }));
         try {
             const token = await getToken();
             const endpoint =
@@ -194,13 +207,12 @@ export default function AdminRoundManagement() {
         } catch (error) {
             toast.error("Error", "Error generating pairings");
         } finally {
-            setLoading(false);
+            setActionLoading(prev => ({ ...prev, generating: false }));
         }
     };
 
     const handleAllocateRooms = async (formData) => {
-        if (loading) return;
-        setLoading(true);
+        setActionLoading(prev => ({ ...prev, allocating: true }));
         try {
             const token = await getToken();
             const response = await AdminApi.apiRequest(
@@ -233,7 +245,7 @@ export default function AdminRoundManagement() {
         } catch (error) {
             toast.error("Error", "Error allocating rooms");
         } finally {
-            setLoading(false);
+            setActionLoading(prev => ({ ...prev, allocating: false }));
         }
     };
 
@@ -333,8 +345,7 @@ export default function AdminRoundManagement() {
     };
 
     const handleTogglePublish = async () => {
-        if (loading) return;
-        setLoading(true);
+        setActionLoading(prev => ({ ...prev, publishing: true }));
         try {
             const token = await getToken();
             const newStatus = !round.pairingsPublished;
@@ -356,7 +367,7 @@ export default function AdminRoundManagement() {
         } catch (error) {
             toast.error("Error", "Failed to toggle publish status");
         } finally {
-            setLoading(false);
+            setActionLoading(prev => ({ ...prev, publishing: false }));
         }
     };
 
@@ -393,13 +404,13 @@ export default function AdminRoundManagement() {
                     {debates.length > 0 && (
                         <button
                             onClick={handleTogglePublish}
-                            disabled={loading}
+                            disabled={loading || actionLoading.publishing}
                             className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto ${round.pairingsPublished
                                     ? "bg-green-500/10 text-green-500 border border-green-500/20"
                                     : "bg-amber-500 text-white hover:bg-amber-600"
                                 }`}
                         >
-                            {loading ? (
+                            {actionLoading.publishing ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                                 <Users className="w-4 h-4" />
@@ -416,10 +427,10 @@ export default function AdminRoundManagement() {
                                         round.roundNumber === 1 ? "round1" : "power-match"
                                     )
                                 }
-                                disabled={loading}
+                                disabled={loading || actionLoading.generating}
                                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
                             >
-                                {loading ? (
+                                {actionLoading.generating ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : round.roundNumber === 1 ? (
                                     <Dice5 className="w-4 h-4" />
@@ -433,10 +444,14 @@ export default function AdminRoundManagement() {
                         <>
                             <button
                                 onClick={() => setShowAllocateModal(true)}
-                                disabled={loading}
+                                disabled={loading || actionLoading.allocating}
                                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
                             >
-                                <Home className="w-4 h-4" />
+                                {actionLoading.allocating ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Home className="w-4 h-4" />
+                                )}
                                 Allocate Rooms
                             </button>
                             <button
@@ -445,10 +460,10 @@ export default function AdminRoundManagement() {
                                         round.roundNumber === 1 ? "round1" : "power-match"
                                     )
                                 }
-                                disabled={loading}
+                                disabled={loading || actionLoading.generating}
                                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
                             >
-                                {loading ? (
+                                {actionLoading.generating ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
                                     <RotateCcw className="w-4 h-4" />
