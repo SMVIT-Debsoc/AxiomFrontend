@@ -1,5 +1,11 @@
-const API_BASE_URL =
-    import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const isBrowser = typeof window !== "undefined";
+const isLocalhost =
+    isBrowser && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+// In local development call backend directly, otherwise use same-origin /api
+// (which can be proxied by hosting platform rewrites).
+const DEFAULT_API_BASE_URL = isLocalhost ? "http://localhost:3000/api" : "/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
 
 /**
  * Generic API fetch wrapper
