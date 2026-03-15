@@ -1134,7 +1134,7 @@ function AllocateRoomsModal({
     rooms,
     loading,
 }) {
-    const { toast } = useToast();
+    const toast = useToast();
     const [selectedRoomIds, setSelectedRoomIds] = useState(
         rooms.map((r) => r.id)
     );
