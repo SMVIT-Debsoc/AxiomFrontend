@@ -6,6 +6,7 @@ const isLocalhost =
 
 const configuredSocketUrl = import.meta.env.VITE_SOCKET_URL;
 const configuredApiUrl = import.meta.env.VITE_API_URL;
+const configuredTransports = import.meta.env.VITE_SOCKET_TRANSPORTS;
 
 function getSocketUrl() {
     if (configuredSocketUrl) {
@@ -28,9 +29,27 @@ function getSocketUrl() {
 
 const SOCKET_URL = getSocketUrl();
 
-// Keep polling fallback enabled in production because some networks/proxies block websocket upgrades.
-// Engine.IO will start with polling and then upgrade to websocket when possible.
-const SOCKET_TRANSPORTS = ["polling", "websocket"];
+function getSocketTransports() {
+    if (configuredTransports) {
+        const parsed = configuredTransports
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+
+        if (parsed.length > 0) {
+            return parsed;
+        }
+    }
+
+    if (isLocalhost) {
+        return ["polling", "websocket"];
+    }
+
+    // In production behind load-balancers, websocket-only avoids polling SID stickiness issues.
+    return ["websocket"];
+}
+
+const SOCKET_TRANSPORTS = getSocketTransports();
 
 /**
  * WebSocket Event Types - mirrors backend events

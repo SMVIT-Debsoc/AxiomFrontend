@@ -7,6 +7,23 @@ const isLocalhost =
 const DEFAULT_API_BASE_URL = isLocalhost ? "http://localhost:3000/api" : "/api";
 const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
 
+let authTokenProvider = null;
+
+export function setApiAuthTokenProvider(provider) {
+    authTokenProvider = typeof provider === "function" ? provider : null;
+}
+
+async function getFreshToken() {
+    if (!authTokenProvider) return null;
+
+    try {
+        return (await authTokenProvider({skipCache: true})) || null;
+    } catch (error) {
+        console.error("[API Request] Failed to retrieve auth token", error);
+        return null;
+    }
+}
+
 /**
  * Generic API fetch wrapper
  * @param {string} endpoint - The API endpoint (e.g., '/events')
@@ -20,13 +37,24 @@ export async function apiRequest(
     method = "GET",
     body = null,
     token = null,
+    options = {},
 ) {
+    const {requireAuth = true, retryAuthFailure = true} = options;
+
     const headers = {
         "Content-Type": "application/json",
     };
 
-    if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+    let resolvedToken = token || (await getFreshToken());
+
+    if (resolvedToken) {
+        headers["Authorization"] = `Bearer ${resolvedToken}`;
+    } else if (requireAuth) {
+        const authError = new Error(
+            "Authentication token missing. Please sign in again.",
+        );
+        authError.code = "AUTH_TOKEN_MISSING";
+        throw authError;
     }
 
     const config = {
@@ -46,7 +74,22 @@ export async function apiRequest(
         const url = `${baseUrl}${path}`;
 
         console.log(`[API Request] Attempting to fetch URL: ${url}`);
-        const response = await fetch(url, config);
+        let response = await fetch(url, config);
+
+        if (
+            retryAuthFailure &&
+            (response.status === 401 || response.status === 403) &&
+            !token &&
+            authTokenProvider
+        ) {
+            const refreshedToken = await getFreshToken();
+
+            if (refreshedToken && refreshedToken !== resolvedToken) {
+                resolvedToken = refreshedToken;
+                config.headers["Authorization"] = `Bearer ${refreshedToken}`;
+                response = await fetch(url, config);
+            }
+        }
 
         let data;
         const contentType = response.headers.get("content-type");
@@ -158,7 +201,9 @@ export const AdminApi = {
     getDashboard: (token) => apiRequest("/admin/dashboard", "GET", null, token),
     // Public endpoint - validates secret key before sign-in
     validateKey: (secretKey) =>
-        apiRequest("/admin/validate-key", "POST", {secretKey}, null),
+        apiRequest("/admin/validate-key", "POST", {secretKey}, null, {
+            requireAuth: false,
+        }),
 
     // Advanced Admin Controls
     createEvent: (data, token) => apiRequest("/events", "POST", data, token),
