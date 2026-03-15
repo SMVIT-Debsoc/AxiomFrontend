@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
-import { useUser, useAuth } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom";
-import { Loader2, ShieldX } from "lucide-react";
-import { AdminApi, UserApi } from "../services/api";
+import {useEffect, useState} from "react";
+import {useUser, useAuth} from "@clerk/clerk-react";
+import {useNavigate} from "react-router-dom";
+import {Loader2, ShieldX} from "lucide-react";
+import {AdminApi, UserApi} from "../services/api";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const isLocalhost = ["localhost", "127.0.0.1"].includes(
+    window.location.hostname,
+);
+const API_BASE_URL = isLocalhost
+    ? import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+    : "/api";
 
 /**
  * This component handles post-authentication redirects.
@@ -12,8 +17,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
  * and redirects accordingly after verifying credentials.
  */
 export function AuthRedirectHandler() {
-    const { user, isLoaded } = useUser();
-    const { getToken } = useAuth();
+    const {user, isLoaded} = useUser();
+    const {getToken} = useAuth();
     const navigate = useNavigate();
     const [status, setStatus] = useState("Verifying your credentials...");
     const [accessDenied, setAccessDenied] = useState(false);
@@ -23,7 +28,7 @@ export function AuthRedirectHandler() {
             if (!isLoaded) return;
 
             if (!user) {
-                navigate("/login-select", { replace: true });
+                navigate("/login-select", {replace: true});
                 return;
             }
 
@@ -39,12 +44,15 @@ export function AuthRedirectHandler() {
 
                     // First, check if user is already an admin (silently)
                     try {
-                        const adminCheckResponse = await fetch(`${API_BASE_URL}/admin/me`, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`,
-                                'Content-Type': 'application/json'
-                            }
-                        });
+                        const adminCheckResponse = await fetch(
+                            `${API_BASE_URL}/admin/me`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                    "Content-Type": "application/json",
+                                },
+                            },
+                        );
 
                         if (adminCheckResponse.ok) {
                             const adminCheck = await adminCheckResponse.json();
@@ -53,7 +61,7 @@ export function AuthRedirectHandler() {
                                 localStorage.removeItem("pendingRole");
                                 localStorage.removeItem("adminSecretKey");
                                 setStatus("Welcome back, Admin!");
-                                navigate("/admin", { replace: true });
+                                navigate("/admin", {replace: true});
                                 return;
                             }
                         }
@@ -65,14 +73,14 @@ export function AuthRedirectHandler() {
                     try {
                         const response = await AdminApi.onboard(
                             secretKey,
-                            token
+                            token,
                         );
                         localStorage.removeItem("pendingRole");
                         localStorage.removeItem("adminSecretKey");
 
                         if (response.success) {
                             setStatus("Admin access granted! Redirecting...");
-                            navigate("/admin", { replace: true });
+                            navigate("/admin", {replace: true});
                             return;
                         }
                     } catch (onboardError) {
@@ -82,7 +90,7 @@ export function AuthRedirectHandler() {
                         if (onboardError.message?.includes("already")) {
                             localStorage.removeItem("pendingRole");
                             localStorage.removeItem("adminSecretKey");
-                            navigate("/admin", { replace: true });
+                            navigate("/admin", {replace: true});
                             return;
                         }
 
@@ -96,12 +104,15 @@ export function AuthRedirectHandler() {
 
                 // No pending admin role - check if returning admin (silently)
                 try {
-                    const adminCheckResponse = await fetch(`${API_BASE_URL}/admin/me`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
+                    const adminCheckResponse = await fetch(
+                        `${API_BASE_URL}/admin/me`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                "Content-Type": "application/json",
+                            },
+                        },
+                    );
 
                     if (adminCheckResponse.ok) {
                         const adminResponse = await adminCheckResponse.json();
@@ -109,7 +120,7 @@ export function AuthRedirectHandler() {
                             // User is an admin, redirect to admin dashboard
                             localStorage.removeItem("pendingRole");
                             localStorage.removeItem("adminSecretKey");
-                            navigate("/admin", { replace: true });
+                            navigate("/admin", {replace: true});
                             return;
                         }
                     }
@@ -122,12 +133,12 @@ export function AuthRedirectHandler() {
                 localStorage.removeItem("adminSecretKey");
                 setStatus("Setting up your profile...");
                 await UserApi.getProfile(token);
-                navigate("/dashboard", { replace: true });
+                navigate("/dashboard", {replace: true});
             } catch (error) {
                 console.error("Auth redirect error:", error);
                 localStorage.removeItem("pendingRole");
                 localStorage.removeItem("adminSecretKey");
-                navigate("/dashboard", { replace: true });
+                navigate("/dashboard", {replace: true});
             }
         };
 
@@ -150,7 +161,7 @@ export function AuthRedirectHandler() {
                     <div className="space-y-3">
                         <button
                             onClick={() =>
-                                navigate("/dashboard", { replace: true })
+                                navigate("/dashboard", {replace: true})
                             }
                             className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
                         >
@@ -158,7 +169,7 @@ export function AuthRedirectHandler() {
                         </button>
                         <button
                             onClick={() =>
-                                navigate("/login-select", { replace: true })
+                                navigate("/login-select", {replace: true})
                             }
                             className="w-full py-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
                         >

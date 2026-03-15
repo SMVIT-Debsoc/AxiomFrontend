@@ -5,8 +5,12 @@ import {Menu, X, Rocket} from "lucide-react";
 import {useAuth, UserButton} from "@clerk/clerk-react";
 import {cn} from "../lib/utils";
 
-const API_BASE_URL =
-    import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const isLocalhost = ["localhost", "127.0.0.1"].includes(
+    window.location.hostname,
+);
+const API_BASE_URL = isLocalhost
+    ? import.meta.env.VITE_API_URL || "http://localhost:3000/api"
+    : "/api";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
@@ -72,7 +76,7 @@ export default function Navbar() {
                 "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent",
                 scrolled
                     ? "bg-background/80 backdrop-blur-md border-border py-4"
-                    : "bg-transparent py-6"
+                    : "bg-transparent py-6",
             )}
         >
             <div className="container mx-auto px-6 flex items-center justify-between">
@@ -96,7 +100,7 @@ export default function Navbar() {
                                 "text-sm font-medium transition-colors hover:text-primary",
                                 location.pathname === link.path
                                     ? "text-white"
-                                    : "text-muted-foreground"
+                                    : "text-muted-foreground",
                             )}
                         >
                             {link.name}
