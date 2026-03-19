@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {motion} from "framer-motion";
 import {Loader2, Calendar, Trophy, ArrowRight, MapPin} from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
@@ -13,10 +13,13 @@ export default function DashboardEvents() {
   const [error, setError] = useState(null);
   const {getToken} = useAuth();
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const token = await getToken();
+        const token = await getTokenRef.current();
         const response = await EventApi.list(token);
         // Handle the API response structure: { success: true, events: [...] }
         const eventList = response.events || response.data || [];
@@ -29,7 +32,8 @@ export default function DashboardEvents() {
     };
 
     fetchEvents();
-  }, [getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // runs once on mount
 
   // Real-time updates
   const {subscribe} = useSocket();

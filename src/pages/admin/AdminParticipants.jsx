@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -21,9 +21,12 @@ export default function AdminParticipants() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   const fetchParticipants = useCallback(async () => {
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       // Use UserApi.list to fetch all registered users for the global view
       const response = await UserApi.list(token);
       if (response.success) {
@@ -34,7 +37,8 @@ export default function AdminParticipants() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // stable - getToken is accessed via ref
 
   useEffect(() => {
     fetchParticipants();

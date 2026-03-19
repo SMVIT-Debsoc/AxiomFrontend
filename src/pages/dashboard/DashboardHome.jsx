@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {motion} from "framer-motion";
 import {
   Trophy,
@@ -37,6 +37,9 @@ export default function DashboardHome() {
   const [currentRound, setCurrentRound] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   // Fetch data function extracted for reuse
   const fetchDashboardData = async () => {
     if (!clerkLoaded) return;
@@ -44,7 +47,7 @@ export default function DashboardHome() {
     try {
       // Loading state only for initial load, not refreshes
       // setLoading(true);
-      const token = await getToken();
+      const token = await getTokenRef.current();
 
       // Fetch user profile stats if we don't have them
       if (!userData) {
@@ -126,7 +129,8 @@ export default function DashboardHome() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [getToken, clerkLoaded]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clerkLoaded]); // clerkLoaded is the ONLY real trigger; getToken via ref
 
   // Real-time updates
   useEventSocket(activeEvent?.id, {

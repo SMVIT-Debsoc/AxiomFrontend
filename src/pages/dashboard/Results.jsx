@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useRef} from "react";
 import {useParams, Link} from "react-router-dom";
 import {motion} from "framer-motion";
 import {
@@ -38,13 +38,16 @@ export default function Results() {
   const [activeTab, setActiveTab] = useState("my-results");
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   // Admin check
   useEffect(() => {
     const checkAdmin = async () => {
       const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
       const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
       try {
-        const token = await getToken();
+        const token = await getTokenRef.current();
         const response = await fetch(`${API_BASE_URL}/admin/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -55,12 +58,13 @@ export default function Results() {
       } catch (e) {}
     };
     checkAdmin();
-  }, [getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // runs once
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const token = await getToken();
+      const token = await getTokenRef.current();
 
       // Fetch event details with rounds
       const eventResponse = await EventApi.get(eventId, token);
@@ -109,7 +113,8 @@ export default function Results() {
     } finally {
       setLoading(false);
     }
-  }, [eventId, getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]); // stable - getToken via ref
 
   useEffect(() => {
     fetchData();

@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {motion} from "framer-motion";
 import {
   Calendar,
@@ -28,10 +28,13 @@ export default function AdminEvents() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const token = await getToken();
+      const token = await getTokenRef.current();
       const response = await EventApi.list(token);
       setEvents(response.events || response.data || []);
     } catch (err) {
@@ -44,7 +47,8 @@ export default function AdminEvents() {
 
   useEffect(() => {
     fetchEvents();
-  }, [getToken, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // runs once on mount
 
   // Real-time updates
   const {subscribe} = useSocket();

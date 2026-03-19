@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useRef} from "react";
 import {motion} from "framer-motion";
 import {
   Trophy,
@@ -23,11 +23,14 @@ export default function AdminLeaderboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const {subscribe} = useSocket({eventId: activeEvent?.id});
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   // 1. Fetch Active Event to determine default view
   useEffect(() => {
     const fetchActiveEvent = async () => {
       try {
-        const token = await getToken();
+        const token = await getTokenRef.current();
         // Priority: ONGOING > UPCOMING > Any
         let eventsResponse = await EventApi.list(token, "ONGOING");
         let events = eventsResponse.events || [];
@@ -53,14 +56,15 @@ export default function AdminLeaderboard() {
       }
     };
     fetchActiveEvent();
-  }, [getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // runs once
 
   const fetchLeaderboard = useCallback(async () => {
     if (isEventLoading) return;
 
     try {
       setLoading(true);
-      const token = await getToken();
+      const token = await getTokenRef.current();
       const eventId = filter === "current-event" ? activeEvent?.id : null;
       const response = await StatsApi.getLeaderboard(token, eventId, 50);
 
@@ -81,7 +85,7 @@ export default function AdminLeaderboard() {
     } finally {
       setLoading(false);
     }
-  }, [getToken, filter, activeEvent, isEventLoading]);
+  }, [filter, activeEvent, isEventLoading]); // stable - getToken via ref
 
   useEffect(() => {
     fetchLeaderboard();

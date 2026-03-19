@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useRef} from "react";
 import {useParams, Link, useNavigate} from "react-router-dom";
 import {motion, AnimatePresence} from "framer-motion";
 import {cn} from "../../lib/utils";
@@ -36,9 +36,12 @@ export default function AdminEventDetails() {
   const [editingRound, setEditingRound] = useState(null);
   const [activeTab, setActiveTab] = useState("rounds");
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   const fetchData = useCallback(async () => {
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       const results = await Promise.allSettled([
         EventApi.getById(eventId, token),
         AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token),
@@ -73,7 +76,8 @@ export default function AdminEventDetails() {
     } finally {
       setLoading(false);
     }
-  }, [eventId, getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]); // stable - getToken via ref
 
   useEffect(() => {
     fetchData();

@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {useParams, Link, useNavigate} from "react-router-dom";
 import {motion} from "framer-motion";
 import {
@@ -26,11 +26,14 @@ export default function Participants() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = await getToken();
+        const token = await getTokenRef.current();
 
         // Fetch event details
         const eventResponse = await EventApi.get(eventId, token);
@@ -55,7 +58,8 @@ export default function Participants() {
     };
 
     fetchData();
-  }, [eventId, getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]); // getToken via ref; eventId is the real trigger
 
   // Real-time updates
   useEventSocket(eventId, {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -48,14 +48,20 @@ export default function AdminRoundManagement() {
     const [processingId, setProcessingId] = useState(null);
     const debounceTimers = useRef({});
 
-    // Track if we've already started fetching rooms/participants
-    const fetchingRef = useRef({ rooms: false, participants: false });
+    // Store getToken in a ref so it never triggers re-renders or re-memos
+    const getTokenRef = useRef(getToken);
+    useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-    // Memoize fetchRoundData for useEffect dependency
+    // Track if we've already started fetching rooms/participants
+    const fetchingRef = useRef({ rooms: false, users: false });
+    // Prevent duplicate initial fetch
+    const hasFetchedRef = useRef(false);
+
+    // fetchRoundData uses a ref for getToken so it's never a dependency
     const fetchRoundData = useCallback(async (isBackground = false) => {
         if (!isBackground) setLoading(true);
         try {
-            const token = await getToken();
+            const token = await getTokenRef.current();
 
             // 1. Fetch Round Details
             const roundRes = await AdminApi.apiRequest(
@@ -72,22 +78,20 @@ export default function AdminRoundManagement() {
                 setDebates(fetchedRound.debates || []);
                 const eventId = fetchedRound.eventId;
 
-                // 2. Fetch rooms if missing
-                if (rooms.length === 0 && !fetchingRef.current.rooms) {
+                // 2. Fetch rooms (only once)
+                if (!fetchingRef.current.rooms) {
                     fetchingRef.current.rooms = true;
-                    AdminApi.apiRequest(`/rooms`, "GET", null, token).then(res => {
-                        if (res.success) setRooms(res.rooms || []);
-                        fetchingRef.current.rooms = false;
-                    }).catch(() => { fetchingRef.current.rooms = false; });
+                    AdminApi.apiRequest(`/rooms`, "GET", null, token)
+                        .then(res => { if (res.success) setRooms(res.rooms || []); })
+                        .catch(() => { fetchingRef.current.rooms = false; });
                 }
 
-                // 3. Fetch participants if missing
-                if (users.length === 0 && !fetchingRef.current.users) {
+                // 3. Fetch participants (only once)
+                if (!fetchingRef.current.users) {
                     fetchingRef.current.users = true;
-                    EventApi.getParticipants(eventId, token).then(res => {
-                        if (res.success) setUsers(res.participants || []);
-                        fetchingRef.current.users = false;
-                    }).catch(() => { fetchingRef.current.users = false; });
+                    EventApi.getParticipants(eventId, token)
+                        .then(res => { if (res.success) setUsers(res.participants || []); })
+                        .catch(err => { console.error("Failed to fetch participants", err); fetchingRef.current.users = false; });
                 }
             }
         } catch (error) {
@@ -95,9 +99,12 @@ export default function AdminRoundManagement() {
         } finally {
             setLoading(false);
         }
-    }, [roundId, getToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roundId]); // roundId is the ONLY real dependency
 
     useEffect(() => {
+        if (hasFetchedRef.current) return;
+        hasFetchedRef.current = true;
         fetchRoundData();
     }, [fetchRoundData]);
 
@@ -372,6 +379,25 @@ export default function AdminRoundManagement() {
         }
     };
 
+    const allParticipants = useMemo(() => {
+        const merged = [...users];
+        checkIns.forEach(ci => {
+            if (ci.user && !merged.find(u => u.id === ci.userId)) {
+                merged.push(ci.user);
+            }
+        });
+        return merged;
+    }, [users, checkIns]);
+
+    const filteredParticipants = useMemo(() => {
+        return allParticipants.filter((user) =>
+            !searchTerm ||
+            `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.college?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [allParticipants, searchTerm]);
+
     if (loading && !round) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -612,13 +638,13 @@ export default function AdminRoundManagement() {
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                     <div className="p-4 bg-muted/20 border-b border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
                         <div className="flex flex-wrap gap-4 text-xs font-bold uppercase text-muted-foreground">
-                            <span>Total Participants: {users.length}</span>
+                            <span>Total Participants: {Math.max(users.length, checkIns.length)}</span>
                             <span className="text-green-500">
                                 Present: {checkIns.filter((c) => c.status === "PRESENT").length}
                             </span>
                             <span className="text-red-500">
                                 Absent:{" "}
-                                {users.length -
+                                {Math.max(users.length, checkIns.length) -
                                     checkIns.filter((c) => c.status === "PRESENT").length}
                             </span>
                         </div>
@@ -640,42 +666,19 @@ export default function AdminRoundManagement() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {users.length === 0 ? (
+                                {filteredParticipants.length === 0 ? (
                                     <tr>
-                                        <td
-                                            colSpan="4"
-                                            className="px-6 py-12 text-center text-muted-foreground"
-                                        >
-                                            No participants registered in the system.
+                                        <td colSpan="4" className="px-6 py-12 text-center text-muted-foreground">
+                                            {loading ? "Loading participants..." : "No matching participants found."}
                                         </td>
                                     </tr>
                                 ) : (
-                                    users
-                                        .filter(
-                                            (user) =>
-                                                !searchTerm ||
-                                                `${user.firstName} ${user.lastName}`
-                                                    .toLowerCase()
-                                                    .includes(searchTerm.toLowerCase()) ||
-                                                user.email
-                                                    .toLowerCase()
-                                                    .includes(searchTerm.toLowerCase()) ||
-                                                user.college
-                                                    ?.toLowerCase()
-                                                    .includes(searchTerm.toLowerCase())
-                                        )
-                                        .slice(0, 100)
-                                        .map((user) => {
-                                            const checkIn = checkIns.find(
-                                                (ci) => ci.userId === user.id
-                                            );
-                                            const status = checkIn?.status || "ABSENT";
+                                    filteredParticipants.slice(0, 500).map((user) => {
+                                        const checkIn = checkIns.find((ci) => ci.userId === user.id);
+                                        const status = checkIn?.status || "ABSENT";
 
-                                            return (
-                                                <tr
-                                                    key={user.id}
-                                                    className={status === "ABSENT" ? "bg-red-500/5" : ""}
-                                                >
+                                        return (
+                                            <tr key={user.id} className={status === "ABSENT" ? "bg-red-500/5" : ""}>
                                                     <td className="px-6 py-4">
                                                         <p className="font-semibold text-sm">
                                                             {user.firstName} {user.lastName}
@@ -734,50 +737,39 @@ export default function AdminRoundManagement() {
 
                     {/* Mobile View (Cards) */}
                     <div className="md:hidden space-y-4 p-4">
-                        {users
-                            .filter(
-                                (user) =>
-                                    !searchTerm ||
-                                    `${user.firstName} ${user.lastName}`
-                                        .toLowerCase()
-                                        .includes(searchTerm.toLowerCase()) ||
-                                    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                    user.college?.toLowerCase().includes(searchTerm.toLowerCase())
-                            )
-                            .slice(0, 100)
-                            .map((user) => {
-                                const checkIn = checkIns.find((ci) => ci.userId === user.id);
-                                const status = checkIn?.status || "ABSENT";
+                        {filteredParticipants.slice(0, 100).map((user) => {
+                                 const checkIn = checkIns.find((ci) => ci.userId === user.id);
+                                 const status = checkIn?.status || "ABSENT";
 
-                                return (
-                                    <div
-                                        key={user.id}
-                                        className={`bg-card border border-border rounded-xl p-4 flex flex-col gap-3 ${status === "ABSENT"
-                                                ? "border-l-4 border-l-red-500/20 bg-red-500/5"
-                                                : "border-l-4 border-l-green-500/20"
-                                            }`}
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div className="min-w-0 flex-1 mr-2">
-                                                <h4 className="font-semibold text-sm truncate">
-                                                    {user.firstName} {user.lastName}
-                                                </h4>
-                                                <p className="text-xs text-muted-foreground truncate">
-                                                    {user.email}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground mt-1 truncate">
-                                                    {user.college || "N/A"}
-                                                </p>
-                                            </div>
-                                            <span
-                                                className={`text-[10px] uppercase font-bold px-2 py-1 rounded flex-shrink-0 ${status === "PRESENT"
-                                                        ? "bg-green-500/10 text-green-500"
-                                                        : "bg-red-500/10 text-red-500"
-                                                    }`}
-                                            >
-                                                {status}
-                                            </span>
-                                        </div>
+                                 return (
+                                     <div
+                                         key={user.id}
+                                         className={`bg-card border border-border rounded-xl p-4 flex flex-col gap-3 ${status === "ABSENT"
+                                                 ? "border-l-4 border-l-red-500/20 bg-red-500/5"
+                                                 : "border-l-4 border-l-green-500/20"
+                                             }`}
+                                     >
+                                         <div className="flex justify-between items-start">
+                                             <div className="min-w-0 flex-1 mr-2">
+                                                 <h4 className="font-semibold text-sm truncate">
+                                                     {user.firstName} {user.lastName}
+                                                 </h4>
+                                                 <p className="text-xs text-muted-foreground truncate">
+                                                     {user.email}
+                                                 </p>
+                                                 <p className="text-xs text-muted-foreground mt-1 truncate">
+                                                     {user.college || "N/A"}
+                                                 </p>
+                                             </div>
+                                             <span
+                                                 className={`text-[10px] uppercase font-bold px-2 py-1 rounded flex-shrink-0 ${status === "PRESENT"
+                                                         ? "bg-green-500/10 text-green-500"
+                                                         : "bg-red-500/10 text-red-500"
+                                                     }`}
+                                             >
+                                                 {status}
+                                             </span>
+                                         </div>
 
                                         <button
                                             onClick={() => handleManualCheckIn(user.id, status)}

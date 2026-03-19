@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useRef} from "react";
 import {useParams, Link} from "react-router-dom";
 import {motion} from "framer-motion";
 import {
@@ -40,10 +40,13 @@ export default function RoundDetails() {
   const [activeTab, setActiveTab] = useState("my-debate");
   const [allDebates, setAllDebates] = useState([]);
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = await getToken();
+      const token = await getTokenRef.current();
 
       // Fetch round details
       const roundResponse = await RoundApi.get(roundId, token);
@@ -167,7 +170,7 @@ export default function RoundDetails() {
       unsubscribeCheckIn();
       unsubscribeRoundUpdated();
     };
-  }, [roundId, getToken, currentUser?.id]);
+  }, [roundId, currentUser?.id]); // getToken via ref; roundId & currentUser.id are real triggers
 
   const handleCheckIn = async () => {
     try {

@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from "react";
+import {useState, useEffect, useCallback, useRef} from "react";
 import {motion} from "framer-motion";
 import {
   Calendar,
@@ -21,9 +21,12 @@ export default function AdminDashboard() {
   const [recentEvents, setRecentEvents] = useState([]);
   const [recentDebates, setRecentDebates] = useState([]);
 
+  const getTokenRef = useRef(getToken);
+  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
   const fetchDashboard = useCallback(async () => {
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
 
       // Fetch admin dashboard stats
       const response = await AdminApi.getDashboard(token);
@@ -37,7 +40,8 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // stable - getToken is accessed via ref
 
   useEffect(() => {
     fetchDashboard();
