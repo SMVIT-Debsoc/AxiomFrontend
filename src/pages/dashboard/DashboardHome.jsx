@@ -174,16 +174,14 @@ export default function DashboardHome() {
     },
     {
       label: "Qualified",
-      value: userData?.stats?.wonDebates || 0,
+      value: userData?.stats?.qualified || 0,
       color: "text-green-600",
     },
     {
       label: "Qualify Rate",
       value:
         userData?.stats?.totalDebates > 0
-          ? `${Math.round(
-              (userData.stats.wonDebates / userData.stats.totalDebates) * 100
-            )}%`
+          ? `${Math.round(userData.stats.winRate)}%`
           : "0%",
       color: "text-violet-600",
     },

@@ -241,4 +241,11 @@ export const AdminApi = {
 
     submitResult: (debateId, data, token) =>
         apiRequest(`/debates/${debateId}/result`, "POST", data, token),
+
+    getRoundPerformers: (roundId, token) =>
+        apiRequest(`/admin/rounds/${roundId}/performers`, "GET", null, token),
+    promoteDebaters: (roundId, userIds, token) =>
+        apiRequest(`/admin/rounds/${roundId}/promote`, "POST", {userIds}, token),
+    publishResults: (roundId, published, token) =>
+        apiRequest(`/admin/rounds/${roundId}/publish`, "POST", {published}, token),
 };

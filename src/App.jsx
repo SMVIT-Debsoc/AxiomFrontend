@@ -30,6 +30,7 @@ import AdminEventDetails from "./pages/admin/AdminEventDetails";
 import AdminRoundManagement from "./pages/admin/AdminRoundManagement";
 import AdminRounds from "./pages/admin/AdminRounds";
 import AdminResultSubmission from "./pages/admin/AdminResultSubmission";
+import AdminPromotion from "./pages/admin/AdminPromotion";
 
 import AdminResults from "./pages/admin/AdminResults";
 import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
@@ -154,6 +155,10 @@ function App() {
                             <Route
                                 path="rounds/:id"
                                 element={<AdminRoundManagement />}
+                            />
+                            <Route
+                                path="rounds/:id/promotion"
+                                element={<AdminPromotion />}
                             />
 
                             <Route

@@ -138,21 +138,7 @@ export default function Results() {
     return myDebates.filter((d) => eventRoundIds.includes(d.roundId));
   };
 
-  // Calculate my stats for this event
-  const getMyStats = () => {
-    const eventDebates = getMyEventDebates();
-    const completedDebates = eventDebates.filter(
-      (d) => d.status === "COMPLETED"
-    );
-    const wins = completedDebates.filter(
-      (d) => d.winnerId === currentUser?.id
-    ).length;
-    const losses = completedDebates.length - wins;
-
-    return {total: completedDebates.length, wins, losses};
-  };
-
-  const myStats = getMyStats();
+  const myEventDebates = getMyEventDebates();
 
   if (loading) {
     return (
@@ -199,22 +185,25 @@ export default function Results() {
         </div>
       </div>
 
-      {/* My Stats Summary */}
       <div className="bg-gradient-to-br from-primary to-purple-600 rounded-2xl p-6 text-white">
         <h3 className="text-sm font-medium opacity-80 mb-4">
           Your Performance
         </h3>
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-3xl font-bold">{myStats.total}</p>
+            <p className="text-3xl font-bold">{myEventDebates.length}</p>
             <p className="text-sm opacity-80">Debates</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-green-300">{myStats.wins}</p>
+            <p className="text-3xl font-bold text-green-300">
+              {myEventDebates.filter(d => d.resultsPublished && d.isPromoted).length}
+            </p>
             <p className="text-sm opacity-80">Qualified</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-red-300">{myStats.losses}</p>
+            <p className="text-3xl font-bold text-red-300">
+              {myEventDebates.filter(d => d.resultsPublished && !d.isPromoted).length}
+            </p>
             <p className="text-sm opacity-80">Eliminated</p>
           </div>
         </div>
@@ -270,10 +259,12 @@ export default function Results() {
                   transition={{delay: index * 0.05}}
                   className={cn(
                     "bg-card border rounded-xl p-4",
-                    debate.status === "COMPLETED" && isWinner
-                      ? "border-green-500/30"
-                      : debate.status === "COMPLETED"
-                      ? "border-red-500/30"
+                    debate.status === "COMPLETED" && debate.resultsPublished && debate.isPromoted
+                      ? "border-green-500/30 shadow-lg shadow-green-500/5 transition-all"
+                      : debate.status === "COMPLETED" && debate.resultsPublished && !debate.isPromoted
+                      ? "border-red-500/30 opacity-80"
+                      : debate.status === "COMPLETED" && !debate.resultsPublished
+                      ? "border-amber-500/20 bg-amber-500/5 animate-pulse"
                       : "border-border"
                   )}
                 >
@@ -283,16 +274,16 @@ export default function Results() {
                         {round?.name || `Round ${round?.roundNumber || "?"}`}
                       </span>
                     </div>
-                    {debate.status === "COMPLETED" && (
+                    {debate.status === "COMPLETED" && debate.resultsPublished ? (
                       <div
                         className={cn(
                           "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
-                          isWinner
+                          debate.isPromoted
                             ? "bg-green-500/10 text-green-500"
                             : "bg-red-500/10 text-red-500"
                         )}
                       >
-                        {isWinner ? (
+                        {debate.isPromoted ? (
                           <>
                             <CheckCircle2 className="w-3 h-3" />
                             QUALIFIED
@@ -304,9 +295,13 @@ export default function Results() {
                           </>
                         )}
                       </div>
-                    )}
-                    {debate.status !== "COMPLETED" && (
-                      <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                    ) : debate.status === "COMPLETED" ? (
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500">
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        AWAITING SELECTION
+                      </div>
+                    ) : (
+                      <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground uppercase font-bold tracking-widest text-[10px]">
                         {debate.status}
                       </span>
                     )}
@@ -324,14 +319,6 @@ export default function Results() {
                         {opponent?.college}
                       </p>
                     </div>
-                    {isAdmin && debate.status === "COMPLETED" && myScore !== null && (
-                      <div className="text-right">
-                        <p className="text-lg font-bold">
-                          {myScore} - {opponentScore}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Score</p>
-                      </div>
-                    )}
                   </div>
                 </motion.div>
               );

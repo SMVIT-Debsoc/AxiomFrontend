@@ -451,18 +451,23 @@ export default function EventDetails() {
                                 (d) => d.roundId === round.id
                               );
                               if (debate?.status === "COMPLETED") {
-                                const isWinner =
-                                  debate.winnerId === currentUser?.id;
+                                if (!debate.resultsPublished) {
+                                  return (
+                                    <span className="text-[10px] font-bold px-2 py-1 rounded bg-amber-500/10 text-amber-500 whitespace-nowrap">
+                                      PENDING
+                                    </span>
+                                  );
+                                }
                                 return (
                                   <span
                                     className={cn(
                                       "text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap",
-                                      isWinner
+                                      debate.isPromoted
                                         ? "bg-green-500/10 text-green-500"
                                         : "bg-red-500/10 text-red-500"
                                     )}
                                   >
-                                    {isWinner ? "QUALIFIED" : "ELIMINATED"}
+                                    {debate.isPromoted ? "QUALIFIED" : "ELIMINATED"}
                                   </span>
                                 );
                               }
@@ -713,251 +718,113 @@ export default function EventDetails() {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              {/* Sub-tabs for Results */}
-              <div className="flex items-center gap-4 border-b border-border mb-4">
-                {["my-results"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setResultSubTab(tab)}
-                    className={cn(
-                      "relative pb-3 text-sm font-medium transition-colors capitalize",
-                      resultSubTab === tab
-                        ? "text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {tab.replace("-", " ")}
-                    {resultSubTab === tab && (
-                      <motion.div
-                        layoutId="activeResultTab"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                        transition={{
-                          type: "spring",
-                          bounce: 0.2,
-                          duration: 0.6,
-                        }}
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-
               <div className="min-h-[200px] relative">
                 <AnimatePresence mode="wait">
-                  {resultSubTab === "my-results" && (
-                    <motion.div
-                      key="my-results"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-4"
-                    >
-                      {myDebates.filter((d) =>
-                        rounds.map((r) => r.id).includes(d.roundId)
-                      ).length === 0 ? (
-                        <div className="text-center py-12 bg-card border border-border rounded-xl">
-                          <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                          <p className="text-muted-foreground">
-                            No debate results yet for this event.
-                          </p>
-                        </div>
-                      ) : (
-                        myDebates
-                          .filter((d) =>
-                            rounds.map((r) => r.id).includes(d.roundId)
-                          )
-                          .map((debate, index) => {
-                            const round = rounds.find(
-                              (r) => r.id === debate.roundId
-                            );
-                            const isWinner =
-                              debate.winnerId === currentUser?.id;
-                            const isDebater1 =
-                              debate.debater1Id === currentUser?.id;
-                            const opponent = isDebater1
-                              ? debate.debater2
-                              : debate.debater1;
-                            const myScore = isDebater1
-                              ? debate.debater1Score
-                              : debate.debater2Score;
-                            const opponentScore = isDebater1
-                              ? debate.debater2Score
-                              : debate.debater1Score;
-
-                            return (
-                              <motion.div
-                                key={debate.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className={cn(
-                                  "bg-card border rounded-xl p-4",
-                                  debate.status === "COMPLETED" && isWinner
-                                    ? "border-green-500/30"
-                                    : debate.status === "COMPLETED"
-                                      ? "border-red-500/30"
-                                      : "border-border"
-                                )}
-                              >
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium">
-                                      {round?.name ||
-                                        `Round ${round?.roundNumber || "?"}`}
-                                    </span>
-                                  </div>
-                                  {debate.status === "COMPLETED" && (
-                                    <div
-                                      className={cn(
-                                        "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
-                                        isWinner
-                                          ? "bg-green-500/10 text-green-500"
-                                          : "bg-red-500/10 text-red-500"
-                                      )}
-                                    >
-                                      {isWinner ? (
-                                        <>
-                                          <CheckCircle2 className="w-3 h-3" />
-                                          QUALIFIED
-                                        </>
-                                      ) : (
-                                        <>
-                                          <XCircle className="w-3 h-3" />
-                                          ELIMINATED
-                                        </>
-                                      )}
-                                    </div>
-                                  )}
-                                  {debate.status !== "COMPLETED" && (
-                                    <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
-                                      {debate.status}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-4">
-                                  <UserAvatar user={opponent} size="md" />
-                                  <div className="flex-1">
-                                    <p className="font-medium">
-                                      vs {opponent?.firstName}{" "}
-                                      {opponent?.lastName}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {opponent?.college}
-                                    </p>
-                                  </div>
-                                  {isAdmin && debate.status === "COMPLETED" &&
-                                    myScore !== null && (
-                                      <div className="text-right">
-                                        <p className="text-lg font-bold">
-                                          {myScore} - {opponentScore}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                          Score
-                                        </p>
-                                      </div>
-                                    )}
-                                </div>
-                              </motion.div>
-                            );
-                          })
-                      )}
-                    </motion.div>
-                  )}
-
-                  {resultSubTab === "leaderboard" && (
-                    <motion.div
-                      key="leaderboard"
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-3"
-                    >
-                      {leaderboard.length === 0 ? (
-                        <div className="text-center py-12 bg-card border border-border rounded-xl">
-                          <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                          <p className="text-muted-foreground">
-                            Leaderboard will be available once results are
-                            submitted.
-                          </p>
-                        </div>
-                      ) : (
-                        leaderboard.map((entry, index) => {
-                          const isCurrentUser =
-                            entry.user?.id === currentUser?.id;
+                  <motion.div
+                    key="my-results"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-4"
+                  >
+                    {myDebates.filter((d) =>
+                      rounds.map((r) => r.id).includes(d.roundId)
+                    ).length === 0 ? (
+                      <div className="text-center py-12 bg-card border border-border rounded-xl">
+                        <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          No debate results yet for this event.
+                        </p>
+                      </div>
+                    ) : (
+                      myDebates
+                        .filter((d) =>
+                          rounds.map((r) => r.id).includes(d.roundId)
+                        )
+                        .map((debate, index) => {
+                          const round = rounds.find(
+                            (r) => r.id === debate.roundId
+                          );
+                          const isDebater1 =
+                            debate.debater1Id === currentUser?.id;
+                          const opponent = isDebater1
+                            ? debate.debater2
+                            : debate.debater1;
 
                           return (
                             <motion.div
-                              key={entry.user?.id || index}
+                              key={debate.id}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.03 }}
+                              transition={{ delay: index * 0.05 }}
                               className={cn(
-                                "flex items-center gap-4 p-4 rounded-xl",
-                                isCurrentUser
-                                  ? "bg-primary/10 border-2 border-primary/30"
-                                  : "bg-card border border-border"
+                                "bg-card border rounded-xl p-4 transition-all",
+                                debate.status === "COMPLETED" && debate.resultsPublished && debate.isPromoted
+                                  ? "border-green-500/30 shadow-lg shadow-green-500/5 transition-all"
+                                  : debate.status === "COMPLETED" && debate.resultsPublished && !debate.isPromoted
+                                    ? "border-red-500/30 opacity-80"
+                                    : debate.status === "COMPLETED" && !debate.resultsPublished
+                                      ? "border-amber-500/20 bg-amber-500/5 animate-pulse"
+                                      : "border-border"
                               )}
                             >
-                              {/* Rank */}
-                              <div
-                                className={cn(
-                                  "w-10 h-10 rounded-full flex items-center justify-center font-bold",
-                                  index === 0
-                                    ? "bg-amber-500 text-white"
-                                    : index === 1
-                                      ? "bg-gray-400 text-white"
-                                      : index === 2
-                                        ? "bg-amber-700 text-white"
-                                        : "bg-muted text-muted-foreground"
-                                )}
-                              >
-                                {index === 0 ? (
-                                  <Crown className="w-5 h-5" />
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">
+                                    {round?.name || `Round ${round?.roundNumber || "?"}`}
+                                  </span>
+                                </div>
+                                {debate.status === "COMPLETED" && debate.resultsPublished ? (
+                                  <div
+                                    className={cn(
+                                      "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
+                                      debate.isPromoted
+                                        ? "bg-green-500/10 text-green-500"
+                                        : "bg-red-500/10 text-red-500"
+                                    )}
+                                  >
+                                    {debate.isPromoted ? (
+                                      <>
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        QUALIFIED
+                                      </>
+                                    ) : (
+                                      <>
+                                        <XCircle className="w-3 h-3" />
+                                        ELIMINATED
+                                      </>
+                                    )}
+                                  </div>
+                                ) : debate.status === "COMPLETED" ? (
+                                  <div className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500">
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                    AWAITING SELECTION
+                                  </div>
                                 ) : (
-                                  index + 1
+                                  <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground font-bold text-[10px] uppercase tracking-widest">
+                                    {debate.status}
+                                  </span>
                                 )}
                               </div>
 
-                              {/* Avatar */}
-                              <UserAvatar
-                                user={entry.user || entry}
-                                size="md"
-                              />
-
-                              {/* User Info */}
-                              <div className="flex-1 min-w-0">
-                                <p
-                                  className={cn(
-                                    "font-semibold truncate",
-                                    isCurrentUser && "text-primary"
-                                  )}
-                                >
-                                  {entry.user?.firstName} {entry.user?.lastName}
-                                  {isCurrentUser && " (You)"}
-                                </p>
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {entry.user?.college}
-                                </p>
-                              </div>
-
-                              {/* Stats */}
-                              <div className="text-right">
-                                <p className="font-bold text-lg">
-                                  {entry.stats?.wins}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {entry.stats?.wins === 1 ? "Win" : "Wins"}
-                                </p>
+                              <div className="flex items-center gap-4">
+                                <UserAvatar user={opponent} size="md" />
+                                <div className="flex-1">
+                                  <p className="font-medium">
+                                    vs {opponent?.firstName}{" "}
+                                    {opponent?.lastName}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {opponent?.college}
+                                  </p>
+                                </div>
                               </div>
                             </motion.div>
                           );
                         })
-                      )}
-                    </motion.div>
-                  )}
+                    )}
+                  </motion.div>
                 </AnimatePresence>
               </div>
             </motion.div>

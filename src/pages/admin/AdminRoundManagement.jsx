@@ -16,6 +16,7 @@ import {
     Search,
     Trophy,
     RotateCcw,
+    ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi, EventApi } from "../../services/api";
@@ -453,6 +454,13 @@ export default function AdminRoundManagement() {
                                     <Home className="w-4 h-4" />
                                 )}
                                 Allocate Rooms
+                            </button>
+                            <button
+                                onClick={() => navigate(`/admin/rounds/${roundId}/promotion`)}
+                                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-500 text-white font-medium hover:bg-indigo-600 transition-colors w-full md:w-auto"
+                            >
+                                <ShieldCheck className="w-4 h-4" />
+                                Review & Promote
                             </button>
                             <button
                                 onClick={() =>
