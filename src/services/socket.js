@@ -125,19 +125,28 @@ class SocketService {
             return this.socket;
         }
 
-        console.log("[Socket] Connecting to:", SOCKET_URL || "same-origin", "transports:", SOCKET_TRANSPORTS);
-
         this.socket = io(SOCKET_URL, {
             transports: SOCKET_TRANSPORTS,
             upgrade: true,
             reconnection: true,
-            reconnectionAttempts: Infinity, // Never stop trying
-            reconnectionDelay: 1000,
-            reconnectionDelayMax: 5000,
-            timeout: 30000,
+            reconnectionAttempts: Infinity,
+            reconnectionDelay: 2000,
+            reconnectionDelayMax: 10000,
+            timeout: 20000,
             autoConnect: true,
             forceNew: false,
+            closeOnBeforeunload: true,
         });
+
+        // Add a global listener to help close connections
+        if (typeof window !== "undefined") {
+            window.addEventListener("beforeunload", () => {
+                if (this.socket) {
+                    console.log("[Socket] Closing connection before unload...");
+                    this.socket.close();
+                }
+            });
+        }
 
         this.socket.on("connect", () => {
             console.log("[Socket] Connected:", this.socket.id);

@@ -78,15 +78,22 @@ export async function apiRequest(
         if (isLocalhost) console.log(`[API] ${method} ${path}`);
         let response = await fetch(url, config);
 
-        if (
-            retryAuthFailure &&
-            (response.status === 401 || response.status === 403) &&
-            !token &&
-            authTokenProvider
-        ) {
+        // 1. Check for Clerk Redirects (Native fetch follows 302, resulting in response.redirected or HTML response)
+        const clerkStatus = response.headers.get("x-clerk-auth-status");
+        const wasRedirected = response.redirected && response.url.endsWith("/");
+        
+        let needsRetry = false;
+        if (retryAuthFailure && !token && authTokenProvider) {
+            if (response.status === 401 || response.status === 403 || wasRedirected || clerkStatus === "signed-out") {
+                needsRetry = true;
+            }
+        }
+
+        if (needsRetry) {
+            console.warn(`[API] Auth failure (${response.status}) or expired token detected during ${path}. Retrying with fresh token...`);
             const refreshedToken = await getFreshToken();
 
-            if (refreshedToken && refreshedToken !== resolvedToken) {
+            if (refreshedToken) {
                 resolvedToken = refreshedToken;
                 config.headers["Authorization"] = `Bearer ${refreshedToken}`;
                 response = await fetch(url, config);
@@ -95,13 +102,29 @@ export async function apiRequest(
 
         let data;
         const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
+        
+        // Handle HTML responses (often result of redirects to root or login)
+        if (contentType && (contentType.includes("text/html") || contentType.includes("text/plain"))) {
+             const text = await response.text();
+             // If we got HTML but expected JSON, it's likely a redirect loop or server error
+             if (text.includes("<!DOCTYPE") || text.includes("<html") || (response.status === 200 && wasRedirected)) {
+                  throw new Error(`Session expired or connection lost during request. Please refresh and try again.`);
+             }
+             
+             // Try to parse text as JSON just in case (sometimes mime is wrong)
+             try {
+                 data = JSON.parse(text);
+             } catch (e) {
+                 throw new Error(`Server returned unexpected response (${response.status}). URL: ${path}`);
+             }
+        } else if (contentType && contentType.includes("application/json")) {
             data = await response.json();
         } else {
+            // No content type or something else
             const text = await response.text();
-            throw new Error(
-                `Expected JSON but received HTML. URL checked: ${url}. Status: ${response.status}. Response preview: ${text.substring(0, 50)}...`,
-            );
+            try { data = JSON.parse(text); } catch(e) { 
+                throw new Error(`API returned invalid content (${contentType || 'none'}). Status: ${response.status}`);
+            }
         }
 
         if (!response.ok) {
@@ -233,11 +256,14 @@ export const AdminApi = {
         apiRequest(`/pairing/${roundId}/round1`, "POST", null, token),
     generatePowerMatchPairings: (roundId, token) =>
         apiRequest(`/pairing/${roundId}/power-match`, "POST", null, token),
-    allocateRooms: (roundId, timeSlots, token) =>
+    allocateRooms: (roundId, config, token) =>
         apiRequest(
             `/pairing/${roundId}/allocate-rooms`,
             "POST",
-            {timeSlots},
+            {
+                ...config,
+                roomIds: config.selectedRoomIds || config.roomIds
+            },
             token,
         ),
 

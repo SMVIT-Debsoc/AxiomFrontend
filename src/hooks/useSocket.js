@@ -79,15 +79,20 @@ export function useSocket({eventId, roundId, autoConnect = true} = {}) {
     return socketService.isConnected();
   }, []);
 
+  const joinEvent = useCallback((id) => socketService.joinEvent(id), []);
+  const leaveEvent = useCallback((id) => socketService.leaveEvent(id), []);
+  const joinRound = useCallback((id) => socketService.joinRound(id), []);
+  const leaveRound = useCallback((id) => socketService.leaveRound(id), []);
+
   return {
     socket: socketService.getSocket(),
     subscribe,
     unsubscribe,
-    isConnected,
-    joinEvent: socketService.joinEvent.bind(socketService),
-    leaveEvent: socketService.leaveEvent.bind(socketService),
-    joinRound: socketService.joinRound.bind(socketService),
-    leaveRound: socketService.leaveRound.bind(socketService),
+    isConnected: socketService.isConnected(),
+    joinEvent,
+    leaveEvent,
+    joinRound,
+    leaveRound,
     SocketEvents,
   };
 }
