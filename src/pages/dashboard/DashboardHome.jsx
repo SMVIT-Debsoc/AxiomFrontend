@@ -173,12 +173,12 @@ export default function DashboardHome() {
       color: "text-gray-800",
     },
     {
-      label: "Wins",
+      label: "Qualified",
       value: userData?.stats?.wonDebates || 0,
       color: "text-green-600",
     },
     {
-      label: "Win Rate",
+      label: "Qualify Rate",
       value:
         userData?.stats?.totalDebates > 0
           ? `${Math.round(

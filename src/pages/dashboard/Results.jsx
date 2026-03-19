@@ -36,6 +36,26 @@ export default function Results() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("my-results");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Admin check
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
+      try {
+        const token = await getToken();
+        const response = await fetch(`${API_BASE_URL}/admin/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIsAdmin(data.success && !!data.admin);
+        }
+      } catch (e) {}
+    };
+    checkAdmin();
+  }, [getToken]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -191,11 +211,11 @@ export default function Results() {
           </div>
           <div>
             <p className="text-3xl font-bold text-green-300">{myStats.wins}</p>
-            <p className="text-sm opacity-80">Wins</p>
+            <p className="text-sm opacity-80">Qualified</p>
           </div>
           <div>
             <p className="text-3xl font-bold text-red-300">{myStats.losses}</p>
-            <p className="text-sm opacity-80">Losses</p>
+            <p className="text-sm opacity-80">Eliminated</p>
           </div>
         </div>
       </div>
@@ -213,17 +233,19 @@ export default function Results() {
         >
           My Results
         </button>
-        <button
-          onClick={() => setActiveTab("leaderboard")}
-          className={cn(
-            "pb-3 text-sm font-medium transition-all border-b-2",
-            activeTab === "leaderboard"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Leaderboard
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setActiveTab("leaderboard")}
+            className={cn(
+              "pb-3 text-sm font-medium transition-all border-b-2",
+              activeTab === "leaderboard"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Leaderboard
+          </button>
+        )}
       </div>
 
       {/* Tab Content */}
@@ -286,12 +308,12 @@ export default function Results() {
                         {isWinner ? (
                           <>
                             <CheckCircle2 className="w-3 h-3" />
-                            WIN
+                            QUALIFIED
                           </>
                         ) : (
                           <>
                             <XCircle className="w-3 h-3" />
-                            LOSS
+                            ELIMINATED
                           </>
                         )}
                       </div>
@@ -315,7 +337,7 @@ export default function Results() {
                         {opponent?.college}
                       </p>
                     </div>
-                    {debate.status === "COMPLETED" && myScore !== null && (
+                    {isAdmin && debate.status === "COMPLETED" && myScore !== null && (
                       <div className="text-right">
                         <p className="text-lg font-bold">
                           {myScore} - {opponentScore}

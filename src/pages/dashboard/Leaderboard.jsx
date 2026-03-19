@@ -10,6 +10,7 @@ import {
   User,
   Loader2,
   RefreshCw,
+  Lock,
 } from "lucide-react";
 import {cn} from "../../lib/utils";
 import {useAuth} from "@clerk/clerk-react";
@@ -28,9 +29,33 @@ export default function Leaderboard() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const {subscribe} = useSocket({eventId: activeEvent?.id});
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+
+  // Check admin status
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
+      try {
+        const token = await getToken();
+        const response = await fetch(`${API_BASE_URL}/admin/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIsAdmin(data.success && !!data.admin);
+        }
+      } catch (e) {} finally {
+        setCheckingAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [getToken]);
 
   // 1. Fetch Active Event to determine default view
   useEffect(() => {
+    if (!isAdmin) return;
     const fetchActiveEvent = async () => {
       try {
         const token = await getToken();
@@ -145,6 +170,34 @@ export default function Leaderboard() {
     const userData = entry.user || entry;
     return userData.college || "N/A";
   };
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-16 px-4">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+          <Lock className="w-8 h-8" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Access Restricted</h2>
+        <p className="text-muted-foreground mb-6">
+          The leaderboard is currently restricted to administrators only.
+        </p>
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold"
+        >
+          Back to Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

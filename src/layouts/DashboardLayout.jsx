@@ -86,7 +86,11 @@ export default function DashboardLayout() {
         return <RedirectToSignIn />;
     }
 
-    const currentSidebarItems = [...sidebarItems];
+    const currentSidebarItems = sidebarItems.filter((item) => {
+        if (item.label === "Leaderboard") return isAdmin;
+        return true;
+    });
+
     if (isAdmin) {
         currentSidebarItems.push({
             icon: ShieldCheck,

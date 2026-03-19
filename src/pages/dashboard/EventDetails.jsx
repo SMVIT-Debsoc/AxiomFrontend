@@ -45,6 +45,26 @@ export default function EventDetails() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [resultSubTab, setResultSubTab] = useState("my-results");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Admin check
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
+      try {
+        const token = await getToken();
+        const response = await fetch(`${API_BASE_URL}/admin/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIsAdmin(data.success && !!data.admin);
+        }
+      } catch (e) {}
+    };
+    checkAdmin();
+  }, [getToken]);
 
   // Fetch data function for reuse
   const fetchData = useCallback(async () => {
@@ -442,7 +462,7 @@ export default function EventDetails() {
                                         : "bg-red-500/10 text-red-500"
                                     )}
                                   >
-                                    {isWinner ? "WON" : "LOST"}
+                                    {isWinner ? "QUALIFIED" : "ELIMINATED"}
                                   </span>
                                 );
                               }
@@ -695,31 +715,34 @@ export default function EventDetails() {
             >
               {/* Sub-tabs for Results */}
               <div className="flex items-center gap-4 border-b border-border mb-4">
-                {["my-results", "leaderboard"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setResultSubTab(tab)}
-                    className={cn(
-                      "relative pb-3 text-sm font-medium transition-colors capitalize",
-                      resultSubTab === tab
-                        ? "text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {tab.replace("-", " ")}
-                    {resultSubTab === tab && (
-                      <motion.div
-                        layoutId="activeResultTab"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                        transition={{
-                          type: "spring",
-                          bounce: 0.2,
-                          duration: 0.6,
-                        }}
-                      />
-                    )}
-                  </button>
-                ))}
+                {["my-results", "leaderboard"].map((tab) => {
+                  if (tab === "leaderboard" && !isAdmin) return null;
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setResultSubTab(tab)}
+                      className={cn(
+                        "relative pb-3 text-sm font-medium transition-colors capitalize",
+                        resultSubTab === tab
+                          ? "text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {tab.replace("-", " ")}
+                      {resultSubTab === tab && (
+                        <motion.div
+                          layoutId="activeResultTab"
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                          transition={{
+                            type: "spring",
+                            bounce: 0.2,
+                            duration: 0.6,
+                          }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="min-h-[200px] relative">
@@ -799,12 +822,12 @@ export default function EventDetails() {
                                       {isWinner ? (
                                         <>
                                           <CheckCircle2 className="w-3 h-3" />
-                                          WIN
+                                          QUALIFIED
                                         </>
                                       ) : (
                                         <>
                                           <XCircle className="w-3 h-3" />
-                                          LOSS
+                                          ELIMINATED
                                         </>
                                       )}
                                     </div>
@@ -827,7 +850,7 @@ export default function EventDetails() {
                                       {opponent?.college}
                                     </p>
                                   </div>
-                                  {debate.status === "COMPLETED" &&
+                                  {isAdmin && debate.status === "COMPLETED" &&
                                     myScore !== null && (
                                       <div className="text-right">
                                         <p className="text-lg font-bold">
