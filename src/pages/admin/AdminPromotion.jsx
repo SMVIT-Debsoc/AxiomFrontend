@@ -77,7 +77,7 @@ export default function AdminPromotion() {
       const token = await getToken();
       const response = await AdminApi.promoteDebaters(roundId, Array.from(selectedUsers), token);
       if (response.success) {
-        toast.success("Success", "Promotion status updated locally");
+        toast.success("Success", "Promotion selection saved to server");
         await fetchData(); // Refresh data
       }
     } catch (error) {
@@ -95,8 +95,8 @@ export default function AdminPromotion() {
       if (response.success) {
         setResultsPublished(published);
         toast.success(
-          published ? "Results Published" : "Results Hidden",
-          published ? "Users can now see their results on the dashboard" : "Results are now hidden from users"
+          published ? "Results Published!" : "Results Hidden",
+          published ? "All debaters can now see their win/loss status on their dashboard." : "Final results are now hidden from debaters."
         );
       }
     } catch (error) {

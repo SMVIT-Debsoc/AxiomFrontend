@@ -17,6 +17,7 @@ import {
     Trophy,
     RotateCcw,
     ShieldCheck,
+    CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { cn } from "../../lib/utils";
