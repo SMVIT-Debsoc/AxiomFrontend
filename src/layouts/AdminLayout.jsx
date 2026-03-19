@@ -15,6 +15,7 @@ import {
 import { cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserButton, useUser } from "@clerk/clerk-react";
+import { useSocketStatus } from "../hooks/useSocket";
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -33,6 +34,7 @@ export default function AdminLayout() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const location = useLocation();
     const { user } = useUser();
+    const socketConnected = useSocketStatus();
 
     return (
         <div className="min-h-screen bg-background text-foreground flex">
@@ -202,6 +204,21 @@ export default function AdminLayout() {
                             <Shield className="w-4 h-4 text-purple-500" />
                             <span className="text-sm font-medium text-purple-500">
                                 Admin Mode
+                            </span>
+                        </div>
+                        
+                        <div className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
+                            socketConnected 
+                                ? "bg-green-500/10 border-green-500/20 text-green-500" 
+                                : "bg-red-500/10 border-red-500/20 text-red-500"
+                        )}>
+                            <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                socketConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
+                            )} />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">
+                                {socketConnected ? "Real-time Ready" : "Connecting..."}
                             </span>
                         </div>
                     </div>

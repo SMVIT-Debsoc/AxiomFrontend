@@ -41,12 +41,9 @@ function getSocketTransports() {
         }
     }
 
-    if (isLocalhost) {
-        return ["polling", "websocket"];
-    }
-
-    // In production behind load-balancers, websocket-only avoids polling SID stickiness issues.
-    return ["websocket"];
+    // Always allow both transports so the client can fall back to polling
+    // if websocket upgrade fails behind a proxy/CDN/load-balancer.
+    return ["polling", "websocket"];
 }
 
 const SOCKET_TRANSPORTS = getSocketTransports();
@@ -122,15 +119,24 @@ class SocketService {
             return this.socket;
         }
 
+        // If we already have a socket instance that's just disconnected, don't recreate
+        if (this.socket) {
+            this.socket.connect();
+            return this.socket;
+        }
+
+        console.log("[Socket] Connecting to:", SOCKET_URL || "same-origin", "transports:", SOCKET_TRANSPORTS);
+
         this.socket = io(SOCKET_URL, {
             transports: SOCKET_TRANSPORTS,
             upgrade: true,
             reconnection: true,
-            reconnectionAttempts: 15, // More attempts
-            reconnectionDelay: 2000,
-            reconnectionDelayMax: 10000,
-            timeout: 45000, // Higher timeout for slow cold starts
+            reconnectionAttempts: Infinity, // Never stop trying
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 30000,
             autoConnect: true,
+            forceNew: false,
         });
 
         this.socket.on("connect", () => {

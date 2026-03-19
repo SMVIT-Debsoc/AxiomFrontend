@@ -1,4 +1,4 @@
-import {useEffect, useCallback, useRef} from "react";
+import {useEffect, useCallback, useRef, useState} from "react";
 import socketService, {SocketEvents} from "../services/socket";
 
 // Re-export SocketEvents for convenience
@@ -90,6 +90,40 @@ export function useSocket({eventId, roundId, autoConnect = true} = {}) {
     leaveRound: socketService.leaveRound.bind(socketService),
     SocketEvents,
   };
+}
+
+/**
+ * Hook to get the current connection status of the global socket
+ */
+export function useSocketStatus() {
+  const [connected, setConnected] = useState(socketService.isConnected());
+
+  useEffect(() => {
+    const handleConnect = () => setConnected(true);
+    const handleDisconnect = () => setConnected(false);
+
+    // Initial check
+    setConnected(socketService.isConnected());
+
+    const unsubConnect = socketService.on(SocketEvents.CONNECTION, handleConnect);
+    const unsubDisconnect = socketService.on(SocketEvents.DISCONNECT, handleDisconnect);
+    
+    // Also listen for reconnect
+    const socket = socketService.getSocket();
+    if (socket) {
+        socket.on("reconnect", handleConnect);
+    }
+
+    return () => {
+      unsubConnect();
+      unsubDisconnect();
+      if (socket) {
+          socket.off("reconnect", handleConnect);
+      }
+    };
+  }, []);
+
+  return connected;
 }
 
 /**

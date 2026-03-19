@@ -1,3 +1,4 @@
+
 const isBrowser = typeof window !== "undefined";
 const isLocalhost =
     isBrowser && ["localhost", "127.0.0.1"].includes(window.location.hostname);
@@ -73,7 +74,8 @@ export async function apiRequest(
         const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
         const url = `${baseUrl}${path}`;
 
-        console.log(`[API Request] Attempting to fetch URL: ${url}`);
+        // Debug only in local dev
+        if (isLocalhost) console.log(`[API] ${method} ${path}`);
         let response = await fetch(url, config);
 
         if (
@@ -124,7 +126,7 @@ export const UserApi = {
         apiRequest("/users/profile", "PUT", data, token),
     getStats: (token) => apiRequest("/stats/my-stats", "GET", null, token),
     getById: (id, token) => apiRequest(`/users/${id}`, "GET", null, token),
-    list: (token, limit = 50, offset = 0) =>
+    list: (token, limit = 500, offset = 0) =>
         apiRequest(
             `/users?limit=${limit}&offset=${offset}`,
             "GET",

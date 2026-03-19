@@ -4,6 +4,9 @@ import {
   Trophy,
   Search,
   Loader2,
+  Download,
+  Filter,
+  RotateCcw,
 } from "lucide-react";
 import {cn} from "../../lib/utils";
 import {useAuth} from "@clerk/clerk-react";
@@ -127,12 +130,20 @@ export default function AdminLeaderboard() {
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Trophy className="w-8 h-8 text-yellow-500" /> Leaderboard
-            </h1>
+            <h1 className="text-3xl font-bold">Leaderboard</h1>
             <p className="text-muted-foreground mt-1">
-              Top performing debaters across tournaments.
+              Top performing speakers across all events
             </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+                onClick={() => fetchLeaderboard()}
+                disabled={loading}
+                className="p-2.5 rounded-xl border border-border bg-card/50 hover:bg-muted text-muted-foreground transition-all"
+                title="Refresh Data"
+            >
+                <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
+            </button>
           </div>
         </div>
         <LeaderboardSkeleton />

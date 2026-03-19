@@ -116,16 +116,29 @@ export default function AdminEvents() {
         <div>
           <h1 className="text-3xl font-bold">Events</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your debate tournaments
+            Manage your debate tournaments and competitions
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors w-full md:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Create Event
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => fetchEvents()}
+            disabled={loading}
+            className="p-2.5 rounded-xl border border-border bg-card/50 hover:bg-muted text-muted-foreground transition-all"
+            title="Refresh Data"
+          >
+            <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
+          </button>
+          <button
+            onClick={() => {
+              setEditingEvent(null);
+              setShowCreateModal(true);
+            }}
+            className="flex items-center gap-2 bg-purple-500 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-purple-600 shadow-lg shadow-purple-500/25 transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Create Event
+          </button>
+        </div>
       </div>
 
       {/* Search */}

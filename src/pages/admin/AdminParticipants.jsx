@@ -3,13 +3,13 @@ import { motion } from "framer-motion";
 import {
   Users,
   Search,
-  UserPlus,
   MoreVertical,
   Mail,
-  Shield,
   Trash2,
   Loader2,
+  RotateCcw,
 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { useAuth } from "@clerk/clerk-react";
 import { UserApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
@@ -26,8 +26,8 @@ export default function AdminParticipants() {
 
   const fetchParticipants = useCallback(async () => {
     try {
+      setLoading(true);
       const token = await getTokenRef.current();
-      // Use UserApi.list to fetch all registered users for the global view
       const response = await UserApi.list(token);
       if (response.success) {
         setParticipants(response.users || []);
@@ -38,7 +38,7 @@ export default function AdminParticipants() {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable - getToken is accessed via ref
+  }, []);
 
   useEffect(() => {
     fetchParticipants();
@@ -59,11 +59,11 @@ export default function AdminParticipants() {
   }, [subscribe, fetchParticipants]);
 
   const filteredParticipants = participants.filter((p) => {
-    // Modified filter logic
     const name = `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase();
     const college = (p.college || "").toLowerCase();
     const query = searchQuery.toLowerCase();
-    return name.includes(query) || college.includes(query);
+    const email = (p.email || "").toLowerCase();
+    return name.includes(query) || college.includes(query) || email.includes(query);
   });
 
   const handleDelete = async (id, name) => {
@@ -82,7 +82,7 @@ export default function AdminParticipants() {
     }
   };
 
-  if (loading) {
+  if (loading && participants.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
@@ -99,20 +99,30 @@ export default function AdminParticipants() {
             Manage all debaters registered on the platform
           </p>
         </div>
+        <div className="flex gap-3">
+             <button
+                onClick={() => fetchParticipants()}
+                disabled={loading}
+                className="p-2.5 rounded-xl border border-border bg-card/50 hover:bg-muted text-muted-foreground transition-all"
+                title="Refresh Data"
+            >
+                <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
+            </button>
+        </div>
       </div>
 
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search by name or email..."
+          placeholder="Search by name, college or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-card border border-border focus:border-purple-500 outline-none transition-colors"
         />
       </div>
 
-      {filteredParticipants.length === 0 ? (
+      {filteredParticipants.length === 0 && !loading ? (
         <div className="text-center py-16 bg-card border border-border rounded-2xl">
           <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-20" />
           <h3 className="text-xl font-bold mb-2">No Participants Found</h3>
@@ -121,19 +131,15 @@ export default function AdminParticipants() {
           </p>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+            <table className="w-full text-left">
+              <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 text-left">User</th>
-                  <th className="px-6 py-4 text-left hidden md:table-cell">
-                    Contact
-                  </th>
-                  <th className="px-6 py-4 text-left hidden md:table-cell">
-                    College
-                  </th>
-                  <th className="px-6 py-4 text-left">Status</th>
+                  <th className="px-6 py-4">User</th>
+                  <th className="px-6 py-4 hidden md:table-cell">Contact</th>
+                  <th className="px-6 py-4 hidden md:table-cell">College</th>
+                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -143,7 +149,7 @@ export default function AdminParticipants() {
                     key={p.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.03 }}
+                    transition={{ delay: Math.min(index * 0.03, 1) }}
                     className="hover:bg-muted/20 transition-colors group"
                   >
                     <td className="px-6 py-4">
@@ -153,8 +159,8 @@ export default function AdminParticipants() {
                           <p className="font-semibold text-sm">
                             {p.firstName} {p.lastName}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            ID: {p.id.substring(0, 8)}...
+                          <p className="text-xs text-muted-foreground font-mono">
+                            ID: {p.id.substring(0, 8)}
                           </p>
                         </div>
                       </div>
@@ -162,7 +168,7 @@ export default function AdminParticipants() {
                     <td className="px-6 py-4 hidden md:table-cell">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Mail className="w-3 h-3" />
+                          <Mail className="w-3.5 h-3.5" />
                           {p.email}
                         </div>
                       </div>
@@ -172,10 +178,12 @@ export default function AdminParticipants() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${p.isProfileComplete
-                          ? "bg-green-500/10 text-green-500"
-                          : "bg-amber-500/10 text-amber-500"
-                          }`}
+                        className={cn(
+                          "text-[10px] uppercase font-bold px-2.5 py-1 rounded-full",
+                          p.isProfileComplete 
+                            ? "bg-green-500/10 text-green-500" 
+                            : "bg-amber-500/10 text-amber-500"
+                        )}
                       >
                         {p.isProfileComplete ? "Complete" : "Incomplete"}
                       </span>
@@ -183,20 +191,13 @@ export default function AdminParticipants() {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() =>
-                            handleDelete(p.id, `${p.firstName} ${p.lastName}`)
-                          }
+                          onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
                           className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                           title="Delete Participant"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() =>
-                            alert(
-                              `More actions for ${p.firstName} coming soon (Edit, Role Change).`
-                            )
-                          }
                           className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <MoreVertical className="w-4 h-4 text-muted-foreground" />

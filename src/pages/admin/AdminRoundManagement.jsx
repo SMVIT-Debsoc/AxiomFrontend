@@ -52,8 +52,6 @@ export default function AdminRoundManagement() {
     const getTokenRef = useRef(getToken);
     useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-    // Track if we've already started fetching rooms/participants
-    const fetchingRef = useRef({ rooms: false, users: false });
     // Prevent duplicate initial fetch
     const hasFetchedRef = useRef(false);
 
@@ -78,21 +76,15 @@ export default function AdminRoundManagement() {
                 setDebates(fetchedRound.debates || []);
                 const eventId = fetchedRound.eventId;
 
-                // 2. Fetch rooms (only once)
-                if (!fetchingRef.current.rooms) {
-                    fetchingRef.current.rooms = true;
-                    AdminApi.apiRequest(`/rooms`, "GET", null, token)
-                        .then(res => { if (res.success) setRooms(res.rooms || []); })
-                        .catch(() => { fetchingRef.current.rooms = false; });
-                }
+                // 2. Fetch rooms
+                AdminApi.apiRequest(`/rooms`, "GET", null, token)
+                    .then(res => { if (res.success) setRooms(res.rooms || []); })
+                    .catch(err => console.error("Failed to fetch rooms", err));
 
-                // 3. Fetch participants (only once)
-                if (!fetchingRef.current.users) {
-                    fetchingRef.current.users = true;
-                    EventApi.getParticipants(eventId, token)
-                        .then(res => { if (res.success) setUsers(res.participants || []); })
-                        .catch(err => { console.error("Failed to fetch participants", err); fetchingRef.current.users = false; });
-                }
+                // 3. Fetch participants
+                EventApi.getParticipants(eventId, token)
+                    .then(res => { if (res.success) setUsers(res.participants || []); })
+                    .catch(err => console.error("Failed to fetch participants", err));
             }
         } catch (error) {
             toast.error("Error", "Failed to load round data");
@@ -415,19 +407,28 @@ export default function AdminRoundManagement() {
                 <div className="flex items-start gap-4">
                     <button
                         onClick={() => navigate(`/admin/events/${round.eventId}`)}
-                        className="p-2 hover:bg-muted rounded-lg transition-colors"
+                        className="p-2.5 rounded-xl border border-border bg-card/50 hover:bg-muted text-muted-foreground transition-all"
+                        title="Back to Event"
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div>
                         <h1 className="text-3xl font-bold">{round.name}</h1>
                         <p className="text-muted-foreground">
-                            Round {round.roundNumber} Management
+                            {event?.name} • Round {round.roundNumber}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={() => fetchRoundData()}
+                        disabled={loading}
+                        className="p-2.5 rounded-xl border border-border bg-card/50 hover:bg-muted text-muted-foreground transition-all"
+                        title="Refresh Data"
+                    >
+                        <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} />
+                    </button>
                     {debates.length > 0 && (
                         <button
                             onClick={handleTogglePublish}
