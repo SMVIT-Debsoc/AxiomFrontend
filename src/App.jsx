@@ -6,7 +6,6 @@ import DashboardHome from "./pages/dashboard/DashboardHome";
 import DashboardEvents from "./pages/dashboard/DashboardEvents";
 import EventDetails from "./pages/dashboard/EventDetails";
 import Profile from "./pages/dashboard/Profile";
-import Leaderboard from "./pages/dashboard/Leaderboard";
 import Participants from "./pages/dashboard/Participants";
 import RoundDetails from "./pages/dashboard/RoundDetails";
 import Results from "./pages/dashboard/Results";
@@ -33,6 +32,7 @@ import AdminRounds from "./pages/admin/AdminRounds";
 import AdminResultSubmission from "./pages/admin/AdminResultSubmission";
 
 import AdminResults from "./pages/admin/AdminResults";
+import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
 import AdminParticipants from "./pages/admin/AdminParticipants";
 
 import AdminRooms from "./pages/admin/AdminRooms";
@@ -129,10 +129,6 @@ function App() {
                             />
                             <Route path="profile" element={<Profile />} />
                             <Route
-                                path="leaderboard"
-                                element={<Leaderboard />}
-                            />
-                            <Route
                                 path="settings"
                                 element={<Placeholder title="Settings" />}
                             />
@@ -166,6 +162,8 @@ function App() {
                             />
 
                             <Route path="rooms" element={<AdminRooms />} />
+
+                            <Route path="leaderboard" element={<AdminLeaderboard />} />
 
                             <Route path="results" element={<AdminResults />} />
                             <Route

@@ -34,7 +34,6 @@ const sidebarItems = [
     {icon: LayoutDashboard, label: "Overview", path: "/dashboard"},
     {icon: Calendar, label: "Events", path: "/dashboard/events"},
     {icon: Users, label: "Profile", path: "/dashboard/profile"},
-    {icon: Trophy, label: "Leaderboard", path: "/dashboard/leaderboard"},
 ];
 
 export default function DashboardLayout() {
@@ -86,10 +85,7 @@ export default function DashboardLayout() {
         return <RedirectToSignIn />;
     }
 
-    const currentSidebarItems = sidebarItems.filter((item) => {
-        if (item.label === "Leaderboard") return isAdmin;
-        return true;
-    });
+    const currentSidebarItems = [...sidebarItems];
 
     if (isAdmin) {
         currentSidebarItems.push({

@@ -23,6 +23,7 @@ const sidebarItems = [
     { icon: Users, label: "Participants", path: "/admin/participants" },
     { icon: MapPin, label: "Rooms", path: "/admin/rooms" },
     { icon: Trophy, label: "Results", path: "/admin/results" },
+    { icon: Shield, label: "Leaderboard", path: "/admin/leaderboard" },
     { icon: Settings, label: "Settings", path: "/admin/settings" },
     { icon: Users, label: "User View", path: "/dashboard" },
 ];

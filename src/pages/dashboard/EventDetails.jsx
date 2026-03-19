@@ -715,34 +715,31 @@ export default function EventDetails() {
             >
               {/* Sub-tabs for Results */}
               <div className="flex items-center gap-4 border-b border-border mb-4">
-                {["my-results", "leaderboard"].map((tab) => {
-                  if (tab === "leaderboard" && !isAdmin) return null;
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => setResultSubTab(tab)}
-                      className={cn(
-                        "relative pb-3 text-sm font-medium transition-colors capitalize",
-                        resultSubTab === tab
-                          ? "text-primary"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {tab.replace("-", " ")}
-                      {resultSubTab === tab && (
-                        <motion.div
-                          layoutId="activeResultTab"
-                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                          transition={{
-                            type: "spring",
-                            bounce: 0.2,
-                            duration: 0.6,
-                          }}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
+                {["my-results"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setResultSubTab(tab)}
+                    className={cn(
+                      "relative pb-3 text-sm font-medium transition-colors capitalize",
+                      resultSubTab === tab
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {tab.replace("-", " ")}
+                    {resultSubTab === tab && (
+                      <motion.div
+                        layoutId="activeResultTab"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                        transition={{
+                          type: "spring",
+                          bounce: 0.2,
+                          duration: 0.6,
+                        }}
+                      />
+                    )}
+                  </button>
+                ))}
               </div>
 
               <div className="min-h-[200px] relative">

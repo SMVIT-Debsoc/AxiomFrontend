@@ -233,19 +233,6 @@ export default function Results() {
         >
           My Results
         </button>
-        {isAdmin && (
-          <button
-            onClick={() => setActiveTab("leaderboard")}
-            className={cn(
-              "pb-3 text-sm font-medium transition-all border-b-2",
-              activeTab === "leaderboard"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Leaderboard
-          </button>
-        )}
       </div>
 
       {/* Tab Content */}
@@ -353,81 +340,6 @@ export default function Results() {
         </motion.div>
       )}
 
-      {activeTab === "leaderboard" && (
-        <motion.div
-          initial={{opacity: 0}}
-          animate={{opacity: 1}}
-          className="space-y-3"
-        >
-          {leaderboard.length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-xl">
-              <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">
-                Leaderboard will be available once results are submitted.
-              </p>
-            </div>
-          ) : (
-            leaderboard.map((entry, index) => {
-              const isCurrentUser = entry.userId === currentUser?.id;
-
-              return (
-                <motion.div
-                  key={entry.userId}
-                  initial={{opacity: 0, y: 10}}
-                  animate={{opacity: 1, y: 0}}
-                  transition={{delay: index * 0.03}}
-                  className={cn(
-                    "flex items-center gap-4 p-4 rounded-xl",
-                    isCurrentUser
-                      ? "bg-primary/10 border-2 border-primary/30"
-                      : "bg-card border border-border"
-                  )}
-                >
-                  {/* Rank */}
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-bold",
-                      index === 0
-                        ? "bg-amber-500 text-white"
-                        : index === 1
-                        ? "bg-gray-400 text-white"
-                        : index === 2
-                        ? "bg-amber-700 text-white"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {index === 0 ? <Crown className="w-5 h-5" /> : index + 1}
-                  </div>
-
-                  {/* User Info */}
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={cn(
-                        "font-semibold truncate",
-                        isCurrentUser && "text-primary"
-                      )}
-                    >
-                      {entry.firstName} {entry.lastName}
-                      {isCurrentUser && " (You)"}
-                    </p>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {entry.college}
-                    </p>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="text-right">
-                    <p className="font-bold text-lg">{entry.wins}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.wins === 1 ? "Win" : "Wins"}
-                    </p>
-                  </div>
-                </motion.div>
-              );
-            })
-          )}
-        </motion.div>
-      )}
     </div>
   );
 }
