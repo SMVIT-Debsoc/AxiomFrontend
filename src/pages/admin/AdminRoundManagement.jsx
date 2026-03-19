@@ -825,7 +825,12 @@ export default function AdminRoundManagement() {
                                         <span className="text-[10px] uppercase font-bold text-muted-foreground">
                                             Debate #{debate.id.substring(0, 4)}
                                         </span>
-                                        {debate.room ? (
+                                        {debate.status === "COMPLETED" ? (
+                                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-green-500/10 text-green-500 text-[10px] font-bold uppercase tracking-wider">
+                                                <CheckCircle2 className="w-3 h-3" />
+                                                Result Submitted
+                                            </div>
+                                        ) : debate.room ? (
                                             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-purple-500/10 text-purple-500 text-xs font-medium">
                                                 <MapPin className="w-3 h-3" />
                                                 {debate.room.name}
@@ -915,9 +920,21 @@ export default function AdminRoundManagement() {
                                         </div>
                                         <button
                                             onClick={() => navigate(`/admin/results/${debate.id}`)}
-                                            className="text-xs font-bold text-purple-500 hover:text-purple-600 transition-colors px-3 py-1 rounded bg-purple-500/5"
+                                            className={cn(
+                                                "text-xs font-bold transition-all px-3 py-2 rounded-xl flex items-center gap-1.5",
+                                                debate.status === "COMPLETED"
+                                                    ? "bg-green-500 text-white shadow-lg shadow-green-500/20"
+                                                    : "bg-purple-500/5 text-purple-500 hover:bg-purple-500/10"
+                                            )}
                                         >
-                                            Enter Result
+                                            {debate.status === "COMPLETED" ? (
+                                                <>
+                                                    <CheckCircle2 className="w-3 h-3" />
+                                                    Edit Result
+                                                </>
+                                            ) : (
+                                                "Enter Result"
+                                            )}
                                         </button>
                                     </div>
                                 </div>

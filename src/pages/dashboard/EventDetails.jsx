@@ -17,6 +17,7 @@ import {
   TrendingUp,
   XCircle,
   MessageCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { EventApi, DebateApi, UserApi, StatsApi } from "../../services/api";
@@ -765,11 +766,11 @@ export default function EventDetails() {
                               transition={{ delay: index * 0.05 }}
                               className={cn(
                                 "bg-card border rounded-xl p-4 transition-all",
-                                debate.status === "COMPLETED" && debate.resultsPublished && debate.isPromoted
+                                debate.status === "COMPLETED" && round?.resultsPublished && debate.isPromoted
                                   ? "border-green-500/30 shadow-lg shadow-green-500/5 transition-all"
-                                  : debate.status === "COMPLETED" && debate.resultsPublished && !debate.isPromoted
+                                  : debate.status === "COMPLETED" && round?.resultsPublished && !debate.isPromoted
                                     ? "border-red-500/30 opacity-80"
-                                    : debate.status === "COMPLETED" && !debate.resultsPublished
+                                    : debate.status === "COMPLETED" && !round?.resultsPublished
                                       ? "border-amber-500/20 bg-amber-500/5 animate-pulse"
                                       : "border-border"
                               )}
@@ -780,7 +781,7 @@ export default function EventDetails() {
                                     {round?.name || `Round ${round?.roundNumber || "?"}`}
                                   </span>
                                 </div>
-                                {debate.status === "COMPLETED" && debate.resultsPublished ? (
+                                {debate.status === "COMPLETED" && round?.resultsPublished ? (
                                   <div
                                     className={cn(
                                       "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
@@ -801,7 +802,7 @@ export default function EventDetails() {
                                       </>
                                     )}
                                   </div>
-                                ) : debate.status === "COMPLETED" ? (
+                                ) : debate.status === "COMPLETED" && !round?.resultsPublished ? (
                                   <div className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500">
                                     <RefreshCw className="w-3 h-3 animate-spin" />
                                     AWAITING SELECTION

@@ -53,7 +53,7 @@ const SOCKET_TRANSPORTS = getSocketTransports();
  */
 export const SocketEvents = {
     // Connection events
-    CONNECTION: "connection",
+    CONNECTION: "connect",
     DISCONNECT: "disconnect",
 
     // Room events (for scoping updates)
