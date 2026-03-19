@@ -19,6 +19,7 @@ import {
     ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
+import { cn } from "../../lib/utils";
 import { AdminApi, EventApi } from "../../services/api";
 import { useRoundSocket } from "../../hooks/useSocket";
 import { useToast } from "../../components/ui/Toast";
