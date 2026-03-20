@@ -74,9 +74,9 @@ export default function AdminRounds() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Round Management</h1>
-        <p className="text-muted-foreground mt-1">
+      <div className="max-w-full">
+        <h1 className="text-2xl md:text-3xl font-bold break-words">Round Management</h1>
+        <p className="text-sm md:text-base text-muted-foreground mt-1">
           Manage tournament rounds and pairings across all events
         </p>
       </div>

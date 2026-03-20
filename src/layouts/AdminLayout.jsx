@@ -190,12 +190,12 @@ export default function AdminLayout() {
             </motion.aside>
 
             {/* Content Area */}
-            <div className="flex-1 flex flex-col h-screen overflow-hidden">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
                 {/* Top Header */}
-                <header className="h-16 border-b border-border bg-background/50 backdrop-blur-md flex items-center justify-between px-6 z-10">
+                <header className="h-16 border-b border-border bg-background/50 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
                     <div className="flex items-center gap-3">
                         <button
-                            className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+                            className="md:hidden p-1.5 hover:bg-muted rounded-lg transition-colors border border-border/50"
                             onClick={() => setMobileMenuOpen(true)}
                         >
                             <Menu className="w-5 h-5" />
@@ -237,12 +237,12 @@ export default function AdminLayout() {
                 </header>
 
                 {/* Scrollable Main Content */}
-                <main className="flex-1 overflow-y-auto p-4 md:p-10 pb-24 md:pb-10 scroll-smooth">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-10 pb-24 md:pb-10 scroll-smooth min-w-0">
                     <Outlet />
                 </main>
 
                 {/* Mobile Bottom Navigation */}
-                <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 safe-area-inset-bottom">
+                <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
                     <div className="flex items-center justify-around py-2">
                         {sidebarItems
                             .filter((item) =>

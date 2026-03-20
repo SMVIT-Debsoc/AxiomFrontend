@@ -355,7 +355,7 @@ export default function Profile({isOnboarding = false}) {
                 </span>
               </label>
               <input
-                name="USN"
+                name="usn"
                 value={formData.usn}
                 onChange={handleChange}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"

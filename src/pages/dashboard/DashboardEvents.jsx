@@ -72,9 +72,9 @@ export default function DashboardEvents() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Tournaments</h1>
-        <p className="text-muted-foreground mt-1">
+      <div className="max-w-full">
+        <h1 className="text-2xl md:text-3xl font-bold break-words">Tournaments</h1>
+        <p className="text-sm md:text-base text-muted-foreground mt-1">
           Register for upcoming debates or view past results.
         </p>
       </div>
