@@ -35,6 +35,7 @@ export default function AdminEventDetails() {
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [editingRound, setEditingRound] = useState(null);
   const [activeTab, setActiveTab] = useState("rounds");
+  const [deletingRoundId, setDeletingRoundId] = useState(null);
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
@@ -102,6 +103,7 @@ export default function AdminEventDetails() {
     )
       return;
     try {
+      setDeletingRoundId(id);
       const token = await getToken();
       const response = await AdminApi.deleteRound(id, token);
       if (response.success) {
@@ -111,6 +113,8 @@ export default function AdminEventDetails() {
       }
     } catch (error) {
       alert("Error deleting round");
+    } finally {
+      setDeletingRoundId(null);
     }
   };
 
@@ -358,6 +362,7 @@ export default function AdminEventDetails() {
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 setEditingRound(round);
                               }}
                               className="p-2 rounded-lg hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
@@ -367,11 +372,17 @@ export default function AdminEventDetails() {
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
+                                e.stopPropagation();
                                 handleDeleteRound(round.id);
                               }}
-                              className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              disabled={deletingRoundId === round.id}
+                              className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
                             >
-                              <XCircle className="w-4 h-4" />
+                              {deletingRoundId === round.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <XCircle className="w-4 h-4" />
+                              )}
                             </button>
                             <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-purple-500 transition-colors" />
                           </div>
