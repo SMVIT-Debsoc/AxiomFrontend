@@ -144,68 +144,82 @@ export default function AdminParticipants() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredParticipants.map((p, index) => (
-                  <motion.tr
-                    key={p.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: Math.min(index * 0.03, 1) }}
-                    className="hover:bg-muted/20 transition-colors group"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar user={p} size="md" />
-                        <div>
-                          <p className="font-semibold text-sm">
-                            {p.firstName} {p.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            ID: {p.id.substring(0, 8)}
-                          </p>
+                {filteredParticipants.map((p, index) => {
+                  const isUnenrolled = !p.participatingEvents || !p.participatingEvents.some(e => e.status !== 'COMPLETED');
+                  
+                  return (
+                    <motion.tr
+                      key={p.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: Math.min(index * 0.03, 1) }}
+                      className={cn(
+                        "hover:bg-muted/20 transition-colors group",
+                        isUnenrolled && "bg-red-500/[0.02] border-l-2 border-l-red-500/30"
+                      )}
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar user={p} size="md" />
+                          <div>
+                            <p className="font-semibold text-sm">
+                              {p.firstName} {p.lastName}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              ID: {p.id.substring(0, 8)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Mail className="w-3.5 h-3.5" />
-                          {p.email}
+                      </td>
+                      <td className="px-6 py-4 hidden md:table-cell">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Mail className="w-3.5 h-3.5" />
+                            {p.email}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 hidden md:table-cell text-sm text-muted-foreground">
-                      {p.college || "Not provided"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={cn(
-                          "text-[10px] uppercase font-bold px-2.5 py-1 rounded-full",
-                          p.isProfileComplete 
-                            ? "bg-green-500/10 text-green-500" 
-                            : "bg-amber-500/10 text-amber-500"
-                        )}
-                      >
-                        {p.isProfileComplete ? "Complete" : "Incomplete"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
-                          className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                          title="Delete Participant"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 hidden md:table-cell text-sm text-muted-foreground">
+                        {p.college || "Not provided"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1.5">
+                          <span
+                            className={cn(
+                              "text-[10px] uppercase font-bold px-2.5 py-1 rounded-full w-fit",
+                              p.isProfileComplete 
+                                ? "bg-green-500/10 text-green-500" 
+                                : "bg-amber-500/10 text-amber-500"
+                            )}
+                          >
+                            {p.isProfileComplete ? "Complete" : "Incomplete"}
+                          </span>
+                          {isUnenrolled && (
+                            <span className="text-[9px] uppercase font-black px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 border border-red-500/20 w-fit">
+                              Unenrolled
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
+                            className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Delete Participant"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
