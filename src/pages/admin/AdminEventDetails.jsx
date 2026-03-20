@@ -151,7 +151,7 @@ export default function AdminEventDetails() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <button
             onClick={() => navigate("/admin/events")}
             className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
@@ -160,7 +160,7 @@ export default function AdminEventDetails() {
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl md:text-3xl font-bold truncate">
+              <h1 className="text-xl md:text-3xl font-bold break-words">
                 {event.name}
               </h1>
               <span
@@ -175,12 +175,12 @@ export default function AdminEventDetails() {
                 {event.status}
               </span>
             </div>
-            <p className="text-muted-foreground mt-1 text-sm md:text-base truncate">
+            <p className="text-muted-foreground mt-1 text-sm md:text-base break-words line-clamp-3 md:line-clamp-none">
               {event.description || "No description provided"}
             </p>
           </div>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
+        <div className="flex gap-3 w-full md:w-auto flex-shrink-0">
           <button
             onClick={() => setShowEditEvent(true)}
             className="p-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
@@ -314,7 +314,7 @@ export default function AdminEventDetails() {
                               {round.roundNumber}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-bold truncate pr-2">
+                              <h4 className="font-bold break-words pr-2">
                                 {round.name}
                               </h4>
                               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
