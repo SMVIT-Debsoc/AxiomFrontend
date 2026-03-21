@@ -17,6 +17,7 @@ import {
   XCircle,
   Info,
   MessageCircle,
+  Search,
 } from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
 import {AdminApi, EventApi} from "../../services/api";
@@ -36,6 +37,9 @@ export default function AdminEventDetails() {
   const [editingRound, setEditingRound] = useState(null);
   const [activeTab, setActiveTab] = useState("rounds");
   const [deletingRoundId, setDeletingRoundId] = useState(null);
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
@@ -117,6 +121,41 @@ export default function AdminEventDetails() {
       setDeletingRoundId(null);
     }
   };
+
+  const fetchUsers = async () => {
+      try {
+          const token = await getToken();
+          const response = await AdminApi.apiRequest("/users?limit=1000", "GET", null, token);
+          if (response.success) {
+              // Filter out users already enrolled
+              const enrolledIds = new Set(participants.map(p => p.id));
+              setAllUsers(response.users.filter(u => !enrolledIds.has(u.id)));
+          }
+      } catch (error) {
+          console.error("Failed to fetch users", error);
+      }
+  };
+
+  const handleManualEnroll = async (userId) => {
+      try {
+          const token = await getToken();
+          const response = await EventApi.enrollUserManual(eventId, userId, token);
+          if (response.success) {
+              fetchData(); // Refresh participants
+              setShowAddParticipant(false);
+          } else {
+              alert(response.error || "Failed to enroll user");
+          }
+      } catch (error) {
+          alert("Error enrolling user");
+      }
+  };
+
+  useEffect(() => {
+    if (showAddParticipant) {
+        fetchUsers();
+    }
+  }, [showAddParticipant]);
 
   if (loading) {
     return (
@@ -408,6 +447,13 @@ export default function AdminEventDetails() {
               >
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold">Enrolled Participants</h2>
+                  <button
+                    onClick={() => setShowAddParticipant(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-500 text-sm font-medium hover:bg-purple-500/20 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Participant
+                  </button>
                 </div>
 
                 {participants.length === 0 ? (
@@ -573,6 +619,66 @@ export default function AdminEventDetails() {
             fetchData();
           }}
         />
+      )}
+
+      {showAddParticipant && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg flex flex-col max-h-[80vh]"
+              >
+                  <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold">Add Participant</h2>
+                      <button onClick={() => setShowAddParticipant(false)} className="p-1 hover:bg-muted rounded-lg">
+                          <XCircle className="w-5 h-5 text-muted-foreground" />
+                      </button>
+                  </div>
+
+                  <div className="relative mb-4">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search users by name or email..."
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
+                      />
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                       {allUsers
+                        .filter(u => {
+                            const name = `${u.firstName} ${u.lastName}`.toLowerCase();
+                            const query = userSearchQuery.toLowerCase();
+                            return name.includes(query) || u.email.toLowerCase().includes(query);
+                        })
+                        .map(user => (
+                           <button
+                             key={user.id}
+                             onClick={() => handleManualEnroll(user.id)}
+                             className="w-full flex items-center justify-between p-3 rounded-xl border border-border hover:bg-muted transition-all group"
+                           >
+                               <div className="flex items-center gap-3">
+                                   <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center font-bold text-purple-500 text-xs">
+                                       {user.firstName?.[0]}{user.lastName?.[0]}
+                                   </div>
+                                   <div className="text-left">
+                                       <p className="text-sm font-semibold">{user.firstName} {user.lastName}</p>
+                                       <p className="text-xs text-muted-foreground">{user.email}</p>
+                                   </div>
+                               </div>
+                               <Plus className="w-4 h-4 text-muted-foreground group-hover:text-purple-500" />
+                           </button>
+                       ))}
+                       {allUsers.length === 0 && (
+                           <div className="text-center py-8 text-muted-foreground italic">
+                               No more users available to add.
+                           </div>
+                       )}
+                  </div>
+              </motion.div>
+          </div>
       )}
     </div>
   );

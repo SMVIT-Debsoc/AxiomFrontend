@@ -177,6 +177,8 @@ export const EventApi = {
         apiRequest(`/events/${id}/enroll`, "POST", null, token),
     getEnrollmentStatus: (id, token) =>
         apiRequest(`/events/${id}/enrollment-status`, "GET", null, token),
+    enrollUserManual: (eventId, userId, token) =>
+        apiRequest(`/events/${eventId}/enroll-manual`, "POST", {userId}, token),
 };
 
 // Round Endpoints

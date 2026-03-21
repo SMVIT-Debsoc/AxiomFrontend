@@ -11,15 +11,19 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "@clerk/clerk-react";
-import { UserApi } from "../../services/api";
+import { UserApi, EventApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import { UserPlus } from "lucide-react";
 
 export default function AdminParticipants() {
   const { getToken } = useAuth();
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [events, setEvents] = useState([]);
+  const [enrollingUser, setEnrollingUser] = useState(null);
+  const [showEventSelect, setShowEventSelect] = useState(false);
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
@@ -32,8 +36,13 @@ export default function AdminParticipants() {
       if (response.success) {
         setParticipants(response.users || []);
       }
+      
+      const eventResponse = await EventApi.list(token);
+      if(eventResponse.success) {
+          setEvents(eventResponse.events || []);
+      }
     } catch (err) {
-      console.error("Failed to fetch participants", err);
+      console.error("Failed to fetch data", err);
     } finally {
       setLoading(false);
     }
@@ -79,6 +88,23 @@ export default function AdminParticipants() {
       }
     } catch (error) {
       alert("Error deleting participant");
+    }
+  };
+
+  const handleEnroll = async (eventId, userId) => {
+    try {
+        const token = await getToken();
+        const response = await EventApi.enrollUserManual(eventId, userId, token);
+        if (response.success) {
+            alert("User enrolled successfully");
+            setShowEventSelect(false);
+            setEnrollingUser(null);
+            fetchParticipants(); // Refresh to update status
+        } else {
+            alert(response.error || "Failed to enroll user");
+        }
+    } catch (error) {
+        alert("Error during manual enrollment");
     }
   };
 
@@ -213,6 +239,16 @@ export default function AdminParticipants() {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => {
+                                setEnrollingUser(p);
+                                setShowEventSelect(true);
+                            }}
+                            className="p-2 rounded-lg hover:bg-purple-500/10 text-purple-500 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Enroll in Event"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
                             className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                             title="Delete Participant"
@@ -233,6 +269,53 @@ export default function AdminParticipants() {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Manual Enrollment Event Selector */}
+      {showEventSelect && enrollingUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-card border border-border rounded-2xl p-6 w-full max-w-md"
+              >
+                  <h2 className="text-xl font-bold mb-2">Enroll {enrollingUser.firstName}</h2>
+                  <p className="text-sm text-muted-foreground mb-6">Select the event you want to manually enroll this participant into.</p>
+                  
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto mb-6 pr-2">
+                       {events.filter(e => e.status !== 'COMPLETED').map(event => (
+                           <button
+                             key={event.id}
+                             onClick={() => handleEnroll(event.id, enrollingUser.id)}
+                             className="w-full text-left p-4 rounded-xl border border-border hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group"
+                           >
+                               <div className="flex items-center justify-between">
+                                   <div>
+                                       <h4 className="font-bold text-foreground group-hover:text-purple-500">{event.name}</h4>
+                                       <p className="text-xs text-muted-foreground capitalize">{event.status.toLowerCase()}</p>
+                                   </div>
+                                   <UserPlus className="w-4 h-4 text-muted-foreground group-hover:text-purple-500" />
+                               </div>
+                           </button>
+                       ))}
+                       {events.filter(e => e.status !== 'COMPLETED').length === 0 && (
+                           <div className="text-center py-6 text-muted-foreground italic">
+                               No active events found.
+                           </div>
+                       )}
+                  </div>
+                  
+                  <button 
+                    onClick={() => {
+                        setShowEventSelect(false);
+                        setEnrollingUser(null);
+                    }}
+                    className="w-full py-2.5 rounded-xl border border-border text-foreground hover:bg-muted transition-colors"
+                  >
+                      Cancel
+                  </button>
+              </motion.div>
+          </div>
       )}
     </div>
   );
