@@ -427,6 +427,7 @@ export default function AdminEventDetails() {
                             <th className="px-6 py-4 text-left">Debater</th>
                             <th className="px-6 py-4 text-left">College</th>
                             <th className="px-6 py-4 text-left">Email</th>
+                            <th className="px-6 py-4 text-left hidden lg:table-cell">Enrolled</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -451,6 +452,14 @@ export default function AdminEventDetails() {
                               </td>
                               <td className="px-6 py-4 text-sm text-muted-foreground">
                                 {p.email}
+                              </td>
+                              <td className="px-6 py-4 text-xs text-muted-foreground lg:table-cell hidden">
+                                {p.createdAt ? new Date(p.createdAt).toLocaleDateString(undefined, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                }) : "N/A"}
                               </td>
                             </tr>
                           ))}

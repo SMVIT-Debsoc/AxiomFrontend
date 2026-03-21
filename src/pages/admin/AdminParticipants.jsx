@@ -139,6 +139,7 @@ export default function AdminParticipants() {
                   <th className="px-6 py-4">User</th>
                   <th className="px-6 py-4 hidden md:table-cell">Contact</th>
                   <th className="px-6 py-4 hidden md:table-cell">College</th>
+                  <th className="px-6 py-4 hidden lg:table-cell">Joined At</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
@@ -181,6 +182,14 @@ export default function AdminParticipants() {
                       </td>
                       <td className="px-6 py-4 hidden md:table-cell text-sm text-muted-foreground">
                         {p.college || "Not provided"}
+                      </td>
+                      <td className="px-6 py-4 hidden lg:table-cell text-xs text-muted-foreground font-medium">
+                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) : "N/A"}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1.5">
