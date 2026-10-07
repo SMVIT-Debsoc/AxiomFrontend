@@ -1,17 +1,13 @@
 import {useState, useEffect, useRef} from "react";
-import {motion} from "framer-motion";
+import {motion as Motion} from "framer-motion";
 import {
   Trophy,
-  TrendingUp,
-  Users,
   Calendar,
   ArrowUpRight,
   CheckCircle2,
   MapPin,
   Loader2,
   XCircle,
-  ChevronRight,
-  Shield,
   Swords,
   Lock,
   ArrowRight,
@@ -19,10 +15,10 @@ import {
 import {useAuth, useUser} from "@clerk/clerk-react";
 import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
 import {Link} from "react-router-dom";
-import {useToast} from "../../components/ui/Toast";
-import {cn} from "../../lib/utils";
+import {useToast} from "../../hooks/useToast"
 import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
 import {useEventSocket} from "../../hooks/useSocket";
+import Sculpture from "../../components/brand/Sculpture";
 
 export default function DashboardHome() {
   const {getToken} = useAuth();
@@ -45,8 +41,6 @@ export default function DashboardHome() {
     if (!clerkLoaded) return;
 
     try {
-      // Loading state only for initial load, not refreshes
-      // setLoading(true);
       const token = await getTokenRef.current();
 
       // Fetch user profile stats if we don't have them
@@ -79,12 +73,10 @@ export default function DashboardHome() {
         let targetRound = event.rounds?.find((r) => r.status === "ONGOING");
 
         if (!targetRound) {
-          // If no ongoing round, find the next upcoming one
           targetRound = event.rounds?.find((r) => r.status === "UPCOMING");
         }
 
         if (!targetRound && event.rounds?.length > 0) {
-          // If no active rounds, show the latest round (e.g. last completed)
           targetRound = event.rounds[event.rounds.length - 1];
         }
 
@@ -95,8 +87,7 @@ export default function DashboardHome() {
           try {
             const checkIn = await CheckInApi.getMyStatus(targetRound.id, token);
             setCheckInStatus(checkIn.checkIn);
-          } catch (e) {
-            // User might not have checked in yet
+          } catch {
             setCheckInStatus(null);
           }
         }
@@ -106,21 +97,19 @@ export default function DashboardHome() {
       try {
         const debatesResponse = await DebateApi.getMyDebates(token);
         const debates = debatesResponse.debates || [];
-        // Find next scheduled debate
         const scheduled = debates.find((d) => d.status === "SCHEDULED");
         if (scheduled) {
           setNextDebate(scheduled);
         } else {
           setNextDebate(null);
         }
-      } catch (e) {
+      } catch {
         // User might not have any debates
       }
 
       setError(null);
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      // Only show error on initial load
       if (loading) setError(err.message);
     } finally {
       setLoading(false);
@@ -130,7 +119,7 @@ export default function DashboardHome() {
   useEffect(() => {
     fetchDashboardData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clerkLoaded]); // clerkLoaded is the ONLY real trigger; getToken via ref
+  }, [clerkLoaded]);
 
   // Real-time updates
   useEventSocket(activeEvent?.id, {
@@ -174,12 +163,12 @@ export default function DashboardHome() {
     {
       label: "Debates",
       value: userData?.stats?.totalDebates || 0,
-      color: "text-gray-800",
+      color: "text-foreground",
     },
     {
       label: "Qualified",
       value: userData?.stats?.qualified || 0,
-      color: "text-green-600",
+      color: "text-emerald-600 dark:text-emerald-400",
     },
     {
       label: "Qualify Rate",
@@ -187,111 +176,135 @@ export default function DashboardHome() {
         userData?.stats?.totalDebates > 0
           ? `${Math.round(userData.stats.winRate)}%`
           : "0%",
-      color: "text-violet-600",
+      color: "text-primary",
     },
   ];
 
   return (
-    <div className="space-y-6 max-w-md mx-auto md:max-w-4xl md:mx-0">
+    <div className="space-y-6 max-w-4xl">
+      {/* Page Header */}
+      <div className="axiom-page-header">
+        <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
+          Overview
+        </span>
+        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1">
+          Debater Desk
+        </h1>
+        <p className="text-sm text-muted-foreground font-sans mt-0.5">
+          Live tournament schedule, pairings, and personal standings.
+        </p>
+      </div>
+
       {/* Error Banner */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl">
-          <p className="font-medium">Failed to load dashboard data</p>
-          <p className="text-sm opacity-80">{error}</p>
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl font-sans">
+          <p className="font-semibold text-sm">Failed to load dashboard data</p>
+          <p className="text-xs opacity-90 mt-0.5">{error}</p>
         </div>
       )}
 
-      {/* Profile Header */}
-      <div className="bg-[#6D28D9] text-white p-6 rounded-3xl shadow-lg">
-        <div className="flex items-center gap-4 mb-6">
-          {clerkUser?.imageUrl ? (
-            <img
-              src={clerkUser.imageUrl}
-              alt={displayName}
-              className="w-16 h-16 rounded-full object-cover border-2 border-white/30"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-              {initials}
+      {/* Profile / Performance Overview Surface */}
+      <div className="bg-card border border-border p-6 rounded-xl relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-5">
+            {clerkUser?.imageUrl ? (
+              <img
+                src={clerkUser.imageUrl}
+                alt={displayName}
+                className="w-14 h-14 rounded-full object-cover border border-border shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xl font-heading font-bold text-primary shrink-0">
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-heading font-bold text-foreground truncate">{displayName}</h2>
+                <span className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary rounded text-[10px] font-heading font-semibold uppercase tracking-wider shrink-0">
+                  Debater
+                </span>
+              </div>
+              <p className="text-muted-foreground font-sans text-xs mt-0.5 truncate">{college}</p>
             </div>
-          )}
-          <div>
-            <h1 className="text-xl font-bold">{displayName}</h1>
-            <p className="text-white/80 text-sm">{college}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="px-2 py-0.5 bg-white/20 rounded text-[10px] font-medium uppercase">
-                Debater
-              </span>
-            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 bg-muted/30 border border-border/60 rounded-lg p-3 text-center">
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                className="border-r last:border-0 border-border/50 px-1"
+              >
+                <div className={`text-xl font-heading font-bold ${stat.color}`}>
+                  {stat.value}
+                </div>
+                <div className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground mt-0.5">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="flex justify-between bg-white rounded-2xl p-4 text-center shadow-sm">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="flex-1 border-r last:border-0 border-gray-100"
-            >
-              <div className={`text-xl font-bold ${stat.color}`}>
-                {stat.value}
-              </div>
-              <div className="text-[10px] uppercase tracking-wide text-gray-500 mt-1">
-                {stat.label}
-              </div>
-            </div>
-          ))}
+        {/* Quiet editorial sculpture accent */}
+        <div className="absolute -right-4 -bottom-6 w-36 h-48 opacity-15 pointer-events-none overflow-hidden select-none">
+          <Sculpture variant="portrait" className="w-full h-full object-cover grayscale contrast-125" />
         </div>
       </div>
 
       {/* Active Event Card */}
       {activeEvent ? (
-        <motion.div
-          initial={{y: 20, opacity: 0}}
+        <Motion.div
+          initial={{y: 14, opacity: 0}}
           animate={{y: 0, opacity: 1}}
-          className={cn(
-            "text-white p-6 rounded-3xl shadow-lg relative overflow-hidden",
-            activeEvent.status === "ONGOING"
-              ? "bg-[#F97316]"
-              : activeEvent.status === "UPCOMING"
-              ? "bg-[#3B82F6]"
-              : "bg-[#6B7280]"
-          )}
+          transition={{duration: 0.3}}
+          className="bg-card border border-border hover:border-primary/40 transition-colors p-6 rounded-xl relative"
         >
           <Link
             to={`/dashboard/events/${activeEvent.id}`}
-            className="block relative z-10"
+            className="block relative z-10 group"
           >
-            <div className="flex items-center gap-2 mb-1 opacity-90 text-sm font-medium">
-              <Calendar className="w-4 h-4" />
-              {activeEvent.status === "ONGOING"
-                ? "ACTIVE EVENT"
-                : activeEvent.status}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5 text-xs font-heading font-semibold uppercase tracking-wider text-primary">
+                <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>
+                  {activeEvent.status === "ONGOING"
+                    ? "Active Tournament"
+                    : activeEvent.status}
+                </span>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
             </div>
-            <h2 className="text-2xl font-bold mb-1">{activeEvent.name}</h2>
-            <p className="opacity-90 text-sm mb-4">
+            <h2 className="text-xl md:text-2xl font-heading font-bold text-foreground mb-1 group-hover:text-primary transition-colors">
+              {activeEvent.name}
+            </h2>
+            <p className="text-muted-foreground font-sans text-sm mb-4 line-clamp-2">
               {activeEvent.description || "Debate Competition"}
             </p>
 
             {currentRound && (
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold backdrop-blur-sm">
-                {currentRound.name || `Round ${currentRound.roundNumber}`} ·{" "}
-                {currentRound.status}
+              <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted/60 border border-border text-xs font-sans text-foreground">
+                <span className="font-medium">
+                  {currentRound.name || `Round ${currentRound.roundNumber}`}
+                </span>
+                <span className="mx-1.5 text-muted-foreground">·</span>
+                <span className="uppercase text-[10px] font-heading font-semibold text-primary">
+                  {currentRound.status}
+                </span>
               </div>
             )}
           </Link>
-          <ArrowUpRight className="absolute top-6 right-6 w-6 h-6 z-10 opacity-75" />
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-        </motion.div>
+        </Motion.div>
       ) : (
-        <div className="bg-card border border-border p-6 rounded-3xl text-center">
-          <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-          <h3 className="font-bold text-lg mb-1">No Active Events</h3>
-          <p className="text-muted-foreground text-sm mb-4">
+        <div className="bg-card border border-border p-6 rounded-xl text-center">
+          <Calendar className="w-10 h-10 mx-auto mb-2 text-muted-foreground" aria-hidden="true" />
+          <h3 className="font-heading font-bold text-base mb-1 text-foreground">No Active Events</h3>
+          <p className="text-muted-foreground font-sans text-xs mb-3">
             Check out upcoming tournaments
           </p>
           <Link
             to="/dashboard/events"
-            className="inline-flex px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm"
+            className="inline-flex px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Browse Events
           </Link>
@@ -300,37 +313,37 @@ export default function DashboardHome() {
 
       {/* Check-In Status */}
       {currentRound && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-lg">Check-In Status</h3>
-            <span className="text-xs text-muted-foreground">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <h3 className="font-heading font-bold text-base text-foreground">Check-In Status</h3>
+            <span className="text-xs text-muted-foreground font-sans">
               {currentRound.name || `Round ${currentRound.roundNumber}`}
             </span>
           </div>
-          <div className="bg-white dark:bg-card p-4 rounded-2xl border border-border shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+          <div className="bg-card p-5 rounded-xl border border-border">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                     checkInStatus?.status === "PRESENT"
-                      ? "bg-green-100 text-green-600"
-                      : "bg-amber-100 text-amber-600"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                   }`}
                 >
                   {checkInStatus?.status === "PRESENT" ? (
-                    <CheckCircle2 className="w-6 h-6" />
+                    <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
                   ) : (
-                    <XCircle className="w-6 h-6" />
+                    <XCircle className="w-5 h-5" aria-hidden="true" />
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-gray-800 dark:text-gray-100">
+                  <p className="font-heading font-bold text-sm text-foreground">
                     {checkInStatus?.status === "PRESENT"
                       ? "Checked In"
                       : "Not Checked In"}
                   </p>
                   {checkInStatus?.checkedInAt && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground font-sans mt-0.5">
                       {new Date(checkInStatus.checkedInAt).toLocaleTimeString(
                         "en-IN",
                         {
@@ -345,17 +358,17 @@ export default function DashboardHome() {
                 </div>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                className={`px-2.5 py-0.5 rounded text-[10px] font-heading font-semibold uppercase tracking-wider shrink-0 border ${
                   checkInStatus?.status === "PRESENT"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-amber-100 text-amber-700"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                 }`}
               >
                 {checkInStatus?.status === "PRESENT" ? "Present" : "Pending"}
               </span>
             </div>
 
-            {/* Check-In Button - Show when not checked in */}
+            {/* Check-In Button */}
             {checkInStatus?.status !== "PRESENT" && (
               <button
                 onClick={async () => {
@@ -380,16 +393,16 @@ export default function DashboardHome() {
                   }
                 }}
                 disabled={checkingIn}
-                className="w-full mt-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {checkingIn ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                     Checking In...
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                     Check In Now
                   </>
                 )}
@@ -401,71 +414,68 @@ export default function DashboardHome() {
 
       {/* Draw Status Section */}
       {currentRound && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-bold text-lg">Draw Status</h3>
-            <span className="text-xs text-muted-foreground">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <h3 className="font-heading font-bold text-base text-foreground">Draw Status</h3>
+            <span className="text-xs text-muted-foreground font-sans">
               {currentRound.name || `Round ${currentRound.roundNumber}`}
             </span>
           </div>
 
           {currentRound.pairingsPublished ? (
-            <motion.div
+            <Motion.div
               initial={{opacity: 0, y: 10}}
               animate={{opacity: 1, y: 0}}
-              className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden"
+              transition={{duration: 0.3}}
+              className="bg-card border border-border p-5 rounded-xl relative"
             >
-              <div className="flex justify-between items-start relative z-10 mb-4">
+              <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h4 className="font-bold text-lg mb-1 flex items-center gap-2">
+                  <h4 className="font-heading font-bold text-base text-foreground mb-0.5 flex items-center gap-2">
                     Draw Released
-                    <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full font-medium">
+                    <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] px-2 py-0.5 rounded font-heading font-semibold uppercase tracking-wider">
                       Public
                     </span>
                   </h4>
-                  <p className="text-indigo-100 text-sm opacity-90">
-                    Pairings are now live! Check your room and opponent.
+                  <p className="text-muted-foreground font-sans text-xs">
+                    Pairings are now live. Check your assigned room and opponent.
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                  <Swords className="w-5 h-5 text-white" />
+                <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                  <Swords className="w-4 h-4" aria-hidden="true" />
                 </div>
               </div>
 
               <Link
                 to={`/dashboard/events/${activeEvent.id}/rounds/${currentRound.id}`}
-                className="w-full py-3 rounded-xl bg-white text-indigo-600 font-bold text-sm shadow-lg shadow-black/10 flex items-center justify-center gap-2 relative z-10 hover:bg-indigo-50 transition-colors group"
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-primary/90 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                View Draw
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <span>View Draw</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
               </Link>
-
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-2xl -ml-10 -mb-10"></div>
-            </motion.div>
+            </Motion.div>
           ) : (
-            <div className="bg-white dark:bg-card p-5 rounded-2xl border border-border shadow-sm relative overflow-hidden">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-card border border-border p-5 rounded-xl">
+              <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h4 className="font-bold text-lg mb-1 text-muted-foreground flex items-center gap-2">
+                  <h4 className="font-heading font-bold text-base text-foreground mb-0.5 flex items-center gap-2">
                     Draw Not Released
-                    <span className="bg-muted text-muted-foreground text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                    <span className="bg-muted text-muted-foreground border border-border text-[10px] px-2 py-0.5 rounded font-heading font-semibold uppercase tracking-wider">
                       Pending
                     </span>
                   </h4>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground font-sans text-xs">
                     The adjudication core has not released the pairings yet.
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                  <Lock className="w-5 h-5 text-muted-foreground" />
+                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+                  <Lock className="w-4 h-4" aria-hidden="true" />
                 </div>
               </div>
 
               <button
                 disabled
-                className="w-full py-3 rounded-xl bg-muted text-muted-foreground font-semibold text-sm border border-transparent cursor-not-allowed opacity-70 flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-lg bg-muted text-muted-foreground font-medium text-xs border border-border/50 cursor-not-allowed opacity-80 flex items-center justify-center"
               >
                 Wait for Announcement
               </button>
@@ -475,28 +485,28 @@ export default function DashboardHome() {
       )}
 
       {/* Next Debate */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="font-bold text-lg">Your Next Debate</h3>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-0.5">
+          <h3 className="font-heading font-bold text-base text-foreground">Your Next Debate</h3>
           <Link
             to="/dashboard/events"
-            className="text-primary text-sm font-medium hover:underline"
+            className="text-primary text-xs font-sans font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
             View All
           </Link>
         </div>
         {nextDebate ? (
-          <div className="bg-white dark:bg-card p-5 rounded-2xl border border-border shadow-sm relative overflow-hidden">
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-primary font-bold text-sm">
+          <div className="bg-card border border-border p-5 rounded-xl">
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-primary font-heading font-semibold text-xs uppercase tracking-wider">
                 {nextDebate.round?.name || "Upcoming Round"}
               </span>
-              <span className="text-neutral-500 text-xs">
+              <span className="text-muted-foreground text-xs font-sans">
                 Room: {nextDebate.room?.name || "TBD"}
               </span>
             </div>
 
-            <p className="font-medium text-foreground mb-6 leading-relaxed">
+            <p className="font-medium text-foreground text-sm mb-4 leading-relaxed font-sans">
               {nextDebate.round?.motion
                 ? `Motion: ${nextDebate.round.motion}`
                 : "Motion will be announced soon"}
@@ -505,22 +515,23 @@ export default function DashboardHome() {
             <div className="flex gap-2">
               <Link
                 to={`/dashboard/events/${nextDebate.round.eventId}/rounds/${nextDebate.round.id}`}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm shadow-lg shadow-primary/20 text-center flex items-center justify-center"
+                className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-xs text-center flex items-center justify-center hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 View Details
               </Link>
               <Link
                 to={`/dashboard/events/${nextDebate.round.eventId}/rounds/${nextDebate.round.id}`}
-                className="p-2.5 rounded-xl border border-border hover:bg-muted text-muted-foreground transition-colors flex items-center justify-center"
+                aria-label="View debate room location"
+                className="p-2 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <MapPin className="w-5 h-5" />
+                <MapPin className="w-4 h-4" aria-hidden="true" />
               </Link>
             </div>
           </div>
         ) : (
-          <div className="bg-card border border-border p-5 rounded-2xl text-center">
-            <Trophy className="w-10 h-10 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-muted-foreground text-sm">
+          <div className="bg-card border border-border p-5 rounded-xl text-center">
+            <Trophy className="w-8 h-8 mx-auto mb-1.5 text-muted-foreground" aria-hidden="true" />
+            <p className="text-muted-foreground font-sans text-xs">
               No upcoming debates scheduled
             </p>
           </div>

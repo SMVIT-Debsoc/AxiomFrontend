@@ -1,6 +1,6 @@
-import {useState, useEffect, useRef} from "react";
-import {motion} from "framer-motion";
-import {Loader2, Calendar, Trophy, ArrowRight, MapPin} from "lucide-react";
+import {useState, useEffect, useCallback, useRef} from "react";
+import {motion as Motion} from "framer-motion";
+import {Calendar, Trophy} from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
 import {EventApi} from "../../services/api";
 import {Link} from "react-router-dom";
@@ -16,31 +16,31 @@ export default function DashboardEvents() {
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const token = await getTokenRef.current();
-        const response = await EventApi.list(token);
-        // Handle the API response structure: { success: true, events: [...] }
-        const eventList = response.events || response.data || [];
-        setEvents(eventList);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchEvents = useCallback(async () => {
+    try {
+      const token = await getTokenRef.current();
+      const response = await EventApi.list(token);
+      // Handle the API response structure: { success: true, events: [...] }
+      const eventList = response.events || response.data || [];
+      setEvents(eventList);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
+  useEffect(() => {
     fetchEvents();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // runs once on mount
+  }, [fetchEvents]);
 
   // Real-time updates
   const {subscribe} = useSocket();
   useEffect(() => {
     const unsubs = [
       subscribe(SocketEvents.EVENT_CREATED, () => {
-        fetchEvents(); // Optimization: could append to list
+        fetchEvents();
       }),
       subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, () => {
         fetchEvents();
@@ -50,18 +50,23 @@ export default function DashboardEvents() {
       }),
     ];
     return () => unsubs.forEach((u) => u && u());
-  }, [subscribe]);
+  }, [subscribe, fetchEvents]);
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Tournaments</h1>
-          <p className="text-muted-foreground mt-1">
-            Register for upcoming debates or view past results.
+      <div className="space-y-6">
+        <div className="axiom-page-header">
+          <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
+            Competitions
+          </span>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1">
+            Tournaments
+          </h1>
+          <p className="text-muted-foreground font-sans mt-1 text-sm md:text-base">
+            Register for upcoming debates or inspect completed stages.
           </p>
         </div>
-        <div className="grid gap-6">
+        <div className="grid gap-4">
           {[1, 2, 3].map((i) => (
             <EventCardSkeleton key={i} />
           ))}
@@ -71,67 +76,68 @@ export default function DashboardEvents() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="max-w-full">
-        <h1 className="text-2xl md:text-3xl font-bold break-words">Tournaments</h1>
-        <p className="text-sm md:text-base text-muted-foreground mt-1">
-          Register for upcoming debates or view past results.
+    <div className="space-y-6 max-w-5xl">
+      <div className="axiom-page-header max-w-full">
+        <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
+          Competitions
+        </span>
+        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1 break-words">
+          Tournaments
+        </h1>
+        <p className="text-sm md:text-base text-muted-foreground font-sans mt-1">
+          Register for upcoming debates or inspect completed stages.
         </p>
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl">
-          <p className="font-medium">Failed to load events</p>
-          <p className="text-sm opacity-80">{error}</p>
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl font-sans">
+          <p className="font-semibold text-sm">Failed to load events</p>
+          <p className="text-xs opacity-90 mt-0.5">{error}</p>
         </div>
       )}
 
       {events.length === 0 && !error ? (
-        <div className="text-center py-16 bg-card border border-border rounded-2xl">
-          <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-bold mb-2">No Events Yet</h3>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            There are no tournaments available at the moment. Check back later
-            for upcoming events!
+        <div className="text-center py-16 bg-card border border-border rounded-xl">
+          <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
+          <h3 className="text-lg font-heading font-bold mb-1 text-foreground">No Events Yet</h3>
+          <p className="text-muted-foreground font-sans text-sm max-w-md mx-auto">
+            There are no tournaments available at the moment. Check back soon for announcements.
           </p>
         </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid grid-cols-1 gap-4">
           {events.map((event, i) => (
-            <motion.div
+            <Motion.div
               key={event.id}
-              initial={{opacity: 0, y: 20}}
+              initial={{opacity: 0, y: 14}}
               animate={{opacity: 1, y: 0}}
-              transition={{delay: i * 0.1}}
-              className="group relative p-5 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all hover:bg-muted/10 overflow-hidden"
+              transition={{delay: i * 0.05, duration: 0.3}}
+              className="group relative min-w-0 p-5 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors"
             >
-              {/* Background Glow */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] duration-1000" />
-
               <div className="relative flex flex-col gap-4">
                 {/* Top row: Date + Title */}
                 <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 flex-shrink-0 rounded-xl bg-primary/10 flex flex-col items-center justify-center border border-primary/20">
-                    <span className="text-[10px] font-bold text-primary uppercase leading-none">
+                  <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-primary/10 flex flex-col items-center justify-center border border-primary/20">
+                    <span className="text-[10px] font-heading font-bold text-primary uppercase leading-none">
                       {new Date(event.startDate).toLocaleString("default", {
                         month: "short",
                       })}
                     </span>
-                    <span className="text-xl font-bold text-foreground leading-none mt-0.5">
+                    <span className="text-lg font-heading font-bold text-foreground leading-none mt-0.5">
                       {new Date(event.startDate).getDate()}
                     </span>
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold group-hover:text-primary transition-colors leading-tight">
+                    <h3 className="text-lg font-heading font-bold text-foreground group-hover:text-primary transition-colors leading-tight truncate">
                       {event.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    <p className="text-sm font-sans text-muted-foreground mt-1 line-clamp-2">
                       {event.description || "Debate Competition"}
                     </p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                    <div className="flex items-center gap-3 text-xs font-sans text-muted-foreground mt-2">
                       <span className="flex items-center gap-1">
-                        <Trophy className="w-3.5 h-3.5" />
+                        <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
                         {event.rounds?.length || 0} Rounds
                       </span>
                     </div>
@@ -139,33 +145,33 @@ export default function DashboardEvents() {
                 </div>
 
                 {/* Bottom row: Status + Button */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <div className="flex items-center justify-between pt-3 border-t border-border/60">
                   <div>
                     {event.status === "ONGOING" && (
-                      <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-xs font-bold animate-pulse">
-                        LIVE NOW
+                      <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-semibold uppercase tracking-wider">
+                        Live Now
                       </span>
                     )}
                     {event.status === "UPCOMING" && (
-                      <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold">
-                        UPCOMING
+                      <span className="px-2.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-semibold uppercase tracking-wider">
+                        Upcoming
                       </span>
                     )}
                     {event.status === "COMPLETED" && (
-                      <span className="px-3 py-1 rounded-full bg-gray-500/10 text-gray-500 text-xs font-bold">
-                        COMPLETED
+                      <span className="px-2.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border text-xs font-semibold uppercase tracking-wider">
+                        Completed
                       </span>
                     )}
                   </div>
                   <Link
                     to={`/dashboard/events/${event.id}`}
-                    className="inline-flex items-center justify-center px-5 py-2 rounded-lg border border-border hover:bg-primary hover:text-white hover:border-primary transition-all text-sm font-medium"
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     View Details
                   </Link>
                 </div>
               </div>
-            </motion.div>
+            </Motion.div>
           ))}
         </div>
       )}

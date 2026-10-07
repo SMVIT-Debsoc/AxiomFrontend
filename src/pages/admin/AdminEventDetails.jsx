@@ -1,31 +1,32 @@
-import {useState, useEffect, useCallback, useRef} from "react";
-import {useParams, Link, useNavigate} from "react-router-dom";
-import {motion, AnimatePresence} from "framer-motion";
-import {cn} from "../../lib/utils";
+import ModalSurface from "../../components/ui/ModalSurface";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { motion as Motion, AnimatePresence } from "framer-motion";
+import { cn } from "../../lib/utils";
 import {
-  Calendar,
   Clock,
   Plus,
   ChevronRight,
   Settings,
   Users,
   Activity,
-  Trophy,
   Loader2,
   ArrowLeft,
   CheckCircle2,
-  XCircle,
   Info,
   MessageCircle,
   Search,
+  Shield,
+  X,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {AdminApi, EventApi} from "../../services/api";
-import {useEventSocket} from "../../hooks/useSocket";
+import { useAuth } from "@clerk/clerk-react";
+import { AdminApi, EventApi } from "../../services/api";
+import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
+import { useEventSocket } from "../../hooks/useSocket";
 
 export default function AdminEventDetails() {
-  const {id: eventId} = useParams();
-  const {getToken} = useAuth();
+  const { id: eventId } = useParams();
+  const { getToken } = useAuth();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -42,7 +43,9 @@ export default function AdminEventDetails() {
   const [userSearchQuery, setUserSearchQuery] = useState("");
 
   const getTokenRef = useRef(getToken);
-  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -81,7 +84,6 @@ export default function AdminEventDetails() {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]); // stable - getToken via ref
 
   useEffect(() => {
@@ -115,7 +117,7 @@ export default function AdminEventDetails() {
       } else {
         alert(response.error || "Failed to delete round");
       }
-    } catch (error) {
+    } catch {
       alert("Error deleting round");
     } finally {
       setDeletingRoundId(null);
@@ -123,49 +125,50 @@ export default function AdminEventDetails() {
   };
 
   const fetchUsers = async () => {
-      try {
-          const token = await getToken();
-          const response = await AdminApi.apiRequest("/users?limit=1000", "GET", null, token);
-          if (response.success) {
-              // Filter out users already enrolled
-              const enrolledIds = new Set(participants.map(p => p.id));
-              setAllUsers(response.users.filter(u => !enrolledIds.has(u.id)));
-          }
-      } catch (error) {
-          console.error("Failed to fetch users", error);
+    try {
+      const token = await getToken();
+      const response = await AdminApi.apiRequest("/users?limit=1000", "GET", null, token);
+      if (response.success) {
+        // Filter out users already enrolled
+        const enrolledIds = new Set(participants.map((p) => p.id));
+        setAllUsers(response.users.filter((u) => !enrolledIds.has(u.id)));
       }
+    } catch (error) {
+      console.error("Failed to fetch users", error);
+    }
   };
 
   const handleManualEnroll = async (userId) => {
-      try {
-          const token = await getToken();
-          const response = await EventApi.enrollUserManual(eventId, userId, token);
-          if (response.success) {
-              fetchData(); // Refresh participants
-              setShowAddParticipant(false);
-          } else {
-              alert(response.error || "Failed to enroll user");
-          }
-      } catch (error) {
-          alert("Error enrolling user");
+    try {
+      const token = await getToken();
+      const response = await EventApi.enrollUserManual(eventId, userId, token);
+      if (response.success) {
+        fetchData(); // Refresh participants
+        setShowAddParticipant(false);
+      } else {
+        alert(response.error || "Failed to enroll user");
       }
+    } catch {
+      alert("Error enrolling user");
+    }
   };
 
   useEffect(() => {
     if (showAddParticipant) {
-        fetchUsers();
+      fetchUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAddParticipant]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading event details" />
       </div>
     );
   }
 
-  if (!event) return <div>Event not found</div>;
+  if (!event) return <div className="text-center py-20 font-sans text-muted-foreground">Event not found</div>;
 
   const statsCards = [
     {
@@ -179,86 +182,92 @@ export default function AdminEventDetails() {
       label: "Rounds",
       value: rounds.length,
       icon: Activity,
-      color: "text-purple-500",
+      color: "text-primary",
     },
     {
       label: "Debates",
       value: stats?.debates?.completed || 0,
       total: stats?.debates?.total,
       icon: CheckCircle2,
-      color: "text-green-500",
+      color: "text-emerald-500",
     },
   ];
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
+      <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
+        <div className="flex items-start gap-3.5 flex-1 min-w-0">
           <button
             onClick={() => navigate("/admin/events")}
-            className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
+            className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors shrink-0 mt-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Back to tournaments list"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
           </button>
           <div className="min-w-0">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl md:text-3xl font-bold break-words">
-                {event.name}
-              </h1>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
+                Tournament
+              </span>
+              <span className="text-muted-foreground/60">•</span>
               <span
-                className={`text-xs font-bold px-2 py-1 rounded flex-shrink-0 ${
+                className={`text-[10px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded border shrink-0 ${
                   event.status === "ONGOING"
-                    ? "bg-green-500/10 text-green-500"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                     : event.status === "UPCOMING"
-                    ? "bg-blue-500/10 text-blue-500"
-                    : "bg-muted text-muted-foreground"
+                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                    : "bg-muted text-muted-foreground border-border"
                 }`}
               >
                 {event.status}
               </span>
             </div>
-            <p className="text-muted-foreground mt-1 text-sm md:text-base break-words line-clamp-3 md:line-clamp-none">
+            <h1 className="text-xl md:text-3xl font-heading font-bold text-foreground break-words mt-1">
+              {event.name}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-xs md:text-sm font-sans break-words line-clamp-2 md:line-clamp-none max-w-2xl">
               {event.description || "No description provided"}
             </p>
           </div>
         </div>
-        <div className="flex gap-3 w-full md:w-auto flex-shrink-0">
+        <div className="flex gap-2.5 w-full md:w-auto shrink-0">
           <button
             onClick={() => setShowEditEvent(true)}
-            className="p-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
-            title="Edit Event Settings"
+            className="p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Edit Tournament Settings"
+            aria-label="Edit tournament settings"
           >
-            <Settings className="w-5 h-5 text-muted-foreground" />
+            <Settings className="w-4 h-4" aria-hidden="true" />
           </button>
           <button
             onClick={() => setShowCreateRound(true)}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors whitespace-nowrap"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Plus className="w-4 h-4" />
-            Create Round {rounds.length + 1}
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            <span>Create Round {rounds.length + 1}</span>
           </button>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         {statsCards.map((card, i) => (
-          <motion.div
+          <Motion.div
             key={i}
-            initial={{opacity: 0, y: 10}}
-            animate={{opacity: 1, y: 0}}
-            transition={{delay: i * 0.1}}
-            className="bg-card border border-border rounded-2xl p-6 flex items-center justify-between"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="bg-card/70 border border-border/70 rounded-xl p-5 flex items-center justify-between backdrop-blur-sm"
           >
             <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">
+              <p className="text-xs text-muted-foreground font-sans font-medium mb-1">
                 {card.label}
               </p>
-              <h3 className="text-2xl font-bold">
+              <h3 className="text-2xl font-heading font-bold text-foreground">
                 {card.value}
                 {card.total ? (
-                  <span className="text-base text-muted-foreground font-normal">
+                  <span className="text-sm text-muted-foreground font-sans font-normal">
                     {" "}
                     / {card.total}
                   </span>
@@ -267,78 +276,82 @@ export default function AdminEventDetails() {
                 )}
               </h3>
             </div>
-            <card.icon className={`w-8 h-8 ${card.color} opacity-20`} />
-          </motion.div>
+            <card.icon className={`w-7 h-7 ${card.color} opacity-30`} aria-hidden="true" />
+          </Motion.div>
         ))}
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex items-center gap-6 border-b border-border mb-6">
+      <div className="flex items-center gap-6 border-b border-border/70 mb-6" role="group" aria-label="Tournament view">
         <button
+          type="button"
+          aria-pressed={activeTab === "rounds"}
           onClick={() => setActiveTab("rounds")}
           className={cn(
-            "relative pb-3 text-sm font-medium transition-colors",
+            "relative pb-3 text-sm font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
             activeTab === "rounds"
-              ? "text-purple-500"
+              ? "text-primary font-semibold"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Rounds
+          Tournament Rounds
           {activeTab === "rounds" && (
-            <motion.div
+            <Motion.div
               layoutId="activeAdminTab"
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"
-              transition={{type: "spring", bounce: 0.2, duration: 0.6}}
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+              transition={{ type: "tween", duration: .24, ease: "easeOut" }}
             />
           )}
         </button>
         <button
+          type="button"
+          aria-pressed={activeTab === "participants"}
           onClick={() => setActiveTab("participants")}
           className={cn(
-            "relative pb-3 text-sm font-medium transition-colors",
+            "relative pb-3 text-sm font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
             activeTab === "participants"
-              ? "text-purple-500"
+              ? "text-primary font-semibold"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
           Participants ({participants.length})
           {activeTab === "participants" && (
-            <motion.div
+            <Motion.div
               layoutId="activeAdminTab"
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"
-              transition={{type: "spring", bounce: 0.2, duration: 0.6}}
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+              transition={{ type: "tween", duration: .24, ease: "easeOut" }}
             />
           )}
         </button>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
+      <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
         {/* Main Content Column */}
-        <div className="lg:col-span-2 space-y-6 relative overflow-hidden min-h-[400px]">
+        <div className="lg:col-span-2 space-y-4 relative overflow-hidden min-h-[350px]">
           <AnimatePresence mode="wait">
             {activeTab === "rounds" ? (
-              <motion.div
+              <Motion.div
                 key="rounds"
-                initial={{opacity: 0, x: -10}}
-                animate={{opacity: 1, x: 0}}
-                exit={{opacity: 0, x: 10}}
-                transition={{duration: 0.2}}
-                className="space-y-4"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold">Tournament Rounds</h2>
+                  <h2 className="text-base font-heading font-bold text-foreground">Round Sequence</h2>
                 </div>
 
                 {rounds.length === 0 ? (
-                  <div className="p-12 text-center border-2 border-dashed border-border rounded-3xl bg-muted/20">
-                    <Activity className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-20" />
-                    <h3 className="font-bold text-lg">No Rounds Created</h3>
-                    <p className="text-muted-foreground mb-6">
-                      Start your tournament by creating the first round.
+                  <div className="p-10 text-center border-2 border-dashed border-border/80 rounded-xl bg-card/40">
+                    <Activity className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
+                    <h3 className="font-heading font-bold text-base text-foreground mb-1">No Rounds Configured</h3>
+                    <p className="text-xs text-muted-foreground mb-5 font-sans">
+                      Start your tournament by creating the first preliminary round.
                     </p>
                     <button
                       onClick={() => setShowCreateRound(true)}
-                      className="px-4 py-2 rounded-lg bg-muted border border-border hover:bg-muted/80 font-medium transition-all"
+                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       Create Round 1
                     </button>
@@ -349,64 +362,62 @@ export default function AdminEventDetails() {
                       <Link
                         key={round.id}
                         to={`/admin/rounds/${round.id}`}
-                        className="block group bg-card border border-border rounded-2xl p-4 hover:border-purple-500/50 transition-all"
+                        className="block group bg-card/70 border border-border/70 rounded-xl p-4 hover:border-primary/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 min-w-0 flex-1">
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center font-bold text-purple-500 flex-shrink-0">
+                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center font-heading font-bold text-primary shrink-0 text-sm">
                               {round.roundNumber}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-bold break-words pr-2">
+                              <h4 className="font-heading font-semibold text-sm break-words pr-2 text-foreground group-hover:text-primary transition-colors">
                                 {round.name}
                               </h4>
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-0.5">
+                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground font-sans mt-0.5">
                                 <span className="flex items-center gap-1 whitespace-nowrap">
-                                  <Clock className="w-3 h-3" />
-                                  {new Date(
-                                    round.checkInStartTime
-                                  ).toLocaleTimeString("en-IN", {
+                                  <Clock className="w-3 h-3" aria-hidden="true" />
+                                  {new Date(round.checkInStartTime).toLocaleTimeString("en-IN", {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                     timeZone: "Asia/Kolkata",
                                   })}{" "}
                                   IST
                                 </span>
+                                <span>•</span>
                                 <span
-                                  className={`hidden sm:inline-block w-1 h-1 rounded-full bg-border`}
-                                />
-                                <span
-                                  className={`capitalize ${
+                                  className={`capitalize font-medium ${
                                     round.status === "ONGOING"
-                                      ? "text-green-500"
+                                      ? "text-emerald-500"
                                       : round.status === "COMPLETED"
                                       ? "text-blue-500"
                                       : "text-muted-foreground"
                                   }`}
                                 >
-                                  {round.status.toLowerCase()}
+                                  {round.status?.toLowerCase()}
                                 </span>
                                 {round.pairingsPublished && (
                                   <>
-                                    <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-border" />
-                                    <span className="text-[10px] font-bold uppercase text-green-500">
-                                      Public
+                                    <span>•</span>
+                                    <span className="text-[10px] font-bold uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                                      Draw Public
                                     </span>
                                   </>
                                 )}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setEditingRound(round);
                               }}
-                              className="p-2 rounded-lg hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-all"
+                              className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground opacity-100 md:opacity-0 group-hover:opacity-100 transition-all focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Edit round ${round.name}`}
+                              title="Edit Round"
                             >
-                              <Settings className="w-4 h-4" />
+                              <Settings className="w-4 h-4" aria-hidden="true" />
                             </button>
                             <button
                               onClick={(e) => {
@@ -415,19 +426,21 @@ export default function AdminEventDetails() {
                                 handleDeleteRound(round.id);
                               }}
                               disabled={deletingRoundId === round.id}
-                              className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Delete round ${round.name}`}
+                              title="Delete Round"
                             >
                               {deletingRoundId === round.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                               ) : (
-                                <XCircle className="w-4 h-4" />
+                                <X className="w-4 h-4" aria-hidden="true" />
                               )}
                             </button>
-                            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-purple-500 transition-colors" />
+                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
                           </div>
                         </div>
                         {round.motion && (
-                          <div className="mt-4 p-3 rounded-lg bg-muted/50 text-sm italic text-muted-foreground border-l-2 border-purple-500/30">
+                          <div className="mt-3 p-2.5 rounded-lg bg-muted/40 text-xs italic text-muted-foreground border-l-2 border-primary/50 font-serif">
                             "{round.motion}"
                           </div>
                         )}
@@ -435,77 +448,77 @@ export default function AdminEventDetails() {
                     ))}
                   </div>
                 )}
-              </motion.div>
+              </Motion.div>
             ) : (
-              <motion.div
+              <Motion.div
                 key="participants"
-                initial={{opacity: 0, x: 10}}
-                animate={{opacity: 1, x: 0}}
-                exit={{opacity: 0, x: -10}}
-                transition={{duration: 0.2}}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.2 }}
                 className="space-y-4"
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold">Enrolled Participants</h2>
+                  <h2 className="text-base font-heading font-bold text-foreground">Enrolled Debaters</h2>
                   <button
                     onClick={() => setShowAddParticipant(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-500 text-sm font-medium hover:bg-purple-500/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-sans font-medium hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <Plus className="w-4 h-4" />
-                    Add Participant
+                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Add Participant</span>
                   </button>
                 </div>
 
                 {participants.length === 0 ? (
-                  <div className="p-12 text-center border-2 border-dashed border-border rounded-3xl bg-muted/20">
-                    <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-20" />
-                    <h3 className="font-bold text-lg">No Participants Yet</h3>
-                    <p className="text-muted-foreground">
-                      Share the event code or link to get debaters to enroll.
+                  <div className="p-10 text-center border-2 border-dashed border-border/80 rounded-xl bg-card/40">
+                    <Users className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
+                    <h3 className="font-heading font-bold text-base text-foreground mb-1">No Participants Registered</h3>
+                    <p className="text-xs text-muted-foreground font-sans">
+                      Enroll registered debaters manually or share tournament registration links.
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                  <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
+                    <div className="overflow-x-auto no-scrollbar">
+                      <table className="w-full text-left" aria-label="Enrolled participants">
+                        <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                           <tr>
-                            <th className="px-6 py-4 text-left">Debater</th>
-                            <th className="px-6 py-4 text-left">College</th>
-                            <th className="px-6 py-4 text-left">Email</th>
-                            <th className="px-6 py-4 text-left hidden lg:table-cell">Enrolled</th>
+                            <th scope="col" className="px-4 py-3">Debater</th>
+                            <th scope="col" className="px-4 py-3">Institution</th>
+                            <th scope="col" className="px-4 py-3">Email</th>
+                            <th scope="col" className="px-4 py-3 hidden lg:table-cell">Enrolled</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody className="divide-y divide-border/60">
                           {participants.map((p) => (
                             <tr
                               key={p.id}
-                              className="hover:bg-muted/20 transition-colors"
+                              className="hover:bg-muted/30 transition-colors"
                             >
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center font-bold text-purple-500 text-xs">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs shrink-0">
                                     {p.firstName?.[0]}
                                     {p.lastName?.[0]}
                                   </div>
-                                  <span className="font-medium">
+                                  <span className="font-sans font-medium text-sm text-foreground">
                                     {p.firstName} {p.lastName}
                                   </span>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 text-sm text-muted-foreground">
+                              <td className="px-4 py-3 text-xs text-muted-foreground font-sans">
                                 {p.college || "N/A"}
                               </td>
-                              <td className="px-6 py-4 text-sm text-muted-foreground">
+                              <td className="px-4 py-3 text-xs text-muted-foreground font-sans">
                                 {p.email}
                               </td>
-                              <td className="px-6 py-4 text-xs text-muted-foreground lg:table-cell hidden">
-                                {p.createdAt ? new Date(p.createdAt).toLocaleDateString(undefined, {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                }) : "N/A"}
+                              <td className="px-4 py-3 text-xs text-muted-foreground font-sans lg:table-cell hidden">
+                                {p.createdAt
+                                  ? new Date(p.createdAt).toLocaleDateString(undefined, {
+                                      month: "short",
+                                      day: "numeric",
+                                    })
+                                  : "N/A"}
                               </td>
                             </tr>
                           ))}
@@ -514,24 +527,24 @@ export default function AdminEventDetails() {
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </Motion.div>
             )}
           </AnimatePresence>
         </div>
 
         {/* Sidebar Info */}
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6">
-            <h3 className="font-bold flex items-center gap-2 mb-4">
-              <Info className="w-4 h-4 text-purple-500" />
-              Event Details
+        <div className="space-y-4">
+          <div className="bg-card/70 border border-border/70 rounded-xl p-5 backdrop-blur-sm">
+            <h3 className="font-heading font-bold text-sm text-foreground flex items-center gap-2 mb-3">
+              <Info className="w-4 h-4 text-primary" aria-hidden="true" />
+              Tournament Logistics
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-3 font-sans text-xs">
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
                   Start Date
                 </p>
-                <p className="text-sm font-medium">
+                <p className="text-foreground font-medium">
                   {new Date(event.startDate).toLocaleDateString(undefined, {
                     weekday: "short",
                     year: "numeric",
@@ -546,10 +559,10 @@ export default function AdminEventDetails() {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
                   End Date
                 </p>
-                <p className="text-sm font-medium">
+                <p className="text-foreground font-medium">
                   {new Date(event.endDate).toLocaleDateString(undefined, {
                     weekday: "short",
                     year: "numeric",
@@ -563,24 +576,25 @@ export default function AdminEventDetails() {
                   })}
                 </p>
               </div>
-              <hr className="border-border" />
-              <div className="pt-2">
+              <hr className="border-border/60" />
+              <div className="pt-1">
                 <Link
                   to={`/dashboard/events/${eventId}`}
-                  className="text-sm text-purple-500 hover:underline flex items-center gap-1"
+                  className="text-xs text-primary hover:underline flex items-center gap-1 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
-                  View public page <ChevronRight className="w-3 h-3" />
+                  <span>Public tournament page</span>
+                  <ChevronRight className="w-3 h-3" aria-hidden="true" />
                 </Link>
               </div>
             </div>
           </div>
 
-          <div className="bg-purple-900/10 border border-purple-500/20 rounded-2xl p-6">
-            <h3 className="font-bold text-purple-600 mb-2">Admin Notice</h3>
-            <p className="text-xs text-purple-600/80 leading-relaxed">
-              Generating pairings for a round will automatically close the
-              check-in window and mark absent users as eliminated for
-              single-elimination events.
+          <div className="bg-card/70 border border-border/70 rounded-xl p-5 backdrop-blur-sm">
+            <h3 className="font-heading font-semibold text-xs uppercase tracking-wider text-emerald-500 mb-1.5 flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" aria-hidden="true" /> Admin Notice
+            </h3>
+            <p className="text-xs text-muted-foreground font-sans leading-relaxed">
+              Generating pairings for a round will automatically close the check-in window and mark absent users as eliminated for single-elimination formats.
             </p>
           </div>
         </div>
@@ -622,73 +636,86 @@ export default function AdminEventDetails() {
       )}
 
       {showAddParticipant && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg flex flex-col max-h-[80vh]"
+        <ModalSurface onDismiss={() => setShowAddParticipant(false)}
+          aria-label="Add Participant"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        >
+          <Motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-lg flex flex-col max-h-[80vh] shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4 border-b border-border/60 pb-3">
+              <div>
+                <h2 className="text-lg font-heading font-bold text-foreground">Add Debater to Tournament</h2>
+                <p className="text-xs text-muted-foreground font-sans">Select from registered platform accounts</p>
+              </div>
+              <button
+                onClick={() => setShowAddParticipant(false)}
+                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Close dialog"
               >
-                  <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-bold">Add Participant</h2>
-                      <button onClick={() => setShowAddParticipant(false)} className="p-1 hover:bg-muted rounded-lg">
-                          <XCircle className="w-5 h-5 text-muted-foreground" />
-                      </button>
-                  </div>
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
 
-                  <div className="relative mb-4">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder="Search users by name or email..."
-                        value={userSearchQuery}
-                        onChange={(e) => setUserSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-                      />
-                  </div>
+            <div className="relative mb-3">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <input
+                type="text"
+                placeholder="Search registered debaters..."
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs font-sans rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+              />
+            </div>
 
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                       {allUsers
-                        .filter(u => {
-                            const name = `${u.firstName} ${u.lastName}`.toLowerCase();
-                            const query = userSearchQuery.toLowerCase();
-                            return name.includes(query) || u.email.toLowerCase().includes(query);
-                        })
-                        .map(user => (
-                           <button
-                             key={user.id}
-                             onClick={() => handleManualEnroll(user.id)}
-                             className="w-full flex items-center justify-between p-3 rounded-xl border border-border hover:bg-muted transition-all group"
-                           >
-                               <div className="flex items-center gap-3">
-                                   <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center font-bold text-purple-500 text-xs">
-                                       {user.firstName?.[0]}{user.lastName?.[0]}
-                                   </div>
-                                   <div className="text-left">
-                                       <p className="text-sm font-semibold">{user.firstName} {user.lastName}</p>
-                                       <p className="text-xs text-muted-foreground">{user.email}</p>
-                                   </div>
-                               </div>
-                               <Plus className="w-4 h-4 text-muted-foreground group-hover:text-purple-500" />
-                           </button>
-                       ))}
-                       {allUsers.length === 0 && (
-                           <div className="text-center py-8 text-muted-foreground italic">
-                               No more users available to add.
-                           </div>
-                       )}
-                  </div>
-              </motion.div>
-          </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 no-scrollbar">
+              {allUsers
+                .filter((u) => {
+                  const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+                  const query = userSearchQuery.toLowerCase();
+                  return name.includes(query) || (u.email || "").toLowerCase().includes(query);
+                })
+                .map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleManualEnroll(u.id)}
+                    className="w-full flex items-center justify-between p-3 rounded-lg border border-border/70 hover:bg-muted/50 transition-all group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs shrink-0">
+                        {u.firstName?.[0]}
+                        {u.lastName?.[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-heading font-semibold text-foreground truncate">
+                          {u.firstName} {u.lastName}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground font-sans truncate">{u.email}</p>
+                      </div>
+                    </div>
+                    <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0 ml-2" aria-hidden="true" />
+                  </button>
+                ))}
+              {allUsers.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground text-xs italic font-sans">
+                  No additional registered users found to enroll.
+                </div>
+              )}
+            </div>
+          </Motion.div>
+        </ModalSurface>
       )}
     </div>
   );
 }
 
-function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
-  const {getToken} = useAuth();
+function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // Helper to get IST datetime string for datetime-local input
+
   const toISTDateTimeString = (date) => {
     return date
       .toLocaleString("sv-SE", {
@@ -701,6 +728,7 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
       })
       .replace(" ", "T");
   };
+
   const [formData, setFormData] = useState({
     eventId,
     roundNumber,
@@ -716,11 +744,8 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
     setLoading(true);
     try {
       const token = await getToken();
-
-      // Convert datetime-local strings to ISO format with IST timezone (+05:30)
       const toISTISOString = (dateTimeLocal) => {
         if (!dateTimeLocal) return null;
-        // Append IST offset to the datetime-local value
         return new Date(dateTimeLocal + ":00+05:30").toISOString();
       };
 
@@ -736,7 +761,7 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
       } else {
         alert(response.error || "Failed to create round");
       }
-    } catch (error) {
+    } catch {
       alert("Error creating round");
     } finally {
       setLoading(false);
@@ -744,118 +769,89 @@ function CreateRoundModal({eventId, roundNumber, onClose, onCreated}) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <motion.div
-        initial={{opacity: 0, scale: 0.95}}
-        animate={{opacity: 1, scale: 1}}
-        className="bg-card border border-border rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto"
-      >
-        <h2 className="text-xl font-bold mb-6">Create Round {roundNumber}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium mb-1 block">
-                Round Name
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    name: e.target.value,
-                  })
-                }
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium mb-1 block">
-                Debate Motion (Optional)
-              </label>
-              <textarea
-                value={formData.motion}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    motion: e.target.value,
-                  })
-                }
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none resize-none"
-                rows={3}
-                placeholder="This house believes that..."
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Check-in Start
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.checkInStartTime}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    checkInStartTime: e.target.value,
-                  })
-                }
-                style={{colorScheme: "dark"}}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Check-in End
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.checkInEndTime}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    checkInEndTime: e.target.value,
-                  })
-                }
-                style={{colorScheme: "dark"}}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3 pt-6 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors opacity-70"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-2 px-8 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
-            >
-              {loading ? "Creating..." : "Create Round"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+    <ModalSurface onDismiss={onClose} aria-label={`Create Round ${roundNumber}`}
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"><Motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
+    >
+      <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
+        <div>
+          <h2 className="text-lg font-heading font-bold text-foreground">Create Round {roundNumber}</h2>
+          <p className="text-xs text-muted-foreground font-sans">Set check-in timeline and debate motion</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close dialog"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </div>
+    
+      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        <div className="grid md:grid-cols-2 gap-3">
+          <label className="md:col-span-2"><span className="text-xs font-semibold mb-1 block text-foreground">Round Name</span><input type="text"
+          required
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+          <label className="md:col-span-2"><span className="text-xs font-semibold mb-1 block text-foreground">
+            Debate Motion (Optional)
+          </span><textarea value={formData.motion}
+          onChange={(e) => setFormData({ ...formData, motion: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
+          rows={3}
+          placeholder="This house believes that..." /></label>
+          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in Start (IST)</span><input type="datetime-local"
+          required
+          value={formData.checkInStartTime}
+          onChange={(e) =>
+            setFormData({ ...formData, checkInStartTime: e.target.value })
+          }
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in End (IST)</span><input type="datetime-local"
+          required
+          value={formData.checkInEndTime}
+          onChange={(e) =>
+            setFormData({ ...formData, checkInEndTime: e.target.value })
+          }
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+        </div>
+        <div className="flex gap-2.5 pt-4 border-t border-border/60">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
+          >
+            {loading ? "Creating..." : "Create Round"}
+          </button>
+        </div>
+      </form>
+    </Motion.div></ModalSurface>
   );
 }
-function EditEventModal({event, onClose, onUpdated}) {
-  const {getToken} = useAuth();
+
+function EditEventModal({ event, onClose, onUpdated }) {
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
+
+
   const [formData, setFormData] = useState({
     name: event.name || "",
     description: event.description || "",
     startDate: event.startDate
-      ? new Date(event.startDate).toISOString().slice(0, 16)
+      ? toLocalDateTime(event.startDate)
       : "",
     endDate: event.endDate
-      ? new Date(event.endDate).toISOString().slice(0, 16)
+      ? toLocalDateTime(event.endDate)
       : "",
     status: event.status || "UPCOMING",
     whatsappLink: event.whatsappLink || "",
@@ -866,13 +862,13 @@ function EditEventModal({event, onClose, onUpdated}) {
     setLoading(true);
     try {
       const token = await getToken();
-      const response = await AdminApi.updateEvent(event.id, formData, token);
+      const response = await AdminApi.updateEvent(event.id, serializeEventDates(formData, event), token);
       if (response.success) {
         onUpdated();
       } else {
         alert(response.error || "Failed to update event");
       }
-    } catch (error) {
+    } catch {
       alert("Error updating event");
     } finally {
       setLoading(false);
@@ -880,156 +876,107 @@ function EditEventModal({event, onClose, onUpdated}) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-foreground">
-      <motion.div
-        initial={{opacity: 0, scale: 0.95}}
-        animate={{opacity: 1, scale: 1}}
-        className="bg-card border border-border rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Edit Event Settings</h2>
+    <ModalSurface onDismiss={onClose} aria-label="Edit Tournament Settings"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-foreground"><Motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
+    >
+      <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
+        <div>
+          <h2 className="text-lg font-heading font-bold text-foreground">Edit Tournament Settings</h2>
+          <p className="text-xs text-muted-foreground font-sans">Modify parameters and status</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close dialog"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </div>
+    
+      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Tournament Name</span><input type="text"
+        required
+        value={formData.name}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+    
+        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Description</span><textarea value={formData.description}
+        onChange={(e) =>
+          setFormData({ ...formData, description: e.target.value })
+        }
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
+        rows={3} /></label>
+    
+        <div className="grid md:grid-cols-2 gap-3">
+          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Start Date (local time)</span><input type="datetime-local"
+          required
+          value={formData.startDate}
+          onChange={(e) =>
+            setFormData({ ...formData, startDate: e.target.value })
+          }
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          <label ><span className="text-xs font-semibold mb-1 block text-foreground">End Date (local time)</span><input type="datetime-local"
+          required
+          value={formData.endDate}
+          onChange={(e) =>
+            setFormData({ ...formData, endDate: e.target.value })
+          }
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+        </div>
+    
+        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Status</span><select value={formData.status}
+        onChange={(e) =>
+          setFormData({ ...formData, status: e.target.value })
+        }
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"><option value="UPCOMING">Upcoming</option>
+        <option value="ONGOING">Ongoing</option>
+        <option value="COMPLETED">Completed</option></select></label>
+    
+        <label ><span className="text-xs font-semibold mb-1 flex items-center gap-1.5 text-foreground"><MessageCircle className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
+        WhatsApp Group Link
+        <span className="text-[11px] text-muted-foreground font-normal">(Optional)</span></span><input type="url"
+        value={formData.whatsappLink}
+        onChange={(e) =>
+          setFormData({
+            ...formData,
+            whatsappLink: e.target.value,
+          })
+        }
+        className="w-full px-3 py-2 rounded-lg bg-background border border-emerald-500/30 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-xs transition-all"
+        placeholder="https://chat.whatsapp.com/..." /></label>
+    
+        <div className="flex gap-2.5 pt-4 border-t border-border/60 mt-4">
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
           >
-            <XCircle className="w-5 h-5 text-muted-foreground" />
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
+          >
+            {loading ? "Updating..." : "Save Changes"}
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">Event Name</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  description: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none resize-none"
-              rows={3}
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Start Date
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.startDate}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    startDate: e.target.value,
-                  })
-                }
-                style={{colorScheme: "dark"}}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">End Date</label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.endDate}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    endDate: e.target.value,
-                  })
-                }
-                style={{colorScheme: "dark"}}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-1 block">Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  status: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-            >
-              <option value="UPCOMING">Upcoming</option>
-              <option value="ONGOING">Ongoing</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-2 flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-green-500" />
-              WhatsApp Group Link
-              <span className="text-xs text-muted-foreground">(Optional)</span>
-            </label>
-            <input
-              type="url"
-              value={formData.whatsappLink}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  whatsappLink: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 rounded-lg bg-background border border-green-500/30 focus:border-green-500 outline-none"
-              placeholder="https://chat.whatsapp.com/..."
-            />
-          </div>
-
-          <div className="flex gap-3 pt-6 border-t border-border mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors opacity-70"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-2 px-8 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
-            >
-              {loading ? "Updating..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+      </form>
+    </Motion.div></ModalSurface>
   );
 }
 
-function EditRoundModal({round, onClose, onUpdated}) {
-  const {getToken} = useAuth();
+function EditRoundModal({ round, onClose, onUpdated }) {
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
-  // Helper function to convert UTC to IST datetime-local format
+
+
   const toISTDateTimeString = (utcDate) => {
     if (!utcDate) return "";
     const date = new Date(utcDate);
-    // Format in IST timezone
     return date
       .toLocaleString("sv-SE", {
         timeZone: "Asia/Kolkata",
@@ -1056,11 +1003,8 @@ function EditRoundModal({round, onClose, onUpdated}) {
     setLoading(true);
     try {
       const token = await getToken();
-
-      // Convert datetime-local strings to ISO format with IST timezone (+05:30)
       const toISTISOString = (dateTimeLocal) => {
         if (!dateTimeLocal) return null;
-        // Append IST offset to the datetime-local value
         return new Date(dateTimeLocal + ":00+05:30").toISOString();
       };
 
@@ -1076,7 +1020,7 @@ function EditRoundModal({round, onClose, onUpdated}) {
       } else {
         alert(response.error || "Failed to update round");
       }
-    } catch (error) {
+    } catch {
       alert("Error updating round");
     } finally {
       setLoading(false);
@@ -1084,147 +1028,93 @@ function EditRoundModal({round, onClose, onUpdated}) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-foreground">
-      <motion.div
-        initial={{opacity: 0, scale: 0.95}}
-        animate={{opacity: 1, scale: 1}}
-        className="bg-card border border-border rounded-2xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Edit Round</h2>
+    <ModalSurface onDismiss={onClose} aria-label="Edit Round"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-foreground"><Motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
+    >
+      <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
+        <div>
+          <h2 className="text-lg font-heading font-bold text-foreground">Edit Round Parameters</h2>
+          <p className="text-xs text-muted-foreground font-sans">Update schedule, motion, and draw visibility</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close dialog"
+        >
+          <X className="w-4 h-4" aria-hidden="true" />
+        </button>
+      </div>
+    
+      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Round Name</span><input type="text"
+        required
+        value={formData.name}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+    
+        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Debate Motion</span><textarea value={formData.motion}
+        onChange={(e) => setFormData({ ...formData, motion: e.target.value })}
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
+        rows={3} /></label>
+    
+        <div className="grid md:grid-cols-2 gap-3">
+          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in Start (IST)</span><input type="datetime-local"
+          required
+          value={formData.checkInStartTime}
+          onChange={(e) =>
+            setFormData({ ...formData, checkInStartTime: e.target.value })
+          }
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in End (IST)</span><input type="datetime-local"
+          required
+          value={formData.checkInEndTime}
+          onChange={(e) =>
+            setFormData({ ...formData, checkInEndTime: e.target.value })
+          }
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+        </div>
+    
+        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Status</span><select value={formData.status}
+        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"><option value="UPCOMING">Upcoming</option>
+        <option value="ONGOING">Ongoing</option>
+        <option value="COMPLETED">Completed</option></select></label>
+    
+        <div className="flex items-center gap-3 p-3.5 rounded-lg bg-muted/40 border border-border/70">
+          <input
+            type="checkbox"
+            className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+            id="pairingsPublished"
+            checked={formData.pairingsPublished}
+            onChange={(e) =>
+              setFormData({ ...formData, pairingsPublished: e.target.checked })
+            }
+          />
+          <label htmlFor="pairingsPublished" className="text-xs font-medium cursor-pointer text-foreground">
+            Publish Draw (Makes matchups and room allocations visible to debaters)
+          </label>
+        </div>
+    
+        <div className="flex gap-2.5 pt-4 border-t border-border/60 mt-4">
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
           >
-            <XCircle className="w-5 h-5 text-muted-foreground" />
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
+          >
+            {loading ? "Updating..." : "Save Changes"}
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium mb-1 block">Round Name</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-1 block">
-              Debate Motion
-            </label>
-            <textarea
-              value={formData.motion}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  motion: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none resize-none"
-              rows={3}
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Check-in Start
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.checkInStartTime}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    checkInStartTime: e.target.value,
-                  })
-                }
-                style={{colorScheme: "dark"}}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Check-in End
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.checkInEndTime}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    checkInEndTime: e.target.value,
-                  })
-                }
-                style={{colorScheme: "dark"}}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium mb-1 block">Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  status: e.target.value,
-                })
-              }
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-purple-500 outline-none"
-            >
-              <option value="UPCOMING">Upcoming</option>
-              <option value="ONGOING">Ongoing</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-500/5 border border-purple-500/10">
-            <input
-              type="checkbox"
-              className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500"
-              id="pairingsPublished"
-              checked={formData.pairingsPublished}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  pairingsPublished: e.target.checked,
-                })
-              }
-            />
-            <label
-              htmlFor="pairingsPublished"
-              className="text-sm font-medium cursor-pointer"
-            >
-              Publish Draw (Makes pairings visible to debaters)
-            </label>
-          </div>
-
-          <div className="flex gap-3 pt-6 border-t border-border mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-border hover:bg-muted transition-colors opacity-70"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-2 px-8 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors disabled:opacity-50"
-            >
-              {loading ? "Updating..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+      </form>
+    </Motion.div></ModalSurface>
   );
 }

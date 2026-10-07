@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
   Trophy,
@@ -12,16 +12,13 @@ import {
   ChevronRight,
   Search as SearchIcon,
   School,
-  User,
-  Crown,
-  TrendingUp,
   XCircle,
   MessageCircle,
   RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
-import { EventApi, DebateApi, UserApi, StatsApi } from "../../services/api";
-import { useToast } from "../../components/ui/Toast";
+import {EventApi, DebateApi, UserApi} from "../../services/api";
+import {useToast} from "../../hooks/useToast"
 import { cn } from "../../lib/utils";
 import { useEventSocket } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
@@ -43,10 +40,7 @@ export default function EventDetails() {
   const [participants, setParticipants] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [myDebates, setMyDebates] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [resultSubTab, setResultSubTab] = useState("my-results");
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
@@ -58,17 +52,14 @@ export default function EventDetails() {
       const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
       try {
         const token = await getTokenRef.current();
-        const response = await fetch(`${API_BASE_URL}/admin/me`, {
+        await fetch(`${API_BASE_URL}/admin/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (response.ok) {
-          const data = await response.json();
-          setIsAdmin(data.success && !!data.admin);
-        }
-      } catch (e) {}
+      } catch {
+        // An unavailable admin check does not block participant event access.
+      }
     };
     checkAdmin();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // runs once
 
   // Fetch data function for reuse
@@ -126,27 +117,12 @@ export default function EventDetails() {
         console.log("No debates or error fetching debates", e);
       }
 
-      // Fetch Leaderboard
-      try {
-        const leadResponse = await StatsApi.getLeaderboard(token, id, 100);
-        if (leadResponse.success && leadResponse.data?.leaderboard) {
-          setLeaderboard(leadResponse.data.leaderboard);
-        } else if (
-          leadResponse.leaderboard &&
-          Array.isArray(leadResponse.leaderboard)
-        ) {
-          setLeaderboard(leadResponse.leaderboard);
-        }
-      } catch (e) {
-        console.error("Failed to fetch leaderboard", e);
-      }
     } catch (err) {
       console.error("Failed to fetch event details", err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]); // stable - getToken via ref, id is the real dependency
 
   useEffect(() => {
@@ -284,69 +260,68 @@ export default function EventDetails() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-12">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {/* Header / Breadcrumb */}
       <div>
         <Link
           to="/dashboard/events"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4 transition-colors"
+          className="inline-flex items-center text-xs font-sans text-muted-foreground hover:text-primary mb-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Tournaments
+          <ArrowLeft className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> Back to Tournaments
         </Link>
-        <div className="relative overflow-hidden rounded-3xl bg-card border border-border p-6 md:p-12">
-          <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
-            <Trophy className="w-64 h-64 text-primary" />
-          </div>
 
-          <div className="relative z-10">
-            <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="rounded-xl bg-card border border-border p-6 md:p-8 relative">
+          <div className="axiom-page-header relative z-10">
+            <div className="flex flex-wrap items-center gap-2.5 mb-3">
               <span
                 className={cn(
-                  "px-3 py-1 rounded-full text-xs font-bold border",
+                  "px-2.5 py-0.5 rounded text-xs font-heading font-semibold uppercase tracking-wider border",
                   event.status === "ONGOING"
-                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                     : event.status === "UPCOMING"
-                      ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                      : "bg-gray-500/10 text-gray-500 border-gray-500/20"
+                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                      : "bg-muted text-muted-foreground border-border"
                 )}
               >
                 {event.status}
               </span>
-              <span className="flex items-center text-muted-foreground text-sm">
-                <Calendar className="w-4 h-4 mr-1" />
+              <span className="flex items-center text-muted-foreground font-sans text-xs">
+                <Calendar className="w-3.5 h-3.5 mr-1 text-primary" aria-hidden="true" />
                 {new Date(event.startDate).toLocaleDateString()}
                 {event.endDate &&
                   ` - ${new Date(event.endDate).toLocaleDateString()}`}
               </span>
             </div>
+
             <div className="flex flex-col md:flex-row gap-6 md:items-start justify-between">
               <div>
-                <h1 className="text-3xl md:text-5xl font-bold mb-4">
+                <h1 className="text-2xl md:text-4xl font-heading font-bold text-foreground mb-2">
                   {event.name}
                 </h1>
-                <p className="text-lg text-muted-foreground max-w-2xl">
+                <p className="text-sm md:text-base text-muted-foreground font-sans max-w-2xl leading-relaxed">
                   {event.description || "No description available"}
                 </p>
               </div>
-              <div className="flex flex-col gap-3 flex-shrink-0">
+
+              <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
                 <button
                   onClick={handleEnroll}
                   disabled={isEnrolled || enrolling}
                   className={cn(
-                    "px-6 py-3 rounded-xl font-bold text-white transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 min-w-[160px]",
+                    "px-5 py-2.5 rounded-lg font-heading font-semibold text-xs transition-colors min-w-[140px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isEnrolled
-                      ? "bg-green-500 cursor-default hover:translate-y-0 hover:shadow-lg"
-                      : "bg-primary hover:bg-primary/90"
+                      ? "bg-emerald-600 text-white cursor-default"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
                   )}
                 >
                   {isEnrolled ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <CheckCircle2 className="w-5 h-5" />
+                    <span className="flex items-center justify-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                       Enrolled
                     </span>
                   ) : enrolling ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="flex items-center justify-center gap-1.5">
+                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                       Enrolling...
                     </span>
                   ) : (
@@ -358,9 +333,9 @@ export default function EventDetails() {
                     href={event.whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-green-400 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 min-w-[160px]"
+                    className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-lg font-heading font-semibold text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors min-w-[140px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <MessageCircle className="w-5 h-5" />
+                    <MessageCircle className="w-4 h-4" aria-hidden="true" />
                     Join WhatsApp
                   </a>
                 )}
@@ -377,18 +352,18 @@ export default function EventDetails() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              "relative pb-3 text-sm font-medium capitalize transition-colors whitespace-nowrap",
+              "relative pb-3 text-sm font-sans font-medium capitalize transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
               activeTab === tab
-                ? "text-primary"
+                ? "text-primary font-semibold"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             {tab}
             {activeTab === tab && (
-              <motion.div
+              <Motion.div
                 layoutId="activeTab"
                 className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                transition={{type: "tween", duration: 0.24, ease: "easeOut"}}
               />
             )}
           </button>
@@ -399,46 +374,46 @@ export default function EventDetails() {
       <div className="min-h-[400px] relative">
         <AnimatePresence mode="wait">
           {activeTab === "overview" && (
-            <motion.div
+            <Motion.div
               key="overview"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
               className="grid md:grid-cols-3 gap-6"
             >
               <div className="md:col-span-2 space-y-6">
                 <section className="bg-card border border-border rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">About the Event</h3>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <h3 className="text-base font-heading font-bold text-foreground mb-3">About the Event</h3>
+                  <p className="text-muted-foreground font-sans text-sm leading-relaxed">
                     {event.description ||
                       "This debate competition features multiple rounds of competitive debating. Check back for more details about format and rules."}
                   </p>
                 </section>
                 <section className="bg-card border border-border rounded-xl p-6">
-                  <h3 className="text-lg font-bold mb-4">
+                  <h3 className="text-base font-heading font-bold text-foreground mb-3">
                     Schedule ({rounds.length} Rounds)
                   </h3>
                   {rounds.length === 0 ? (
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground font-sans text-sm">
                       No rounds have been scheduled yet.
                     </p>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {rounds.map((round) => (
                         <div
                           key={round.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-muted/30 gap-3"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-lg bg-muted/20 border border-border/50 gap-3"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center border border-border">
-                              <Clock className="w-5 h-5 text-muted-foreground" />
+                            <div className="w-9 h-9 rounded-lg bg-background flex items-center justify-center border border-border shrink-0">
+                              <Clock className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                             </div>
                             <div>
-                              <p className="font-medium">
+                              <p className="font-heading font-semibold text-sm text-foreground">
                                 {round.name || `Round ${round.roundNumber}`}
                               </p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-muted-foreground font-sans">
                                 {round.checkInStartTime
                                   ? `Check-in: ${new Date(
                                     round.checkInStartTime
@@ -459,7 +434,7 @@ export default function EventDetails() {
                               if (debate?.status === "COMPLETED") {
                                 if (!debate.resultsPublished) {
                                   return (
-                                    <span className="text-[10px] font-bold px-2 py-1 rounded bg-amber-500/10 text-amber-500 whitespace-nowrap">
+                                    <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
                                       PENDING
                                     </span>
                                   );
@@ -467,10 +442,10 @@ export default function EventDetails() {
                                 return (
                                   <span
                                     className={cn(
-                                      "text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap",
+                                      "text-[10px] font-heading font-semibold px-2 py-0.5 rounded border whitespace-nowrap",
                                       debate.isPromoted
-                                        ? "bg-green-500/10 text-green-500"
-                                        : "bg-red-500/10 text-red-500"
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        : "bg-destructive/10 text-destructive border-destructive/20"
                                     )}
                                   >
                                     {debate.isPromoted ? "QUALIFIED" : "ELIMINATED"}
@@ -480,18 +455,18 @@ export default function EventDetails() {
                               return null;
                             })()}
                             {round.pairingsPublished && (
-                              <span className="text-[10px] font-bold px-2 py-1 rounded bg-purple-500/10 text-purple-500 whitespace-nowrap">
+                              <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
                                 Draw Out
                               </span>
                             )}
                             <span
                               className={cn(
-                                "text-xs font-bold px-2 py-1 rounded",
+                                "text-[10px] font-heading font-semibold px-2 py-0.5 rounded border uppercase tracking-wider",
                                 round.status === "COMPLETED"
-                                  ? "bg-green-500/10 text-green-500"
+                                  ? "bg-muted text-muted-foreground border-border"
                                   : round.status === "ONGOING"
-                                    ? "bg-amber-500/10 text-amber-500"
-                                    : "bg-primary/10 text-primary"
+                                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                    : "bg-primary/10 text-primary border border-primary/20"
                               )}
                             >
                               {round.status}
@@ -504,30 +479,30 @@ export default function EventDetails() {
                 </section>
               </div>
               <div className="space-y-6">
-                <div className="bg-gradient-to-br from-primary/20 to-purple-600/10 border border-primary/20 rounded-xl p-6">
-                  <h3 className="font-bold mb-2">Event Status</h3>
-                  <div className="flex items-center gap-2 text-green-400 mb-4">
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span className="font-medium">{event.status}</span>
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="font-heading font-bold text-base mb-2 text-foreground">Event Status</h3>
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2">
+                    <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                    <span className="font-heading font-semibold text-sm">{event.status}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground font-sans">
                     {rounds.length} rounds scheduled
                   </p>
                 </div>
 
                 <div className="bg-card border border-border rounded-xl p-6">
-                  <h3 className="font-bold mb-4">Event Information</h3>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
+                  <h3 className="font-heading font-bold text-base mb-3 text-foreground">Event Information</h3>
+                  <div className="space-y-2.5 text-xs font-sans">
+                    <div className="flex justify-between border-b border-border/40 pb-2">
                       <span className="text-muted-foreground">Start Date</span>
-                      <span className="font-medium">
+                      <span className="font-medium text-foreground">
                         {new Date(event.startDate).toLocaleDateString()}
                       </span>
                     </div>
                     {event.endDate && (
-                      <div className="flex justify-between">
+                      <div className="flex justify-between border-b border-border/40 pb-2">
                         <span className="text-muted-foreground">End Date</span>
-                        <span className="font-medium">
+                        <span className="font-medium text-foreground">
                           {new Date(event.endDate).toLocaleDateString()}
                         </span>
                       </div>
@@ -536,7 +511,7 @@ export default function EventDetails() {
                       <span className="text-muted-foreground">
                         Total Rounds
                       </span>
-                      <span className="font-medium">{rounds.length}</span>
+                      <span className="font-medium text-foreground">{rounds.length}</span>
                     </div>
                   </div>
                 </div>
@@ -547,43 +522,43 @@ export default function EventDetails() {
                     href={event.whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-500 font-semibold hover:bg-green-500/20 transition-all"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-heading font-semibold text-xs hover:bg-emerald-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <MessageCircle className="w-5 h-5" />
+                    <MessageCircle className="w-4 h-4" aria-hidden="true" />
                     Join WhatsApp Group
                   </a>
                 )}
               </div>
-            </motion.div>
+            </Motion.div>
           )}
 
           {activeTab === "rounds" && (
-            <motion.div
+            <Motion.div
               key="rounds"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-4"
+              className="space-y-3"
             >
               {rounds.length === 0 ? (
-                <div className="p-12 text-center text-muted-foreground bg-card border border-border rounded-xl border-dashed">
-                  <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No rounds have been scheduled yet.</p>
+                <div className="p-12 text-center text-muted-foreground bg-card border border-border rounded-xl">
+                  <Clock className="w-10 h-10 mx-auto mb-3 opacity-50" aria-hidden="true" />
+                  <p className="text-sm font-sans">No rounds have been scheduled yet.</p>
                 </div>
               ) : (
                 rounds.map((round) => (
                   <Link
                     key={round.id}
                     to={`/dashboard/events/${id}/rounds/${round.id}`}
-                    className="block p-6 rounded-xl bg-card border border-border hover:border-primary/50 transition-all"
+                    className="block p-5 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h3 className="text-xl font-bold">
+                        <h3 className="text-base font-heading font-bold text-foreground group-hover:text-primary transition-colors">
                           {round.name || `Round ${round.roundNumber}`}
                         </h3>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-muted-foreground text-xs font-sans mt-0.5">
                           {round.checkInStartTime
                             ? `Check-in: ${new Date(
                               round.checkInStartTime
@@ -594,33 +569,33 @@ export default function EventDetails() {
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
-                            "text-xs font-bold px-2 py-1 rounded",
+                            "text-[10px] font-heading font-semibold px-2 py-0.5 rounded border uppercase tracking-wider",
                             round.status === "COMPLETED"
-                              ? "bg-green-500/10 text-green-500"
+                              ? "bg-muted text-muted-foreground border-border"
                               : round.status === "ONGOING"
-                                ? "bg-amber-500/10 text-amber-500"
-                                : "bg-primary/10 text-primary"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                : "bg-primary/10 text-primary border border-primary/20"
                           )}
                         >
                           {round.status}
                         </span>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
                       </div>
                     </div>
                     {round.motion && round.pairingsPublished && (
-                      <div className="p-4 rounded-lg bg-muted/20 border border-border">
-                        <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                      <div className="p-3.5 rounded-lg bg-muted/20 border border-border/60">
+                        <span className="text-[10px] font-heading font-semibold text-primary uppercase tracking-wider">
                           Motion
                         </span>
-                        <p className="text-lg font-medium mt-1">
+                        <p className="text-sm font-sans font-medium text-foreground mt-0.5">
                           {round.motion}
                         </p>
                       </div>
                     )}
                     {!round.pairingsPublished &&
                       round.status !== "UPCOMING" && (
-                        <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20 text-center">
-                          <p className="text-sm text-amber-500 font-medium">
+                        <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-center">
+                          <p className="text-xs text-amber-600 dark:text-amber-400 font-sans font-medium">
                             Waiting for draws to be published...
                           </p>
                         </div>
@@ -628,32 +603,32 @@ export default function EventDetails() {
                   </Link>
                 ))
               )}
-            </motion.div>
+            </Motion.div>
           )}
 
           {activeTab === "participants" && (
-            <motion.div
+            <Motion.div
               key="participants"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-6"
+              className="space-y-4"
             >
               {/* Search Bar */}
               <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
                 <input
                   type="text"
                   placeholder="Search by name or college..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-3 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                  className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm font-sans focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 />
               </div>
 
               {/* Participants List */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {participants.filter((p) => {
                   const fullName = `${p.firstName || ""} ${p.lastName || ""
                     }`.toLowerCase();
@@ -662,8 +637,8 @@ export default function EventDetails() {
                   return fullName.includes(query) || college.includes(query);
                 }).length === 0 ? (
                   <div className="text-center py-12 bg-card border border-border rounded-xl">
-                    <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">
+                    <School className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" aria-hidden="true" />
+                    <p className="text-muted-foreground font-sans text-sm">
                       {searchQuery
                         ? "No participants found matching your search."
                         : "No participants registered yet."}
@@ -681,65 +656,65 @@ export default function EventDetails() {
                       );
                     })
                     .map((participant, index) => (
-                      <motion.div
+                      <Motion.div
                         key={participant.id}
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03 }}
-                        className="bg-card border border-border rounded-xl p-4 hover:border-primary/30 transition-colors"
+                        transition={{ delay: index * 0.02 }}
+                        className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/40 transition-colors"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3.5">
                           {/* Avatar */}
-                          <UserAvatar user={participant} size="lg" />
+                          <UserAvatar user={participant} size="md" />
 
                           {/* Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="font-semibold truncate">
+                              <p className="font-heading font-semibold text-sm text-foreground truncate">
                                 {participant.firstName} {participant.lastName}
                               </p>
-                              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" aria-hidden="true" />
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <School className="w-4 h-4" />
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans mt-0.5">
+                              <School className="w-3.5 h-3.5" aria-hidden="true" />
                               <span className="truncate">
-                                {participant.college || "No college"}
+                                {participant.college || "No college specified"}
                               </span>
                             </div>
                           </div>
                         </div>
-                      </motion.div>
+                      </Motion.div>
                     ))
                 )}
               </div>
-            </motion.div>
+            </Motion.div>
           )}
 
           {activeTab === "results" && (
-            <motion.div
+            <Motion.div
               key="results"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-6"
+              className="space-y-4"
             >
               <div className="min-h-[200px] relative">
                 <AnimatePresence mode="wait">
-                  <motion.div
+                  <Motion.div
                     key="my-results"
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
+                    exit={{ opacity: 0, x: 8 }}
                     transition={{ duration: 0.2 }}
-                    className="space-y-4"
+                    className="space-y-3"
                   >
                     {myDebates.filter((d) =>
                       rounds.map((r) => r.id).includes(d.roundId)
                     ).length === 0 ? (
                       <div className="text-center py-12 bg-card border border-border rounded-xl">
-                        <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <p className="text-muted-foreground">
+                        <Trophy className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" aria-hidden="true" />
+                        <p className="text-muted-foreground font-sans text-sm">
                           No debate results yet for this event.
                         </p>
                       </div>
@@ -759,81 +734,79 @@ export default function EventDetails() {
                             : debate.debater1;
 
                           return (
-                            <motion.div
+                            <Motion.div
                               key={debate.id}
-                              initial={{ opacity: 0, y: 10 }}
+                              initial={{ opacity: 0, y: 8 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.05 }}
+                              transition={{ delay: index * 0.03 }}
                               className={cn(
-                                "bg-card border rounded-xl p-4 transition-all",
+                                "bg-card border rounded-xl p-4 transition-colors",
                                 debate.status === "COMPLETED" && round?.resultsPublished && debate.isPromoted
-                                  ? "border-green-500/30 shadow-lg shadow-green-500/5 transition-all"
+                                  ? "border-emerald-500/30"
                                   : debate.status === "COMPLETED" && round?.resultsPublished && !debate.isPromoted
-                                    ? "border-red-500/30 opacity-80"
+                                    ? "border-destructive/30 opacity-80"
                                     : debate.status === "COMPLETED" && !round?.resultsPublished
                                       ? "border-amber-500/20 bg-amber-500/5 animate-pulse"
                                       : "border-border"
                               )}
                             >
                               <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">
-                                    {round?.name || `Round ${round?.roundNumber || "?"}`}
-                                  </span>
-                                </div>
+                                <span className="text-xs font-heading font-semibold text-foreground">
+                                  {round?.name || `Round ${round?.roundNumber || "?"}`}
+                                </span>
                                 {debate.status === "COMPLETED" && round?.resultsPublished ? (
                                   <div
                                     className={cn(
-                                      "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
+                                      "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-heading font-semibold border uppercase tracking-wider",
                                       debate.isPromoted
-                                        ? "bg-green-500/10 text-green-500"
-                                        : "bg-red-500/10 text-red-500"
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        : "bg-destructive/10 text-destructive border-destructive/20"
                                     )}
                                   >
                                     {debate.isPromoted ? (
                                       <>
-                                        <CheckCircle2 className="w-3 h-3" />
+                                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
                                         QUALIFIED
                                       </>
                                     ) : (
                                       <>
-                                        <XCircle className="w-3 h-3" />
+                                        <XCircle className="w-3 h-3" aria-hidden="true" />
                                         ELIMINATED
                                       </>
                                     )}
                                   </div>
                                 ) : debate.status === "COMPLETED" && !round?.resultsPublished ? (
-                                  <div className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500">
-                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-heading font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+                                    <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
                                     AWAITING SELECTION
                                   </div>
                                 ) : (
-                                  <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground font-bold text-[10px] uppercase tracking-widest">
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-heading font-semibold uppercase tracking-wider border border-border">
                                     {debate.status}
                                   </span>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-3">
                                 <UserAvatar user={opponent} size="md" />
-                                <div className="flex-1">
-                                  <p className="font-medium">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-heading font-semibold text-sm text-foreground truncate">
                                     vs {opponent?.firstName}{" "}
                                     {opponent?.lastName}
                                   </p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {opponent?.college}
+                                  <p className="text-xs text-muted-foreground font-sans truncate">
+                                    {opponent?.college || "No college specified"}
                                   </p>
                                 </div>
                               </div>
-                            </motion.div>
+                            </Motion.div>
                           );
                         })
                     )}
-                  </motion.div>
+                  </Motion.div>
                 </AnimatePresence>
               </div>
-            </motion.div>
+            </Motion.div>
           )}
         </AnimatePresence>
       </div>

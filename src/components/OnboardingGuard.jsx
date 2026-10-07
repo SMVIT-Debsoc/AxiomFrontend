@@ -1,6 +1,6 @@
 import {useState, useEffect} from "react";
 import {useUser, useAuth} from "@clerk/clerk-react";
-import {useNavigate, useLocation} from "react-router-dom";
+import {useNavigate} from "react-router-dom";
 import {UserApi} from "../services/api";
 
 /**
@@ -11,7 +11,6 @@ export function OnboardingGuard({children}) {
     const {user, isLoaded} = useUser();
     const {getToken} = useAuth();
     const navigate = useNavigate();
-    const location = useLocation();
     const [checking, setChecking] = useState(true);
 
     useEffect(() => {

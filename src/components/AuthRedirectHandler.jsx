@@ -65,7 +65,7 @@ export function AuthRedirectHandler() {
                                 return;
                             }
                         }
-                    } catch (e) {
+                    } catch {
                         // Not an existing admin, try to onboard
                     }
 
@@ -124,7 +124,7 @@ export function AuthRedirectHandler() {
                             return;
                         }
                     }
-                } catch (e) {
+                } catch {
                     // Not an admin, continue to user dashboard
                 }
 

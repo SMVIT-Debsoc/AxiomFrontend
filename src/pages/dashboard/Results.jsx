@@ -1,21 +1,17 @@
 import {useState, useEffect, useCallback, useRef} from "react";
 import {useParams, Link} from "react-router-dom";
-import {motion} from "framer-motion";
+import {motion as Motion} from "framer-motion";
 import {
   ArrowLeft,
   Trophy,
-  Medal,
   User,
-  Crown,
-  TrendingUp,
   XCircle,
   CheckCircle2,
   RefreshCw,
 } from "lucide-react";
-import {useAuth, useUser} from "@clerk/clerk-react";
+import {useAuth} from "@clerk/clerk-react";
 import {
   EventApi,
-  RoundApi,
   DebateApi,
   UserApi,
   StatsApi,
@@ -27,39 +23,17 @@ import {CardSkeleton, LeaderboardSkeleton} from "../../components/ui/Skeleton";
 export default function Results() {
   const {eventId} = useParams();
   const {getToken} = useAuth();
-  const {user: clerkUser} = useUser();
 
   const [event, setEvent] = useState(null);
   const [rounds, setRounds] = useState([]);
   const [myDebates, setMyDebates] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("my-results");
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
-
-  // Admin check
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-      const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
-      try {
-        const token = await getTokenRef.current();
-        const response = await fetch(`${API_BASE_URL}/admin/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setIsAdmin(data.success && !!data.admin);
-        }
-      } catch (e) {}
-    };
-    checkAdmin();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // runs once
 
   const fetchData = useCallback(async () => {
     try {
@@ -85,7 +59,7 @@ export default function Results() {
         if (debatesResponse.success) {
           setMyDebates(debatesResponse.debates || []);
         }
-      } catch (e) {
+      } catch {
         // No debates yet
       }
 
@@ -104,7 +78,7 @@ export default function Results() {
         } else if (Array.isArray(leaderboardResponse.leaderboard)) {
           setLeaderboard(leaderboardResponse.leaderboard);
         }
-      } catch (e) {
+      } catch {
         // Leaderboard might not be available
         setLeaderboard([]);
       }
@@ -113,7 +87,6 @@ export default function Results() {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]); // stable - getToken via ref
 
   useEffect(() => {
@@ -151,7 +124,7 @@ export default function Results() {
         <div className="space-y-4">
           <div className="h-4 w-24 bg-muted rounded animate-pulse" />
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-muted rounded-xl animate-pulse" />
+            <div className="w-10 h-10 bg-muted rounded-lg animate-pulse" />
             <div className="space-y-2">
               <div className="h-6 w-32 bg-muted rounded animate-pulse" />
               <div className="h-4 w-48 bg-muted rounded animate-pulse" />
@@ -169,47 +142,49 @@ export default function Results() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 px-4">
       {/* Header */}
-      <div>
+      <div className="axiom-page-header pb-4 border-b border-border">
         <Link
           to={`/dashboard/events/${eventId}`}
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-4 transition-colors"
+          className="inline-flex items-center text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground mb-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Event
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Back to Event
         </Link>
 
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
-            <Trophy className="w-6 h-6 text-amber-500" />
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Results</h1>
-            <p className="text-sm text-muted-foreground">
+            <div className="axiom-eyebrow">Tournament Standing</div>
+            <h1 className="text-xl sm:text-2xl font-heading font-semibold tracking-tight text-foreground">Results</h1>
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
               {event?.name || "Event"}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-primary to-purple-600 rounded-2xl p-6 text-white">
-        <h3 className="text-sm font-medium opacity-80 mb-4">
+      {/* Performance Overview */}
+      <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+        <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold mb-4">
           Your Performance
-        </h3>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-3xl font-bold">{myEventDebates.length}</p>
-            <p className="text-sm opacity-80">Debates</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 divide-x divide-border text-center">
+          <div className="px-2">
+            <p className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{myEventDebates.length}</p>
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mt-1">Debates</p>
           </div>
-          <div>
-            <p className="text-3xl font-bold text-green-300">
-              {myEventDebates.filter(d => d.resultsPublished && d.isPromoted).length}
+          <div className="px-2">
+            <p className="text-2xl sm:text-3xl font-heading font-bold text-primary">
+              {myEventDebates.filter((d) => d.resultsPublished && d.isPromoted).length}
             </p>
-            <p className="text-sm opacity-80">Qualified</p>
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mt-1">Qualified</p>
           </div>
-          <div>
-            <p className="text-3xl font-bold text-red-300">
-              {myEventDebates.filter(d => d.resultsPublished && !d.isPromoted).length}
+          <div className="px-2">
+            <p className="text-2xl sm:text-3xl font-heading font-bold text-destructive">
+              {myEventDebates.filter((d) => d.resultsPublished && !d.isPromoted).length}
             </p>
-            <p className="text-sm opacity-80">Eliminated</p>
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-wider mt-1">Eliminated</p>
           </div>
         </div>
       </div>
@@ -217,9 +192,10 @@ export default function Results() {
       {/* Tabs */}
       <div className="flex items-center gap-4 border-b border-border">
         <button
+          type="button"
           onClick={() => setActiveTab("my-results")}
           className={cn(
-            "pb-3 text-sm font-medium transition-all border-b-2",
+            "pb-2.5 text-xs font-mono uppercase tracking-wider font-semibold transition-all border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
             activeTab === "my-results"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -231,61 +207,54 @@ export default function Results() {
 
       {/* Tab Content */}
       {activeTab === "my-results" && (
-        <motion.div
+        <Motion.div
           initial={{opacity: 0}}
           animate={{opacity: 1}}
-          className="space-y-4"
+          className="space-y-3"
         >
           {getMyEventDebates().length === 0 ? (
             <div className="text-center py-12 bg-card border border-border rounded-xl">
-              <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">
+              <Trophy className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />
+              <p className="text-sm text-muted-foreground">
                 No debate results yet for this event.
               </p>
             </div>
           ) : (
             getMyEventDebates().map((debate, index) => {
               const round = rounds.find((r) => r.id === debate.roundId);
-              const isWinner = debate.winnerId === currentUser?.id;
               const isDebater1 = debate.debater1Id === currentUser?.id;
               const opponent = isDebater1 ? debate.debater2 : debate.debater1;
-              const myScore = isDebater1
-                ? debate.debater1Score
-                : debate.debater2Score;
-              const opponentScore = isDebater1
-                ? debate.debater2Score
-                : debate.debater1Score;
 
               return (
-                <motion.div
+                <Motion.div
                   key={debate.id}
                   initial={{opacity: 0, y: 10}}
                   animate={{opacity: 1, y: 0}}
                   transition={{delay: index * 0.05}}
                   className={cn(
-                    "bg-card border rounded-xl p-4",
+                    "bg-card border rounded-xl p-4 transition-all",
                     debate.status === "COMPLETED" && round?.resultsPublished && debate.isPromoted
-                      ? "border-green-500/30 shadow-lg shadow-green-500/5 transition-all"
+                      ? "border-primary/40 bg-primary/[0.02]"
                       : debate.status === "COMPLETED" && round?.resultsPublished && !debate.isPromoted
-                      ? "border-red-500/30 opacity-80"
+                      ? "border-destructive/30 bg-destructive/[0.02]"
                       : debate.status === "COMPLETED" && !round?.resultsPublished
-                      ? "border-amber-500/20 bg-amber-500/5 animate-pulse"
+                      ? "border-amber-500/30 bg-amber-500/[0.02]"
                       : "border-border"
                   )}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
+                      <span className="text-xs font-mono font-medium text-foreground">
                         {round?.name || `Round ${round?.roundNumber || "?"}`}
                       </span>
                     </div>
                     {debate.status === "COMPLETED" && round?.resultsPublished ? (
                       <div
                         className={cn(
-                          "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
+                          "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider font-semibold border",
                           debate.isPromoted
-                            ? "bg-green-500/10 text-green-500"
-                            : "bg-red-500/10 text-red-500"
+                            ? "bg-primary/10 text-primary border-primary/20"
+                            : "bg-destructive/10 text-destructive border-destructive/20"
                         )}
                       >
                         {debate.isPromoted ? (
@@ -301,37 +270,36 @@ export default function Results() {
                         )}
                       </div>
                     ) : debate.status === "COMPLETED" && !round?.resultsPublished ? (
-                      <div className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20">
                         <RefreshCw className="w-3 h-3 animate-spin" />
                         AWAITING SELECTION
                       </div>
                     ) : (
-                      <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground uppercase font-bold tracking-widest text-[10px]">
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border uppercase font-mono font-medium tracking-wider">
                         {debate.status}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      <User className="w-5 h-5 text-muted-foreground" />
+                  <div className="flex items-center gap-3.5 pt-1">
+                    <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center border border-border">
+                      <User className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium">
-                        vs {opponent?.firstName} {opponent?.lastName}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        vs {opponent?.firstName || "Unknown"} {opponent?.lastName || "Debater"}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {opponent?.college}
+                      <p className="text-xs text-muted-foreground truncate">
+                        {opponent?.college || "Affiliation unlisted"}
                       </p>
                     </div>
                   </div>
-                </motion.div>
+                </Motion.div>
               );
             })
           )}
-        </motion.div>
+        </Motion.div>
       )}
-
     </div>
   );
 }

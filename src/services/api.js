@@ -114,7 +114,7 @@ export async function apiRequest(
              // Try to parse text as JSON just in case (sometimes mime is wrong)
              try {
                  data = JSON.parse(text);
-             } catch (e) {
+             } catch {
                  throw new Error(`Server returned unexpected response (${response.status}). URL: ${path}`);
              }
         } else if (contentType && contentType.includes("application/json")) {
@@ -122,7 +122,7 @@ export async function apiRequest(
         } else {
             // No content type or something else
             const text = await response.text();
-            try { data = JSON.parse(text); } catch(e) { 
+            try { data = JSON.parse(text); } catch {
                 throw new Error(`API returned invalid content (${contentType || 'none'}). Status: ${response.status}`);
             }
         }

@@ -1,28 +1,31 @@
-import {useState, useEffect, useCallback, useRef} from "react";
-import {motion} from "framer-motion";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion as Motion } from "framer-motion";
 import {
   Calendar,
   Users,
   Trophy,
-  TrendingUp,
   Activity,
   Plus,
-  ShieldCheck,
+  ArrowUpRight,
+  Shield,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
-import {Link} from "react-router-dom";
-import {AdminApi} from "../../services/api";
-import {useSocket, SocketEvents} from "../../hooks/useSocket";
+import { useAuth } from "@clerk/clerk-react";
+import { Link } from "react-router-dom";
+import { AdminApi } from "../../services/api";
+import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import Sculpture from "../../components/brand/Sculpture";
 
 export default function AdminDashboard() {
-  const {getToken} = useAuth();
+  const { getToken } = useAuth();
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [recentEvents, setRecentEvents] = useState([]);
   const [recentDebates, setRecentDebates] = useState([]);
 
   const getTokenRef = useRef(getToken);
-  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -40,7 +43,6 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // stable - getToken is accessed via ref
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function AdminDashboard() {
   }, [fetchDashboard]);
 
   // Real-time updates
-  const {subscribe} = useSocket();
+  const { subscribe } = useSocket();
   useEffect(() => {
     const unsubs = [
       subscribe(SocketEvents.EVENT_CREATED, fetchDashboard),
@@ -66,181 +68,232 @@ export default function AdminDashboard() {
       label: "Total Events",
       value: stats?.totalEvents || 0,
       icon: Calendar,
-      color: "bg-blue-500",
+      accentColor: "text-blue-500",
+      accentBg: "bg-blue-500/10",
       change: `${stats?.activeEvents || 0} active currently`,
     },
     {
       label: "Active Participants",
       value: stats?.totalUsers || 0,
       icon: Users,
-      color: "bg-green-500",
-      change: "Across all events",
+      accentColor: "text-emerald-500",
+      accentBg: "bg-emerald-500/10",
+      change: "Across all tournaments",
     },
     {
       label: "Debates Completed",
       value: stats?.completedDebates || 0,
       icon: Trophy,
-      color: "bg-amber-500",
+      accentColor: "text-amber-500",
+      accentBg: "bg-amber-500/10",
       change: `${stats?.completionRate || 0}% completion rate`,
     },
     {
-      label: "Total Rooms",
+      label: "Configured Rooms",
       value: stats?.totalRooms || 0,
       icon: Activity,
-      color: "bg-purple-500",
-      change: "Setup for events",
+      accentColor: "text-primary",
+      accentBg: "bg-primary/10",
+      change: "Setup for competition",
     },
   ];
 
   return (
     <div className="space-y-8 pb-10">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="max-w-full">
-          <h1 className="text-2xl md:text-3xl font-bold break-words">Admin Dashboard</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">
-            Manage your debate platform
+      {/* Editorial Overview Banner with Quiet Sculpture Accent */}
+      <div className="axiom-page-header relative rounded-2xl border border-border/70 bg-card/60 backdrop-blur-sm p-6 md:p-8 overflow-hidden">
+        <div className="relative z-10 max-w-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
+              AXIOM 4.0
+            </span>
+            <span className="text-muted-foreground/60">•</span>
+            <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
+              Admin Command
+            </span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold tracking-tight text-foreground">
+            Tournament Dashboard
+          </h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1.5 font-sans leading-relaxed">
+            Live overview of ongoing debate competitions, room allocations, participant registers, and automated pairing cycles.
           </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Link
+              to="/admin/events"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium hover:bg-primary/90 transition-colors shadow-sm text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              <span>Create Event</span>
+            </Link>
+            <Link
+              to="/admin/rounds"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border/70 bg-background/50 hover:bg-muted text-foreground font-sans font-medium transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span>Manage Rounds</span>
+            </Link>
+          </div>
         </div>
-        <Link
-          to="/admin/events"
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-purple-500 text-white font-medium hover:bg-purple-600 transition-colors w-full md:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Create Event
-        </Link>
+
+        {/* Quiet editorial sculpture overview accent */}
+        <div className="absolute right-0 top-0 bottom-0 w-36 md:w-56 opacity-15 pointer-events-none overflow-hidden select-none">
+          <Sculpture
+            variant="portrait"
+            className="w-full h-full object-cover object-top grayscale contrast-125"
+          />
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <motion.div
+            <Motion.div
               key={stat.label}
-              initial={{opacity: 0, y: 20}}
-              animate={{opacity: 1, y: 0}}
-              transition={{delay: index * 0.1}}
-              className="bg-card border border-border rounded-2xl p-6"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="bg-card/70 border border-border/70 rounded-xl p-5 backdrop-blur-sm flex flex-col justify-between"
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between mb-3">
                 <div
-                  className={`w-12 h-12 rounded-xl ${stat.color}/10 flex items-center justify-center`}
+                  className={`w-10 h-10 rounded-lg ${stat.accentBg} flex items-center justify-center`}
                 >
-                  <Icon
-                    className={`w-6 h-6 ${stat.color.replace("bg-", "text-")}`}
-                  />
+                  <Icon className={`w-5 h-5 ${stat.accentColor}`} aria-hidden="true" />
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[11px] font-sans text-muted-foreground text-right">
                   {stat.change}
                 </span>
               </div>
-              <div className="text-3xl font-bold mb-1">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </motion.div>
+              <div>
+                <div className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-0.5">
+                  {stat.value}
+                </div>
+                <div className="text-xs font-sans text-muted-foreground font-medium">
+                  {stat.label}
+                </div>
+              </div>
+            </Motion.div>
           );
         })}
       </div>
 
       {/* Quick Actions & Recent Events Grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions */}
-        <div className="bg-card border border-border rounded-2xl p-6 lg:col-span-1">
-          <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0 bg-card/70 border border-border/70 rounded-xl p-5 md:p-6 lg:col-span-1 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-heading font-bold text-foreground">
+              Quick Operations
+            </h3>
+            <span className="text-xs font-sans text-muted-foreground">Admin routes</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 flex-1">
             <Link
               to="/admin/events"
-              className="p-4 rounded-xl border border-border hover:border-purple-500/50 hover:bg-purple-500/5 transition-all text-center"
+              className="p-4 rounded-lg border border-border/70 bg-background/40 hover:bg-muted/70 hover:border-border transition-all text-center flex flex-col items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Calendar className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-              <span className="text-sm font-medium">Events</span>
+              <Calendar className="w-5 h-5 mb-2 text-primary group-hover:scale-105 transition-transform" aria-hidden="true" />
+              <span className="text-xs font-sans font-medium text-foreground">Events</span>
             </Link>
             <Link
               to="/admin/rounds"
-              className="p-4 rounded-xl border border-border hover:border-blue-500/50 hover:bg-blue-500/5 transition-all text-center"
+              className="p-4 rounded-lg border border-border/70 bg-background/40 hover:bg-muted/70 hover:border-border transition-all text-center flex flex-col items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Activity className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-              <span className="text-sm font-medium">Rounds</span>
+              <Activity className="w-5 h-5 mb-2 text-emerald-500 group-hover:scale-105 transition-transform" aria-hidden="true" />
+              <span className="text-xs font-sans font-medium text-foreground">Rounds</span>
             </Link>
             <Link
               to="/admin/participants"
-              className="p-4 rounded-xl border border-border hover:border-green-500/50 hover:bg-green-500/5 transition-all text-center"
+              className="p-4 rounded-lg border border-border/70 bg-background/40 hover:bg-muted/70 hover:border-border transition-all text-center flex flex-col items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Users className="w-6 h-6 mx-auto mb-2 text-green-500" />
-              <span className="text-sm font-medium">Users</span>
+              <Users className="w-5 h-5 mb-2 text-blue-500 group-hover:scale-105 transition-transform" aria-hidden="true" />
+              <span className="text-xs font-sans font-medium text-foreground">Debaters</span>
             </Link>
             <Link
               to="/admin/results"
-              className="p-4 rounded-xl border border-border hover:border-amber-500/50 hover:bg-amber-500/5 transition-all text-center"
+              className="p-4 rounded-lg border border-border/70 bg-background/40 hover:bg-muted/70 hover:border-border transition-all text-center flex flex-col items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Trophy className="w-6 h-6 mx-auto mb-2 text-amber-500" />
-              <span className="text-sm font-medium">Results</span>
+              <Trophy className="w-5 h-5 mb-2 text-amber-500 group-hover:scale-105 transition-transform" aria-hidden="true" />
+              <span className="text-xs font-sans font-medium text-foreground">Results</span>
             </Link>
           </div>
         </div>
 
         {/* Recent Events */}
-        <div className="bg-card border border-border rounded-2xl p-6 lg:col-span-2">
+        <div className="min-w-0 bg-card/70 border border-border/70 rounded-xl p-5 md:p-6 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Recent Events</h3>
+            <div>
+              <h3 className="text-base font-heading font-bold text-foreground">
+                Recent Tournaments
+              </h3>
+              <p className="text-xs text-muted-foreground font-sans">Active and scheduled events</p>
+            </div>
             <Link
               to="/admin/events"
-              className="text-sm text-purple-500 hover:underline"
+              className="text-xs font-sans font-medium text-primary hover:underline flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             >
-              View all
+              <span>View all</span>
+              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
             </Link>
           </div>
           {recentEvents.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p>No events yet</p>
+            <div className="text-center py-10 text-muted-foreground font-sans">
+              <Calendar className="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true" />
+              <p className="text-xs">No tournaments recorded yet</p>
             </div>
           ) : (
             <>
               {/* Desktop View */}
               <div className="hidden md:block overflow-x-auto no-scrollbar">
-                <table className="w-full">
+                <table className="w-full text-left" aria-label="Recent tournaments">
                   <thead>
-                    <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
-                      <th className="px-4 pb-3 font-semibold">Event</th>
-                      <th className="px-4 pb-3 font-semibold text-right whitespace-nowrap">
-                        Status
-                      </th>
+                    <tr className="text-xs text-muted-foreground font-sans uppercase tracking-wider border-b border-border/70">
+                      <th scope="col" className="px-3 pb-2.5 font-semibold">Tournament</th>
+                      <th scope="col" className="px-3 pb-2.5 font-semibold text-right whitespace-nowrap">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border/60">
                     {recentEvents.map((event) => (
                       <tr
                         key={event.id}
-                        className="group hover:bg-muted/50 transition-colors"
+                        className="group hover:bg-muted/40 transition-colors"
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3">
                           <Link
                             to={`/admin/events/${event.id}`}
-                            className="flex items-center gap-3"
+                            className="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md p-1"
                           >
-                            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                              <Calendar className="w-5 h-5 text-purple-500" />
+                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                              <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">
+                              <p className="font-heading font-semibold text-sm truncate text-foreground group-hover:text-primary transition-colors">
                                 {event.name}
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(event.startDate).toLocaleDateString()}
+                              <p className="text-xs text-muted-foreground font-sans">
+                                {new Date(event.startDate).toLocaleDateString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })}
                               </p>
                             </div>
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
-                          <Link to={`/admin/events/${event.id}`}>
+                        <td className="px-3 py-3 text-right whitespace-nowrap">
+                          <Link
+                            to={`/admin/events/${event.id}`}
+                            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                          >
                             <span
-                              className={`text-xs font-bold px-2 py-1 rounded ${
+                              className={`text-[10px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
                                 event.status === "ONGOING"
-                                  ? "bg-green-500/10 text-green-500"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                                   : event.status === "UPCOMING"
-                                  ? "bg-blue-500/10 text-blue-500"
-                                  : "bg-gray-500/10 text-gray-500"
+                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                  : "bg-muted text-muted-foreground border-border"
                               }`}
                             >
                               {event.status}
@@ -254,39 +307,37 @@ export default function AdminDashboard() {
               </div>
 
               {/* Mobile View */}
-              <div className="md:hidden space-y-3">
+              <div className="md:hidden space-y-2.5">
                 {recentEvents.map((event) => (
                   <Link
                     key={event.id}
                     to={`/admin/events/${event.id}`}
-                    className="block p-3 rounded-xl bg-muted/30 border border-border hover:bg-muted/50 transition-all"
+                    className="block p-3 rounded-lg bg-background/50 border border-border/70 hover:bg-muted/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                          <Calendar className="w-4 h-4 text-purple-500" />
+                        <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                          <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                         </div>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            event.status === "ONGOING"
-                              ? "bg-green-500/10 text-green-500"
-                              : event.status === "UPCOMING"
-                              ? "bg-blue-500/10 text-blue-500"
-                              : "bg-gray-500/10 text-gray-500"
-                          }`}
-                        >
-                          {event.status}
+                        <span className="font-heading font-semibold text-sm truncate text-foreground">
+                          {event.name}
                         </span>
                       </div>
+                      <span
+                        className={`text-[9px] font-sans font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
+                          event.status === "ONGOING"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            : event.status === "UPCOMING"
+                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                            : "bg-muted text-muted-foreground border-border"
+                        }`}
+                      >
+                        {event.status}
+                      </span>
                     </div>
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm truncate">
-                        {event.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(event.startDate).toLocaleDateString()}
-                      </p>
-                    </div>
+                    <p className="text-xs text-muted-foreground font-sans pl-9">
+                      {new Date(event.startDate).toLocaleDateString()}
+                    </p>
                   </Link>
                 ))}
               </div>
@@ -296,102 +347,107 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Debates */}
-      <div className="bg-card border border-border rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold">Recent Debates</h3>
+      <div className="bg-card/70 border border-border/70 rounded-xl p-5 md:p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-base font-heading font-bold text-foreground">
+              Recent Debate Pairings
+            </h3>
+            <p className="text-xs text-muted-foreground font-sans">Latest matchups across rounds</p>
+          </div>
           <Link
             to="/admin/results"
-            className="text-sm text-purple-500 hover:underline"
+            className="text-xs font-sans font-medium text-primary hover:underline flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           >
-            View all results
+            <span>All results</span>
+            <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
           </Link>
         </div>
         {recentDebates.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Trophy className="w-12 h-12 mx-auto mb-3 opacity-20" />
-            <p>No debates recorded recently</p>
+          <div className="text-center py-10 text-muted-foreground font-sans">
+            <Trophy className="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true" />
+            <p className="text-xs">No debates recorded recently</p>
           </div>
         ) : (
           <>
             {/* Desktop View */}
             <div className="hidden md:block overflow-x-auto no-scrollbar">
-              <table className="w-full">
+              <table className="w-full text-left" aria-label="Recent debates">
                 <thead>
-                  <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
-                    <th className="px-4 pb-3 font-semibold whitespace-nowrap">
+                  <tr className="text-xs text-muted-foreground font-sans uppercase tracking-wider border-b border-border/70">
+                    <th scope="col" className="px-4 pb-3 font-semibold whitespace-nowrap">
                       Debaters
                     </th>
-                    <th className="px-4 pb-3 font-semibold whitespace-nowrap">
+                    <th scope="col" className="px-4 pb-3 font-semibold whitespace-nowrap">
                       Round
                     </th>
-                    <th className="px-4 pb-3 font-semibold whitespace-nowrap">
+                    <th scope="col" className="px-4 pb-3 font-semibold whitespace-nowrap">
                       Status
                     </th>
-                    <th className="px-4 pb-3 font-semibold text-right whitespace-nowrap">
+                    <th scope="col" className="px-4 pb-3 font-semibold text-right whitespace-nowrap">
                       Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border/60">
                   {recentDebates.slice(0, 5).map((debate) => (
                     <tr
                       key={debate.id}
-                      className="group hover:bg-muted/50 transition-colors"
+                      className="group hover:bg-muted/40 transition-colors"
                     >
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="flex -space-x-2">
                             {debate.debater1.imageUrl ? (
                               <img
                                 src={debate.debater1.imageUrl}
-                                alt={debate.debater1.firstName}
-                                className="w-8 h-8 rounded-full border-2 border-card object-cover"
+                                alt=""
+                                className="w-7 h-7 rounded-full border-2 border-card object-cover"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-blue-500">
+                              <div className="w-7 h-7 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-blue-500">
                                 {debate.debater1.firstName?.[0] || "U"}
                               </div>
                             )}
                             {debate.debater2.imageUrl ? (
                               <img
                                 src={debate.debater2.imageUrl}
-                                alt={debate.debater2.firstName}
-                                className="w-8 h-8 rounded-full border-2 border-card object-cover"
+                                alt=""
+                                className="w-7 h-7 rounded-full border-2 border-card object-cover"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-purple-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-purple-500">
+                              <div className="w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-emerald-500">
                                 {debate.debater2.firstName?.[0] || "U"}
                               </div>
                             )}
                           </div>
-                          <span className="text-sm font-medium">
-                            {debate.debater1.firstName} vs{" "}
-                            {debate.debater2.firstName}
+                          <span className="text-sm font-sans font-medium text-foreground">
+                            {debate.debater1.firstName} vs {debate.debater2.firstName}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm text-muted-foreground">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="text-xs font-sans text-muted-foreground">
                           Round {debate.round.roundNumber}
                         </span>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <span
-                          className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                          className={`text-[10px] font-sans uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
                             debate.status === "COMPLETED"
-                              ? "bg-green-500/10 text-green-500"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                               : debate.status === "ONGOING"
-                              ? "bg-amber-500/10 text-amber-500"
-                              : "bg-blue-500/10 text-blue-500"
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                           }`}
                         >
                           {debate.status}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-right whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap">
                         <Link
                           to={`/admin/results/${debate.id}`}
-                          className="text-xs font-semibold text-purple-500 hover:text-purple-600 transition-colors"
+                          className="text-xs font-sans font-semibold text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1.5 py-0.5"
                         >
                           Manage
                         </Link>
@@ -403,68 +459,66 @@ export default function AdminDashboard() {
             </div>
 
             {/* Mobile View */}
-            <div className="md:hidden space-y-4">
+            <div className="md:hidden space-y-3">
               {recentDebates.slice(0, 5).map((debate) => (
                 <div
                   key={debate.id}
-                  className="p-4 rounded-xl bg-muted/30 border border-border space-y-3"
+                  className="p-3.5 rounded-lg bg-background/50 border border-border/70 space-y-2.5"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${
+                        className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${
                           debate.status === "COMPLETED"
-                            ? "bg-green-500/10 text-green-500"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                             : debate.status === "ONGOING"
-                            ? "bg-amber-500/10 text-amber-500"
-                            : "bg-blue-500/10 text-blue-500"
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                         }`}
                       >
                         {debate.status}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs font-sans text-muted-foreground">
                         Round {debate.round.roundNumber}
                       </span>
                     </div>
                     <Link
                       to={`/admin/results/${debate.id}`}
-                      className="text-xs font-bold text-purple-500"
+                      className="text-xs font-sans font-semibold text-primary hover:underline"
                     >
                       Manage
                     </Link>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex -space-x-2 flex-shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex -space-x-1.5 shrink-0">
                       {debate.debater1.imageUrl ? (
                         <img
                           src={debate.debater1.imageUrl}
-                          alt={debate.debater1.firstName}
-                          className="w-10 h-10 rounded-full border-2 border-card object-cover"
+                          alt=""
+                          className="w-7 h-7 rounded-full border-2 border-card object-cover"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-xs font-bold text-blue-500">
+                        <div className="w-7 h-7 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-blue-500">
                           {debate.debater1.firstName?.[0] || "U"}
                         </div>
                       )}
                       {debate.debater2.imageUrl ? (
                         <img
                           src={debate.debater2.imageUrl}
-                          alt={debate.debater2.firstName}
-                          className="w-10 h-10 rounded-full border-2 border-card object-cover"
+                          alt=""
+                          className="w-7 h-7 rounded-full border-2 border-card object-cover"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-purple-500/20 border-2 border-card flex items-center justify-center text-xs font-bold text-purple-500">
+                        <div className="w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-emerald-500">
                           {debate.debater2.firstName?.[0] || "U"}
                         </div>
                       )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-sm">
+                    <div className="min-w-0">
+                      <p className="font-sans font-medium text-xs truncate text-foreground">
                         {debate.debater1.firstName}{" "}
-                        <span className="text-muted-foreground font-normal text-xs">
-                          vs
-                        </span>{" "}
+                        <span className="text-muted-foreground font-normal">vs</span>{" "}
                         {debate.debater2.firstName}
                       </p>
                     </div>

@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import {useRef, useEffect, useCallback} from "react";
 import { useAuth } from "@clerk/clerk-react";
 
 /**
@@ -13,7 +13,5 @@ export function useStableToken() {
         getTokenRef.current = getToken;
     }, [getToken]);
 
-    // This wrapper's reference never changes
-    const stableGetToken = useRef((...args) => getTokenRef.current(...args));
-    return stableGetToken.current;
+    return useCallback((...args) => getTokenRef.current(...args), []);
 }

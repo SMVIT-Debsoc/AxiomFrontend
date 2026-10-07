@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { motion as Motion } from "framer-motion";
 import {
     Trophy,
     Search,
@@ -8,7 +8,6 @@ import {
     Loader2,
     Calendar,
     ArrowLeft,
-    List
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi, EventApi, RoundApi } from "../../services/api";
@@ -34,6 +33,7 @@ export default function AdminResults() {
         if (viewMode === "events") {
             fetchEvents();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [viewMode]);
 
     const fetchEvents = async () => {
@@ -124,72 +124,84 @@ export default function AdminResults() {
     const renderEvents = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredEvents.map((event) => (
-                <motion.div
+                <Motion.button
+                    type="button"
                     key={event.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.01 }}
                     onClick={() => handleSelectEvent(event)}
-                    className="cursor-pointer bg-card border border-border rounded-xl p-5 hover:border-purple-500/50 transition-all shadow-sm"
+                    className="w-full text-left cursor-pointer bg-card/70 border border-border/70 rounded-xl p-5 hover:border-primary/50 transition-all shadow-sm backdrop-blur-sm"
                 >
                     <div className="flex items-start justify-between mb-3">
-                        <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500">
-                            <Trophy className="w-6 h-6" />
+                        <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                            <Trophy className="w-5 h-5" aria-hidden="true" />
                         </div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${event.status === 'ONGOING' ? 'bg-green-500/10 text-green-500' :
-                            event.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
-                            }`}>
+                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider font-sans border ${
+                            event.status === 'ONGOING'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                : event.status === 'COMPLETED'
+                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                                : 'bg-muted text-muted-foreground border-border'
+                        }`}>
                             {event.status}
                         </span>
                     </div>
-                    <h3 className="font-bold text-lg mb-1 truncate">{event.name}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4 h-10">
+                    <h3 className="font-heading font-bold text-base mb-1 truncate text-foreground">{event.name}</h3>
+                    <p className="text-xs text-muted-foreground font-sans line-clamp-2 mb-4 h-8">
                         {event.description || "No description provided."}
                     </p>
-                    <div className="flex items-center text-xs text-muted-foreground gap-4">
-                        <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
+                    <div className="flex items-center text-xs text-muted-foreground font-sans gap-4">
+                        <span className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                             {new Date(event.startDate).toLocaleDateString()}
                         </span>
                     </div>
-                </motion.div>
+                </Motion.button>
             ))}
         </div>
     );
 
     const renderRounds = () => (
-        <div className="space-y-4">
+        <div className="space-y-3">
             {filteredRounds.length === 0 ? (
-                <div className="text-center py-12 bg-muted/5 rounded-xl border border-dashed border-border">
-                    <p className="text-muted-foreground">No rounds found for this event.</p>
+                <div className="text-center py-12 bg-card/40 rounded-xl border border-dashed border-border/80">
+                    <p className="text-xs text-muted-foreground font-sans">No rounds found for this tournament.</p>
                 </div>
             ) : (
                 filteredRounds.map((round) => (
-                    <motion.div
+                    <Motion.button
+                        type="button"
                         key={round.id}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         onClick={() => handleSelectRound(round)}
-                        className="cursor-pointer bg-card border border-border p-4 rounded-xl hover:bg-muted/30 transition-all flex items-center justify-between group"
+                        className="w-full text-left cursor-pointer bg-card/70 border border-border/70 p-4 rounded-xl hover:bg-muted/30 transition-all flex items-center justify-between group backdrop-blur-sm"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600 font-bold">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-heading font-bold text-sm shrink-0">
                                 {round.roundNumber}
                             </div>
-                            <div>
-                                <h4 className="font-bold text-base">{round.name}</h4>
-                                <p className="text-xs text-muted-foreground italic">"{round.motion}"</p>
+                            <div className="min-w-0">
+                                <h4 className="font-heading font-semibold text-sm text-foreground truncate">{round.name}</h4>
+                                <p className="text-xs text-muted-foreground font-serif italic truncate">
+                                    {round.motion ? `"${round.motion}"` : "No motion assigned"}
+                                </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${round.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500' :
-                                round.status === 'ONGOING' ? 'bg-blue-500/10 text-blue-500' : 'bg-muted text-muted-foreground'
-                                }`}>
+                        <div className="flex items-center gap-3 shrink-0">
+                            <span className={`text-[10px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                round.status === 'COMPLETED'
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                    : round.status === 'ONGOING'
+                                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                                    : 'bg-muted text-muted-foreground border-border'
+                            }`}>
                                 {round.status}
                             </span>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-purple-500 transition-colors" />
+                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
                         </div>
-                    </motion.div>
+                    </Motion.button>
                 ))
             )}
         </div>
@@ -198,63 +210,67 @@ export default function AdminResults() {
     const renderResults = () => (
         <>
             {/* Desktop View (Table) */}
-            <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
+            <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
                 <div className="overflow-x-auto no-scrollbar">
-                    <table className="w-full">
-                        <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground">
+                    <table className="w-full text-left" aria-label="Debate results list">
+                        <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                             <tr>
-                                <th className="px-6 py-4 text-left">Matchup</th>
-                                <th className="px-6 py-4 text-center">Scores</th>
-                                <th className="px-6 py-4 text-left">Winner</th>
-                                <th className="px-6 py-4 text-right">Action</th>
+                                <th scope="col" className="px-5 py-3.5">Matchup</th>
+                                <th scope="col" className="px-5 py-3.5 text-center">Scores</th>
+                                <th scope="col" className="px-5 py-3.5">Winner</th>
+                                <th scope="col" className="px-5 py-3.5 text-right">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody className="divide-y divide-border/60">
                             {filteredDebates.length === 0 ? (
-                                <tr><td colSpan="4" className="text-center py-8 text-muted-foreground">No debates found.</td></tr>
+                                <tr>
+                                    <td colSpan="4" className="text-center py-8 text-xs text-muted-foreground font-sans">
+                                        No debates found.
+                                    </td>
+                                </tr>
                             ) : (
                                 filteredDebates.map((debate) => (
-                                    <tr key={debate.id} className="hover:bg-muted/10">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3 text-sm font-medium">
-                                                <span className={debate.winnerId === debate.debater1Id ? "text-green-500 font-bold" : ""}>
+                                    <tr key={debate.id} className="hover:bg-muted/20 transition-colors">
+                                        <td className="px-5 py-3.5">
+                                            <div className="flex items-center gap-2.5 text-sm font-sans font-medium text-foreground">
+                                                <span className={debate.winnerId === debate.debater1Id ? "text-emerald-500 font-bold" : ""}>
                                                     {debate.debater1.firstName} {debate.debater1.lastName}
                                                 </span>
-                                                <span className="text-muted-foreground text-xs">VS</span>
-                                                <span className={debate.winnerId === debate.debater2Id ? "text-green-500 font-bold" : ""}>
+                                                <span className="text-muted-foreground text-xs font-normal">vs</span>
+                                                <span className={debate.winnerId === debate.debater2Id ? "text-emerald-500 font-bold" : ""}>
                                                     {debate.debater2.firstName} {debate.debater2.lastName}
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-5 py-3.5 text-center">
                                             {debate.status === 'COMPLETED' ? (
-                                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-muted/50 border border-border text-xs font-mono">
-                                                    <span className={debate.winnerId === debate.debater1Id ? "text-green-500 font-bold" : ""}>
+                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-muted/50 border border-border/70 text-xs font-mono">
+                                                    <span className={debate.winnerId === debate.debater1Id ? "text-emerald-500 font-bold" : ""}>
                                                         {debate.debater1Score}
                                                     </span>
                                                     <span className="text-muted-foreground">-</span>
-                                                    <span className={debate.winnerId === debate.debater2Id ? "text-green-500 font-bold" : ""}>
+                                                    <span className={debate.winnerId === debate.debater2Id ? "text-emerald-500 font-bold" : ""}>
                                                         {debate.debater2Score}
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <span className="text-[10px] text-muted-foreground italic">Pending</span>
+                                                <span className="text-[10px] text-muted-foreground font-sans italic">Pending</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-5 py-3.5">
                                             {debate.winnerId ? (
-                                                <div className="flex items-center gap-2 text-sm font-bold text-green-600">
-                                                    <Trophy className="w-3 h-3" />
-                                                    {debate.winnerId === debate.debater1Id ? debate.debater1.firstName : debate.debater2.firstName}
+                                                <div className="flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-500">
+                                                    <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
+                                                    <span>{debate.winnerId === debate.debater1Id ? debate.debater1.firstName : debate.debater2.firstName}</span>
                                                 </div>
-                                            ) : <span className="text-xs text-muted-foreground">-</span>}
+                                            ) : <span className="text-xs text-muted-foreground font-sans">-</span>}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-5 py-3.5 text-right">
                                             <button
                                                 onClick={() => navigate(`/admin/results/${debate.id}`)}
-                                                className="text-xs font-bold text-purple-500 hover:text-purple-600 px-3 py-1 bg-purple-500/10 rounded hover:bg-purple-500/20 transition-colors"
+                                                className="text-xs font-sans font-semibold text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1.5 py-0.5"
                                             >
-                                                {debate.status === 'COMPLETED' ? 'Edit' : 'Enter'}
+                                                {debate.status === 'COMPLETED' ? "Edit Result" : "Enter Result"}
                                             </button>
                                         </td>
                                     </tr>
@@ -266,46 +282,50 @@ export default function AdminResults() {
             </div>
 
             {/* Mobile View (Cards) */}
-            <div className="md:hidden space-y-4">
+            <div className="md:hidden space-y-3">
                 {filteredDebates.length === 0 ? (
-                    <div className="text-center py-12 bg-muted/5 rounded-xl border border-dashed border-border">
-                        <p className="text-muted-foreground">No debates found.</p>
-                    </div>
+                    <div className="text-center py-8 text-xs text-muted-foreground font-sans">No debates found.</div>
                 ) : (
                     filteredDebates.map((debate) => (
-                        <div key={debate.id} className="bg-card border border-border rounded-xl p-4 flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Matchup</span>
-                                {debate.status === 'COMPLETED' ? (
-                                    <span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded font-bold">COMPLETED</span>
-                                ) : (
-                                    <span className="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded font-bold">PENDING</span>
-                                )}
+                        <div key={debate.id} className="bg-card/70 border border-border/70 rounded-xl p-3.5 space-y-3">
+                            <div className="flex justify-between items-center text-xs">
+                                <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground">
+                                    Debate #{debate.id.substring(0, 4)}
+                                </span>
+                                <span className={`text-[9px] font-sans font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                                    debate.status === 'COMPLETED'
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                }`}>
+                                    {debate.status}
+                                </span>
                             </div>
 
-                            <div className="flex items-center justify-between gap-2">
-                                <div className={`flex-1 text-center min-w-0 ${debate.winnerId === debate.debater1Id ? "text-green-500 font-bold" : ""}`}>
-                                    <p className="text-sm font-medium truncate">{debate.debater1.firstName} {debate.debater1.lastName}</p>
+                            <div className="flex justify-between items-center font-sans">
+                                <div className="flex-1 text-center">
+                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater1Id ? "text-emerald-500 font-bold" : "text-foreground"}`}>
+                                        {debate.debater1.firstName}
+                                    </p>
                                     {debate.status === 'COMPLETED' && (
-                                        <p className="text-lg font-mono font-bold mt-1">{debate.debater1Score}</p>
+                                        <p className="text-base font-mono font-bold mt-0.5">{debate.debater1Score}</p>
                                     )}
                                 </div>
-
-                                <div className="px-2 text-muted-foreground text-xs font-black flex-shrink-0">VS</div>
-
-                                <div className={`flex-1 text-center min-w-0 ${debate.winnerId === debate.debater2Id ? "text-green-500 font-bold" : ""}`}>
-                                    <p className="text-sm font-medium truncate">{debate.debater2.firstName} {debate.debater2.lastName}</p>
+                                <div className="px-3 text-[10px] text-muted-foreground font-bold italic">VS</div>
+                                <div className="flex-1 text-center">
+                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater2Id ? "text-emerald-500 font-bold" : "text-foreground"}`}>
+                                        {debate.debater2.firstName}
+                                    </p>
                                     {debate.status === 'COMPLETED' && (
-                                        <p className="text-lg font-mono font-bold mt-1">{debate.debater2Score}</p>
+                                        <p className="text-base font-mono font-bold mt-0.5">{debate.debater2Score}</p>
                                     )}
                                 </div>
                             </div>
 
                             <button
                                 onClick={() => navigate(`/admin/results/${debate.id}`)}
-                                className="w-full py-2.5 rounded-lg text-sm font-bold bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-colors"
+                                className="w-full py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-sans font-semibold transition-colors"
                             >
-                                {debate.status === 'COMPLETED' ? 'Edit Result' : 'Enter Result'}
+                                {debate.status === 'COMPLETED' ? "Edit Result" : "Enter Result"}
                             </button>
                         </div>
                     ))
@@ -317,62 +337,72 @@ export default function AdminResults() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1 flex-wrap">
-                    <span className={viewMode === 'events' ? "text-foreground font-medium" : ""}>Events</span>
-                    {viewMode !== 'events' && (
-                        <>
-                            <ChevronRight className="w-4 h-4" />
-                            <span className={viewMode === 'rounds' ? "text-foreground font-medium" : ""}>
-                                {selectedEvent?.name}
+            <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
+                <div className="flex items-center gap-3">
+                    {viewMode !== "events" && (
+                        <button
+                            onClick={handleBack}
+                            className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label="Navigate back"
+                        >
+                            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+                        </button>
+                    )}
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
+                                AXIOM 4.0
                             </span>
-                        </>
-                    )}
-                    {viewMode === 'results' && (
-                        <>
-                            <ChevronRight className="w-4 h-4" />
-                            <span className="text-foreground font-medium">Round {selectedRound?.roundNumber}</span>
-                        </>
-                    )}
-                </div>
-
-                <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                        {viewMode !== 'events' && (
-                            <button onClick={handleBack} className="p-2 hover:bg-muted rounded-lg transition-colors mt-1">
-                                <ArrowLeft className="w-5 h-5" />
-                            </button>
-                        )}
-                        <h1 className="text-3xl font-bold break-words min-w-0">
-                            {viewMode === 'events' ? 'Results & Scores' :
-                                viewMode === 'rounds' ? 'Select Round' :
-                                    `${selectedRound?.name} Results`}
+                            <span className="text-muted-foreground/60">•</span>
+                            <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
+                                {viewMode === "events"
+                                    ? "Tournaments"
+                                    : viewMode === "rounds"
+                                    ? selectedEvent?.name
+                                    : `${selectedEvent?.name} • Round ${selectedRound?.roundNumber}`}
+                            </span>
+                        </div>
+                        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
+                            {viewMode === "events"
+                                ? "Results Command"
+                                : viewMode === "rounds"
+                                ? `${selectedEvent?.name} Rounds`
+                                : `${selectedRound?.name} Matchup Results`}
                         </h1>
+                        <p className="text-xs md:text-sm text-muted-foreground font-sans mt-0.5">
+                            {viewMode === "events"
+                                ? "Browse tournaments to inspect debater scores and final adjudications"
+                                : viewMode === "rounds"
+                                ? "Select a round to view debate scoring details"
+                                : "Review ballots, edit scores, and confirm declared winners"}
+                        </p>
                     </div>
                 </div>
             </div>
 
-            {/* Search */}
+            {/* Search Input */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <input
                     type="text"
                     placeholder={`Search ${viewMode}...`}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border focus:border-purple-500 outline-none transition-all"
+                    aria-label={`Search ${viewMode}`}
+                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
                 />
             </div>
 
+            {/* Dynamic Content */}
             {loading ? (
-                <div className="flex justify-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                <div className="flex items-center justify-center min-h-[40vh]">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading results" />
                 </div>
             ) : (
                 <>
-                    {viewMode === 'events' && renderEvents()}
-                    {viewMode === 'rounds' && renderRounds()}
-                    {viewMode === 'results' && renderResults()}
+                    {viewMode === "events" && renderEvents()}
+                    {viewMode === "rounds" && renderRounds()}
+                    {viewMode === "results" && renderResults()}
                 </>
             )}
         </div>

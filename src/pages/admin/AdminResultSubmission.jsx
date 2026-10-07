@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import {
-    Trophy,
-    User,
     ArrowLeft,
     Loader2,
     CheckCircle2,
@@ -51,7 +49,7 @@ export default function AdminResultSubmission() {
             }
         };
         fetchDebate();
-    }, [debateId]);
+    }, [debateId, getToken]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -75,7 +73,7 @@ export default function AdminResultSubmission() {
             } else {
                 alert(response.error || "Failed to submit result");
             }
-        } catch (error) {
+        } catch {
             alert("Error submitting result");
         } finally {
             setSubmitting(false);
@@ -85,29 +83,59 @@ export default function AdminResultSubmission() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
         );
     }
 
-    if (!debate) return <div>Debate not found</div>;
+    if (!debate) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">Debate not found</p>
+                <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="mt-4 px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    Go back
+                </button>
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center gap-4">
-                <button onClick={() => navigate(-1)} className="p-2 hover:bg-muted rounded-lg transition-colors">
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
-                <div>
-                    <h1 className="text-3xl font-bold">Submit Debate Result</h1>
-                    <p className="text-muted-foreground">Debate ID: {debateId}</p>
+        <Motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-4xl mx-auto space-y-8"
+        >
+            <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
+                <div className="flex items-center gap-4">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        aria-label="Go back"
+                        title="Go back"
+                        className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <span className="axiom-eyebrow text-emerald-600 dark:text-emerald-400">Decision & Scoring</span>
+                        <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground">Submit Debate Result</h1>
+                        <p className="text-sm text-muted-foreground mt-0.5 font-mono">Debate ID: {debateId}</p>
+                    </div>
                 </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-8">
                     {/* Debater 1 */}
-                    <div className={`p-8 rounded-3xl border-2 transition-all ${formData.winnerId === debate.debater1Id ? 'border-purple-500 bg-purple-500/5' : 'border-border bg-card'}`}>
+                    <div className={`p-6 md:p-8 rounded-2xl border transition-all ${
+                        formData.winnerId === debate.debater1Id
+                            ? 'border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/30'
+                            : 'border-border bg-card'
+                    }`}>
                         <div className="flex items-center gap-4 mb-6">
                             <UserAvatar
                                 user={debate.debater1}
@@ -116,14 +144,20 @@ export default function AdminResultSubmission() {
                             />
                             <div>
                                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Opponent 1</p>
-                                <h3 className="text-xl font-bold">{debate.debater1.firstName} {debate.debater1.lastName}</h3>
+                                <h3 className="text-xl font-heading font-bold text-foreground">
+                                    {debate.debater1.firstName} {debate.debater1.lastName}
+                                </h3>
                             </div>
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium mb-1.5 block">Speaker Score (60-100)</label>
+                                <label htmlFor="speaker-score-1" className="text-sm font-medium mb-1.5 block text-foreground">
+                                    Speaker Score (60-100)
+                                </label>
                                 <input
+                                    id="speaker-score-1"
+                                    aria-label={`Speaker Score (60-100) for ${debate.debater1.firstName} ${debate.debater1.lastName}`}
                                     type="number"
                                     step="0.5"
                                     required
@@ -131,26 +165,31 @@ export default function AdminResultSubmission() {
                                     max="100"
                                     value={formData.debater1Score}
                                     onChange={(e) => setFormData({ ...formData, debater1Score: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-purple-500 outline-none text-lg font-semibold"
+                                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
                                     placeholder="85.5"
                                 />
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setFormData({ ...formData, winnerId: debate.debater1Id })}
-                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${formData.winnerId === debate.debater1Id
-                                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                    }`}
+                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    formData.winnerId === debate.debater1Id
+                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                                }`}
                             >
-                                {formData.winnerId === debate.debater1Id && <CheckCircle2 className="w-5" />}
+                                {formData.winnerId === debate.debater1Id && <CheckCircle2 className="w-5 h-5" />}
                                 {formData.winnerId === debate.debater1Id ? 'Winner Selected' : 'Set as Winner'}
                             </button>
                         </div>
                     </div>
 
                     {/* Debater 2 */}
-                    <div className={`p-8 rounded-3xl border-2 transition-all ${formData.winnerId === debate.debater2Id ? 'border-purple-500 bg-purple-500/5' : 'border-border bg-card'}`}>
+                    <div className={`p-6 md:p-8 rounded-2xl border transition-all ${
+                        formData.winnerId === debate.debater2Id
+                            ? 'border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/30'
+                            : 'border-border bg-card'
+                    }`}>
                         <div className="flex items-center gap-4 mb-6">
                             <UserAvatar
                                 user={debate.debater2}
@@ -159,14 +198,20 @@ export default function AdminResultSubmission() {
                             />
                             <div>
                                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Opponent 2</p>
-                                <h3 className="text-xl font-bold">{debate.debater2.firstName} {debate.debater2.lastName}</h3>
+                                <h3 className="text-xl font-heading font-bold text-foreground">
+                                    {debate.debater2.firstName} {debate.debater2.lastName}
+                                </h3>
                             </div>
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm font-medium mb-1.5 block">Speaker Score (60-100)</label>
+                                <label htmlFor="speaker-score-2" className="text-sm font-medium mb-1.5 block text-foreground">
+                                    Speaker Score (60-100)
+                                </label>
                                 <input
+                                    id="speaker-score-2"
+                                    aria-label={`Speaker Score (60-100) for ${debate.debater2.firstName} ${debate.debater2.lastName}`}
                                     type="number"
                                     step="0.5"
                                     required
@@ -174,31 +219,32 @@ export default function AdminResultSubmission() {
                                     max="100"
                                     value={formData.debater2Score}
                                     onChange={(e) => setFormData({ ...formData, debater2Score: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-purple-500 outline-none text-lg font-semibold"
+                                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
                                     placeholder="82.0"
                                 />
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setFormData({ ...formData, winnerId: debate.debater2Id })}
-                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${formData.winnerId === debate.debater2Id
-                                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-                                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                    }`}
+                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                                    formData.winnerId === debate.debater2Id
+                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                                }`}
                             >
-                                {formData.winnerId === debate.debater2Id && <CheckCircle2 className="w-5" />}
+                                {formData.winnerId === debate.debater2Id && <CheckCircle2 className="w-5 h-5" />}
                                 {formData.winnerId === debate.debater2Id ? 'Winner Selected' : 'Set as Winner'}
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 flex items-start gap-4">
-                    <AlertCircle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5 flex items-start gap-3.5">
+                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                        <h4 className="font-bold text-amber-500">Validation Note</h4>
-                        <p className="text-sm text-amber-500/80 leading-relaxed">
-                            Submitting high scores improves users' rankings on the leaderboard. Ensure scores reflect the actual debate performance. Once submitted, the round statistics will be updated automatically.
+                        <h4 className="font-bold text-sm text-amber-600 dark:text-amber-400">Validation Note</h4>
+                        <p className="text-sm text-amber-700/90 dark:text-amber-300/80 leading-relaxed mt-0.5">
+                            Submitting high scores improves users&apos; rankings on the leaderboard. Ensure scores reflect the actual debate performance. Once submitted, the round statistics will be updated automatically.
                         </p>
                     </div>
                 </div>
@@ -207,13 +253,13 @@ export default function AdminResultSubmission() {
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="flex items-center gap-2 px-10 py-4 rounded-2xl bg-purple-500 text-white font-black text-lg hover:bg-purple-600 transition-all shadow-xl shadow-purple-500/20 disabled:opacity-50"
+                        className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                         {debate.status === 'COMPLETED' ? 'Update Final Result' : 'Submit Final Result'}
                     </button>
                 </div>
             </form>
-        </div>
+        </Motion.div>
     );
 }

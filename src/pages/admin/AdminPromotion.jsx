@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import {
   Trophy,
-  Users,
   Search,
   Loader2,
   ArrowLeft,
@@ -11,12 +10,11 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  UserPlus,
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
-import { useToast } from "../../components/ui/Toast";
+import {useToast} from "../../hooks/useToast"
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { cn } from "../../lib/utils";
 
@@ -45,12 +43,12 @@ export default function AdminPromotion() {
         
         // Initial selected users are those already promoted
         const promoted = new Set();
-        response.performers.forEach(p => {
+        response.performers?.forEach(p => {
           if (p.isPromoted) promoted.add(p.userId);
         });
         setSelectedUsers(promoted);
       }
-    } catch (error) {
+    } catch {
       toast.error("Error", "Failed to fetch performers");
     } finally {
       setLoading(false);
@@ -80,7 +78,7 @@ export default function AdminPromotion() {
         toast.success("Success", "Promotion selection saved to server");
         await fetchData(); // Refresh data
       }
-    } catch (error) {
+    } catch {
       toast.error("Error", "Failed to update promotion");
     } finally {
       setSaving(false);
@@ -99,7 +97,7 @@ export default function AdminPromotion() {
           published ? "All debaters can now see their win/loss status on their dashboard." : "Final results are now hidden from debaters."
         );
       }
-    } catch (error) {
+    } catch {
       toast.error("Error", "Failed to update publication status");
     } finally {
       setPublishing(false);
@@ -114,27 +112,35 @@ export default function AdminPromotion() {
   if (loading && !performers.length) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <Motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-6xl mx-auto space-y-8"
+    >
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="axiom-page-header flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-6 border-b border-border">
         <div className="flex items-center gap-4">
           <button
+            type="button"
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            aria-label="Go back"
+            title="Go back"
+            className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <ShieldCheck className="w-8 h-8 text-purple-500" /> Review & Promote
+            <span className="axiom-eyebrow text-emerald-600 dark:text-emerald-400">Progression Control</span>
+            <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground flex items-center gap-3">
+              <ShieldCheck className="w-7 h-7 text-emerald-500" /> Review &amp; Promote
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Select debaters to promote to the next round based on performance.
             </p>
           </div>
@@ -142,22 +148,24 @@ export default function AdminPromotion() {
 
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={handleSavePromotion}
             disabled={saving || loading}
-            className="px-6 py-2.5 rounded-xl bg-purple-500 text-white font-bold hover:bg-purple-600 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50 flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Save Selection
           </button>
           
           <button
+            type="button"
             onClick={() => handlePublishResults(!resultsPublished)}
             disabled={publishing || loading}
             className={cn(
-              "px-6 py-2.5 rounded-xl font-bold transition-all flex items-center gap-2",
+              "px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               resultsPublished 
-                ? "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20" 
-                : "bg-green-500 text-white hover:bg-green-600 shadow-lg shadow-green-500/25"
+                ? "bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20" 
+                : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
             )}
           >
             {publishing ? (
@@ -172,64 +180,65 @@ export default function AdminPromotion() {
         </div>
       </div>
 
-      {/* Info Card */}
+      {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-blue-500/5 border border-blue-500/10 rounded-2xl p-6 flex items-start gap-4">
-          <AlertCircle className="w-6 h-6 text-blue-500 mt-1" />
+        <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-5 flex items-start gap-3.5">
+          <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
           <div>
-            <h4 className="font-bold text-blue-500 uppercase text-[10px] tracking-widest mb-1">Status Summary</h4>
-            <p className="text-sm text-blue-900/70 dark:text-blue-200/70">
+            <h4 className="font-bold text-blue-600 dark:text-blue-400 uppercase text-[10px] tracking-wider mb-1">Status Summary</h4>
+            <p className="text-xs text-blue-900/80 dark:text-blue-200/80 leading-relaxed">
               Users see <strong>ELIMINATED</strong> unless you select and save them as <strong>PROMOTED</strong>.
             </p>
           </div>
         </div>
         
-        <div className="bg-purple-500/5 border border-purple-500/10 rounded-2xl p-6 flex flex-col justify-center">
-            <h4 className="font-bold text-purple-500 uppercase text-[10px] tracking-widest mb-1">Selected for Promotion</h4>
-            <p className="text-2xl font-black text-purple-600">{selectedUsers.size}</p>
+        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-5 flex flex-col justify-center">
+          <h4 className="font-bold text-emerald-600 dark:text-emerald-400 uppercase text-[10px] tracking-wider mb-1">Selected for Promotion</h4>
+          <p className="text-2xl font-black font-heading text-emerald-600 dark:text-emerald-400">{selectedUsers.size}</p>
         </div>
 
-        <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-6 flex flex-col justify-center">
-            <h4 className="font-bold text-amber-500 uppercase text-[10px] tracking-widest mb-1">Public Results</h4>
-            <p className={cn("text-lg font-bold uppercase", resultsPublished ? "text-green-500" : "text-amber-500")}>
-              {resultsPublished ? "Published (Visible to Users)" : "Draft (Admin Only)"}
-            </p>
+        <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-5 flex flex-col justify-center">
+          <h4 className="font-bold text-amber-600 dark:text-amber-400 uppercase text-[10px] tracking-wider mb-1">Public Results</h4>
+          <p className={cn("text-base font-bold uppercase tracking-wide", resultsPublished ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+            {resultsPublished ? "Published (Visible to Users)" : "Draft (Admin Only)"}
+          </p>
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-border bg-muted/20 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-none">
+        <div className="p-4 border-b border-border bg-card flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
-              placeholder="Filter by name or college..."
+              placeholder="Filter by debater name or college..."
+              aria-label="Filter debaters by name or college"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-muted/30 border border-transparent rounded-lg focus:bg-background focus:border-border outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2 bg-muted/30 border border-border rounded-lg focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-foreground"
             />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground whitespace-nowrap">Sorted by Speaker Score</span>
-            <Trophy className="w-4 h-4 text-yellow-500" />
+            <Trophy className="w-4 h-4 text-amber-500" />
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/30 text-[10px] font-bold uppercase text-muted-foreground">
+            <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
               <tr>
-                <th className="px-6 py-4 text-left w-12">#</th>
-                <th className="px-6 py-4 text-left">Debater</th>
-                <th className="px-6 py-4 text-center">Outcome</th>
-                <th className="px-6 py-4 text-center">Speaker Score</th>
-                <th className="px-6 py-4 text-right">Promotion</th>
+                <th scope="col" className="px-6 py-4 text-left w-12">#</th>
+                <th scope="col" className="px-6 py-4 text-left">Debater</th>
+                <th scope="col" className="px-6 py-4 text-center">Outcome</th>
+                <th scope="col" className="px-6 py-4 text-center">Speaker Score</th>
+                <th scope="col" className="px-6 py-4 text-right pr-8">Promotion</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filteredPerformers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-muted-foreground italic">
+                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground text-sm italic">
                     No performers found matching the criteria.
                   </td>
                 </tr>
@@ -242,7 +251,7 @@ export default function AdminPromotion() {
                       key={performer.userId} 
                       className={cn(
                         "group transition-colors",
-                        isSelected ? "bg-purple-500/5 hover:bg-purple-500/10" : "hover:bg-muted/20"
+                        isSelected ? "bg-emerald-500/5 hover:bg-emerald-500/10" : "hover:bg-muted/20"
                       )}
                     >
                       <td className="px-6 py-4">
@@ -252,10 +261,10 @@ export default function AdminPromotion() {
                         <div className="flex items-center gap-3">
                           <UserAvatar user={performer} size="sm" />
                           <div>
-                            <p className="font-bold text-sm">
+                            <p className="font-semibold text-sm text-foreground">
                               {performer.firstName} {performer.lastName}
                             </p>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                            <p className="text-[11px] text-muted-foreground">
                               {performer.college || "No College"}
                             </p>
                           </div>
@@ -263,29 +272,30 @@ export default function AdminPromotion() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest",
-                          performer.won ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
+                          "px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border",
+                          performer.won
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            : "bg-destructive/10 text-destructive border-destructive/20"
                         )}>
                           {performer.won ? "Won Match" : "Lost Match"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-yellow-500/10 text-yellow-600 font-bold">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-foreground font-mono font-bold text-sm border border-border">
                           {performer.score.toFixed(1)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right px-10">
+                      <td className="px-6 py-4 text-right pr-8">
                         <button
+                          type="button"
                           onClick={() => handleTogglePromote(performer.userId)}
-                          className={cn(
-                            "relative w-12 h-6 rounded-full transition-colors outline-none",
-                            isSelected ? "bg-purple-500" : "bg-muted"
-                          )}
+                          aria-label={`Toggle promotion for ${performer.firstName} ${performer.lastName}`}
+                          aria-pressed={isSelected}
+                          className="inline-flex items-center justify-center w-11 min-h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          <div className={cn(
-                            "absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm",
-                            isSelected ? "translate-x-6" : "translate-x-0"
-                          )} />
+                          <span className={cn("relative block w-11 h-6 rounded-full transition-colors", isSelected ? "bg-primary" : "bg-muted border border-border")}>
+                            <span className={cn("absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform", isSelected ? "bg-primary-foreground translate-x-5" : "bg-foreground translate-x-0")} />
+                          </span>
                         </button>
                       </td>
                     </tr>
@@ -296,6 +306,6 @@ export default function AdminPromotion() {
           </table>
         </div>
       </div>
-    </div>
+    </Motion.div>
   );
 }
