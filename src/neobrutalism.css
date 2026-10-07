@@ -458,3 +458,135 @@ html .axiom-workspace .axiom-dialog [class~="bg-card"][class*="rounded-"]:not([c
 .neo-progress-fill { border-right: 0; border-radius: 9999px; box-shadow: 0 2px 8px -2px rgb(135 193 77 / .8); }
 .neo-progress-text { border: 0; background: hsl(var(--card)); box-shadow: 0 2px 6px -2px rgb(23 27 22 / .35); border-radius: 9999px; }
 .axiom-entry main, .axiom-public-shell main { overflow-x: clip; }
+
+/* =====================================================================
+ * Neumorphic surface and living background
+ * ===================================================================== */
+.axiom-workspace {
+  --nm-base: #ebeae1;
+  --nm-dark: rgb(139 143 124 / .42);
+  --nm-light: rgb(255 255 255 / .95);
+  --float-shadow: 9px 9px 22px var(--nm-dark), -9px -9px 22px var(--nm-light);
+  --float-shadow-hover: 14px 14px 32px var(--nm-dark), -12px -12px 28px var(--nm-light);
+  --nm-inset: inset 5px 5px 11px var(--nm-dark), inset -5px -5px 11px var(--nm-light);
+}
+.dark .axiom-workspace {
+  --nm-base: #131711;
+  --nm-dark: rgb(0 0 0 / .62);
+  --nm-light: rgb(255 255 255 / .045);
+  --float-shadow: 9px 9px 22px var(--nm-dark), -7px -7px 18px var(--nm-light);
+  --float-shadow-hover: 14px 14px 32px var(--nm-dark), -10px -10px 24px var(--nm-light);
+}
+.axiom-workspace.bg-background { background: var(--nm-base); isolation: isolate; position: relative; }
+
+/* Aurora: oversized gradient layer drifts slowly (transform only), dotted grid fades in behind the content. */
+.axiom-workspace.bg-background::before {
+  content: ""; position: fixed; inset: -25%; z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(38% 34% at 22% 28%, rgb(135 193 77 / .30), transparent 70%),
+    radial-gradient(34% 30% at 82% 18%, rgb(162 207 117 / .26), transparent 72%),
+    radial-gradient(40% 36% at 70% 82%, rgb(108 160 56 / .20), transparent 72%),
+    radial-gradient(30% 28% at 12% 86%, rgb(255 255 255 / .55), transparent 70%);
+  animation: axiom-aurora 36s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.dark .axiom-workspace.bg-background::before {
+  background:
+    radial-gradient(38% 34% at 22% 28%, rgb(135 193 77 / .20), transparent 70%),
+    radial-gradient(34% 30% at 82% 18%, rgb(54 87 28 / .55), transparent 72%),
+    radial-gradient(40% 36% at 70% 82%, rgb(108 160 56 / .16), transparent 72%),
+    radial-gradient(30% 28% at 12% 86%, rgb(135 193 77 / .10), transparent 70%);
+}
+.axiom-workspace.bg-background::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(circle, rgb(23 27 22 / .13) 1.1px, transparent 1.5px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 62% 40%, #000 15%, transparent 78%);
+  mask-image: radial-gradient(ellipse 85% 75% at 62% 40%, #000 15%, transparent 78%);
+  animation: axiom-grid-drift 60s linear infinite;
+}
+.dark .axiom-workspace.bg-background::after { background-image: radial-gradient(circle, rgb(239 238 232 / .10) 1.1px, transparent 1.5px); }
+@keyframes axiom-aurora {
+  0% { transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(3%, 2%, 0) rotate(4deg) scale(1.06); }
+  100% { transform: translate3d(-1%, 4%, 0) rotate(-3deg) scale(1.02); }
+}
+@keyframes axiom-grid-drift { to { background-position: 26px 26px; } }
+@media (prefers-reduced-motion: reduce) { .axiom-workspace.bg-background::before, .axiom-workspace.bg-background::after { animation: none; } }
+
+/* Raised cards use the dual shadow; nested blocks are pressed in. */
+html .axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { background: var(--nm-base); }
+.dark html .axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]),
+html.dark .axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { background: #181d16; }
+html .axiom-workspace div[class*="bg-muted"][class*="rounded-"]:not([class*="animate-pulse"]):not([class*="bg-muted-foreground"]) { background: transparent; box-shadow: var(--nm-inset); }
+html .axiom-workspace [class~="bg-card"] [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { background: transparent; box-shadow: var(--nm-inset); }
+.neo-rail { background: var(--nm-base); box-shadow: var(--float-shadow-hover); }
+html .axiom-workspace .axiom-userchip { background: var(--nm-base); box-shadow: var(--float-shadow); }
+.axiom-workspace .neo-tile { box-shadow: 5px 5px 12px var(--nm-dark), -5px -5px 12px var(--nm-light); }
+.axiom-workspace .neo-tile:hover, .axiom-workspace .neo-tile:focus-visible { box-shadow: 4px 4px 0 var(--neo-shadow); }
+.axiom-workspace .neo-tile[aria-current="page"] { box-shadow: var(--nm-inset), 3px 3px 0 var(--neo-shadow); }
+.neo-progress { box-shadow: var(--nm-inset); background: transparent; }
+.axiom-empty { background: radial-gradient(circle at 50% 0, hsl(var(--primary) / .16), transparent 65%), var(--nm-base); }
+.dark .axiom-empty { background: radial-gradient(circle at 50% 0, hsl(var(--primary) / .12), transparent 65%), #181d16; }
+.axiom-workspace tbody tr:nth-child(even) { background: transparent; box-shadow: inset 0 0 0 999px hsl(var(--muted) / .35); }
+html .axiom-workspace [class*="bg-card/"][class*="rounded-"] { background: transparent; box-shadow: var(--nm-inset); }
+html .axiom-workspace input:not([type="checkbox"]):not([type="radio"]), html .axiom-workspace select, html .axiom-workspace textarea { background: var(--nm-base); box-shadow: var(--nm-inset); }
+html .axiom-workspace :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus { box-shadow: var(--nm-inset), 3px 3px 0 var(--nb-shadow); transform: none; }
+
+/* Page stack: at least viewport tall so the footer banner anchors the bottom */
+.axiom-page-stack { display: flex; flex-direction: column; min-height: calc(100dvh - 11rem); }
+@media (min-width: 768px) { .axiom-page-stack { min-height: calc(100dvh - 7.6rem); } }
+@media (min-width: 1024px) { .axiom-page-stack { min-height: calc(100dvh - 8.1rem); } }
+.axiom-page-body { flex: 0 0 auto; }
+
+.axiom-ws-footer { display: none; margin-top: auto; padding-top: 2rem; }
+@media (min-width: 768px) {
+  .axiom-ws-footer { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 1.5rem; margin-top: auto; position: relative; }
+  .axiom-ws-footer::before { content: ""; position: absolute; inset: 2rem 0 0 0; border-radius: 1.25rem; background: var(--axiom-green-primary); box-shadow: var(--float-shadow); z-index: -1; }
+  .axiom-ws-footer { margin-top: 2rem; }
+  .axiom-page-stack > .axiom-ws-footer { margin-top: auto; }
+}
+.axiom-ws-footer-copy { padding: 1.5rem 0 1.4rem 1.75rem; color: #171b16; }
+.axiom-ws-footer-line { font-family: var(--font-display); font-size: clamp(1.8rem, 3.2vw, 2.6rem); line-height: 1; text-transform: uppercase; margin-block: .35rem .9rem; }
+.axiom-ws-footer-links { display: flex; flex-wrap: wrap; gap: .6rem; }
+.axiom-ws-chip { display: inline-flex; align-items: center; gap: .3rem; padding: .4rem .8rem; font-family: var(--font-heading); font-weight: 700; font-size: .8rem; color: #171b16; background: var(--axiom-paper); border: 2px solid #171b16; border-radius: .5rem; box-shadow: 2px 2px 0 #171b16; transition: transform 120ms var(--axiom-ease), box-shadow 120ms var(--axiom-ease); }
+.axiom-ws-chip:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #171b16; }
+.axiom-ws-chip:active { transform: translate(2px, 2px); box-shadow: 0 0 0 #171b16; }
+.axiom-ws-footer-art { height: 11.5rem; width: auto; margin: -2.2rem 2rem 0 0; object-fit: contain; filter: drop-shadow(0 14px 18px rgb(23 27 22 / .4)); }
+.axiom-ws-footer .axiom-eyebrow { color: #36571c; }
+
+/* Dashboard overview "between rounds" panel gets the same treatment */
+.axiom-workspace aside[aria-label="Quick links"] { background: var(--axiom-green-primary); box-shadow: var(--float-shadow); }
+
+/* Journey checklist */
+.axiom-journey-step { display: flex; align-items: center; gap: .85rem; padding: .7rem .9rem; border-radius: .85rem; background: transparent; box-shadow: var(--nm-inset); transition: transform 140ms var(--axiom-ease), box-shadow 140ms var(--axiom-ease), background-color 140ms; }
+.axiom-journey-step strong { display: block; font-family: var(--font-heading); font-size: .92rem; font-weight: 700; line-height: 1.2; }
+.axiom-journey-step small { display: block; font-size: .75rem; color: hsl(var(--muted-foreground)); margin-top: .1rem; }
+.axiom-journey-mark { display: grid; place-items: center; width: 2rem; height: 2rem; flex-shrink: 0; font-family: var(--font-heading); font-weight: 800; font-size: .85rem; border-radius: .5rem; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.axiom-journey-step.is-next { box-shadow: var(--float-shadow); background: var(--nm-base); }
+.axiom-journey-step.is-next .axiom-journey-mark { background: var(--axiom-green-primary); color: #171b16; border: 2px solid var(--nb-line); box-shadow: 2px 2px 0 var(--nb-shadow); }
+.axiom-journey-step.is-done .axiom-journey-mark { background: var(--axiom-green-light); color: #171b16; }
+.axiom-journey-step.is-done strong { text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: hsl(var(--primary)); opacity: .75; }
+.axiom-journey-step > svg { opacity: .4; transition: transform 160ms var(--axiom-ease), opacity 160ms; }
+.axiom-journey-step:hover { transform: translateY(-2px); }
+.axiom-journey-step:hover > svg { opacity: 1; transform: translateX(3px); }
+
+/* Tournament guide */
+.axiom-guide-card { position: relative; display: grid; gap: .55rem; padding: 1.15rem; border-radius: 1rem; background: var(--nm-base); box-shadow: var(--float-shadow); transition: transform 160ms var(--axiom-ease), box-shadow 160ms var(--axiom-ease); }
+.dark .axiom-guide-card { background: #181d16; }
+.axiom-guide-card:hover { transform: translateY(-3px); box-shadow: var(--float-shadow-hover); }
+.axiom-guide-card h3 { font-family: var(--font-heading); font-weight: 700; font-size: 1rem; }
+.axiom-guide-card p { font-size: .82rem; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.axiom-guide-num { position: absolute; top: .9rem; right: 1rem; font-family: var(--font-display); font-size: 2rem; line-height: 1; color: hsl(var(--primary) / .55); }
+.axiom-guide-card .neo-tile { margin-bottom: .2rem; }
+
+.axiom-check-row { display: flex; align-items: center; gap: .6rem; color: hsl(var(--muted-foreground)); }
+.axiom-check-row span { display: grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: .4rem; font-size: .8rem; font-weight: 800; background: hsl(var(--muted)); }
+.axiom-check-row.is-ok { color: hsl(var(--foreground)); }
+.axiom-check-row.is-ok span { background: var(--axiom-green-primary); color: #171b16; }
+
+/* Inputs: pressed-in neumorphic wells with no outline; the hard edge appears only on focus. */
+html .axiom-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), html .axiom-workspace select, html .axiom-workspace textarea { border: 0; border-radius: .7rem; padding-inline: .9rem; }
+html .axiom-workspace :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus { box-shadow: var(--nm-inset), 0 0 0 3px hsl(var(--primary) / .75); }
+html .axiom-workspace aside[aria-label="Quick links"] { grid-template-columns: 1fr auto; align-items: end; }
+html .axiom-workspace aside[aria-label="Quick links"] .axiom-sculpture { height: 11rem; }

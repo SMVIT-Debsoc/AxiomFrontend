@@ -8,6 +8,7 @@ import {
 } from "@clerk/clerk-react";
 import {SidebarRail, MobileTabs} from "../components/layout/SidebarRail";
 import ThemeToggle from "../components/ui/ThemeToggle";
+import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 
 const isLocalhost = ["localhost", "127.0.0.1"].includes(
@@ -121,7 +122,13 @@ export default function DashboardLayout() {
 
                 {/* Scrollable Main Content */}
                 <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 pb-24 md:pb-8 scroll-smooth min-w-0">
-                    <div key={location.pathname} className="axiom-rise"><Outlet /></div>
+                    <div key={location.pathname} className="axiom-page-stack axiom-rise">
+                        <div className="axiom-page-body"><Outlet /></div>
+                        <WorkspaceFooter
+                            line="Clarity under pressure."
+                            links={[{to: "/dashboard", label: "Overview"}, {to: "/dashboard/events", label: "Tournaments"}, {to: "/dashboard/profile", label: "Profile"}]}
+                        />
+                    </div>
                 </main>
 
                 <MobileTabs items={navItems.slice(0, 5).map((item) => ({...item, label: item.label === "Admin Panel" ? "Admin" : item.label}))} />

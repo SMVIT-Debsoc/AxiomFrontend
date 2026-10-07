@@ -20,6 +20,7 @@ import { cn } from "../lib/utils";
 import { SidebarRail, MobileTabs } from "../components/layout/SidebarRail";
 import NeoIcon from "../components/icons/NeoIcons";
 import ThemeToggle from "../components/ui/ThemeToggle";
+import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import ModalSurface from "../components/ui/ModalSurface";
 
 const sidebarItems = [
@@ -192,7 +193,13 @@ export default function AdminLayout() {
 
                 {/* Scrollable Main Content */}
                 <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 pb-24 md:pb-8 scroll-smooth min-w-0">
-                    <div key={location.pathname} className="axiom-rise"><Outlet /></div>
+                    <div key={location.pathname} className="axiom-page-stack axiom-rise">
+                        <div className="axiom-page-body"><Outlet /></div>
+                        <WorkspaceFooter
+                            line="Run the floor with a steady hand."
+                            links={[{to: "/admin", label: "Dashboard"}, {to: "/admin/events", label: "Events"}, {to: "/admin/rounds", label: "Rounds"}, {to: "/admin/results", label: "Results"}]}
+                        />
+                    </div>
                 </main>
 
                 <MobileTabs

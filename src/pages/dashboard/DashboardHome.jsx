@@ -24,6 +24,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import CountUp from "../../components/ui/CountUp";
 import NeoButton from "../../components/neo/NeoButton";
 import NeoProgressBar from "../../components/neo/NeoProgressBar";
+import JourneyCard from "../../components/dashboard/JourneyCard";
 
 export default function DashboardHome() {
   const {getToken} = useAuth();
@@ -308,17 +309,6 @@ export default function DashboardHome() {
         />
       )}
 
-      <aside className="axiom-fill-tall grid-cols-[1fr_auto] items-end overflow-hidden rounded-xl bg-primary text-[var(--axiom-ink)] axiom-rise" style={{"--i": 5}} aria-label="Quick links">
-        <div className="p-6 self-center">
-          <p className="axiom-eyebrow mb-2">Between rounds</p>
-          <p className="text-4xl leading-none uppercase" style={{fontFamily: "var(--font-display)"}}>Clarity<br />under pressure.</p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link to="/dashboard/events" className="axiom-button axiom-press">Events</Link>
-            <Link to="/dashboard/profile" className="axiom-button axiom-button--outline axiom-press">Profile</Link>
-          </div>
-        </div>
-        <Sculpture figure="lotus-goddess" variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
-      </aside>
       </div>
 
       <div className="space-y-4 min-w-0">
@@ -549,8 +539,30 @@ export default function DashboardHome() {
           />
         )}
       </div>
+
+
+      <JourneyCard
+        steps={[
+          {title: "Complete your profile", hint: "Add your college and mobile number", done: Boolean(userData?.college && userData?.mobile), to: "/dashboard/profile"},
+          {title: "Pick a tournament", hint: "Browse events and enrol", done: Boolean(activeEvent), to: "/dashboard/events"},
+          {title: "Check in to your round", hint: currentRound ? "Check-in is open now" : "Opens when a round starts", done: checkInStatus?.status === "PRESENT", to: "/dashboard"},
+          {title: "Take the floor", hint: "Your first debate", done: (userData?.stats?.totalDebates || 0) > 0, to: "/dashboard/events"},
+        ]}
+      />
       </div>
       </div>
+
+      <aside className="grid grid-cols-[1fr_auto] items-end overflow-hidden rounded-xl bg-primary text-[var(--axiom-ink)] axiom-rise" style={{"--i": 6}} aria-label="Quick links">
+        <div className="p-6 self-center">
+          <p className="axiom-eyebrow mb-2">Between rounds</p>
+          <p className="text-4xl leading-none uppercase" style={{fontFamily: "var(--font-display)"}}>Clarity<br />under pressure.</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link to="/dashboard/events" className="axiom-button axiom-press">Events</Link>
+            <Link to="/dashboard/profile" className="axiom-button axiom-button--outline axiom-press">Profile</Link>
+          </div>
+        </div>
+        <Sculpture figure="lotus-goddess" variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
+      </aside>
     </div>
   );
 }

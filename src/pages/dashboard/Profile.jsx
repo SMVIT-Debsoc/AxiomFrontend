@@ -21,6 +21,7 @@ import {
 } from "../../components/ui/Skeleton";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import NeoCard from "../../components/neo/NeoCard";
+import NeoProgressBar from "../../components/neo/NeoProgressBar";
 
 export default function Profile({isOnboarding = false}) {
   const {user, isLoaded} = useUser();
@@ -208,9 +209,18 @@ export default function Profile({isOnboarding = false}) {
     );
 
   const isProfileComplete = formData.college && formData.mobile;
+  const completeness = (() => {
+    const items = [
+      {label: "First and last name", ok: Boolean(formData.firstName && formData.lastName)},
+      {label: "College or institution", ok: Boolean(formData.college)},
+      {label: "Mobile number", ok: Boolean(formData.mobile)},
+      {label: "Student ID", ok: Boolean(formData.usn)},
+    ];
+    return {items, done: items.filter((item) => item.ok).length, total: items.length};
+  })();
 
   return (
-    <div className={isOnboarding ? "max-w-2xl mx-auto space-y-6" : "max-w-5xl mx-auto space-y-6"}>
+    <div className={isOnboarding ? "max-w-2xl mx-auto space-y-6" : "space-y-4"}>
       {/* Onboarding Header */}
       {isOnboarding && (
         <div className="axiom-page-header mb-6 text-center">
@@ -265,7 +275,7 @@ export default function Profile({isOnboarding = false}) {
         </div>
       )}
 
-      <div className={isOnboarding ? "" : "grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] items-start"}>
+      <div className={isOnboarding ? "" : "grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] items-start"}>
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         {/* Profile Card Header */}
         <div className="p-5 border-b border-border bg-muted/20 flex items-center gap-3.5">
@@ -434,10 +444,11 @@ export default function Profile({isOnboarding = false}) {
       </div>
 
       {!isOnboarding && (
+        <div className="hidden lg:grid gap-5 min-w-0">
         <NeoCard
           role="complementary"
           aria-label="Your portrait"
-          className="hidden lg:block overflow-hidden text-center axiom-rise"
+          className="overflow-hidden text-center axiom-rise"
           style={{"--i": 2}}
         >
           <div className="bg-primary px-6 pt-8 pb-6">
@@ -455,6 +466,23 @@ export default function Profile({isOnboarding = false}) {
             </p>
           </div>
         </NeoCard>
+        <NeoCard className="p-5 axiom-rise" style={{"--i": 3}} aria-label="Profile completeness">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-heading font-bold text-base text-foreground">Profile strength</h2>
+            <span className="text-xs font-heading font-semibold text-muted-foreground">{completeness.done} of {completeness.total}</span>
+          </div>
+          <NeoProgressBar label="Profile strength" value={(completeness.done / completeness.total) * 100} showPercentage={false} className="mb-4" />
+          <ul className="grid gap-2 text-sm font-sans">
+            {completeness.items.map((item) => (
+              <li key={item.label} className={`axiom-check-row ${item.ok ? "is-ok" : ""}`}>
+                <span aria-hidden="true">{item.ok ? "✓" : "○"}</span>
+                {item.label}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-xs text-muted-foreground leading-relaxed">Judges and organisers see your name and college. Your mobile number is used only for round announcements.</p>
+        </NeoCard>
+        </div>
       )}
       </div>
     </div>

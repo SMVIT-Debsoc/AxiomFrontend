@@ -7,6 +7,9 @@ import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
 import {useSocket, SocketEvents} from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
+import NeoButton from "../../components/neo/NeoButton";
+import TournamentGuide from "../../components/dashboard/TournamentGuide";
+import {RefreshCw} from "lucide-react";
 
 export default function DashboardEvents() {
   const [events, setEvents] = useState([]);
@@ -77,7 +80,7 @@ export default function DashboardEvents() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6">
       <div className="axiom-page-header max-w-full">
         <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
           Competitions
@@ -91,10 +94,13 @@ export default function DashboardEvents() {
       </div>
 
       {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl font-sans">
-          <p className="font-semibold text-sm">Failed to load events</p>
-          <p className="text-xs opacity-90 mt-0.5">{error}</p>
-        </div>
+        <EmptyState
+          row
+          icon={RefreshCw}
+          title="Couldn't reach the arena"
+          description={`Tournaments could not be loaded (${error}). Check your connection and try again.`}
+          action={<NeoButton onClick={fetchEvents}>Try again</NeoButton>}
+        />
       )}
 
       {events.length === 0 && !error ? (
@@ -102,7 +108,7 @@ export default function DashboardEvents() {
           title="No events yet"
           description="There are no tournaments available at the moment. Check back soon for announcements."
         />
-      ) : (
+      ) : events.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {events.map((event, i) => (
             <Motion.div
@@ -173,7 +179,9 @@ export default function DashboardEvents() {
             </Motion.div>
           ))}
         </div>
-      )}
+      ) : null}
+
+      <TournamentGuide />
     </div>
   );
 }
