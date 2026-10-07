@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 const temporaryAuthModule = fileURLToPath(new URL('./src/auth/temporary/index.jsx', import.meta.url))
 
-/** Serves api/auth/[...nextauth].js under `vite dev`, as Vercel does in production. */
+/** Serves api/auth.js under `vite dev`, as Vercel does in production. */
 function devAuthRoute(authEnv) {
   return {
     name: 'axiom-temporary-auth-route',
@@ -12,29 +12,8 @@ function devAuthRoute(authEnv) {
       Object.assign(process.env, authEnv)
       server.middlewares.use(async (req, res, next) => {
         if (!req.url.startsWith('/api/auth')) return next()
-        try {
-          const { GET, POST } = await server.ssrLoadModule('/api/auth/[...nextauth].js')
-          const origin = `http://${req.headers.host}`
-          const chunks = []
-          for await (const chunk of req) chunks.push(chunk)
-          const hasBody = !['GET', 'HEAD'].includes(req.method)
-          const response = await (req.method === 'POST' ? POST : GET)(
-            new Request(origin + req.url, {
-              method: req.method,
-              headers: req.headers,
-              body: hasBody ? Buffer.concat(chunks) : undefined,
-            }),
-          )
-          res.statusCode = response.status
-          for (const [name, value] of response.headers) {
-            if (name !== 'set-cookie') res.setHeader(name, value)
-          }
-          res.setHeader('set-cookie', response.headers.getSetCookie())
-          res.end(Buffer.from(await response.arrayBuffer()))
-        } catch (error) {
-          res.statusCode = 500
-          res.end(String(error))
-        }
+        const { default: handler } = await server.ssrLoadModule('/api/auth.js')
+        await handler(req, res)
       })
     },
   }

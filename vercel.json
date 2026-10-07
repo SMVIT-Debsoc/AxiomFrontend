@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth?authpath=:path*"
+    },
+    {
       "source": "/socket.io/(.*)",
       "destination": "https://6bw7gnpzs2.us-east-1.awsapprunner.com/socket.io/$1"
     },
