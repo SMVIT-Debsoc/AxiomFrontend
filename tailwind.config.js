@@ -16,7 +16,18 @@ export default {
             },
         },
         extend: {
+            fontFamily: {
+                display: ["var(--font-display)"],
+                heading: ["var(--font-heading)"],
+                sans: ["var(--font-body)"],
+            },
             colors: {
+                axiom: {
+                    DEFAULT: "var(--axiom-green-primary)",
+                    dark: "var(--axiom-green-dark)",
+                    light: "var(--axiom-green-light)",
+                    ink: "var(--axiom-logo-ink)",
+                },
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",
                 ring: "hsl(var(--ring))",

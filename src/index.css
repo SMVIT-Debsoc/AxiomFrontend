@@ -1,205 +1,292 @@
+@font-face {
+  font-family: 'Bebas Neue';
+  src: url('/fonts/bebas-neue.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'League Spartan';
+  src: url('/fonts/league-spartan.woff') format('woff');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* Dark theme (default) */
-  :root,
+  :root {
+    --axiom-green-primary: #87C14D;
+    --axiom-green-dark: #6CA038;
+    --axiom-green-light: #A2CF75;
+    --axiom-logo-ink: #114111;
+    --axiom-ink: #171b16;
+    --axiom-stone: #efeee8;
+    --axiom-paper: #fafaf6;
+    --font-display: 'Bebas Neue', Impact, sans-serif;
+    --font-heading: 'League Spartan', Arial, sans-serif;
+    --font-body: ui-sans-serif, system-ui, sans-serif;
+    --axiom-container: 1440px;
+    --axiom-gutter: clamp(1.25rem, 4vw, 5rem);
+    --axiom-section: clamp(3.5rem, 8vw, 8rem);
+    --axiom-motion: 240ms;
+    --axiom-ease: cubic-bezier(.22, 1, .36, 1);
+    --radius: .2rem;
+    --primary: 90.51724 48.33333% 52.94118%;
+    --primary-foreground: 108 10% 10%;
+    --axiom-brand-text-light: #36571c;
+    --axiom-error-light: #a51818;
+    --destructive: 0 68% 43%;
+    --destructive-foreground: 0 0% 100%;
+  }
+  :root, .light, .axiom-entry {
+    color-scheme: light;
+    --background: 60 29% 97%;
+    --foreground: 108 10% 10%;
+    --card: 60 20% 99%;
+    --card-foreground: 108 10% 10%;
+    --popover: 60 20% 99%;
+    --popover-foreground: 108 10% 10%;
+    --secondary: 51 18% 91%;
+    --secondary-foreground: 108 10% 10%;
+    --muted: 51 18% 91%;
+    --muted-foreground: 108 5% 36%;
+    --accent: 90 40% 91%;
+    --accent-foreground: 108 10% 10%;
+    --border: 90 8% 80%;
+    --input: 90 8% 74%;
+    --axiom-brand-text: var(--axiom-brand-text-light);
+    --ring: 90 50% 23%;
+    --axiom-error: var(--axiom-error-light);
+    --axiom-status-success: var(--axiom-brand-text-light);
+    --axiom-status-warning: #805006;
+    --axiom-status-danger: #9e1b38;
+    --axiom-status-info: #275b68;
+    --axiom-glass: rgb(250 250 246 / .9);
+  }
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
-
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263.4 70% 50.4%;
-
-    --radius: 0.75rem;
+    color-scheme: dark;
+    --background: 108 10% 8%;
+    --foreground: 60 20% 95%;
+    --card: 108 8% 11%;
+    --card-foreground: 60 20% 95%;
+    --popover: 108 8% 11%;
+    --popover-foreground: 60 20% 95%;
+    --secondary: 108 6% 17%;
+    --secondary-foreground: 60 20% 95%;
+    --muted: 108 6% 17%;
+    --muted-foreground: 60 7% 69%;
+    --accent: 90 16% 19%;
+    --accent-foreground: 60 20% 95%;
+    --border: 90 5% 28%;
+    --input: 90 5% 36%;
+    --axiom-brand-text: var(--axiom-green-light);
+    --ring: 90 48% 64%;
+    --axiom-error: #ff9c9c;
+    --axiom-status-success: var(--axiom-green-light);
+    --axiom-status-warning: #e8c077;
+    --axiom-status-danger: #ffabb8;
+    --axiom-status-info: #b8d6dc;
+    --axiom-glass: rgb(23 27 22 / .9);
   }
-
-  /* Light theme */
-  .light {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 263.4 70% 50.4%;
-
-    --radius: 0.75rem;
-  }
+  * { @apply border-border; }
+  html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
+  body { @apply bg-background text-foreground; margin: 0; font-family: var(--font-body); line-height: 1.6; }
+  html, body { width: 100%; min-height: 100%; -webkit-tap-highlight-color: transparent; }
+  #root { min-height: 100svh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  h1, h2 { font-family: var(--font-display); font-weight: 400; line-height: 1; letter-spacing: -.015em; }
+  h3, h4, h5, h6 { font-family: var(--font-heading); line-height: 1.2; }
+  button, input, textarea, select { font: inherit; }
+  label { display: block; }
+  button, a, input, textarea, select { touch-action: manipulation; }
+  button, [role='button'] { min-height: 44px; }
+  button, a { transition: background-color var(--axiom-motion), border-color var(--axiom-motion), color var(--axiom-motion); }
+  ::selection { background: var(--axiom-green-light); color: var(--axiom-ink); }
+  select option { @apply bg-background text-foreground; }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-
-  /* iOS Safari Fullscreen Optimization */
-  html,
-  body {
-    width: 100%;
-    height: 100%;
-    /* Use full viewport height including areas behind notch/home indicator */
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-    /* Prevent overscroll bounce on iOS */
-    overscroll-behavior-y: none;
-    /* Improve touch responsiveness */
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-  }
-
-  /* Root container should fill the screen AND be scrollable for iOS URL bar */
-  #root {
-    width: 100%;
-    /* Force content to be slightly taller than viewport to enable scroll */
-    /* This is CRITICAL for iOS Safari URL bar to minimize to pill */
-    min-height: calc(100vh + 1px);
-    min-height: calc(-webkit-fill-available + 1px);
-    /* Support for iOS safe areas (notch, home indicator) */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-
-  /* Optimize touch interactions for iOS */
-  button,
-  a,
-  input,
-  textarea,
-  select {
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-  /* Smooth color transitions for theme change - EXCLUDE text color */
-  *,
-  *::before,
-  *::after {
-    transition: background-color 0.4s ease, border-color 0.4s ease,
-      box-shadow 0.3s ease, fill 0.3s ease, stroke 0.3s ease;
-    /* Removed color transition to prevent text disappearing */
-  }
-
-  /* Exclude animations and transforms from theme transition */
-  .no-theme-transition,
-  .no-theme-transition * {
-    transition: none !important;
-  }
+@layer components {
+  .axiom-eyebrow { font-family: var(--font-heading); font-size: .75rem; font-weight: 600; line-height: 1.4; letter-spacing: .14em; text-transform: uppercase; }
+  .axiom-container { width: min(100%, var(--axiom-container)); margin-inline: auto; padding-inline: var(--axiom-gutter); }
+  .axiom-logo { display: block; width: 100%; height: auto; overflow: visible; flex-shrink: 0; }
+  .axiom-logo--nav { width: 112px; }
+  .axiom-logo--footer { width: clamp(160px, 24vw, 340px); }
+  .axiom-logo--hero { width: min(100%, 660px); }
+  .axiom-sculpture { display: block; height: auto; object-fit: contain; pointer-events: none; }
+  .axiom-button { display: inline-flex; min-height: 48px; align-items: center; justify-content: space-between; gap: 1.5rem; padding: .9rem 1.25rem; border: 1px solid transparent; border-radius: var(--radius); font-family: var(--font-heading); font-weight: 600; line-height: 1.2; background: var(--axiom-ink); color: var(--axiom-paper); }
+  .axiom-button:hover { background: #30392c; }
+  .axiom-button--green { background: var(--axiom-green-primary); color: var(--axiom-ink); }
+  .axiom-button--green:hover { background: var(--axiom-green-dark); }
+  .axiom-button--outline { border-color: currentColor; background: transparent; color: inherit; }
+  .axiom-button--outline:hover { background: hsl(var(--muted)); }
+  .axiom-skip { position: fixed; top: .5rem; left: 1rem; z-index: 10000; padding: .75rem 1rem; background: var(--axiom-ink); color: white; transform: translateY(-200%); }
+  .axiom-skip:focus { transform: translateY(0); }
+  .axiom-page-header { border-bottom: 1px solid hsl(var(--border)); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .axiom-page-header h1 { font-size: clamp(2.5rem, 5vw, 4rem); line-height: 1.05; }
+  .axiom-workspace main { scrollbar-gutter: stable; }
+  .axiom-workspace table { font-variant-numeric: tabular-nums; }
+  .axiom-workspace th { font-family: var(--font-heading); font-size: .75rem; letter-spacing: .07em; }
+  .axiom-workspace :is(input, select, textarea) { border-radius: var(--radius); }
+  .axiom-workspace .rounded-2xl, .axiom-workspace .rounded-xl { border-radius: var(--radius); }
+  .axiom-workspace :is(.shadow-lg, .shadow-xl, .shadow-2xl) { box-shadow: none; }
+  .axiom-public-shell { min-height: 100svh; display: flex; flex-direction: column; }
+  .axiom-public-shell > main { flex: 1; padding-top: 100px; }
+  .axiom-navbar { position: fixed; inset: 0 0 auto; z-index: 50; border-bottom: 1px solid hsl(var(--border)); background: var(--axiom-glass); backdrop-filter: blur(12px); }
+  .axiom-navbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 90px; }
+  .axiom-nav-link { padding: .75rem .5rem; font-family: var(--font-heading); font-weight: 500; }
+  .axiom-nav-link[aria-current='page'] { text-decoration: underline; text-underline-offset: .4rem; }
+  .axiom-mobile-menu { padding-block: 1.5rem; border-top: 1px solid hsl(var(--border)); display: grid; gap: .5rem; }
+  .axiom-mobile-menu .axiom-nav-link { font-size: 1.4rem; }
+  .axiom-footer { background: var(--axiom-ink); color: var(--axiom-paper); padding-block: 3rem 1.5rem; }
+  .axiom-footer-top { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 3rem; padding-bottom: 3rem; }
+  .axiom-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+  .axiom-footer a:hover { color: var(--axiom-green-light); }
+  .axiom-footer, .axiom-editorial { --axiom-focus: var(--axiom-green-light); }
+  .axiom-footer-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-top: 1px solid rgb(255 255 255 / .25); padding-top: 1.5rem; font-size: .75rem; color: #c3c8bf; }
+  .axiom-entry { --axiom-focus: var(--axiom-ink); color: var(--axiom-ink); background: var(--axiom-stone); }
+  .axiom-entry-header { display: flex; align-items: center; justify-content: space-between; min-height: 86px; border-bottom: 1px solid rgb(23 27 22 / .3); background: var(--axiom-green-primary); }
+  .axiom-poster { position: relative; overflow: clip; background: var(--axiom-green-primary); min-height: 760px; isolation: isolate; }
+  .axiom-poster-grid { position: relative; display: grid; grid-template-columns: 1.25fr 1fr; gap: 2rem; padding-block: 3rem; min-height: 760px; }
+  .axiom-poster-brand { position: relative; z-index: 2; }
+  .axiom-poster-brand > .axiom-eyebrow { margin-bottom: 2rem; }
+  .axiom-poster-logo { color: var(--axiom-logo-ink); }
+  .axiom-poster-heading { max-width: 650px; margin-top: 1rem; font-size: clamp(4rem, 6.4vw, 7rem); position: relative; z-index: 2; }
+  .axiom-poster-heading span { display: block; margin-left: 12%; }
+  .axiom-poster-note { max-width: 26rem; margin-top: 1.5rem; font-size: .95rem; }
+  .axiom-poster-art { position: absolute; width: auto; height: 720px; right: 13%; top: 2rem; z-index: 1; }
+  .axiom-poster-index { position: absolute; right: 2.5%; top: 3rem; writing-mode: vertical-rl; }
+  .axiom-poster-access { --axiom-brand-text: var(--axiom-brand-text-light); --axiom-error: var(--axiom-error-light); position: relative; align-self: end; justify-self: end; z-index: 3; width: min(100%, 350px); background: rgb(250 250 246 / .93); border: 1px solid rgb(23 27 22 / .35); padding: 1.5rem; }
+  .axiom-poster-access h2 { font-size: 2.5rem; margin-block: .7rem 1.25rem; }
+  .axiom-role-button { width: 100%; display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-top: 1px solid rgb(23 27 22 / .3); text-align: left; }
+  .axiom-role-button:hover { color: var(--axiom-brand-text); }
+  .axiom-role-button > div { flex: 1; }
+  .axiom-role-button strong { display: block; font-family: var(--font-heading); font-size: 1.15rem; }
+  .axiom-role-button small { display: block; font-size: .8rem; color: #50584b; margin-top: .15rem; }
+  .axiom-access-input { width: 100%; padding: .75rem; background: var(--axiom-paper); border: 1px solid #697360; margin-block: .5rem 1rem; color: var(--axiom-ink); }
+  .axiom-entry .axiom-button--outline:hover { background: var(--axiom-green-light); }
+  .axiom-access-back { display: block; min-height: 44px; font-size: .8rem; }
+  .axiom-access-error { font-size: .875rem; color: var(--axiom-error); margin-block: .5rem; }
+  .axiom-access-footer { border-top: 1px solid rgb(23 27 22 / .3); padding-top: 1rem; font-size: .8rem; }
+  .axiom-access-footer a { text-decoration: underline; text-underline-offset: .2rem; }
+  .axiom-principles { padding-block: var(--axiom-section); }
+  .axiom-section-top { display: flex; justify-content: space-between; gap: 2rem; border-top: 1px solid currentColor; padding-top: 1rem; margin-bottom: 3rem; }
+  .axiom-principles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; }
+  .axiom-principles h2 { font-size: clamp(3.5rem, 6vw, 6.5rem); }
+  .axiom-argument { display: grid; grid-template-columns: 3rem 1fr; gap: 1.25rem; padding-block: 1.5rem; border-bottom: 1px solid rgb(23 27 22 / .25); }
+  .axiom-argument > span { font-family: var(--font-display); font-size: 2.25rem; }
+  .axiom-argument h3 { font-size: 1.5rem; margin-bottom: .5rem; }
+  .axiom-argument p { color: hsl(var(--muted-foreground)); max-width: 30rem; }
+  .axiom-editorial { position: relative; background: var(--axiom-ink); color: var(--axiom-paper); overflow: clip; }
+  .axiom-editorial-grid { display: grid; grid-template-columns: 1fr 1fr; min-height: 600px; align-items: center; gap: 4rem; padding-block: var(--axiom-section); }
+  .axiom-editorial-art { position: relative; height: 430px; }
+  .axiom-editorial-art img { width: 220px; position: absolute; right: 18%; top: -70px; }
+  .axiom-editorial h2 { font-size: clamp(3.5rem, 6.5vw, 7rem); }
+  .axiom-editorial p:not(.axiom-eyebrow) { max-width: 30rem; color: #c3c8bf; margin-block: 1.5rem 2rem; }
+  .axiom-colophon { font-size: .7rem; color: #aeb9a4; line-height: 1.7; margin-top: 2rem; }
+  .axiom-colophon a { text-decoration: underline; }
+  .axiom-registration { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; padding-block: var(--axiom-section); }
+  .axiom-registration-intro h1 { font-size: clamp(4rem, 7vw, 7rem); margin-block: 1rem 2rem; }
+  .axiom-registration-art { position: relative; background: var(--axiom-green-primary); height: 380px; overflow: clip; margin-top: 2.5rem; }
+  .axiom-registration-art img { width: 160px; position: absolute; top: 1rem; right: 15%; }
+  .axiom-registration-art > span { position: absolute; left: 1rem; bottom: 1rem; font-family: var(--font-display); font-size: 3.5rem; color: var(--axiom-ink); }
+  .axiom-registration-panel { border-block: 1px solid hsl(var(--border)); padding-block: 2rem; }
+  .axiom-registration-panel .axiom-role-button { border-color: hsl(var(--border)); }
+  .axiom-registration-panel .axiom-role-button small { color: hsl(var(--muted-foreground)); }
+  .axiom-auth-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 3rem; align-items: center; padding-block: 3rem; }
+  .axiom-auth-title h1 { font-size: clamp(4rem, 7vw, 7rem); margin-block: 1rem; }
+  .axiom-auth-card { display: flex; justify-content: center; min-width: 0; }
+  .axiom-loading { position: fixed; inset: 0; z-index: 9999; display: grid; place-content: center; gap: 2rem; padding: 2rem; background: var(--axiom-green-primary); color: var(--axiom-logo-ink); pointer-events: none; animation: axiom-intro-out .25s ease .5s forwards; }
+  .axiom-loading .axiom-logo { width: min(65vw, 360px); }
+  .axiom-loading p { text-align: center; }
 }
 
-/* Custom select dropdown styling */
-select option {
-  @apply bg-background text-foreground py-2;
+@layer utilities {
+  .text-primary { color: var(--axiom-brand-text); }
+  .bg-primary .text-primary { color: var(--axiom-ink); }
 }
+@keyframes axiom-intro-out { to { opacity: 0; visibility: hidden; } }
+@keyframes axiom-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.axiom-poster-brand, .axiom-poster-access { animation: axiom-enter .6s var(--axiom-ease) both; }
+.axiom-poster-access { animation-delay: .12s; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+.cl-userButtonPopoverCard { border-radius: var(--radius); }
+:is(a, button, input, textarea, select, [tabindex]):focus-visible { outline: 3px solid var(--axiom-focus, var(--axiom-brand-text)); outline-offset: 4px; }
+:is(input, textarea, select):focus-visible { outline-offset: 2px; }
+.bg-axiom { --axiom-focus: var(--axiom-ink); }
+.axiom-workspace :is(.text-emerald-500, .text-emerald-600, [class~="dark:text-emerald-400"]) { color: var(--axiom-status-success); }
+.axiom-workspace :is(.text-amber-500, .text-amber-600, .text-amber-700, [class~="dark:text-amber-400"], [class~="text-amber-700/90"]) { color: var(--axiom-status-warning); }
+.axiom-workspace :is(.text-rose-500, .text-rose-600, [class~="dark:text-rose-400"]) { color: var(--axiom-status-danger); }
+.axiom-workspace :is(.text-blue-500, .text-blue-600, [class~="dark:text-blue-400"]) { color: var(--axiom-status-info); }
+.axiom-workspace .text-destructive { color: var(--axiom-status-danger); }
+.axiom-workspace .bg-emerald-600 { background-color: var(--axiom-logo-ink); }
+.axiom-dialog:not([open]) { display: none; }
+.axiom-workspace .hover\:bg-emerald-700:hover { background-color: var(--axiom-brand-text-light); }
+/* Fixed dialogs must not inherit a parent space-y utility's sibling margins. */
+.axiom-dialog { max-width: 100vw; max-height: 100dvh; margin: 0 !important; border: 0; color: inherit; }
+.axiom-dialog:not(.axiom-dialog--drawer) { width: 100%; height: 100%; }
+.axiom-dialog:not(.axiom-dialog--drawer) > * { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+.axiom-dialog--drawer { width: min(280px, 100vw); height: 100dvh; padding: 0; }
+.axiom-dialog::backdrop { background: rgb(0 0 0 / .6); }
+.axiom-workspace :is([type="checkbox"], [type="radio"], [type="range"]) { accent-color: hsl(var(--ring)); }
 
-.dark select option {
-  background-color: #1a1a1b;
-  color: #fafafa;
+@media (min-width: 1800px) {
+  .axiom-poster-art { right: calc((100% - var(--axiom-container)) / 2 + 180px); }
 }
-
-.light select option {
-  background-color: #ffffff;
-  color: #0a0a0b;
+@media (max-width: 1023px) {
+  .axiom-poster-grid { min-height: 780px; gap: 1rem; grid-template-columns: 1.1fr 1fr; }
+  .axiom-poster-art { right: 14%; height: 670px; }
+  .axiom-poster-heading { font-size: clamp(3.8rem, 8vw, 5.5rem); }
+  .axiom-poster-access { width: 310px; }
+  .axiom-poster-note { max-width: 21rem; }
+  .axiom-registration { gap: 2.5rem; }
 }
-
-/* Clerk UserButton popup smooth animation */
-.cl-userButtonPopoverCard {
-  animation: clerkPopoverIn 0.2s ease-out !important;
-  transform-origin: top right;
+@media (max-width: 767px) {
+  .axiom-navbar-inner { min-height: 80px; }
+  .axiom-public-shell > main { padding-top: 80px; }
+  .axiom-footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .axiom-footer-top > :first-child { grid-column: 1 / -1; }
+  .axiom-principles-grid, .axiom-editorial-grid, .axiom-registration, .axiom-auth-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .axiom-editorial-art { height: 300px; order: 2; }
+  .axiom-editorial-art img { width: 170px; right: 8%; top: -3rem; }
+  .axiom-auth-title h1 { font-size: 4rem; }
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) { min-height: 44px; font-size: 1rem; }
 }
-
-@keyframes clerkPopoverIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+@media (max-width: 639px) {
+  .axiom-entry-header { min-height: 72px; }
+  .axiom-entry-header .axiom-eyebrow { font-size: .65rem; letter-spacing: .08em; }
+  .axiom-entry-header .axiom-button { font-size: .8rem; padding: .7rem; }
+  .axiom-poster-grid { display: flex; flex-direction: column; padding-top: 2rem; padding-bottom: 1.5rem; min-height: auto; gap: 2rem; }
+  .axiom-poster-brand { padding-bottom: 2rem; min-height: 590px; }
+  .axiom-poster-brand > .axiom-eyebrow { margin-bottom: 1rem; max-width: 15rem; }
+  .axiom-poster-logo { width: 90%; }
+  .axiom-poster-heading { margin-top: .5rem; font-size: clamp(2.75rem, 12vw, 4.5rem); max-width: 64%; }
+  .axiom-poster-heading span { margin-left: 0; }
+  .axiom-poster-note { max-width: 55%; font-size: .8rem; margin-top: 1.5rem; }
+  .axiom-poster-art { width: 145px; height: auto; right: -5px; top: 280px; }
+  .axiom-poster-index { top: 2rem; right: .5rem; font-size: .6rem; }
+  .axiom-poster-access { width: 100%; align-self: stretch; backdrop-filter: none; padding: 1.25rem; }
+  .axiom-poster-access h2 { font-size: 2rem; }
+  .axiom-section-top { margin-bottom: 2rem; }
+  .axiom-section-top > :last-child { text-align: right; }
+  .axiom-principles h2 { font-size: 3.5rem; }
+  .axiom-registration { padding-top: 2rem; }
+  .axiom-registration-art { height: 270px; }
+  .axiom-registration-art img { width: 130px; }
+  .axiom-registration-art > span { font-size: 2.75rem; }
+  .axiom-auth-card .cl-rootBox, .axiom-auth-card .cl-cardBox { max-width: 100%; width: 100%; }
 }
-
-/* Adjust Clerk UserButton popup position on mobile */
-@media (max-width: 768px) {
-  .cl-userButtonPopoverCard {
-    left: 50% !important;
-    right: auto !important;
-    transform: translateX(-50%);
-    transform-origin: top center;
-    animation: clerkPopoverInMobile 0.2s ease-out !important;
-  }
-
-  @keyframes clerkPopoverInMobile {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) scale(0.95) translateY(-8px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(-50%) scale(1) translateY(0);
-    }
-  }
+@media (max-width: 359px) {
+  .axiom-poster-brand { min-height: 560px; }
+  .axiom-poster-heading { font-size: 2.65rem; }
+  .axiom-poster-art { width: 120px; top: 250px; }
+  .axiom-poster-note { max-width: 58%; }
 }
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for IE, Edge and Firefox */
-.no-scrollbar {
-  -ms-overflow-style: none;
-  /* IE and Edge */
-  scrollbar-width: none;
-  /* Firefox */
+@media (prefers-reduced-motion: reduce) {
+  html, .scroll-smooth { scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .axiom-loading { display: none; }
 }

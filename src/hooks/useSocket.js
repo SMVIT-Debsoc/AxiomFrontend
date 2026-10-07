@@ -1,4 +1,4 @@
-import {useEffect, useCallback, useRef, useState} from "react";
+import {useEffect, useCallback, useRef, useSyncExternalStore} from "react";
 import socketService, {SocketEvents} from "../services/socket";
 
 // Re-export SocketEvents for convenience
@@ -72,12 +72,6 @@ export function useSocket({eventId, roundId, autoConnect = true} = {}) {
     socketService.off(event, callback);
   }, []);
 
-  /**
-   * Check if socket is connected
-   */
-  const isConnected = useCallback(() => {
-    return socketService.isConnected();
-  }, []);
 
   const joinEvent = useCallback((id) => socketService.joinEvent(id), []);
   const leaveEvent = useCallback((id) => socketService.leaveEvent(id), []);
@@ -97,38 +91,22 @@ export function useSocket({eventId, roundId, autoConnect = true} = {}) {
   };
 }
 
+function subscribeToStatus(onChange) {
+  const unsubConnect = socketService.on(SocketEvents.CONNECTION, onChange);
+  const unsubDisconnect = socketService.on(SocketEvents.DISCONNECT, onChange);
+  return () => { unsubConnect(); unsubDisconnect(); };
+}
+
 /**
- * Hook to get the current connection status of the global socket
+ * Subscribe to the socket's external connection state, including changes
+ * between render and subscription, without a synchronous effect update.
  */
 export function useSocketStatus() {
-  const [connected, setConnected] = useState(socketService.isConnected());
-
-  useEffect(() => {
-    const handleConnect = () => setConnected(true);
-    const handleDisconnect = () => setConnected(false);
-
-    // Initial check
-    setConnected(socketService.isConnected());
-
-    const unsubConnect = socketService.on(SocketEvents.CONNECTION, handleConnect);
-    const unsubDisconnect = socketService.on(SocketEvents.DISCONNECT, handleDisconnect);
-    
-    // Also listen for reconnect
-    const socket = socketService.getSocket();
-    if (socket) {
-        socket.on("reconnect", handleConnect);
-    }
-
-    return () => {
-      unsubConnect();
-      unsubDisconnect();
-      if (socket) {
-          socket.off("reconnect", handleConnect);
-      }
-    };
-  }, []);
-
-  return connected;
+  return useSyncExternalStore(
+    subscribeToStatus,
+    () => socketService.isConnected(),
+    () => false,
+  );
 }
 
 /**

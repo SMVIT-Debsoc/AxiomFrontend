@@ -1,11 +1,10 @@
-import {useUser, useAuth, useClerk} from "@clerk/clerk-react";
+import {useUser, useAuth} from "@clerk/clerk-react";
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 
 function ProtectedPage() {
     const {user} = useUser();
     const {getToken, signOut} = useAuth();
-    const {signOut: clerkSignOut} = useClerk();
     const navigate = useNavigate();
     const [backendUserData, setBackendUserData] = useState(null);
     const [loading, setLoading] = useState(false);

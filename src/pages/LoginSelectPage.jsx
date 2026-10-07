@@ -1,26 +1,21 @@
 import {useState} from "react";
-import {useNavigate} from "react-router-dom";
-import {motion} from "framer-motion";
-import {
-    User,
-    Shield,
-    ArrowRight,
-    Key,
-    AlertCircle,
-    Loader2,
-} from "lucide-react";
+import {Link, useNavigate} from "react-router-dom";
+import {ArrowUpRight} from "lucide-react";
 import {AdminApi} from "../services/api";
+import Axiom40Logo from "../components/brand/Axiom40Logo";
+import Sculpture from "../components/brand/Sculpture";
+import RoleAccess from "../components/brand/RoleAccess";
+import DiscourseSections from "../components/brand/DiscourseSections";
+import Footer from "../components/Footer";
 
 export default function LoginSelectPage() {
     const navigate = useNavigate();
-    const [selectedRole, setSelectedRole] = useState(null);
     const [showSecretKeyInput, setShowSecretKeyInput] = useState(false);
     const [secretKey, setSecretKey] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
     const handleRoleSelect = (role) => {
-        setSelectedRole(role);
         setError("");
 
         if (role === "admin") {
@@ -52,7 +47,7 @@ export default function LoginSelectPage() {
             } else {
                 setError("Invalid admin secret key. Access denied.");
             }
-        } catch (err) {
+        } catch {
             setError("Invalid admin secret key. Access denied.");
         } finally {
             setLoading(false);
@@ -60,156 +55,40 @@ export default function LoginSelectPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 bg-background text-foreground">
-            {/* Background effects */}
-            <div className="fixed inset-0 z-[-1]">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-background to-background"></div>
-                <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
-            </div>
-
-            <motion.div
-                initial={{opacity: 0, y: 20}}
-                animate={{opacity: 1, y: 0}}
-                className="w-full max-w-md"
-            >
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-                    <p className="text-muted-foreground">
-                        {showSecretKeyInput
-                            ? "Enter your admin secret key to continue"
-                            : "Select your role to sign in"}
-                    </p>
-                </div>
-
-                {!showSecretKeyInput ? (
-                    <div className="space-y-4">
-                        {/* User Role Card */}
-                        <motion.button
-                            whileHover={{scale: 1.02}}
-                            whileTap={{scale: 0.98}}
-                            onClick={() => handleRoleSelect("user")}
-                            className={`w-full p-6 rounded-2xl border-2 transition-all flex items-center gap-4 ${
-                                selectedRole === "user"
-                                    ? "border-primary bg-primary/10"
-                                    : "border-border hover:border-primary/50 bg-card"
-                            }`}
-                        >
-                            <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                                <User className="w-7 h-7 text-blue-500" />
-                            </div>
-                            <div className="text-left flex-1">
-                                <h3 className="text-lg font-bold">
-                                    Sign in as Debater
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Access your debates and stats
-                                </p>
-                            </div>
-                            <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                        </motion.button>
-
-                        {/* Admin Role Card */}
-                        <motion.button
-                            whileHover={{scale: 1.02}}
-                            whileTap={{scale: 0.98}}
-                            onClick={() => handleRoleSelect("admin")}
-                            className={`w-full p-6 rounded-2xl border-2 transition-all flex items-center gap-4 ${
-                                selectedRole === "admin"
-                                    ? "border-primary bg-primary/10"
-                                    : "border-border hover:border-primary/50 bg-card"
-                            }`}
-                        >
-                            <div className="w-14 h-14 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                                <Shield className="w-7 h-7 text-purple-500" />
-                            </div>
-                            <div className="text-left flex-1">
-                                <h3 className="text-lg font-bold">
-                                    Sign in as Admin
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Manage the platform
-                                </p>
-                            </div>
-                            <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                        </motion.button>
-                    </div>
-                ) : (
-                    <motion.div
-                        initial={{opacity: 0, x: 20}}
-                        animate={{opacity: 1, x: 0}}
-                        className="space-y-6"
-                    >
-                        <div className="bg-card border border-border rounded-2xl p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                    <Key className="w-5 h-5 text-purple-500" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold">Admin Access</h3>
-                                    <p className="text-xs text-muted-foreground">
-                                        Enter secret key to continue
-                                    </p>
-                                </div>
-                            </div>
-
-                            {error && (
-                                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-500 text-sm">
-                                    <AlertCircle className="w-4 h-4" />
-                                    {error}
-                                </div>
-                            )}
-
-                            <input
-                                type="password"
-                                value={secretKey}
-                                onChange={(e) => setSecretKey(e.target.value)}
-                                placeholder="Enter admin secret key"
-                                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                onKeyDown={(e) =>
-                                    e.key === "Enter" && handleAdminContinue()
-                                }
-                            />
-
-                            <button
-                                onClick={handleAdminContinue}
-                                disabled={loading || !secretKey.trim()}
-                                className="w-full mt-4 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Validating...
-                                    </>
-                                ) : (
-                                    "Continue to Sign In"
-                                )}
-                            </button>
+        <div className="axiom-entry">
+            <a className="axiom-skip" href="#access">Skip to sign in</a>
+            <header className="axiom-entry-header axiom-container">
+                <p className="axiom-eyebrow">SMVIT Debsoc<br />Competitive debate / Edition 04</p>
+                <Link to="/about" className="axiom-button axiom-button--outline">Discover AXIOM<ArrowUpRight size={16} aria-hidden="true" /></Link>
+            </header>
+            <main id="main-content">
+                <section className="axiom-poster" aria-labelledby="entry-title">
+                    <div className="axiom-poster-grid axiom-container">
+                        <div className="axiom-poster-brand">
+                            <p className="axiom-eyebrow">The art of articulation.</p>
+                            <Axiom40Logo variant="hero" className="axiom-poster-logo" />
+                            <h1 id="entry-title" className="axiom-poster-heading">Ancient thought.<span>New <br className="sm:hidden" />arguments.</span></h1>
+                            <p className="axiom-poster-note">A new expression of competitive debate.<br />Rooted in reason. Made for the next round.</p>
                         </div>
-
-                        <button
-                            onClick={() => {
-                                setShowSecretKeyInput(false);
-                                setSelectedRole(null);
-                                setSecretKey("");
-                                setError("");
-                            }}
-                            className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            ← Back to role selection
-                        </button>
-                    </motion.div>
-                )}
-
-                <p className="text-center text-sm text-muted-foreground mt-6">
-                    Don't have an account?{" "}
-                    <button
-                        onClick={() => navigate("/get-started")}
-                        className="text-primary hover:underline"
-                    >
-                        Get started
-                    </button>
-                </p>
-            </motion.div>
+                        <p className="axiom-poster-index axiom-eyebrow">Articulation / Reason / Composure</p>
+                        <div id="access" className="axiom-poster-access">
+                            <RoleAccess
+                                showSecretKeyInput={showSecretKeyInput}
+                                secretKey={secretKey}
+                                setSecretKey={setSecretKey}
+                                error={error}
+                                loading={loading}
+                                onRoleSelect={handleRoleSelect}
+                                onAdminContinue={handleAdminContinue}
+                                onBack={() => { setShowSecretKeyInput(false); setSecretKey(""); setError(""); }}
+                            />
+                        </div>
+                    </div>
+                    <Sculpture eager className="axiom-poster-art" />
+                </section>
+                <DiscourseSections />
+            </main>
+            <Footer />
         </div>
     );
 }

@@ -1,47 +1,17 @@
-import { Github, Twitter, Linkedin } from 'lucide-react';
+import {Link} from "react-router-dom";
+import {ArrowUpRight} from "lucide-react";
+import Axiom40Logo from "./brand/Axiom40Logo";
 
 export default function Footer() {
     return (
-        <footer className="border-t border-border bg-background py-12 mt-20">
-            <div className="container mx-auto px-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                    <div className="md:col-span-2">
-                        <h3 className="text-xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">
-                            Axiom
-                        </h3>
-                        <p className="text-muted-foreground max-w-sm">
-                            The next-generation debating tournament management system. Built for speed, fairness, and beautiful experiences.
-                        </p>
-                    </div>
-
-                    <div>
-                        <h4 className="font-semibold mb-4">Product</h4>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li><a href="#" className="hover:text-primary transition-colors">Features</a></li>
-                            <li><a href="#" className="hover:text-primary transition-colors">Pricing</a></li>
-                            <li><a href="#" className="hover:text-primary transition-colors">API</a></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 className="font-semibold mb-4">Connect</h4>
-                        <div className="flex gap-4">
-                            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                                <Github className="w-5 h-5" />
-                            </a>
-                            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                                <Twitter className="w-5 h-5" />
-                            </a>
-                            <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                                <Linkedin className="w-5 h-5" />
-                            </a>
-                        </div>
-                    </div>
+        <footer className="axiom-footer">
+            <div className="axiom-container">
+                <div className="axiom-footer-top">
+                    <div><Link to="/" aria-label="AXIOM 4.0 home"><Axiom40Logo variant="footer" className="text-axiom-light" /></Link><p className="axiom-eyebrow mt-5">SMVIT Debsoc / Edition 04</p><p className="mt-4 max-w-sm text-sm">The art of articulation.<br />A considered arena for competitive debate.</p></div>
+                    <div><h2 className="axiom-eyebrow mb-4">The arena</h2><ul><li><Link to="/about">About AXIOM</Link></li><li><Link to="/dashboard/events">Tournaments</Link></li><li><Link to="/get-started">Get started</Link></li><li><Link to="/login-select">Sign in</Link></li></ul></div>
+                    <div><h2 className="axiom-eyebrow mb-4">Colophon</h2><p className="text-sm">Indian goddess sculpture:<br />Mother Goddess, c. 600.<br />The Cleveland Museum of Art.<br />CC0 Open Access.</p><a className="text-sm gap-2" href="https://www.clevelandart.org/art/1970.12" target="_blank" rel="noreferrer">View the museum record<ArrowUpRight size={14} aria-hidden="true" /></a><a className="text-sm gap-2" href="https://github.com/SMVIT-Debsoc/AxiomFrontend" target="_blank" rel="noreferrer">Source repository<ArrowUpRight size={14} aria-hidden="true" /></a></div>
                 </div>
-
-                <div className="border-t border-border mt-12 pt-8 text-center text-sm text-muted-foreground">
-                    © {new Date().getFullYear()} Axiom. All rights reserved.
-                </div>
+                <div className="axiom-footer-bottom"><p>© {new Date().getFullYear()} AXIOM 4.0. All rights reserved.</p><p>Powered by KlaerAI · Articulation / Reason / Composure</p></div>
             </div>
         </footer>
     );

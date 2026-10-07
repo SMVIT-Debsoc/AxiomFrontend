@@ -1,12 +1,13 @@
-import {motion} from "framer-motion";
+import {motion as Motion} from "framer-motion";
 
 // Base Skeleton Component
 export function Skeleton({className = "", animate = true}) {
   return (
     <div
-      className={`bg-gradient-to-r from-muted via-muted/50 to-muted rounded-lg ${
+      className={`bg-muted rounded ${
         animate ? "animate-pulse" : ""
       } ${className}`}
+      aria-hidden="true"
     />
   );
 }
@@ -34,54 +35,46 @@ export function CardSkeleton() {
 // Event Card Skeleton
 export function EventCardSkeleton() {
   return (
-    <motion.div
-      initial={{opacity: 0, y: 20}}
-      animate={{opacity: 1, y: 0}}
-      className="bg-card border border-border rounded-2xl p-6 space-y-4"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 space-y-3">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-4 w-full" />
-        </div>
-        <Skeleton className="h-10 w-24 rounded-xl" />
+    <Motion.div initial={{opacity: 0, y: 20}}
+    animate={{opacity: 1, y: 0}}
+    className="bg-card border border-border rounded-2xl p-6 space-y-4"><div className="flex items-start justify-between">
+      <div className="flex-1 space-y-3">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-4 w-full" />
       </div>
-      <div className="flex gap-2">
-        <Skeleton className="h-6 w-20" />
-        <Skeleton className="h-6 w-24" />
-      </div>
-    </motion.div>
+      <Skeleton className="h-10 w-24 rounded-xl" />
+    </div>
+    <div className="flex gap-2">
+      <Skeleton className="h-6 w-20" />
+      <Skeleton className="h-6 w-24" />
+    </div></Motion.div>
   );
 }
 
 // Round Card Skeleton
 export function RoundCardSkeleton() {
   return (
-    <motion.div
-      initial={{opacity: 0, y: 20}}
-      animate={{opacity: 1, y: 0}}
-      className="bg-card border border-border rounded-xl p-6"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3 flex-1">
-          <Skeleton className="w-10 h-10 rounded-lg" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-3 w-32" />
-          </div>
+    <Motion.div initial={{opacity: 0, y: 20}}
+    animate={{opacity: 1, y: 0}}
+    className="bg-card border border-border rounded-xl p-6"><div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-3 flex-1">
+        <Skeleton className="w-10 h-10 rounded-lg" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-32" />
         </div>
-        <Skeleton className="h-6 w-20 rounded" />
       </div>
-      <Skeleton className="h-16 w-full rounded-lg" />
-    </motion.div>
+      <Skeleton className="h-6 w-20 rounded" />
+    </div>
+    <Skeleton className="h-16 w-full rounded-lg" /></Motion.div>
   );
 }
 
 // Profile Header Skeleton
 export function ProfileHeaderSkeleton() {
   return (
-    <div className="bg-gradient-to-br from-primary/20 to-purple-600/10 rounded-3xl p-8">
+    <div className="bg-primary/10 border border-primary/30 rounded p-8">
       <div className="flex items-center gap-4 mb-6">
         <Skeleton className="w-16 h-16 rounded-full" />
         <div className="flex-1 space-y-2">
@@ -112,20 +105,16 @@ export function ProfileHeaderSkeleton() {
 // List Item Skeleton
 export function ListItemSkeleton() {
   return (
-    <motion.div
-      initial={{opacity: 0, x: -20}}
-      animate={{opacity: 1, x: 0}}
-      className="bg-card border border-border rounded-xl p-4"
-    >
-      <div className="flex items-center gap-4">
-        <Skeleton className="w-12 h-12 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-3 w-1/2" />
-        </div>
-        <Skeleton className="h-8 w-20 rounded-full" />
+    <Motion.div initial={{opacity: 0, x: -20}}
+    animate={{opacity: 1, x: 0}}
+    className="bg-card border border-border rounded-xl p-4"><div className="flex items-center gap-4">
+      <Skeleton className="w-12 h-12 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
       </div>
-    </motion.div>
+      <Skeleton className="h-8 w-20 rounded-full" />
+    </div></Motion.div>
   );
 }
 
@@ -223,7 +212,7 @@ export function RoundDetailsSkeleton() {
       {/* Header */}
       <div>
         <Skeleton className="h-4 w-32 mb-4" />
-        <div className="bg-gradient-to-br from-primary to-purple-600 rounded-2xl p-6">
+        <div className="bg-primary/15 border border-primary/30 rounded p-6">
           <Skeleton className="h-6 w-24 mb-2 bg-white/20" />
           <Skeleton className="h-8 w-48 mb-1 bg-white/30" />
           <Skeleton className="h-4 w-32 bg-white/20" />
@@ -251,26 +240,22 @@ export function LeaderboardSkeleton() {
   return (
     <div className="space-y-4">
       {[1, 2, 3, 4, 5].map((i) => (
-        <motion.div
-          key={i}
-          initial={{opacity: 0, y: 20}}
-          animate={{opacity: 1, y: 0}}
-          transition={{delay: i * 0.1}}
-          className="bg-card border border-border rounded-xl p-4"
-        >
-          <div className="flex items-center gap-4">
-            <Skeleton className="w-10 h-10 rounded-full" />
-            <Skeleton className="w-12 h-12 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-3 w-32" />
-            </div>
-            <div className="text-right space-y-2">
-              <Skeleton className="h-6 w-16" />
-              <Skeleton className="h-3 w-12" />
-            </div>
+        <Motion.div key={i}
+        initial={{opacity: 0, y: 20}}
+        animate={{opacity: 1, y: 0}}
+        transition={{delay: i * 0.1}}
+        className="bg-card border border-border rounded-xl p-4"><div className="flex items-center gap-4">
+          <Skeleton className="w-10 h-10 rounded-full" />
+          <Skeleton className="w-12 h-12 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-32" />
           </div>
-        </motion.div>
+          <div className="text-right space-y-2">
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-3 w-12" />
+          </div>
+        </div></Motion.div>
       ))}
     </div>
   );

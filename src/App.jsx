@@ -1,6 +1,7 @@
 import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import Placeholder from "./pages/Placeholder";
+import Home from "./pages/Home";
 import DashboardLayout from "./layouts/DashboardLayout";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import DashboardEvents from "./pages/dashboard/DashboardEvents";
@@ -70,7 +71,7 @@ function App() {
                         <Route element={<MainLayout />}>
                             <Route
                                 path="/about"
-                                element={<Placeholder title="About Axiom" />}
+                                element={<Home />}
                             />
 
                             {/* Role selection routes */}

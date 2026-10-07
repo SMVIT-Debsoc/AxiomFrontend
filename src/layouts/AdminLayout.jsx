@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {useEffect, useState} from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import {
     LayoutDashboard,
@@ -13,9 +13,12 @@ import {
     X,
 } from "lucide-react";
 import { cn } from "../lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import { useSocketStatus } from "../hooks/useSocket";
+import Axiom40Logo from "../components/brand/Axiom40Logo";
+import Sculpture from "../components/brand/Sculpture";
+import ModalSurface from "../components/ui/ModalSurface";
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -36,111 +39,123 @@ export default function AdminLayout() {
     const { user } = useUser();
     const socketConnected = useSocketStatus();
 
+    useEffect(() => {
+        const mobile = window.matchMedia("(max-width: 767px)");
+        const dismissOnDesktop = (event) => {
+            if (!event.matches) setMobileMenuOpen(false);
+        };
+        mobile.addEventListener("change", dismissOnDesktop);
+        return () => mobile.removeEventListener("change", dismissOnDesktop);
+    }, []);
+
     return (
-        <div className="min-h-screen bg-background text-foreground flex">
-            {/* Mobile Sidebar Overlay */}
+        <div className="min-h-screen bg-background text-foreground flex axiom-workspace">
+            {/* Mobile Sidebar Overlay & Drawer */}
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-                        />
-                        <motion.aside
+                        <ModalSurface drawer onDismiss={() => setMobileMenuOpen(false)} initialFocus='button[aria-label="Close navigation menu"]' id="admin-mobile-navigation"
+                            aria-label="Admin Navigation Menu"
                             initial={{ x: -280 }}
                             animate={{ x: 0 }}
                             exit={{ x: -280 }}
                             transition={{
-                                type: "spring",
-                                damping: 25,
-                                stiffness: 200,
+                                type: "tween",
+                                duration: .24,
+                                ease: "easeOut",
                             }}
-                            className="fixed left-0 top-0 z-50 h-screen w-[280px] border-r border-border bg-card flex flex-col md:hidden"
+                            className="fixed left-0 top-0 z-50 h-screen w-[280px] border-r border-border bg-card/95 backdrop-blur-xl flex flex-col"
                         >
-                            <div className="h-16 flex items-center justify-between px-6 border-b border-border/50">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                                        <Shield className="w-5 h-5 text-purple-500" />
-                                    </div>
-                                    <div>
-                                        <span className="font-bold text-lg">
-                                            Axiom
-                                        </span>
-                                        <span className="text-xs text-purple-500 ml-1">
-                                            Admin
-                                        </span>
-                                    </div>
-                                </div>
+                            <div className="h-20 flex items-center justify-between px-5 border-b border-border/60">
+                                <Link
+                                    to="/admin"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md p-1"
+                                    aria-label="AXIOM 4.0 Admin Home"
+                                >
+                                    <Axiom40Logo variant="nav" className="w-28 text-primary" />
+                                    <span className="axiom-eyebrow text-[10px] tracking-wider uppercase font-heading font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                        Admin
+                                    </span>
+                                </Link>
                                 <button
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="p-2 hover:bg-muted rounded-lg"
+                                    className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label="Close navigation menu"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-5 h-5" aria-hidden="true" />
                                 </button>
                             </div>
-                            <div className="flex-1 py-6 flex flex-col gap-2 px-3 overflow-y-auto">
+                            <div className="flex-1 py-4 flex flex-col gap-1.5 px-3 overflow-y-auto no-scrollbar">
                                 {sidebarItems.map((item) => {
                                     const isActive =
                                         location.pathname === item.path ||
                                         (item.path !== "/admin" &&
-                                            location.pathname.startsWith(
-                                                item.path
-                                            ));
+                                            location.pathname.startsWith(item.path));
                                     const Icon = item.icon;
 
                                     return (
                                         <Link
                                             key={item.path}
                                             to={item.path}
-                                            onClick={() =>
-                                                setMobileMenuOpen(false)
-                                            }
+                                            onClick={() => setMobileMenuOpen(false)}
                                             className={cn(
-                                                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                                                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all font-sans text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                                                 isActive
-                                                    ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
-                                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                    ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                                                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground font-medium"
                                             )}
                                         >
-                                            <Icon className="w-5 h-5" />
-                                            <span className="font-medium">
-                                                {item.label}
-                                            </span>
+                                            <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                                            <span>{item.label}</span>
                                         </Link>
                                     );
                                 })}
                             </div>
-                        </motion.aside>
+
+                            <div className="p-4 border-t border-border/60">
+                                <div className="p-3 rounded-lg border border-border/60 bg-muted/20 relative overflow-hidden select-none">
+                                    <span className="axiom-eyebrow text-[10px] tracking-wider uppercase text-primary font-heading font-semibold block mb-0.5">
+                                        AXIOM 4.0
+                                    </span>
+                                    <p className="text-xs text-muted-foreground font-sans leading-tight">
+                                        Admin Workspace
+                                    </p>
+                                </div>
+                            </div>
+                        </ModalSurface>
                     </>
                 )}
             </AnimatePresence>
 
             {/* Desktop Sidebar */}
-            <motion.aside
+            <Motion.aside
                 initial={{ x: 0 }}
-                animate={{ width: sidebarOpen ? 260 : 80 }}
-                className="fixed md:relative z-30 h-screen border-r border-border bg-card/50 backdrop-blur-xl hidden md:flex flex-col"
+                animate={{ width: sidebarOpen ? 250 : 76 }}
+                className="fixed md:relative z-30 h-screen border-r border-border bg-card/60 backdrop-blur-xl hidden md:flex flex-col"
             >
-                <div className="h-16 flex items-center px-6 border-b border-border/50">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                            <Shield className="w-5 h-5 text-purple-500" />
-                        </div>
+                <div className={cn("h-20 flex items-center border-b border-border/60", sidebarOpen ? "px-5" : "px-3")}>
+                    <Link
+                        to="/admin"
+                        className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md p-1 group"
+                        aria-label="AXIOM 4.0 Admin Home"
+                    >
+                        <Axiom40Logo
+                            variant="nav"
+                            className={cn(
+                                "text-primary transition-colors",
+                                sidebarOpen ? "w-28" : "w-11 mx-auto"
+                            )}
+                        />
                         {sidebarOpen && (
-                            <div>
-                                <span className="font-bold text-lg">Axiom</span>
-                                <span className="text-xs text-purple-500 ml-1">
-                                    Admin
-                                </span>
-                            </div>
+                            <span className="axiom-eyebrow text-[10px] tracking-wider uppercase font-heading font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                Admin
+                            </span>
                         )}
-                    </div>
+                    </Link>
                 </div>
 
-                <div className="flex-1 py-6 flex flex-col gap-2 px-3">
+                <div className="flex-1 py-4 flex flex-col gap-1.5 px-3 overflow-y-auto no-scrollbar">
                     {sidebarItems.map((item) => {
                         const isActive =
                             location.pathname === item.path ||
@@ -152,72 +167,107 @@ export default function AdminLayout() {
                             <Link
                                 key={item.path}
                                 to={item.path}
+                                title={item.label}
+                                aria-label={item.label}
                                 className={cn(
-                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative",
+                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative font-sans text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                                     isActive
-                                        ? "bg-purple-500 text-white shadow-lg shadow-purple-500/25"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground font-medium"
                                 )}
                             >
                                 <Icon
                                     className={cn(
-                                        "w-5 h-5",
+                                        "w-4 h-4 shrink-0 transition-transform group-hover:scale-105",
                                         !sidebarOpen && "mx-auto"
                                     )}
+                                    aria-hidden="true"
                                 />
                                 {sidebarOpen && (
-                                    <span className="font-medium">
-                                        {item.label}
-                                    </span>
+                                    <span className="truncate">{item.label}</span>
+                                )}
+                                {isActive && !sidebarOpen && (
+                                    <Motion.div
+                                        layoutId="activeAdminStrip"
+                                        className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-r-full"
+                                    />
                                 )}
                             </Link>
                         );
                     })}
                 </div>
 
-                <div className="p-4 border-t border-border/50">
+                {/* Editorial accent in sidebar */}
+                {sidebarOpen && (
+                    <div className="mx-3 my-2 p-3 rounded-lg border border-border/60 bg-muted/20 relative overflow-hidden select-none">
+                        <div className="relative z-10">
+                            <span className="axiom-eyebrow text-[10px] tracking-wider uppercase text-primary font-heading font-semibold block mb-0.5">
+                                AXIOM 4.0
+                            </span>
+                            <p className="text-xs text-muted-foreground font-sans leading-tight">
+                                The art of articulation
+                            </p>
+                        </div>
+                        <div className="absolute -right-2 -bottom-3 w-16 h-20 opacity-20 pointer-events-none overflow-hidden">
+                            <Sculpture variant="detail" className="w-full h-full object-cover grayscale contrast-125" />
+                        </div>
+                    </div>
+                )}
+
+                <div className="p-3 border-t border-border/60">
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
-                        className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                        aria-label={sidebarOpen ? "Collapse View" : "Expand navigation sidebar"}
+                        title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                        className="w-full flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors text-xs font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         {sidebarOpen ? (
-                            "Collapse"
+                            <>
+                                <Menu className="w-4 h-4" aria-hidden="true" />
+                                <span>Collapse View</span>
+                            </>
                         ) : (
-                            <Menu className="w-5 h-5" />
+                            <Menu className="w-4 h-4" aria-hidden="true" />
                         )}
                     </button>
                 </div>
-            </motion.aside>
+            </Motion.aside>
 
             {/* Content Area */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
                 {/* Top Header */}
-                <header className="h-16 border-b border-border bg-background/50 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
+                <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
                     <div className="flex items-center gap-3">
                         <button
-                            className="md:hidden p-1.5 hover:bg-muted rounded-lg transition-colors border border-border/50"
+                            className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors border border-border/60 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => setMobileMenuOpen(true)}
+                            aria-label="Open navigation menu"
+                            aria-expanded={mobileMenuOpen}
+                            aria-controls="admin-mobile-navigation"
                         >
-                            <Menu className="w-5 h-5" />
+                            <Menu className="w-5 h-5" aria-hidden="true" />
                         </button>
-                        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                            <Shield className="w-4 h-4 text-purple-500" />
-                            <span className="text-sm font-medium text-purple-500">
+                        <Link to="/admin" className="md:hidden" aria-label="AXIOM 4.0 Admin Home">
+                            <Axiom40Logo variant="nav" className="w-24 text-primary" />
+                        </Link>
+                        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/60 border border-border/60">
+                            <Shield className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
+                            <span className="text-xs font-heading font-medium tracking-wide">
                                 Admin Mode
                             </span>
                         </div>
-                        
-                        <div className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
-                            socketConnected 
-                                ? "bg-green-500/10 border-green-500/20 text-green-500" 
-                                : "bg-red-500/10 border-red-500/20 text-red-500"
+
+                        <div role="status" aria-label={socketConnected ? "Real-time Ready" : "Connecting..."} className={cn(
+                            "flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg border text-xs font-sans",
+                            socketConnected
+                                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                                : "bg-destructive/10 border-destructive/20 text-destructive"
                         )}>
                             <div className={cn(
                                 "w-2 h-2 rounded-full",
-                                socketConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
+                                socketConnected ? "bg-emerald-500" : "bg-destructive animate-pulse"
                             )} />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">
+                            <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider">
                                 {socketConnected ? "Real-time Ready" : "Connecting..."}
                             </span>
                         </div>
@@ -225,10 +275,10 @@ export default function AdminLayout() {
 
                     <div className="flex items-center gap-4">
                         <div className="text-right hidden sm:block">
-                            <p className="text-sm font-medium">
+                            <p className="text-sm font-heading font-medium leading-tight">
                                 {user?.fullName}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground font-sans">
                                 Administrator
                             </p>
                         </div>
@@ -237,13 +287,16 @@ export default function AdminLayout() {
                 </header>
 
                 {/* Scrollable Main Content */}
-                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-10 pb-24 md:pb-10 scroll-smooth min-w-0">
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 pb-24 md:pb-8 scroll-smooth min-w-0">
                     <Outlet />
                 </main>
 
                 {/* Mobile Bottom Navigation */}
-                <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 pb-[env(safe-area-inset-bottom)]">
-                    <div className="flex items-center justify-around py-2">
+                <nav
+                    className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 pb-[env(safe-area-inset-bottom)]"
+                    aria-label="Mobile Navigation"
+                >
+                    <div className="flex items-center justify-around py-1.5 px-2">
                         {sidebarItems
                             .filter((item) =>
                                 [
@@ -258,29 +311,29 @@ export default function AdminLayout() {
                                 const isActive =
                                     location.pathname === item.path ||
                                     (item.path !== "/admin" &&
-                                        location.pathname.startsWith(
-                                            item.path
-                                        ));
+                                        location.pathname.startsWith(item.path));
                                 const Icon = item.icon;
 
                                 return (
                                     <Link
                                         key={item.path}
                                         to={item.path}
+                                        aria-label={item.label}
                                         className={cn(
-                                            "flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all",
+                                            "flex flex-col items-center gap-1 py-1.5 px-3 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                                             isActive
-                                                ? "text-purple-500"
-                                                : "text-muted-foreground"
+                                                ? "text-primary font-semibold"
+                                                : "text-muted-foreground hover:text-foreground"
                                         )}
                                     >
                                         <Icon
                                             className={cn(
-                                                "w-5 h-5",
+                                                "w-4 h-4",
                                                 isActive && "scale-110"
                                             )}
+                                            aria-hidden="true"
                                         />
-                                        <span className="text-[10px] font-medium">
+                                        <span className="text-[10px] font-sans font-medium">
                                             {item.label}
                                         </span>
                                     </Link>

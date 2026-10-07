@@ -1,6 +1,6 @@
 import {useState, useEffect} from "react";
 import {useUser, useAuth} from "@clerk/clerk-react";
-import {useNavigate, useLocation} from "react-router-dom";
+import {useNavigate} from "react-router-dom";
 import {
   User,
   Mail,
@@ -14,7 +14,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import {UserApi, EventApi, CheckInApi} from "../../services/api";
-import {useToast} from "../../components/ui/Toast";
+import {useToast} from "../../hooks/useToast"
 import {
   ProfileHeaderSkeleton,
   CardSkeleton,
@@ -24,7 +24,6 @@ export default function Profile({isOnboarding = false}) {
   const {user, isLoaded} = useUser();
   const {getToken} = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const toast = useToast();
   const [formData, setFormData] = useState({
     firstName: "",
@@ -146,7 +145,7 @@ export default function Profile({isOnboarding = false}) {
                   "Registered Successfully! 🎉",
                   `You have been registered for ${currentEvent.name} and checked in!`
                 );
-              } catch (checkInError) {
+              } catch {
                 // Check-in might not be open yet, that's okay
                 toast.success(
                   "Registered Successfully! 🎉",
@@ -209,186 +208,198 @@ export default function Profile({isOnboarding = false}) {
   const isProfileComplete = formData.college && formData.mobile;
 
   return (
-    <div className="max-w-2xl mx-auto px-4">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Onboarding Header */}
       {isOnboarding && (
-        <div className="mb-6 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-            <UserCircle className="w-8 h-8 text-primary" />
+        <div className="axiom-page-header mb-6 text-center">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            <UserCircle className="w-6 h-6" aria-hidden="true" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Complete Your Profile</h1>
-          <p className="text-muted-foreground">
-            Please fill in your details to register for the event
+          <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
+            Registration
+          </span>
+          <h1 className="text-2xl font-heading font-bold text-foreground mt-1">Complete Your Profile</h1>
+          <p className="text-xs text-muted-foreground font-sans mt-0.5">
+            Fill in your institutional identity to participate in tournament debates.
           </p>
         </div>
       )}
 
       {/* Regular Header */}
       {!isOnboarding && (
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">My Profile</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your personal information and tournament identity.
+        <div className="axiom-page-header">
+          <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
+            Identity
+          </span>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1">My Profile</h1>
+          <p className="text-sm text-muted-foreground font-sans mt-0.5">
+            Manage your personal credentials and tournament identity.
           </p>
         </div>
       )}
 
       {success && !isOnboarding && (
-        <div className="mb-4 p-4 bg-green-500/10 border border-green-500/20 text-green-500 rounded-lg flex items-center gap-2">
-          <CheckCircle className="w-5 h-5" />
-          <span className="font-bold">Success!</span> Your profile has been
-          saved to the database.
+        <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center gap-2 text-xs font-sans">
+          <CheckCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span><strong className="font-semibold">Saved:</strong> Profile details successfully synchronized.</span>
         </div>
       )}
       {error && (
-        <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5" />
-          <span className="font-bold">Error:</span> {error}
+        <div className="p-3.5 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg flex items-center gap-2 text-xs font-sans">
+          <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span><strong className="font-semibold">Error:</strong> {error}</span>
         </div>
       )}
 
       {!isOnboarding && !isProfileComplete && (
-        <div className="mb-4 bg-amber-500/10 border border-amber-500/20 text-amber-500 p-4 rounded-lg flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-3.5 rounded-lg flex items-center gap-3 text-xs font-sans">
+          <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
           <div>
-            <span className="font-bold">Action Required</span>
-            <p className="text-sm">
-              Please complete your College and Mobile Number to access all
-              features.
+            <span className="font-semibold">Action Required</span>
+            <p className="opacity-90 mt-0.5">
+              Please enter your College and Mobile Number to unlock all tournament features.
             </p>
           </div>
         </div>
       )}
 
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-        {/* Banner/Header */}
-        <div className="bg-[#6D28D9] p-4 text-white flex items-center gap-3">
+        {/* Profile Card Header */}
+        <div className="p-5 border-b border-border bg-muted/20 flex items-center gap-3.5">
           <img
             src={user.imageUrl}
-            alt="Profile"
-            className="w-14 h-14 rounded-full border-2 border-white/20 object-cover flex-shrink-0"
+            alt="Profile avatar"
+            className="w-12 h-12 rounded-full border border-border object-cover flex-shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold truncate">
+            <h2 className="text-base font-heading font-bold text-foreground truncate">
               {formData.firstName} {formData.lastName}
             </h2>
-            <p className="opacity-80 text-sm truncate">
+            <p className="text-xs text-muted-foreground font-sans truncate">
               {user.primaryEmailAddress?.emailAddress}
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" /> First Name
+        <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 font-sans text-xs">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="profile-first-name" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> First Name
               </label>
               <input
+                id="profile-first-name"
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                placeholder="Jane"
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                placeholder="First Name"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" /> Last Name
+            <div className="space-y-1.5">
+              <label htmlFor="profile-last-name" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> Last Name
               </label>
               <input
+                id="profile-last-name"
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                placeholder="Doe"
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                placeholder="Last Name"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <School className="w-4 h-4 text-muted-foreground" /> College /
+          <div className="space-y-1.5">
+            <label htmlFor="profile-college" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <School className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> College /
               Institution
-              {isOnboarding && <span className="text-red-500">*</span>}
+              {isOnboarding && <span className="text-destructive">*</span>}
             </label>
             <input
+              id="profile-college"
               name="college"
               value={formData.college}
               onChange={handleChange}
               required={isOnboarding}
-              className={`w-full bg-background border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
+              className={`w-full bg-background border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
                 isOnboarding && !formData.college
                   ? "border-amber-500/50"
                   : "border-border"
               }`}
-              placeholder="e.g. Sir MVIT"
+              placeholder="e.g. National Law School of India University"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium flex items-center gap-2">
-              <Phone className="w-4 h-4 text-muted-foreground" /> Mobile Number
-              {isOnboarding && <span className="text-red-500">*</span>}
+          <div className="space-y-1.5">
+            <label htmlFor="profile-mobile" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> Mobile Number
+              {isOnboarding && <span className="text-destructive">*</span>}
             </label>
             <input
+              id="profile-mobile"
+              type="tel"
               name="mobile"
               value={formData.mobile}
               onChange={handleChange}
               required={isOnboarding}
-              className={`w-full bg-background border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
+              className={`w-full bg-background border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
                 isOnboarding && !formData.mobile
                   ? "border-amber-500/50"
                   : "border-border"
               }`}
-              placeholder="+91 1234567890"
+              placeholder="+91 98765 43210"
             />
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Hash className="w-4 h-4 text-muted-foreground" /> USN / Student
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="profile-usn" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> USN / Student
                 ID
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground">
                   (Optional)
                 </span>
               </label>
               <input
+                id="profile-usn"
                 name="usn"
                 value={formData.usn}
                 onChange={handleChange}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                placeholder="e.g. 1MVIT26CS001"
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                placeholder="Student Registration ID"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted-foreground" /> Email (Read
+            <div className="space-y-1.5">
+              <label htmlFor="profile-email" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> Email (Read
                 Only)
               </label>
               <input
+                id="profile-email"
                 disabled
                 value={user.primaryEmailAddress?.emailAddress || ""}
-                className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-muted-foreground cursor-not-allowed"
+                className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground cursor-not-allowed"
               />
             </div>
           </div>
 
           {/* Gender Field - Optional */}
           {!isOnboarding && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" /> Gender
-                <span className="text-xs text-muted-foreground">
+            <div className="space-y-1.5">
+              <label htmlFor="profile-gender" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> Gender
+                <span className="text-[10px] text-muted-foreground">
                   (Optional)
                 </span>
               </label>
               <select
+                id="profile-gender"
                 name="gender"
                 value={formData.gender || ""}
                 onChange={handleChange}
-                className="w-full max-w-xs bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none"
+                className="w-full max-w-xs bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
                   backgroundRepeat: "no-repeat",
@@ -403,19 +414,19 @@ export default function Profile({isOnboarding = false}) {
             </div>
           )}
 
-          <div className="pt-4">
+          <div className="pt-3">
             <button
               type="submit"
               disabled={
                 saving ||
                 (isOnboarding && (!formData.college || !formData.mobile))
               }
-              className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all disabled:opacity-50"
+              className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-xs hover:bg-primary/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Save className="w-4 h-4" />
+                <Save className="w-3.5 h-3.5" aria-hidden="true" />
               )}
               {isOnboarding ? "Complete Profile & Register" : "Save Changes"}
             </button>

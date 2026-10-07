@@ -1,20 +1,21 @@
+import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import {
   Users,
   Search,
-  MoreVertical,
   Mail,
   Trash2,
   Loader2,
   RotateCcw,
+  UserPlus,
+  X,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "@clerk/clerk-react";
 import { UserApi, EventApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { useSocket, SocketEvents } from "../../hooks/useSocket";
-import { UserPlus } from "lucide-react";
 
 export default function AdminParticipants() {
   const { getToken } = useAuth();
@@ -26,7 +27,9 @@ export default function AdminParticipants() {
   const [showEventSelect, setShowEventSelect] = useState(false);
 
   const getTokenRef = useRef(getToken);
-  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
 
   const fetchParticipants = useCallback(async () => {
     try {
@@ -36,17 +39,16 @@ export default function AdminParticipants() {
       if (response.success) {
         setParticipants(response.users || []);
       }
-      
+
       const eventResponse = await EventApi.list(token);
-      if(eventResponse.success) {
-          setEvents(eventResponse.events || []);
+      if (eventResponse.success) {
+        setEvents(eventResponse.events || []);
       }
     } catch (err) {
       console.error("Failed to fetch data", err);
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function AdminParticipants() {
     return () => unsubs.forEach((u) => u && u());
   }, [subscribe, fetchParticipants]);
 
+
   const filteredParticipants = participants.filter((p) => {
     const name = `${p.firstName || ""} ${p.lastName || ""}`.toLowerCase();
     const college = (p.college || "").toLowerCase();
@@ -86,183 +89,192 @@ export default function AdminParticipants() {
       } else {
         alert(response.error || "Failed to delete participant");
       }
-    } catch (error) {
+    } catch {
       alert("Error deleting participant");
     }
   };
 
   const handleEnroll = async (eventId, userId) => {
     try {
-        const token = await getToken();
-        const response = await EventApi.enrollUserManual(eventId, userId, token);
-        if (response.success) {
-            alert("User enrolled successfully");
-            setShowEventSelect(false);
-            setEnrollingUser(null);
-            fetchParticipants(); // Refresh to update status
-        } else {
-            alert(response.error || "Failed to enroll user");
-        }
-    } catch (error) {
-        alert("Error during manual enrollment");
+      const token = await getToken();
+      const response = await EventApi.enrollUserManual(eventId, userId, token);
+      if (response.success) {
+        alert("User enrolled successfully");
+        setShowEventSelect(false);
+        setEnrollingUser(null);
+        fetchParticipants();
+      } else {
+        alert(response.error || "Failed to enroll user");
+      }
+    } catch {
+      alert("Error during manual enrollment");
     }
   };
 
   if (loading && participants.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading debaters" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
         <div>
-          <h1 className="text-3xl font-bold">Participants</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage all debaters registered on the platform
+          <div className="flex items-center gap-2 mb-1">
+            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
+              AXIOM 4.0
+            </span>
+            <span className="text-muted-foreground/60">•</span>
+            <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
+              Registry
+            </span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
+            Participants Registry
+          </h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-0.5 font-sans">
+            Manage all debaters, institutional affiliations, and profile completion states
           </p>
         </div>
-        <div className="flex gap-3">
-             <button
-                onClick={() => fetchParticipants()}
-                disabled={loading}
-                className="p-2.5 rounded-xl border border-border bg-card/50 hover:bg-muted text-muted-foreground transition-all"
-                title="Refresh Data"
-            >
-                <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
-            </button>
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => fetchParticipants()}
+            disabled={loading}
+            className="p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Refresh Data"
+            aria-label="Refresh participants list"
+          >
+            <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
+          </button>
         </div>
       </div>
 
+      {/* Search Input */}
       <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <input
           type="text"
-          placeholder="Search by name, college or email..."
+          placeholder="Search by debater name, institution, or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-card border border-border focus:border-purple-500 outline-none transition-colors"
+          aria-label="Search participants"
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
         />
       </div>
 
       {filteredParticipants.length === 0 && !loading ? (
-        <div className="text-center py-16 bg-card border border-border rounded-2xl">
-          <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-20" />
-          <h3 className="text-xl font-bold mb-2">No Participants Found</h3>
-          <p className="text-muted-foreground">
-            Try a different search query or wait for users to register.
+        <div className="text-center py-16 bg-card/60 border border-border/70 rounded-xl">
+          <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
+          <h3 className="text-lg font-heading font-bold mb-1 text-foreground">No Participants Found</h3>
+          <p className="text-sm text-muted-foreground font-sans">
+            {searchQuery ? "Try a different search query." : "Wait for debaters to register or add them manually."}
           </p>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-muted/30 text-xs font-semibold uppercase text-muted-foreground border-b border-border">
+        <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
+          <div className="overflow-x-auto no-scrollbar">
+            <table className="w-full text-left" aria-label="Participant list">
+              <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                 <tr>
-                  <th className="px-6 py-4">User</th>
-                  <th className="px-6 py-4 hidden md:table-cell">Contact</th>
-                  <th className="px-6 py-4 hidden md:table-cell">College</th>
-                  <th className="px-6 py-4 hidden lg:table-cell">Joined At</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+                  <th scope="col" className="px-5 py-3.5">Debater</th>
+                  <th scope="col" className="px-5 py-3.5 hidden md:table-cell">Contact</th>
+                  <th scope="col" className="px-5 py-3.5 hidden md:table-cell">Institution</th>
+                  <th scope="col" className="px-5 py-3.5 hidden lg:table-cell">Registered</th>
+                  <th scope="col" className="px-5 py-3.5">Status</th>
+                  <th scope="col" className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {filteredParticipants.map((p, index) => {
                   const isUnenrolled = !p.participatingEvents || !p.participatingEvents.some(e => e.status !== 'COMPLETED');
-                  
+
                   return (
-                    <motion.tr
+                    <Motion.tr
                       key={p.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: Math.min(index * 0.03, 1) }}
+                      transition={{ delay: Math.min(index * 0.02, 0.5) }}
                       className={cn(
-                        "hover:bg-muted/20 transition-colors group",
-                        isUnenrolled && "bg-red-500/[0.02] border-l-2 border-l-red-500/30"
+                        "hover:bg-muted/30 transition-colors group",
+                        isUnenrolled && "bg-destructive/[0.015] border-l-2 border-l-destructive/30"
                       )}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <UserAvatar user={p} size="md" />
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <UserAvatar user={p} size="sm" />
                           <div>
-                            <p className="font-semibold text-sm">
+                            <p className="font-heading font-semibold text-sm text-foreground">
                               {p.firstName} {p.lastName}
                             </p>
-                            <p className="text-xs text-muted-foreground font-mono">
+                            <p className="text-[11px] text-muted-foreground font-mono">
                               ID: {p.id.substring(0, 8)}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 hidden md:table-cell">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Mail className="w-3.5 h-3.5" />
-                            {p.email}
-                          </div>
+                      <td className="px-5 py-3.5 hidden md:table-cell">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
+                          <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>{p.email}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 hidden md:table-cell text-sm text-muted-foreground">
+                      <td className="px-5 py-3.5 hidden md:table-cell text-xs text-muted-foreground font-sans">
                         {p.college || "Not provided"}
                       </td>
-                      <td className="px-6 py-4 hidden lg:table-cell text-xs text-muted-foreground font-medium">
+                      <td className="px-5 py-3.5 hidden lg:table-cell text-xs text-muted-foreground font-sans">
                         {p.createdAt ? new Date(p.createdAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
                         }) : "N/A"}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1.5">
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1">
                           <span
                             className={cn(
-                              "text-[10px] uppercase font-bold px-2.5 py-1 rounded-full w-fit",
-                              p.isProfileComplete 
-                                ? "bg-green-500/10 text-green-500" 
-                                : "bg-amber-500/10 text-amber-500"
+                              "text-[10px] font-sans uppercase font-bold tracking-wider px-2 py-0.5 rounded border w-fit",
+                              p.isProfileComplete
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                             )}
                           >
                             {p.isProfileComplete ? "Complete" : "Incomplete"}
                           </span>
                           {isUnenrolled && (
-                            <span className="text-[9px] uppercase font-black px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 border border-red-500/20 w-fit">
+                            <span className="text-[9px] font-sans uppercase font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border w-fit">
                               Unenrolled
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => {
-                                setEnrollingUser(p);
-                                setShowEventSelect(true);
+                              setEnrollingUser(p);
+                              setShowEventSelect(true);
                             }}
-                            className="p-2 rounded-lg hover:bg-purple-500/10 text-purple-500 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Enroll in Event"
+                            className="p-1.5 rounded-md hover:bg-primary/10 text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            title="Enroll in Tournament"
+                            aria-label={`Enroll ${p.firstName} ${p.lastName} in tournament`}
                           >
-                            <UserPlus className="w-4 h-4" />
+                            <UserPlus className="w-4 h-4" aria-hidden="true" />
                           </button>
                           <button
                             onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
-                            className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title="Delete Participant"
+                            aria-label={`Delete participant ${p.firstName} ${p.lastName}`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            className="p-2 rounded-lg hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       </td>
-                    </motion.tr>
+                    </Motion.tr>
                   );
                 })}
               </tbody>
@@ -273,49 +285,72 @@ export default function AdminParticipants() {
 
       {/* Manual Enrollment Event Selector */}
       {showEventSelect && enrollingUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-card border border-border rounded-2xl p-6 w-full max-w-md"
+        <ModalSurface onDismiss={() => { setShowEventSelect(false); setEnrollingUser(null); }}
+          aria-label={`Enroll ${enrollingUser.firstName}`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        >
+          <Motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-md shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-3 border-b border-border/60 pb-3">
+              <div>
+                <h2 className="text-lg font-heading font-bold text-foreground">
+                  Enroll {enrollingUser.firstName} {enrollingUser.lastName}
+                </h2>
+                <p className="text-xs text-muted-foreground font-sans">
+                  Select tournament to assign this participant
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowEventSelect(false);
+                  setEnrollingUser(null);
+                }}
+                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Close dialog"
               >
-                  <h2 className="text-xl font-bold mb-2">Enroll {enrollingUser.firstName}</h2>
-                  <p className="text-sm text-muted-foreground mb-6">Select the event you want to manually enroll this participant into.</p>
-                  
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto mb-6 pr-2">
-                       {events.filter(e => e.status !== 'COMPLETED').map(event => (
-                           <button
-                             key={event.id}
-                             onClick={() => handleEnroll(event.id, enrollingUser.id)}
-                             className="w-full text-left p-4 rounded-xl border border-border hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group"
-                           >
-                               <div className="flex items-center justify-between">
-                                   <div>
-                                       <h4 className="font-bold text-foreground group-hover:text-purple-500">{event.name}</h4>
-                                       <p className="text-xs text-muted-foreground capitalize">{event.status.toLowerCase()}</p>
-                                   </div>
-                                   <UserPlus className="w-4 h-4 text-muted-foreground group-hover:text-purple-500" />
-                               </div>
-                           </button>
-                       ))}
-                       {events.filter(e => e.status !== 'COMPLETED').length === 0 && (
-                           <div className="text-center py-6 text-muted-foreground italic">
-                               No active events found.
-                           </div>
-                       )}
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 max-h-[280px] overflow-y-auto mb-5 pr-1 no-scrollbar">
+              {events.filter(e => e.status !== 'COMPLETED').map(event => (
+                <button
+                  key={event.id}
+                  onClick={() => handleEnroll(event.id, enrollingUser.id)}
+                  className="w-full text-left p-3.5 rounded-lg border border-border/70 hover:border-primary/50 hover:bg-primary/5 transition-all group flex items-center justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div>
+                    <h4 className="font-heading font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
+                      {event.name}
+                    </h4>
+                    <p className="text-xs text-muted-foreground font-sans capitalize mt-0.5">
+                      {event.status.toLowerCase()}
+                    </p>
                   </div>
-                  
-                  <button 
-                    onClick={() => {
-                        setShowEventSelect(false);
-                        setEnrollingUser(null);
-                    }}
-                    className="w-full py-2.5 rounded-xl border border-border text-foreground hover:bg-muted transition-colors"
-                  >
-                      Cancel
-                  </button>
-              </motion.div>
-          </div>
+                  <UserPlus className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0" aria-hidden="true" />
+                </button>
+              ))}
+              {events.filter(e => e.status !== 'COMPLETED').length === 0 && (
+                <div className="text-center py-6 text-xs text-muted-foreground italic font-sans">
+                  No active tournaments found.
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => {
+                setShowEventSelect(false);
+                setEnrollingUser(null);
+              }}
+              className="w-full py-2 rounded-lg border border-border/70 text-xs font-sans font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+          </Motion.div>
+        </ModalSurface>
       )}
     </div>
   );

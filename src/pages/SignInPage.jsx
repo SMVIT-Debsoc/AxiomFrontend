@@ -1,15 +1,16 @@
 import {SignIn} from "@clerk/clerk-react";
+import AuthFrame from "../components/brand/AuthFrame";
 
 export default function SignInPage() {
     // Always redirect to auth-redirect which handles admin/user routing
     return (
-        <div className="min-h-[80vh] flex items-center justify-center">
+        <AuthFrame>
             <SignIn
                 path="/sign-in"
                 routing="path"
                 signUpUrl="/get-started"
                 forceRedirectUrl="/auth-redirect"
             />
-        </div>
+        </AuthFrame>
     );
 }
