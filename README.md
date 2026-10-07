@@ -126,3 +126,19 @@ To return to Clerk: set `VITE_CLERK_PUBLISHABLE_KEY` and redeploy. To delete the
 The host's Clerk configuration and backend access are required to verify real authentication and authenticated operations. Isolated UI fixtures used during local visual QA are not production authentication evidence and are not part of the repository.
 
 The repository contains no canonical public deployment hostname. Social image paths are origin-relative; publishing infrastructure should resolve them to the canonical absolute site URL when that hostname is established. No unrelated domain or fabricated canonical URL is supplied.
+
+### Sculpture credits
+
+All figures are from the Cleveland Museum of Art Open Access programme (CC0), cut out from the museum photographs and converted to greyscale (`src/components/brand/figures.js` holds the list and the stable per-place picks).
+
+| Figure | Accession | Where it appears |
+|---|---|---|
+| Mother Goddess, Rajasthan, c. 600 | 1970.12 | Landing hero, footer |
+| Nature Divinity (Yakshi), Mathura, c. 75 CE | 1968.104 | Landing "discipline", sign-up, empty states |
+| Vidyadevi (Goddess of Learning), Rajasthan, 10th–11th c. | 1972.152 | Landing "heritage", get-started, empty states |
+| Durga Destroying the Buffalo Demon, Kashmir/Himachal, 9th–10th c. | 1982.45 | Landing "built for the round" |
+| Goddess Siddhalakshmi, Kashmir, 1000s | 1982.47 | Landing closing section, admin dashboard |
+| Goddess Holding a Lotus, Chola, c. 950 | 1984.2 | About, dashboard panel, empty states |
+| River Goddess Ganga, Mathura, c. 700 | 1966.119 | Sign-in, dashboard profile card |
+
+Museum records: `https://www.clevelandart.org/art/<accession>`. The museum titles are used as given; no specific deity or debating association is claimed beyond them.

@@ -8,6 +8,7 @@ import RoleAccess from "../components/brand/RoleAccess";
 import DiscourseSections from "../components/brand/DiscourseSections";
 import Footer from "../components/Footer";
 import ThemeToggle from "../components/ui/ThemeToggle";
+import Tape from "../components/brand/Tape";
 
 export default function LoginSelectPage() {
     const navigate = useNavigate();
@@ -69,6 +70,7 @@ export default function LoginSelectPage() {
                 <section className="axiom-poster" aria-labelledby="entry-title">
                     <div className="axiom-poster-grid axiom-container">
                         <div className="axiom-poster-brand">
+                            <span className="axiom-sticker" aria-hidden="true">Edition 04</span>
                             <p className="axiom-eyebrow">The art of articulation.</p>
                             <Axiom40Logo variant="hero" className="axiom-poster-logo" />
                             <h1 id="entry-title" className="axiom-poster-heading">Ancient thought.<span>New <br className="sm:hidden" />arguments.</span></h1>
@@ -90,6 +92,7 @@ export default function LoginSelectPage() {
                     </div>
                     <Sculpture eager className="axiom-poster-art" />
                 </section>
+                <Tape />
                 <DiscourseSections />
             </main>
             <Footer />

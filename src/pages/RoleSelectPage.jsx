@@ -40,7 +40,7 @@ export default function RoleSelectPage() {
                 <p className="axiom-eyebrow">AXIOM 4.0 / Take your place</p>
                 <h1>A considered voice.<br />A competitive edge.</h1>
                 <p className="max-w-md text-muted-foreground">Choose your role to enter the tournament workspace. Debaters follow their rounds; organizers bring the arena together.</p>
-                <div className="axiom-registration-art"><Sculpture /><span>Articulate.<br />Reason. Compose.</span></div>
+                <div className="axiom-registration-art"><Sculpture figure="vidyadevi" /><span>Articulate.<br />Reason. Compose.</span></div>
             </div>
             <div className="axiom-registration-panel">
                 <RoleAccess

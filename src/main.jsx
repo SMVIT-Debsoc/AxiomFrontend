@@ -4,6 +4,7 @@ import {ClerkProvider} from "@clerk/clerk-react";
 import {ThemeProvider} from "./contexts/ThemeContext";
 import {MotionConfig} from "framer-motion";
 import "./index.css";
+import "./neobrutalism.css";
 import App from "./App.jsx";
 import "./utils/iosViewportFix.js"; // iOS Safari viewport height fix
 import {isTemporaryAuth} from "./auth/mode";

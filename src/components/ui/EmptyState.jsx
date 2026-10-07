@@ -1,4 +1,9 @@
 import {cn} from "../../lib/utils";
+import Sculpture from "../brand/Sculpture";
+import {figureFor} from "../brand/figures";
+
+// Upright, single figures that read well inside the round halo.
+const EMPTY_FIGURES = ["mother-goddess", "lotus-goddess", "yakshi", "vidyadevi"];
 
 /**
  * Themed empty state: a green halo with slowly turning rays behind the Mother Goddess sculpture
@@ -12,7 +17,7 @@ export default function EmptyState({title, description, icon: Icon, action, comp
         {small && Icon ? (
           <Icon />
         ) : (
-          <img src="/brand/mother-goddess-480.webp" width="480" height="1337" alt="" loading="lazy" decoding="async" />
+          <Sculpture figure={figureFor(String(title), EMPTY_FIGURES)} variant="empty" />
         )}
       </div>
       <div className="axiom-empty-copy">

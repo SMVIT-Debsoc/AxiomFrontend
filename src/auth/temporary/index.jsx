@@ -197,10 +197,10 @@ export function UserButton() {
         <img src={user.imageUrl} alt="" className="h-full w-full object-cover" />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 z-50 mt-2 w-60 border border-border bg-card p-3 text-sm shadow-lg">
+        <div role="menu" className="absolute right-0 z-50 mt-2 w-60 rounded-lg border-2 border-[var(--nb-line)] bg-card p-3 text-sm shadow-[4px_4px_0_var(--nb-shadow)]">
           <p className="truncate font-semibold text-foreground">{user.primaryEmailAddress.emailAddress}</p>
           <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">Temporary session / {user.publicMetadata.role === "ADMIN" ? "Admin" : "Participant"}</p>
-          <button role="menuitem" type="button" onClick={signOut} className="w-full border border-border px-3 py-2 text-left hover:bg-muted">
+          <button role="menuitem" type="button" onClick={signOut} className="w-full rounded-md border-2 border-[var(--nb-line)] px-3 py-2 text-left font-semibold hover:bg-muted">
             Sign out
           </button>
         </div>
@@ -232,14 +232,14 @@ export function SignIn() {
   };
 
   return (
-    <form onSubmit={submit} className="w-full max-w-md border border-border bg-card p-6 text-card-foreground">
+    <form onSubmit={submit} className="w-full max-w-md p-2 text-card-foreground">
       <p className="axiom-eyebrow mb-2 text-xs uppercase tracking-widest text-muted-foreground">Temporary sign-in</p>
       <h2 className="mb-1 font-heading text-2xl font-bold">Enter your passcode</h2>
       <p className="mb-5 text-sm text-muted-foreground">Preview access while account sign-in is being set up. Backend data is not available in this mode.</p>
       <label htmlFor="temp-email" className="mb-1 block text-xs font-semibold">Email</label>
-      <input id="temp-email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mb-4 w-full border border-border bg-background px-3 py-2" />
+      <input id="temp-email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mb-4 w-full rounded-lg border-2 border-[var(--nb-line)] bg-background px-3 py-2" />
       <label htmlFor="temp-passcode" className="mb-1 block text-xs font-semibold">Passcode</label>
-      <input id="temp-passcode" type="password" required autoComplete="current-password" value={passcode} onChange={(event) => setPasscode(event.target.value)} className="mb-4 w-full border border-border bg-background px-3 py-2" />
+      <input id="temp-passcode" type="password" required autoComplete="current-password" value={passcode} onChange={(event) => setPasscode(event.target.value)} className="mb-4 w-full rounded-lg border-2 border-[var(--nb-line)] bg-background px-3 py-2" />
       {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
       <button type="submit" disabled={busy} className="w-full bg-primary px-4 py-2.5 font-heading font-semibold text-primary-foreground disabled:opacity-60">
         {busy ? "Signing in..." : "Sign in"}

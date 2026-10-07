@@ -249,7 +249,7 @@ export default function DashboardHome() {
 
         {/* Quiet editorial sculpture accent */}
         <div className="absolute -right-4 -bottom-6 w-36 h-48 opacity-15 pointer-events-none overflow-hidden select-none">
-          <Sculpture variant="portrait" className="w-full h-full object-cover grayscale contrast-125" />
+          <Sculpture figure="ganga" variant="portrait" className="w-full h-full object-cover grayscale contrast-125" />
         </div>
       </div>
 
@@ -321,7 +321,7 @@ export default function DashboardHome() {
             <Link to="/dashboard/profile" className="axiom-button axiom-button--outline axiom-press">Profile</Link>
           </div>
         </div>
-        <Sculpture variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
+        <Sculpture figure="lotus-goddess" variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
       </aside>
       </div>
 

@@ -1,12 +1,16 @@
-export default function Sculpture({className = "", variant = "portrait", eager = false}) {
+import {FIGURES} from "./figures";
+
+export default function Sculpture({className = "", variant = "portrait", figure = "mother-goddess", eager = false}) {
+    const data = FIGURES[figure] || FIGURES["mother-goddess"];
+    const largest = data.sources[data.sources.length - 1];
     return (
         <img
             className={`axiom-sculpture axiom-sculpture--${variant} ${className}`}
-            src="/brand/mother-goddess-960.webp"
-            srcSet="/brand/mother-goddess-480.webp 480w, /brand/mother-goddess-960.webp 960w"
+            src={largest[0]}
+            srcSet={data.sources.map(([url, width]) => `${url} ${width}w`).join(", ")}
             sizes="(max-width: 640px) 145px, (max-width: 1024px) 241px, 260px"
-            width="960"
-            height="2673"
+            width={data.width}
+            height={data.height}
             alt=""
             aria-hidden="true"
             loading={eager ? "eager" : "lazy"}
