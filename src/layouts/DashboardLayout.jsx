@@ -91,7 +91,7 @@ export default function DashboardLayout() {
             {/* Content Area */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 axiom-with-dock">
                 {/* Top Header */}
-                <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
+                <header className="h-16 bg-transparent flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
                     <div className="md:hidden flex items-center gap-2">
                         <Link
                             to="/dashboard"

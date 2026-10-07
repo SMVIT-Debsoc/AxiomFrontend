@@ -335,3 +335,126 @@
 .dark .axiom-workspace a[class*="bg-emerald-500/10"][class*="border"] { color: var(--axiom-paper); }
 .axiom-workspace a[class*="bg-emerald-500/10"][class*="border"]:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--nb-shadow); }
 .axiom-entry { overflow-x: clip; }
+
+/* =====================================================================
+ * Float: containers carry no outlines or divider rules. Depth comes from soft layered shadows and
+ * tinted fills, so blocks read as placed objects. Small interactive parts (buttons, tags, inputs)
+ * keep their hard neobrutalist edge.
+ * ===================================================================== */
+.axiom-workspace, .axiom-entry, .axiom-navbar, .axiom-footer, .axiom-auth-grid, .axiom-toast {
+  --float-shadow: 0 1px 2px rgb(23 27 22 / .06), 0 10px 24px -10px rgb(23 27 22 / .22), 0 28px 56px -28px rgb(23 27 22 / .28);
+  --float-shadow-hover: 0 2px 4px rgb(23 27 22 / .08), 0 18px 34px -12px rgb(23 27 22 / .3), 0 38px 70px -30px rgb(23 27 22 / .34);
+}
+.dark .axiom-workspace, .dark .axiom-entry, .dark .axiom-navbar, .dark .axiom-footer, .dark .axiom-auth-grid, .dark .axiom-toast {
+  --float-shadow: 0 1px 2px rgb(0 0 0 / .4), 0 12px 28px -10px rgb(0 0 0 / .6), 0 30px 60px -30px rgb(0 0 0 / .7);
+  --float-shadow-hover: 0 2px 4px rgb(0 0 0 / .45), 0 20px 38px -12px rgb(0 0 0 / .68), 0 40px 74px -30px rgb(0 0 0 / .75);
+}
+
+/* Cards and panels */
+html .axiom-workspace [class~="bg-card"][class*="rounded-"],
+html .axiom-workspace [class*="bg-card/"][class*="rounded-"] { border: 0; box-shadow: var(--float-shadow); }
+html .axiom-workspace [class*="bg-card/"][class*="rounded-"] { box-shadow: none; background: hsl(var(--muted) / .45); }
+html .axiom-workspace a[class~="bg-card"][class*="rounded-"]:hover,
+html .axiom-workspace [class~="bg-card"][class*="hover:border-primary"]:hover { transform: translateY(-3px); box-shadow: var(--float-shadow-hover); }
+html .axiom-workspace .axiom-dialog [class~="bg-card"][class*="rounded-"] { box-shadow: 0 30px 80px -20px rgb(0 0 0 / .55); }
+html .axiom-workspace .axiom-dialog--drawer { border: 0; box-shadow: 18px 0 50px -20px rgb(0 0 0 / .45); }
+html .axiom-workspace [class*="bg-muted"][class*="border"],
+html .axiom-workspace [class*="bg-background"][class*="border"],
+html .axiom-workspace [class*="bg-muted"][class*="rounded-"][class*="border"] { border-width: 0; }
+html .axiom-workspace [class*="bg-muted"][class*="rounded-"]:not(button):not(a):not(input) { background: hsl(var(--muted) / .5); }
+.axiom-workspace .neo-card { border: 0; box-shadow: var(--float-shadow); }
+.axiom-workspace .neo-card:hover { box-shadow: var(--float-shadow-hover); }
+
+/* Divider rules, dashed boxes and row separators */
+.axiom-workspace [class~="border-t"], .axiom-workspace [class~="border-b"],
+.axiom-workspace [class~="border-l"], .axiom-workspace [class~="border-r"],
+.axiom-workspace [class*="last:border-0"] { border-width: 0; }
+.axiom-workspace .divide-y > * + *, .axiom-workspace .divide-x > * + * { border-width: 0; }
+.axiom-workspace [class*="border-dashed"] { border-style: solid; border-color: transparent; }
+.axiom-workspace hr { display: none; }
+.axiom-workspace tbody td, .axiom-workspace tbody th, .axiom-workspace thead th, .axiom-workspace thead td { border: 0; }
+.axiom-workspace tbody tr { border: 0; }
+.axiom-workspace tbody tr:nth-child(even) { background: hsl(var(--muted) / .3); }
+.axiom-workspace thead th:first-child { border-top-left-radius: .6rem; border-bottom-left-radius: .6rem; }
+.axiom-workspace thead th:last-child { border-top-right-radius: .6rem; border-bottom-right-radius: .6rem; }
+.axiom-workspace .axiom-page-header { border: 0; padding-bottom: 0; margin-bottom: 1.25rem; }
+.axiom-workspace [role="status"][class*="rounded"] { border-width: 0; }
+
+/* Banners and notices float as tinted pills */
+html .axiom-workspace div[class*="bg-destructive/10"][class*="border"],
+html .axiom-workspace div[class*="bg-emerald-500/10"][class*="border"],
+html .axiom-workspace div[class*="bg-amber-500/10"][class*="border"] { border: 0; box-shadow: var(--float-shadow); background: var(--nb-danger); }
+html .axiom-workspace div[class*="bg-emerald-500/10"][class*="border"] { background: var(--nb-green-soft); }
+html .axiom-workspace div[class*="bg-amber-500/10"][class*="border"] { background: var(--nb-warn); }
+
+/* Dock, header, user chip */
+.neo-rail { border: 0; box-shadow: var(--float-shadow-hover); background: hsl(var(--card) / .96); }
+html .axiom-workspace .axiom-userchip { border: 0; box-shadow: var(--float-shadow); }
+.axiom-toast { border: 0 !important; box-shadow: var(--float-shadow-hover); }
+
+/* Empty states */
+.axiom-empty { border: 0; box-shadow: var(--float-shadow); background: radial-gradient(circle at 50% 0, hsl(var(--primary) / .16), transparent 65%), hsl(var(--card)); }
+
+/* Public pages */
+.axiom-entry-header, .axiom-navbar, .axiom-poster, .axiom-footer, .bg-axiom { border: 0; }
+.axiom-navbar { background: var(--axiom-glass); box-shadow: 0 10px 30px -22px rgb(23 27 22 / .55); }
+.axiom-entry-header { box-shadow: none; }
+.axiom-section-top { border: 0; padding-top: 0; }
+.axiom-footer-bottom, .axiom-footer-top { border: 0; }
+.axiom-access-footer { border: 0; }
+.axiom-poster-access { border: 0; box-shadow: 0 30px 70px -26px rgb(23 27 22 / .6), 0 6px 18px rgb(23 27 22 / .15); }
+.dark .axiom-poster-access { box-shadow: 0 30px 70px -26px rgb(0 0 0 / .8), 0 0 0 1px rgb(250 250 246 / .08); }
+.axiom-role-button { border: 0; background: hsl(var(--muted) / .55); box-shadow: none; }
+.dark .axiom-role-button { background: rgb(250 250 246 / .06); }
+.axiom-role-button:hover { box-shadow: 0 14px 26px -14px rgb(23 27 22 / .5); transform: translateY(-2px); }
+.axiom-registration-panel .axiom-role-button { border: 0; }
+.axiom-argument { border: 0; box-shadow: var(--float-shadow); }
+.axiom-argument:hover { transform: translateY(-3px); box-shadow: var(--float-shadow-hover); }
+.axiom-argument > span { box-shadow: none; }
+.axiom-tape { border: 0; margin-block: -1.1rem 1.1rem; box-shadow: 0 14px 28px -16px rgb(23 27 22 / .5); }
+.dark .axiom-tape { border: 0; }
+.axiom-auth-card { border: 0; box-shadow: var(--float-shadow-hover); }
+.axiom-registration-art, .axiom-auth-grid .axiom-registration-art { border: 0; box-shadow: var(--float-shadow); border-radius: 1rem; }
+.axiom-registration-panel { border: 0; }
+.axiom-poster-art, .axiom-aside-art, .axiom-about-art, .axiom-cta-art { filter: drop-shadow(0 18px 22px rgb(23 27 22 / .35)); }
+.dark .axiom-poster-art, .dark .axiom-aside-art, .dark .axiom-about-art, .dark .axiom-cta-art { filter: brightness(.9) drop-shadow(0 18px 26px rgb(0 0 0 / .6)); }
+.axiom-poster-logo { filter: drop-shadow(0 8px 0 rgb(23 27 22 / .16)); }
+.dark .axiom-poster-logo { filter: none; }
+.axiom-sticker { box-shadow: 0 10px 20px -8px rgb(23 27 22 / .5); border-width: 2px; }
+
+/* Editorial figure: centred under a halo, no frame */
+.axiom-editorial-art {
+  position: relative; display: grid; place-items: end center; height: 460px; overflow: hidden; border: 0; border-radius: 1.5rem;
+  background: radial-gradient(circle at 50% 42%, var(--axiom-green-light) 0 24%, var(--axiom-green-primary) 24.5% 100%);
+  box-shadow: 0 30px 70px -30px rgb(0 0 0 / .7);
+}
+.axiom-editorial-art::before {
+  content: ""; position: absolute; left: 50%; top: 42%; width: 78%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 9999px;
+  background: repeating-conic-gradient(from 0deg, rgb(23 27 22 / .1) 0 6deg, transparent 6deg 18deg);
+  animation: axiom-spin-slow 90s linear infinite;
+}
+.axiom-editorial-art img { position: relative; right: auto; top: auto; width: auto; height: 108%; max-width: none; margin-bottom: -4%; filter: drop-shadow(0 16px 22px rgb(23 27 22 / .45)); }
+@media (max-width: 1023px) { .axiom-editorial-art { height: 340px; } .axiom-editorial-art img { width: auto; height: 106%; right: auto; top: auto; } }
+
+/* Closing section: figure sits between copy and button without edges */
+.axiom-cta-art { left: 52%; }
+
+/* Password toggle */
+.axiom-password { position: relative; display: block; width: 100%; }
+.axiom-password-input { width: 100%; padding-right: 2.9rem !important; }
+.axiom-password-toggle {
+  position: absolute; right: .35rem; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 2.25rem; height: 2.25rem;
+  border-radius: .5rem; color: inherit; opacity: .75; transition: opacity 120ms, background-color 120ms;
+}
+.axiom-password-toggle:hover { opacity: 1; background: hsl(var(--primary) / .18); }
+.axiom-access-input.axiom-password-input, .axiom-password .axiom-access-input { margin-block: .5rem 1rem; }
+.axiom-password:has(.axiom-access-input) .axiom-password-toggle { top: calc(50% - .25rem); }
+.axiom-password:has(.mb-4) .axiom-password-toggle { top: calc(50% - .5rem); }
+html .axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { border: 0; box-shadow: var(--float-shadow); }
+html .axiom-workspace [class~="bg-card"] [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { box-shadow: none; background: hsl(var(--muted) / .4); }
+html .axiom-workspace a[class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]):hover { box-shadow: var(--float-shadow-hover); }
+html .axiom-workspace .axiom-dialog [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { box-shadow: 0 30px 80px -20px rgb(0 0 0 / .55); }
+.neo-progress { border: 0; box-shadow: inset 0 2px 5px rgb(23 27 22 / .18); background: hsl(var(--muted)); border-radius: 9999px; height: 1.6rem; }
+.neo-progress-fill { border-right: 0; border-radius: 9999px; box-shadow: 0 2px 8px -2px rgb(135 193 77 / .8); }
+.neo-progress-text { border: 0; background: hsl(var(--card)); box-shadow: 0 2px 6px -2px rgb(23 27 22 / .35); border-radius: 9999px; }
+.axiom-entry main, .axiom-public-shell main { overflow-x: clip; }

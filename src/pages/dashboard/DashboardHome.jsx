@@ -247,10 +247,6 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        {/* Quiet editorial sculpture accent */}
-        <div className="absolute -right-4 -bottom-6 w-36 h-48 opacity-15 pointer-events-none overflow-hidden select-none">
-          <Sculpture figure="ganga" variant="portrait" className="w-full h-full object-cover grayscale contrast-125" />
-        </div>
       </div>
 
       {/* Active Event Card */}

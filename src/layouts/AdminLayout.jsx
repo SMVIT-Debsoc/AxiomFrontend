@@ -137,7 +137,7 @@ export default function AdminLayout() {
             {/* Content Area */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 axiom-with-dock">
                 {/* Top Header */}
-                <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
+                <header className="h-16 bg-transparent flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
                     <div className="flex items-center gap-3">
                         <button
                             className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors border border-border/60 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

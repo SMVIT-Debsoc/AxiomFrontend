@@ -10,6 +10,7 @@
 import {createContext, useCallback, useContext, useEffect, useMemo, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {avatarDataUri} from "../../lib/avatar";
+import PasswordInput from "../../components/ui/PasswordInput";
 
 const AUTH_BASE = "/api/auth";
 const PLACEHOLDER_TOKEN = "temporary-session";
@@ -239,7 +240,7 @@ export function SignIn() {
       <label htmlFor="temp-email" className="mb-1 block text-xs font-semibold">Email</label>
       <input id="temp-email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mb-4 w-full rounded-lg border-2 border-[var(--nb-line)] bg-background px-3 py-2" />
       <label htmlFor="temp-passcode" className="mb-1 block text-xs font-semibold">Passcode</label>
-      <input id="temp-passcode" type="password" required autoComplete="current-password" value={passcode} onChange={(event) => setPasscode(event.target.value)} className="mb-4 w-full rounded-lg border-2 border-[var(--nb-line)] bg-background px-3 py-2" />
+      <PasswordInput id="temp-passcode" required autoComplete="current-password" value={passcode} onChange={(event) => setPasscode(event.target.value)} className="mb-4 w-full rounded-lg border-2 border-[var(--nb-line)] bg-background px-3 py-2" />
       {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
       <button type="submit" disabled={busy} className="w-full bg-primary px-4 py-2.5 font-heading font-semibold text-primary-foreground disabled:opacity-60">
         {busy ? "Signing in..." : "Sign in"}

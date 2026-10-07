@@ -1,4 +1,4 @@
-const WORDS = ["Articulation", "Reason", "Composure", "SMVIT Debsoc", "Edition 04", "Ancient thought", "New arguments"];
+const WORDS = ["Articulation", "Reason", "Composure", "SMVIT Debsoc", "Debate", "Ancient thought", "New arguments"];
 
 /** Scrolling caution-tape style ticker. Decorative, so hidden from assistive tech. */
 export default function Tape({className = ""}) {

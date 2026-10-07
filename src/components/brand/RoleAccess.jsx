@@ -1,5 +1,6 @@
 import {ArrowRight, ArrowLeft, Loader2} from "lucide-react";
 import {Link} from "react-router-dom";
+import PasswordInput from "../ui/PasswordInput";
 
 export default function RoleAccess({registration = false, showSecretKeyInput, secretKey, setSecretKey, error, loading = false, onRoleSelect, onAdminContinue, onBack}) {
     return (
@@ -9,7 +10,7 @@ export default function RoleAccess({registration = false, showSecretKeyInput, se
             {showSecretKeyInput ? (
                 <form onSubmit={(event) => { event.preventDefault(); onAdminContinue(); }}>
                     <label htmlFor="admin-key" className="axiom-eyebrow">Admin secret key</label>
-                    <input id="admin-key" type="password" autoComplete="off" value={secretKey} onChange={(event) => setSecretKey(event.target.value)} className="axiom-access-input" aria-invalid={!!error} aria-describedby={error ? "admin-key-error" : "admin-key-help"} autoFocus />
+                    <PasswordInput id="admin-key" autoComplete="off" value={secretKey} onChange={(event) => setSecretKey(event.target.value)} className="axiom-access-input" aria-invalid={!!error} aria-describedby={error ? "admin-key-error" : "admin-key-help"} autoFocus />
                     <p id="admin-key-help" className="text-xs mb-3">Use the access key provided by your organizers.</p>
                     {error && <p id="admin-key-error" className="axiom-access-error" role="alert">{error}</p>}
                     <button className="axiom-button w-full" disabled={loading || (!registration && !secretKey.trim())} type="submit">

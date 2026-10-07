@@ -60,7 +60,7 @@ export default function LoginSelectPage() {
         <div className="axiom-entry">
             <a className="axiom-skip" href="#access">Skip to sign in</a>
             <header className="axiom-entry-header axiom-container">
-                <p className="axiom-eyebrow">SMVIT Debsoc<br />Competitive debate / Edition 04</p>
+                <p className="axiom-eyebrow">SMVIT Debsoc<br />Competitive debate</p>
                 <div className="flex items-center gap-3">
                     <ThemeToggle />
                     <Link to="/about" className="axiom-button axiom-button--outline">Discover AXIOM<ArrowUpRight size={16} aria-hidden="true" /></Link>
@@ -70,7 +70,7 @@ export default function LoginSelectPage() {
                 <section className="axiom-poster" aria-labelledby="entry-title">
                     <div className="axiom-poster-grid axiom-container">
                         <div className="axiom-poster-brand">
-                            <span className="axiom-sticker" aria-hidden="true">Edition 04</span>
+                            <span className="axiom-sticker" aria-hidden="true">Debate</span>
                             <p className="axiom-eyebrow">The art of articulation.</p>
                             <Axiom40Logo variant="hero" className="axiom-poster-logo" />
                             <h1 id="entry-title" className="axiom-poster-heading">Ancient thought.<span>New <br className="sm:hidden" />arguments.</span></h1>
