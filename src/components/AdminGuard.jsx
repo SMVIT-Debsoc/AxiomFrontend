@@ -3,6 +3,7 @@ import {useUser, useAuth} from "@clerk/clerk-react";
 import {useNavigate} from "react-router-dom";
 import {Loader2, ShieldX} from "lucide-react";
 import {AdminApi} from "../services/api";
+import {isTemporaryAuth} from "../auth/mode";
 
 export function AdminGuard({children}) {
     const {user, isLoaded} = useUser();
@@ -18,6 +19,14 @@ export function AdminGuard({children}) {
 
             if (!user) {
                 navigate("/login-select");
+                return;
+            }
+
+            if (isTemporaryAuth) {
+                // Temporary Auth.js session: the role comes from the session, not the Clerk-backed API.
+                if (user.publicMetadata?.role === "ADMIN") setIsAdmin(true);
+                else setError("You do not have admin access");
+                setChecking(false);
                 return;
             }
 

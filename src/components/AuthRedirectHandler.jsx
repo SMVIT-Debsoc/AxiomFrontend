@@ -3,6 +3,7 @@ import {useUser, useAuth} from "@clerk/clerk-react";
 import {useNavigate} from "react-router-dom";
 import {Loader2, ShieldX} from "lucide-react";
 import {AdminApi, UserApi} from "../services/api";
+import {isTemporaryAuth} from "../auth/mode";
 
 const isLocalhost = ["localhost", "127.0.0.1"].includes(
     window.location.hostname,
@@ -31,6 +32,11 @@ export function AuthRedirectHandler() {
                 navigate("/login-select", {replace: true});
                 return;
             }
+            if (isTemporaryAuth) {
+                navigate(user.publicMetadata?.role === "ADMIN" ? "/admin" : "/dashboard", {replace: true});
+                return;
+            }
+
 
             try {
                 const token = await getToken();

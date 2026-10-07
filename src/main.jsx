@@ -6,10 +6,11 @@ import {MotionConfig} from "framer-motion";
 import "./index.css";
 import App from "./App.jsx";
 import "./utils/iosViewportFix.js"; // iOS Safari viewport height fix
+import {isTemporaryAuth} from "./auth/mode";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-if (!PUBLISHABLE_KEY) {
+if (!isTemporaryAuth && !PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key");
 }
 

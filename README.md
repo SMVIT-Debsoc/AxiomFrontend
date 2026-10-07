@@ -97,6 +97,21 @@ Skip links, semantic section headings, labeled role-access fields, announced val
 
 ## Deployment notes
 
+### Authentication modes
+
+`vite.config.js` picks the auth provider at build time:
+
+| Condition | Provider |
+|---|---|
+| `VITE_AUTH_PROVIDER=temporary` or no `VITE_CLERK_PUBLISHABLE_KEY` | **Temporary Auth.js sign-in** (`api/auth/[...nextauth].js`, client in `src/auth/temporary`) |
+| `VITE_CLERK_PUBLISHABLE_KEY` set (or `VITE_AUTH_PROVIDER=clerk`) | Clerk (unchanged) |
+
+Temporary mode aliases `@clerk/clerk-react` to `src/auth/temporary`, so no page code changes. Server environment (Vercel project settings, or `.env.local` for `npm run dev`; see `.env.example`): `AUTH_SECRET`, `TEMP_ADMIN_PASSCODE`, `TEMP_PARTICIPANT_PASSCODE`. With none set, nobody can sign in. The email is free-form; the passcode decides the role.
+
+Limits: the backend verifies Clerk tokens, so a temporary session only gates the UI and authenticated API calls will be rejected. A build with neither a Clerk key nor temporary mode is a blank page: `main.jsx` throws on a missing key and the bundler removes the app.
+
+To return to Clerk: set `VITE_CLERK_PUBLISHABLE_KEY` and redeploy. To delete the temporary path: remove `api/auth`, `src/auth`, the `devAuthRoute`/alias/define parts of `vite.config.js`, the `isTemporaryAuth` branches in `AdminGuard`, `AuthRedirectHandler` and `main.jsx`, and `@auth/core`.
+
 The host's Clerk configuration and backend access are required to verify real authentication and authenticated operations. Isolated UI fixtures used during local visual QA are not production authentication evidence and are not part of the repository.
 
 The repository contains no canonical public deployment hostname. Social image paths are origin-relative; publishing infrastructure should resolve them to the canonical absolute site URL when that hostname is established. No unrelated domain or fabricated canonical URL is supplied.
