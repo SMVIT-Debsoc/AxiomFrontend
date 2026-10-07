@@ -200,7 +200,6 @@
   .axiom-auth-card { display: flex; justify-content: center; min-width: 0; }
   .axiom-loading { position: fixed; inset: 0; z-index: 9999; display: grid; place-content: center; gap: 2rem; padding: 2rem; background: var(--axiom-green-primary); color: var(--axiom-logo-ink); pointer-events: none; animation: axiom-intro-out .25s ease .5s forwards; }
   .axiom-loading .axiom-logo { width: min(65vw, 360px); }
-  .axiom-loading p { text-align: center; }
 }
 
 @layer utilities {
@@ -211,8 +210,6 @@
 @keyframes axiom-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .axiom-poster-brand, .axiom-poster-access { animation: axiom-enter .6s var(--axiom-ease) both; }
 .axiom-poster-access { animation-delay: .12s; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { scrollbar-width: none; }
 .cl-userButtonPopoverCard { border-radius: var(--radius); }
 :is(a, button, input, textarea, select, [tabindex]):focus-visible { outline: 3px solid var(--axiom-focus, var(--axiom-brand-text)); outline-offset: 4px; }
 :is(input, textarea, select):focus-visible { outline-offset: 2px; }
@@ -500,12 +497,12 @@
 .theme-bulb { font-size: 1.5rem; padding: 0; cursor: pointer; }
 .theme-bulb svg { width: 1em; height: 1em; }
 
-/* ---------- Compact workspace headers: less scroll, same hierarchy ---------- */
-.axiom-workspace .axiom-page-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem 1rem; padding-bottom: .9rem; margin-bottom: 1.1rem; }
+/* Workspace headings: category, title and summary each have breathing room. */
+.axiom-workspace .axiom-page-header { display: flex; flex-direction: column; align-items: flex-start; gap: .65rem; padding-bottom: 0; margin-bottom: 1.75rem; min-width: 0; }
 .axiom-workspace .axiom-page-header > * { margin: 0; }
-.axiom-workspace .axiom-page-header .axiom-eyebrow { flex-basis: 100%; }
-.axiom-workspace .axiom-page-header h1 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); line-height: 1.1; animation: axiom-blur-in .7s var(--axiom-ease) both; }
-.axiom-workspace .axiom-page-header p { flex: 1 1 18rem; font-size: .88rem; }
+.axiom-workspace .axiom-page-header .axiom-eyebrow { flex: none; }
+.axiom-workspace .axiom-page-header h1 { font-size: clamp(1.8rem, 2.6vw, 2.4rem); line-height: 1.15; text-wrap: balance; }
+.axiom-workspace .axiom-page-header p { flex: none; max-width: 60ch; font-size: .95rem; line-height: 1.6; text-wrap: pretty; }
 @keyframes axiom-blur-in { from { opacity: 0; filter: blur(10px); transform: translateY(10px); letter-spacing: .06em; } to { opacity: 1; filter: blur(0); transform: none; } }
 .axiom-entry h1, .axiom-poster-heading, .axiom-auth-title h1 { animation: axiom-blur-in .9s var(--axiom-ease) both; }
 
@@ -550,3 +547,160 @@
 .dark .axiom-role-button small { color: #b4bbab; }
 .dark .axiom-access-input { background: #0f130e; border-color: #697360; color: var(--axiom-paper); }
 .dark .bg-axiom, .dark .axiom-registration-art, .dark .axiom-poster-access .axiom-eyebrow.on-green { color: var(--axiom-ink); }
+
+/* ---------- Themed Stone/Green Shimmer Skeletons & Axiom Loaders ---------- */
+.axiom-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--axiom-stone, #efeee8);
+  border-radius: .5rem;
+  max-width: 100%;
+  min-width: 0;
+}
+.axiom-skeleton.rounded-full { border-radius: 9999px; }
+.dark .axiom-skeleton {
+  background-color: hsl(var(--muted));
+}
+.axiom-skeleton--animated::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(250 250 246 / .55) 30%,
+    rgb(135 193 77 / .22) 50%,
+    rgb(250 250 246 / .55) 70%,
+    transparent 100%
+  );
+  animation: axiom-skeleton-shimmer 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+.dark .axiom-skeleton--animated::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / .03) 30%,
+    rgb(162 207 117 / .16) 50%,
+    rgb(255 255 255 / .03) 70%,
+    transparent 100%
+  );
+}
+
+@keyframes axiom-skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Axiom Loader */
+.axiom-loader {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  color: var(--axiom-brand-text, #36571c);
+  font-family: var(--font-heading);
+}
+.dark .axiom-loader {
+  color: var(--axiom-green-light);
+}
+.axiom-loader--screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem;
+  background-color: hsl(var(--background));
+}
+.axiom-loader-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  color: var(--axiom-green-primary);
+}
+.axiom-loader--screen .axiom-loader-mark {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+.axiom-loading .axiom-loader-mark {
+  color: var(--axiom-logo-ink);
+}
+.axiom-loading .axiom-loader {
+  color: var(--axiom-logo-ink);
+}
+.axiom-loader-orbit {
+  transform-origin: 32px 32px;
+  animation: axiom-halo-rotate 1.6s linear infinite;
+}
+.axiom-loader-bar {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: axiom-voice-bars 1.2s ease-in-out infinite;
+}
+.axiom-loader-bar:nth-of-type(1) {
+  animation-delay: 0s;
+}
+.axiom-loader-bar:nth-of-type(2) {
+  animation-delay: 0.18s;
+}
+.axiom-loader-bar:nth-of-type(3) {
+  animation-delay: 0.36s;
+}
+.axiom-loader-label {
+  font-size: 0.925rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: hsl(var(--foreground));
+  text-align: center;
+}
+.axiom-loading .axiom-loader-label {
+  color: var(--axiom-logo-ink);
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@keyframes axiom-halo-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes axiom-voice-bars {
+  0%, 100% {
+    transform: scaleY(0.4);
+  }
+  50% {
+    transform: scaleY(1.15);
+  }
+}
+
+/* Reduced-motion static alternative for skeletons & loader */
+@media (prefers-reduced-motion: reduce) {
+  .axiom-skeleton--animated::after {
+    animation: none !important;
+    display: none !important;
+  }
+  .axiom-loader-orbit {
+    animation: none !important;
+  }
+  .axiom-loader-bar {
+    animation: none !important;
+    transform: scaleY(0.85) !important;
+  }
+}
+

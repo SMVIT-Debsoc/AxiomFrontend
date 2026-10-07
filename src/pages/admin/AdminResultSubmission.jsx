@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 
 export default function AdminResultSubmission() {
     const { id: debateId } = useParams();
@@ -83,7 +84,7 @@ export default function AdminResultSubmission() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <LoadingIndicator label="Loading debate ballots" />
             </div>
         );
     }

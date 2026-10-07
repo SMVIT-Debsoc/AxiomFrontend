@@ -5,6 +5,7 @@ import {useAuth} from "@clerk/clerk-react";
 import {EventApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {useSocket, SocketEvents} from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
 import NeoButton from "../../components/neo/NeoButton";
@@ -59,19 +60,23 @@ export default function DashboardEvents() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="axiom-page-header">
+        <div className="axiom-page-header max-w-full">
           <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
             Competitions
           </span>
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1 break-words">
             Tournaments
           </h1>
-          <p className="text-muted-foreground font-sans mt-1 text-sm md:text-base">
+          <p className="text-sm md:text-base text-muted-foreground font-sans mt-1">
             Register for upcoming debates or inspect completed stages.
           </p>
         </div>
-        <div className="grid gap-4">
-          {[1, 2, 3].map((i) => (
+        <LoadingIndicator label="Loading tournament events" />
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+          aria-busy="true"
+        >
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <EventCardSkeleton key={i} />
           ))}
         </div>

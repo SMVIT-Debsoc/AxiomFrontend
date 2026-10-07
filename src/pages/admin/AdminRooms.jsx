@@ -1,7 +1,8 @@
 import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect } from "react";
 import { motion as Motion } from "framer-motion";
-import {MapPin, Plus, Search, Trash2, Edit, Loader2, Users, X} from "lucide-react";
+import {MapPin, Plus, Search, Trash2, Edit, Users, X} from "lucide-react";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
@@ -78,7 +79,7 @@ export default function AdminRooms() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading rooms" />
+                <LoadingIndicator label="Loading debating venues" />
             </div>
         );
     }

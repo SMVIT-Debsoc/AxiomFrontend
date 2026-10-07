@@ -15,10 +15,7 @@ import {
 } from "lucide-react";
 import {UserApi, EventApi, CheckInApi} from "../../services/api";
 import {useToast} from "../../hooks/useToast"
-import {
-  ProfileHeaderSkeleton,
-  CardSkeleton,
-} from "../../components/ui/Skeleton";
+import {ProfileSkeleton} from "../../components/ui/Skeleton";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import NeoCard from "../../components/neo/NeoCard";
 import NeoProgressBar from "../../components/neo/NeoProgressBar";
@@ -194,19 +191,9 @@ export default function Profile({isOnboarding = false}) {
     }
   };
 
-  if (!isLoaded || loading)
-    return (
-      <div className="max-w-2xl mx-auto px-4 space-y-6">
-        {!isOnboarding && (
-          <div className="mb-8">
-            <div className="h-8 w-32 bg-muted rounded mb-2 animate-pulse" />
-            <div className="h-4 w-64 bg-muted rounded animate-pulse" />
-          </div>
-        )}
-        <ProfileHeaderSkeleton />
-        <CardSkeleton />
-      </div>
-    );
+  if (!isLoaded || loading) {
+    return <ProfileSkeleton isOnboarding={isOnboarding} />;
+  }
 
   const isProfileComplete = formData.college && formData.mobile;
   const completeness = (() => {

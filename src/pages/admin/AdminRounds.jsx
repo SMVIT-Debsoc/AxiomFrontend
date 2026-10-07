@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion as Motion } from "framer-motion";
-import {Calendar, ChevronRight, Search, Clock, Loader2} from "lucide-react";
+import {Calendar, ChevronRight, Search, Clock} from "lucide-react";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi, EventApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
@@ -60,7 +61,7 @@ export default function AdminRounds() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading rounds" />
+        <LoadingIndicator label="Loading tournament rounds" />
       </div>
     );
   }

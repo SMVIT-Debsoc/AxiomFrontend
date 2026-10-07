@@ -22,6 +22,7 @@ import NeoIcon from "../components/icons/NeoIcons";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import ModalSurface from "../components/ui/ModalSurface";
+import LoadingIndicator from "../components/ui/LoadingIndicator";
 
 const sidebarItems = [
   { icon: "LayoutIcon", label: "Dashboard", path: "/admin" },
@@ -38,8 +39,9 @@ const sidebarItems = [
 export default function AdminLayout() {
       const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const location = useLocation();
-    const { user } = useUser();
+    const { user, isLoaded } = useUser();
     const socketConnected = useSocketStatus();
+
     const navItems = sidebarItems.map((item) => ({
         ...item,
         active:
@@ -55,6 +57,9 @@ export default function AdminLayout() {
         mobile.addEventListener("change", dismissOnDesktop);
         return () => mobile.removeEventListener("change", dismissOnDesktop);
     }, []);
+    if (!isLoaded) {
+        return <LoadingIndicator fullScreen label="Loading admin workspace" />;
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground flex axiom-workspace">
@@ -94,7 +99,7 @@ export default function AdminLayout() {
                                     <X className="w-5 h-5" aria-hidden="true" />
                                 </button>
                             </div>
-                            <div className="flex-1 py-4 flex flex-col gap-1.5 px-3 overflow-y-auto no-scrollbar">
+                            <div className="flex-1 py-4 flex flex-col gap-1.5 px-3 overflow-y-auto">
                                 {sidebarItems.map((item) => {
                                     const isActive =
                                         location.pathname === item.path ||

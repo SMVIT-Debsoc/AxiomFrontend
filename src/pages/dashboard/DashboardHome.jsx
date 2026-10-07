@@ -552,11 +552,11 @@ export default function DashboardHome() {
       </div>
       </div>
 
-      <aside className="grid grid-cols-[1fr_auto] items-end overflow-hidden rounded-xl bg-primary text-[var(--axiom-ink)] axiom-rise" style={{"--i": 6}} aria-label="Quick links">
-        <div className="p-6 self-center">
-          <p className="axiom-eyebrow mb-2">Between rounds</p>
-          <p className="text-4xl leading-none uppercase" style={{fontFamily: "var(--font-display)"}}>Clarity<br />under pressure.</p>
-          <div className="mt-5 flex flex-wrap gap-2">
+      <aside className="axiom-rounds-banner grid overflow-hidden rounded-xl bg-primary axiom-rise" style={{"--i": 6}} aria-label="Quick links">
+        <div className="axiom-rounds-banner-copy">
+          <p className="axiom-eyebrow">Between rounds</p>
+          <p className="axiom-rounds-banner-title">Clarity under pressure.</p>
+          <div className="axiom-rounds-banner-actions">
             <Link to="/dashboard/events" className="axiom-button axiom-press">Events</Link>
             <Link to="/dashboard/profile" className="axiom-button axiom-button--outline axiom-press">Profile</Link>
           </div>

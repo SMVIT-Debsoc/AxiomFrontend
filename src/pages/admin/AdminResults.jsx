@@ -5,10 +5,10 @@ import {
     Trophy,
     Search,
     ChevronRight,
-    Loader2,
     Calendar,
     ArrowLeft,
 } from "lucide-react";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi, EventApi, RoundApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
@@ -210,7 +210,7 @@ export default function AdminResults() {
         <>
             {/* Desktop View (Table) */}
             <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
-                <div className="overflow-x-auto no-scrollbar">
+                <div className="overflow-x-auto">
                     <table className="w-full text-left" aria-label="Debate results list">
                         <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                             <tr>
@@ -395,7 +395,7 @@ export default function AdminResults() {
             {/* Dynamic Content */}
             {loading ? (
                 <div className="flex items-center justify-center min-h-[40vh]">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading results" />
+                    <LoadingIndicator label="Loading tournament results" />
                 </div>
             ) : (
                 <>

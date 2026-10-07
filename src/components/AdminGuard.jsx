@@ -1,9 +1,10 @@
 import {useState, useEffect} from "react";
 import {useUser, useAuth} from "@clerk/clerk-react";
 import {useNavigate} from "react-router-dom";
-import {Loader2, ShieldX} from "lucide-react";
+import {ShieldX} from "lucide-react";
 import {AdminApi} from "../services/api";
 import {isTemporaryAuth} from "../auth/mode";
+import LoadingIndicator from "./ui/LoadingIndicator";
 
 export function AdminGuard({children}) {
     const {user, isLoaded} = useUser();
@@ -86,16 +87,7 @@ export function AdminGuard({children}) {
     }, [isLoaded, user, getToken, navigate]);
 
     if (!isLoaded || checking) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-                    <p className="text-muted-foreground">
-                        Verifying admin access...
-                    </p>
-                </div>
-            </div>
-        );
+        return <LoadingIndicator fullScreen label="Verifying admin access" />;
     }
 
     if (error || !isAdmin) {

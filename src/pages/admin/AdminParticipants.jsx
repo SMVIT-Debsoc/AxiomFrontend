@@ -1,8 +1,9 @@
 import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion as Motion } from "framer-motion";
-import {Search, Mail, Trash2, Loader2, RotateCcw, UserPlus, X} from "lucide-react";
+import {Search, Mail, Trash2, RotateCcw, UserPlus, X} from "lucide-react";
 import { cn } from "../../lib/utils";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "@clerk/clerk-react";
 import { UserApi, EventApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
@@ -106,7 +107,7 @@ export default function AdminParticipants() {
   if (loading && participants.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading debaters" />
+        <LoadingIndicator label="Loading debater roster" />
       </div>
     );
   }
@@ -165,7 +166,7 @@ export default function AdminParticipants() {
         />
       ) : (
         <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
-          <div className="overflow-x-auto no-scrollbar">
+          <div className="overflow-x-auto">
             <table className="w-full text-left" aria-label="Participant list">
               <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                 <tr>
@@ -304,7 +305,7 @@ export default function AdminParticipants() {
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-[280px] overflow-y-auto mb-5 pr-1 no-scrollbar">
+            <div className="space-y-2.5 max-h-[280px] overflow-y-auto mb-5 pr-1">
               {events.filter(e => e.status !== 'COMPLETED').map(event => (
                 <button
                   key={event.id}

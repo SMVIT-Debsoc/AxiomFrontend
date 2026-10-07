@@ -23,6 +23,7 @@ import { useAuth } from "@clerk/clerk-react";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import { AdminApi, EventApi } from "../../services/api";
 import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useEventSocket } from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
 
@@ -165,7 +166,7 @@ export default function AdminEventDetails() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading event details" />
+        <LoadingIndicator label="Loading tournament details" />
       </div>
     );
   }
@@ -478,7 +479,7 @@ export default function AdminEventDetails() {
                   />
                 ) : (
                   <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
-                    <div className="overflow-x-auto no-scrollbar">
+                    <div className="overflow-x-auto">
                       <table className="w-full text-left" aria-label="Enrolled participants">
                         <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                           <tr>
@@ -666,7 +667,7 @@ export default function AdminEventDetails() {
               />
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 no-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {allUsers
                 .filter((u) => {
                   const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();

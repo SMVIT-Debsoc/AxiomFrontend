@@ -10,6 +10,7 @@ import {SidebarRail, MobileTabs} from "../components/layout/SidebarRail";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
+import LoadingIndicator from "../components/ui/LoadingIndicator";
 
 const isLocalhost = ["localhost", "127.0.0.1"].includes(
     window.location.hostname,
@@ -60,12 +61,9 @@ export default function DashboardLayout() {
         checkAdmin();
     }, [isSignedIn, getToken]);
 
-    if (!isLoaded)
-        return (
-            <div className="min-h-screen flex items-center justify-center font-sans text-muted-foreground">
-                Loading...
-            </div>
-        );
+    if (!isLoaded) {
+        return <LoadingIndicator fullScreen label="Opening your debate workspace" />;
+    }
 
     if (!isSignedIn) {
         return <RedirectToSignIn />;

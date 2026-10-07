@@ -17,6 +17,7 @@ import { AdminApi } from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { cn } from "../../lib/utils";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 
 export default function AdminPromotion() {
   const { id: roundId } = useParams();
@@ -112,7 +113,7 @@ export default function AdminPromotion() {
   if (loading && !performers.length) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <LoadingIndicator label="Loading debater performance standings" />
       </div>
     );
   }

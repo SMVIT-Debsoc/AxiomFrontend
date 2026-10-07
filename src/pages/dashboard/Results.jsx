@@ -18,7 +18,7 @@ import {
 } from "../../services/api";
 import {cn} from "../../lib/utils";
 import {useEventSocket} from "../../hooks/useSocket";
-import {CardSkeleton, LeaderboardSkeleton} from "../../components/ui/Skeleton";
+import {ResultsSkeleton} from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
 
 export default function Results() {
@@ -120,24 +120,7 @@ export default function Results() {
   const myEventDebates = getMyEventDebates();
 
   if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6 px-4">
-        <div className="space-y-4">
-          <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-muted rounded-lg animate-pulse" />
-            <div className="space-y-2">
-              <div className="h-6 w-32 bg-muted rounded animate-pulse" />
-              <div className="h-4 w-48 bg-muted rounded animate-pulse" />
-            </div>
-          </div>
-        </div>
-        <CardSkeleton />
-        <div className="space-y-3">
-          <LeaderboardSkeleton />
-        </div>
-      </div>
-    );
+    return <ResultsSkeleton />;
   }
 
   return (

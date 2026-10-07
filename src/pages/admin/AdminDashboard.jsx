@@ -240,7 +240,7 @@ export default function AdminDashboard() {
           ) : (
             <>
               {/* Desktop View */}
-              <div className="hidden md:block overflow-x-auto no-scrollbar">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left" aria-label="Recent tournaments">
                   <thead>
                     <tr className="text-xs text-muted-foreground font-sans uppercase tracking-wider border-b border-border/70">
@@ -362,7 +362,7 @@ export default function AdminDashboard() {
         ) : (
           <>
             {/* Desktop View */}
-            <div className="hidden md:block overflow-x-auto no-scrollbar">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left" aria-label="Recent debates">
                 <thead>
                   <tr className="text-xs text-muted-foreground font-sans uppercase tracking-wider border-b border-border/70">

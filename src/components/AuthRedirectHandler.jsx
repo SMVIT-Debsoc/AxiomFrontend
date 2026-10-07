@@ -1,9 +1,10 @@
 import {useEffect, useState} from "react";
 import {useUser, useAuth} from "@clerk/clerk-react";
 import {useNavigate} from "react-router-dom";
-import {Loader2, ShieldX} from "lucide-react";
+import {ShieldX} from "lucide-react";
 import {AdminApi, UserApi} from "../services/api";
 import {isTemporaryAuth} from "../auth/mode";
+import LoadingIndicator from "./ui/LoadingIndicator";
 
 const isLocalhost = ["localhost", "127.0.0.1"].includes(
     window.location.hostname,
@@ -187,13 +188,5 @@ export function AuthRedirectHandler() {
         );
     }
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-            <div className="text-center">
-                <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-                <p className="text-lg font-medium mb-2">Please wait...</p>
-                <p className="text-muted-foreground">{status}</p>
-            </div>
-        </div>
-    );
+    return <LoadingIndicator fullScreen label={status || "Verifying your credentials..."} />;
 }

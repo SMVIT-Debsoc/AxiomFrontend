@@ -8,11 +8,11 @@ import {
   Edit,
   Trash2,
   Eye,
-  Loader2,
   MessageCircle,
   RotateCcw,
   X,
 } from "lucide-react";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { cn } from "../../lib/utils";
 import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
@@ -104,7 +104,7 @@ export default function AdminEvents() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading events" />
+        <LoadingIndicator label="Loading tournament events" />
       </div>
     );
   }
@@ -182,7 +182,7 @@ export default function AdminEvents() {
         <>
           {/* Desktop Table */}
           <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
-            <div className="overflow-x-auto no-scrollbar">
+            <div className="overflow-x-auto">
               <table className="w-full text-left" aria-label="Tournament events">
                 <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                   <tr>

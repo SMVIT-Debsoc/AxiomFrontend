@@ -2,6 +2,7 @@ import {useState, useEffect} from "react";
 import {useUser, useAuth} from "@clerk/clerk-react";
 import {useNavigate} from "react-router-dom";
 import {UserApi} from "../services/api";
+import LoadingIndicator from "./ui/LoadingIndicator";
 
 /**
  * OnboardingGuard - Handles user authentication and syncs user to backend.
@@ -35,14 +36,7 @@ export function OnboardingGuard({children}) {
     }, [isLoaded, user, navigate, getToken]);
 
     if (checking || !isLoaded) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <p className="text-muted-foreground">Loading...</p>
-                </div>
-            </div>
-        );
+        return <LoadingIndicator fullScreen label="Synchronizing your account" />;
     }
 
     if (!user) {

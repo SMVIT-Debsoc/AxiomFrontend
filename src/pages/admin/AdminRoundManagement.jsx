@@ -23,6 +23,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { cn } from "../../lib/utils";
 import { AdminApi, EventApi } from "../../services/api";
 import { useRoundSocket } from "../../hooks/useSocket";
+import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {useToast} from "../../hooks/useToast";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import {toLocalDateTime} from "../../lib/datetime";
@@ -373,7 +374,7 @@ export default function AdminRoundManagement() {
     if (loading && (!round || round.id !== roundId)) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" aria-label="Loading round management" />
+                <LoadingIndicator label="Loading round management" />
             </div>
         );
     }
@@ -577,7 +578,7 @@ export default function AdminRoundManagement() {
 
             {/* Tabs */}
             <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border/70 gap-3 pb-0" role="group" aria-label="Round views and search">
-                <div className="flex overflow-x-auto pb-1 md:pb-0 no-scrollbar gap-1">
+                <div className="flex overflow-x-auto pb-1 md:pb-0 gap-1">
                     <button
                         aria-pressed={activeTab === "checkins"}
                         onClick={() => setActiveTab("checkins")}
@@ -648,7 +649,7 @@ export default function AdminRoundManagement() {
                             </span>
                         </div>
                     </div>
-                    <div className="hidden md:block overflow-x-auto no-scrollbar">
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left" aria-label="Participant check-ins">
                             <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                                 <tr>
@@ -937,7 +938,7 @@ export default function AdminRoundManagement() {
                 <>
                     {/* Desktop View */}
                     <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
-                        <div className="overflow-x-auto no-scrollbar">
+                        <div className="overflow-x-auto">
                             <table className="w-full text-left" aria-label="Debate results">
                                 <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
                                     <tr>
@@ -1383,7 +1384,7 @@ function AllocateRoomsModal({
                             <h3 className="text-xs font-semibold text-foreground mb-2 block">
                                 Select Available Rooms ({selectedRoomIds.length}/{rooms.length})
                             </h3>
-                            <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 no-scrollbar">
+                            <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
                                 {rooms.map((room) => (
                                     <button
                                         key={room.id}
