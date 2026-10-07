@@ -180,7 +180,7 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-4">
       {/* Page Header */}
       <div className="axiom-page-header axiom-rise">
         <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
@@ -196,14 +196,14 @@ export default function DashboardHome() {
 
       {/* Error Banner */}
       {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl font-sans">
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2.5 rounded-lg font-sans flex flex-wrap items-baseline gap-x-3">
           <p className="font-semibold text-sm">Failed to load dashboard data</p>
-          <p className="text-xs opacity-90 mt-0.5">{error}</p>
+          <p className="text-xs opacity-90">{error}</p>
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start">
-      <div className="space-y-6 min-w-0">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start">
+      <div className="space-y-4 min-w-0">
       {/* Profile / Performance Overview Surface */}
       <div className="bg-card border border-border p-6 rounded-xl relative overflow-hidden axiom-rise" style={{"--i": 1}}>
         <div className="relative z-10">
@@ -300,6 +300,8 @@ export default function DashboardHome() {
         </Motion.div>
       ) : (
         <EmptyState
+          row
+          icon={Calendar}
           title="The arena is quiet"
           description="No tournament is running right now. Browse upcoming events and take your place."
           action={
@@ -310,7 +312,7 @@ export default function DashboardHome() {
         />
       )}
 
-      <aside className="hidden lg:grid grid-cols-[1fr_auto] items-end overflow-hidden rounded-xl bg-primary text-[var(--axiom-ink)] axiom-rise" style={{"--i": 5}} aria-label="Quick links">
+      <aside className="axiom-fill-tall grid-cols-[1fr_auto] items-end overflow-hidden rounded-xl bg-primary text-[var(--axiom-ink)] axiom-rise" style={{"--i": 5}} aria-label="Quick links">
         <div className="p-6 self-center">
           <p className="axiom-eyebrow mb-2">Between rounds</p>
           <p className="text-4xl leading-none uppercase" style={{fontFamily: "var(--font-display)"}}>Clarity<br />under pressure.</p>
@@ -323,7 +325,7 @@ export default function DashboardHome() {
       </aside>
       </div>
 
-      <div className="space-y-6 min-w-0">
+      <div className="space-y-4 min-w-0">
 
       {/* Check-In Status */}
       {currentRound && (
@@ -544,7 +546,7 @@ export default function DashboardHome() {
           </div>
         ) : (
           <EmptyState
-            compact
+            row
             icon={Trophy}
             title="No debate on the horizon"
             description="Your next pairing appears here once the draw is released."

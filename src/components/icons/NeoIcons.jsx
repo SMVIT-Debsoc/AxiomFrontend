@@ -5,6 +5,15 @@
  * cut-out strokes use --neo-cut so they match the tile behind them.
  */
 
+const BackIcon = () => (
+  <g transform="translate(-138 -138)">
+      <g>
+        <path d="M170 156L154 172L170 188" stroke="currentColor" strokeWidth="8" fill="none" />
+        <path d="M154 172H196" stroke="currentColor" strokeWidth="8" fill="none" />
+      </g>
+  </g>
+);
+
 const LayoutIcon = () => (
   <g transform="translate(-1482 -330)">
       <g>
@@ -115,6 +124,7 @@ const ExitIcon = () => (
 );
 
 const NEO_GLYPHS = {
+  BackIcon,
   LayoutIcon,
   EventsIcon,
   PortraitIcon,

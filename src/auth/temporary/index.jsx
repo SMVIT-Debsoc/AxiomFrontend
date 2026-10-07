@@ -185,16 +185,16 @@ export function UserButton() {
   const [open, setOpen] = useState(false);
   if (!user) return null;
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <button
         type="button"
         aria-label="Account menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={(event) => event.key === "Escape" && setOpen(false)}
-        className="h-9 w-9 overflow-hidden rounded-full border border-border"
+        className="block h-10 w-10 aspect-square shrink-0 overflow-hidden rounded-full border-2 border-[var(--neo-edge)] transition-transform hover:scale-105"
       >
-        <img src={user.imageUrl} alt="" className="h-full w-full" />
+        <img src={user.imageUrl} alt="" className="h-full w-full object-cover" />
       </button>
       {open && (
         <div role="menu" className="absolute right-0 z-50 mt-2 w-60 border border-border bg-card p-3 text-sm shadow-lg">

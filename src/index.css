@@ -42,7 +42,7 @@
     --destructive: 0 68% 43%;
     --destructive-foreground: 0 0% 100%;
   }
-  :root, .light, .axiom-entry {
+  :root, .light {
     color-scheme: light;
     --background: 60 29% 97%;
     --foreground: 108 10% 10%;
@@ -403,28 +403,31 @@
 }
 
 .neo-rail {
-  position: sticky; top: 0; z-index: 40; flex-shrink: 0;
-  display: none; flex-direction: column; align-items: center; gap: 1.25rem;
-  width: 6.5rem; height: 100vh; height: 100dvh; padding: 1.25rem 0 1rem;
-  background: hsl(var(--background)); border-right: 1px solid hsl(var(--border) / .7);
+  position: fixed; left: .85rem; top: 50%; z-index: 40; transform: translateY(-50%);
+  display: none; flex-direction: column; align-items: center; gap: .9rem;
+  max-height: calc(100dvh - 1.5rem); padding: .9rem .7rem;
+  background: hsl(var(--card) / .92); backdrop-filter: blur(14px);
+  border: 2px solid var(--neo-edge); border-radius: 1.6rem; box-shadow: 5px 5px 0 var(--neo-shadow);
+  animation: axiom-dock-in .6s var(--axiom-ease) both;
 }
-@media (min-width: 768px) { .neo-rail { display: flex; } }
-.neo-rail-mark { display: grid; place-items: center; width: 3rem; min-height: 3.5rem; color: hsl(var(--foreground)); transition: transform var(--axiom-motion) var(--axiom-ease), color var(--axiom-motion); }
-.neo-rail-mark:hover { transform: rotate(-6deg) scale(1.08); color: var(--axiom-green-dark); }
-.neo-rail-nav { display: flex; flex-direction: column; align-items: center; gap: .75rem; flex: 1; width: 100%; padding: .35rem 0 .75rem; }
-@media (max-height: 820px) { .neo-rail-nav { gap: .5rem; } .neo-rail .neo-tile { width: 3.25rem; height: 3.25rem; } .neo-rail .neo-tile-glyph { width: 2.1rem; height: 2.1rem; } }
-@media (max-height: 640px) { .neo-rail { gap: .6rem; padding-top: .75rem; } .neo-rail .neo-tile { width: 2.75rem; height: 2.75rem; border-radius: .7rem; } .neo-rail .neo-tile-glyph { width: 1.8rem; height: 1.8rem; } }
-.neo-rail-foot { display: grid; justify-items: center; gap: .75rem; padding-top: .75rem; }
+@media (min-width: 768px) { .neo-rail { display: flex; } .axiom-with-dock { padding-left: 6.1rem; } }
+@keyframes axiom-dock-in { from { opacity: 0; transform: translate(-24px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+
+
+.neo-rail-nav { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
+@media (max-height: 760px) { .neo-rail { gap: .5rem; padding-block: .6rem; } .neo-rail-nav { gap: .4rem; } .neo-rail .neo-tile { width: 3rem; height: 3rem; } .neo-rail .neo-tile-glyph { width: 1.95rem; height: 1.95rem; } }
+@media (max-height: 600px) { .neo-rail .neo-tile { width: 2.6rem; height: 2.6rem; border-radius: .7rem; } .neo-rail .neo-tile-glyph { width: 1.7rem; height: 1.7rem; }  }
+.neo-rail-foot { display: grid; justify-items: center; gap: .6rem; }
 
 .neo-tile {
   position: relative; display: grid; place-items: center; flex-shrink: 0;
-  width: 4rem; height: 4rem; border-radius: .9rem;
+  width: 3.5rem; height: 3.5rem; border-radius: .9rem;
   background: var(--neo-tile); color: var(--neo-glyph);
   border: 2px solid transparent;
   transition: transform 140ms var(--axiom-ease), box-shadow 140ms var(--axiom-ease), background-color 140ms, color 140ms, border-color 140ms;
 }
 .neo-tile--sm { width: 2.75rem; height: 2.75rem; border-radius: .7rem; }
-.neo-tile-glyph { width: 2.5rem; height: 2.5rem; overflow: visible; }
+.neo-tile-glyph { width: 2.25rem; height: 2.25rem; overflow: visible; }
 .neo-tile--sm .neo-tile-glyph { width: 1.7rem; height: 1.7rem; }
 .neo-tile:hover, .neo-tile:focus-visible {
   transform: translate(-2px, -2px);
@@ -489,13 +492,61 @@
 .neo-progress-fill { height: 100%; background: var(--axiom-green-primary); border-right: 2px solid var(--neo-edge); }
 .neo-progress-text { position: absolute; top: 50%; right: .35rem; transform: translateY(-50%); padding: .05rem .4rem; font-family: var(--font-heading); font-size: .7rem; font-weight: 700; line-height: 1.3; color: var(--axiom-ink); background: var(--axiom-paper); border: 1.5px solid var(--axiom-ink); border-radius: .25rem; }
 
-.neo-switch { position: relative; display: inline-flex; cursor: pointer; }
-.neo-switch-track { position: relative; width: 2.75rem; height: 1.5rem; background: var(--neo-tile); border: 2px solid var(--neo-edge); border-radius: 9999px; transition: background-color 160ms; }
-.neo-switch-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 1rem; height: 1rem; background: var(--axiom-paper); border: 2px solid var(--neo-edge); border-radius: 9999px; transition: transform 200ms var(--axiom-ease); }
-.neo-switch input:checked + .neo-switch-track { background: var(--axiom-green-primary); box-shadow: 2px 2px 0 var(--neo-shadow); }
-.neo-switch input:checked + .neo-switch-track::after { transform: translateX(1.25rem); }
-.neo-switch input:focus-visible + .neo-switch-track { outline: 3px solid var(--axiom-focus, var(--axiom-brand-text)); outline-offset: 3px; }
 .neo-drawer-link { display: flex; align-items: center; gap: .85rem; padding: .35rem .5rem; border-radius: .75rem; font-family: var(--font-heading); font-weight: 600; font-size: .95rem; color: hsl(var(--muted-foreground)); transition: background-color 120ms, color 120ms; }
 .neo-drawer-link:hover { background: hsl(var(--muted) / .7); color: hsl(var(--foreground)); }
 .neo-drawer-link[aria-current="page"] { color: hsl(var(--foreground)); }
 .neo-drawer-link[aria-current="page"] .neo-tile { background: var(--axiom-green-primary); color: var(--axiom-ink); border-color: var(--neo-edge); box-shadow: 3px 3px 0 var(--neo-shadow); --neo-cut: var(--axiom-green-primary); }
+
+.theme-bulb { font-size: 1.5rem; padding: 0; cursor: pointer; }
+.theme-bulb svg { width: 1em; height: 1em; }
+
+/* ---------- Compact workspace headers: less scroll, same hierarchy ---------- */
+.axiom-workspace .axiom-page-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem 1rem; padding-bottom: .9rem; margin-bottom: 1.1rem; }
+.axiom-workspace .axiom-page-header > * { margin: 0; }
+.axiom-workspace .axiom-page-header .axiom-eyebrow { flex-basis: 100%; }
+.axiom-workspace .axiom-page-header h1 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); line-height: 1.1; animation: axiom-blur-in .7s var(--axiom-ease) both; }
+.axiom-workspace .axiom-page-header p { flex: 1 1 18rem; font-size: .88rem; }
+@keyframes axiom-blur-in { from { opacity: 0; filter: blur(10px); transform: translateY(10px); letter-spacing: .06em; } to { opacity: 1; filter: blur(0); transform: none; } }
+.axiom-entry h1, .axiom-poster-heading, .axiom-auth-title h1 { animation: axiom-blur-in .9s var(--axiom-ease) both; }
+
+/* Horizontal empty state for small panels. */
+.axiom-empty--row { grid-template-columns: auto minmax(0, 1fr); justify-items: start; text-align: left; align-items: center; gap: .25rem 1.25rem; padding: 1rem 1.25rem; }
+.axiom-empty--row .axiom-empty-art { width: 4.5rem; height: 4.5rem; margin: 0; box-shadow: 0 0 0 .25rem hsl(var(--primary) / .18); grid-row: span 3; animation-duration: 6s; }
+.axiom-empty--row h2 { font-size: 1.6rem; }
+.axiom-empty--row p { max-width: none; }
+.axiom-empty--row .axiom-empty-action { margin-top: .4rem; }
+.axiom-empty-copy { display: grid; gap: .3rem; justify-items: inherit; }
+
+/* Panels that only appear when there is spare height. */
+.axiom-fill-tall { display: none; }
+@media (min-width: 1024px) and (min-height: 1000px) { .axiom-fill-tall { display: grid; } }
+
+/* ---------- Public buttons: hard shadow lift, sliding arrow ---------- */
+.axiom-button { box-shadow: 0 0 0 var(--axiom-ink); transition: transform 140ms var(--axiom-ease), box-shadow 140ms var(--axiom-ease), background-color var(--axiom-motion), color var(--axiom-motion); }
+.axiom-button:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--axiom-ink); }
+.axiom-button:active { transform: translate(1px, 1px); box-shadow: 0 0 0 var(--axiom-ink); }
+.axiom-button svg { transition: transform 200ms var(--axiom-ease); }
+.axiom-button:hover svg { transform: translate(2px, -2px); }
+.dark .axiom-button { box-shadow: 0 0 0 var(--axiom-green-primary); }
+.dark .axiom-button:hover { box-shadow: 4px 4px 0 var(--axiom-green-primary); }
+.axiom-entry .axiom-button:hover, .axiom-poster .axiom-button:hover { box-shadow: 4px 4px 0 var(--axiom-ink); }
+.axiom-empty:not(.axiom-empty--row) .axiom-empty-copy { justify-items: center; }
+.axiom-empty--row .axiom-empty-art svg { width: 44%; height: 44%; }
+
+.axiom-userchip { display: flex; align-items: center; gap: .75rem; min-width: 0; max-width: 18rem; padding: .25rem .3rem .25rem 1rem; border: 1px solid hsl(var(--border)); border-radius: 9999px; background: hsl(var(--card) / .8); }
+@media (max-width: 639px) { .axiom-userchip { padding: 0; border: 0; background: none; } }
+.neo-rail-divider { width: 2rem; height: 2px; border-radius: 2px; background: hsl(var(--border)); }
+
+/* ---------- Dark landing / entry page ---------- */
+.dark .axiom-entry { --axiom-focus: var(--axiom-green-light); --axiom-logo-ink: var(--axiom-green-primary); color: var(--axiom-paper); background: #0f130e; }
+.dark .axiom-entry-header, .dark .axiom-poster { background: #151b13; }
+.dark .axiom-entry-header { border-bottom-color: rgb(250 250 246 / .18); }
+.dark .axiom-entry .axiom-button--outline { color: var(--axiom-paper); }
+.dark .axiom-entry .axiom-button--outline:hover { background: rgb(135 193 77 / .18); color: var(--axiom-paper); }
+.dark .axiom-poster-heading { color: var(--axiom-paper); }
+.dark .axiom-poster-art { filter: brightness(.85) contrast(1.05); }
+.dark .axiom-poster-access { background: rgb(23 27 22 / .94); border-color: rgb(250 250 246 / .28); color: var(--axiom-paper); --axiom-brand-text: var(--axiom-green-light); --axiom-error: #ff9c9c; }
+.dark .axiom-role-button, .dark .axiom-access-footer { border-top-color: rgb(250 250 246 / .2); }
+.dark .axiom-role-button small { color: #b4bbab; }
+.dark .axiom-access-input { background: #0f130e; border-color: #697360; color: var(--axiom-paper); }
+.dark .bg-axiom, .dark .axiom-registration-art, .dark .axiom-poster-access .axiom-eyebrow.on-green { color: var(--axiom-ink); }

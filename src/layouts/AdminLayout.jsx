@@ -19,6 +19,7 @@ import Axiom40Logo from "../components/brand/Axiom40Logo";
 import { cn } from "../lib/utils";
 import { SidebarRail, MobileTabs } from "../components/layout/SidebarRail";
 import NeoIcon from "../components/icons/NeoIcons";
+import ThemeToggle from "../components/ui/ThemeToggle";
 import ModalSurface from "../components/ui/ModalSurface";
 
 const sidebarItems = [
@@ -131,10 +132,10 @@ export default function AdminLayout() {
                 )}
             </AnimatePresence>
 
-            <SidebarRail items={navItems} homePath="/admin" homeLabel="AXIOM 4.0 Admin Home" />
+            <SidebarRail items={navItems} />
 
             {/* Content Area */}
-            <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 axiom-with-dock">
                 {/* Top Header */}
                 <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
                     <div className="flex items-center gap-3">
@@ -173,16 +174,19 @@ export default function AdminLayout() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="text-right hidden sm:block">
-                            <p className="text-sm font-heading font-medium leading-tight">
-                                {user?.fullName}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-sans">
-                                Administrator
-                            </p>
+                    <div className="flex items-center gap-3">
+                        <ThemeToggle />
+                        <div className="axiom-userchip">
+                            <div className="hidden sm:block min-w-0 text-right">
+                                <p className="truncate text-sm font-heading font-semibold leading-tight">
+                                    {user?.fullName}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground font-sans">
+                                    Administrator
+                                </p>
+                            </div>
+                            <UserButton />
                         </div>
-                        <UserButton />
                     </div>
                 </header>
 

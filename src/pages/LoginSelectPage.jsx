@@ -7,6 +7,7 @@ import Sculpture from "../components/brand/Sculpture";
 import RoleAccess from "../components/brand/RoleAccess";
 import DiscourseSections from "../components/brand/DiscourseSections";
 import Footer from "../components/Footer";
+import ThemeToggle from "../components/ui/ThemeToggle";
 
 export default function LoginSelectPage() {
     const navigate = useNavigate();
@@ -59,7 +60,10 @@ export default function LoginSelectPage() {
             <a className="axiom-skip" href="#access">Skip to sign in</a>
             <header className="axiom-entry-header axiom-container">
                 <p className="axiom-eyebrow">SMVIT Debsoc<br />Competitive debate / Edition 04</p>
-                <Link to="/about" className="axiom-button axiom-button--outline">Discover AXIOM<ArrowUpRight size={16} aria-hidden="true" /></Link>
+                <div className="flex items-center gap-3">
+                    <ThemeToggle />
+                    <Link to="/about" className="axiom-button axiom-button--outline">Discover AXIOM<ArrowUpRight size={16} aria-hidden="true" /></Link>
+                </div>
             </header>
             <main id="main-content">
                 <section className="axiom-poster" aria-labelledby="entry-title">

@@ -7,8 +7,7 @@ import {
     useAuth,
 } from "@clerk/clerk-react";
 import {SidebarRail, MobileTabs} from "../components/layout/SidebarRail";
-import NeoToggleSwitch from "../components/neo/NeoToggleSwitch";
-import {useTheme} from "../hooks/useTheme"
+import ThemeToggle from "../components/ui/ThemeToggle";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 
 const isLocalhost = ["localhost", "127.0.0.1"].includes(
@@ -29,7 +28,6 @@ export default function DashboardLayout() {
     const location = useLocation();
     const {user, isLoaded, isSignedIn} = useUser();
     const {getToken} = useAuth();
-    const {theme, toggleTheme} = useTheme();
 
     // Check admin status to show admin link (silently - 403 is expected for non-admins)
     useEffect(() => {
@@ -88,10 +86,10 @@ export default function DashboardLayout() {
 
     return (
         <div className="min-h-screen bg-background text-foreground flex axiom-workspace">
-            <SidebarRail items={navItems} homePath="/dashboard" homeLabel="AXIOM 4.0 Dashboard Home" />
+            <SidebarRail items={navItems} />
 
             {/* Content Area */}
-            <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 axiom-with-dock">
                 {/* Top Header */}
                 <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
                     <div className="md:hidden flex items-center gap-2">
@@ -105,21 +103,19 @@ export default function DashboardLayout() {
                     </div>
 
                     <div className="flex items-center gap-3 ml-auto">
-                        <NeoToggleSwitch
-                            checked={theme === "dark"}
-                            onChange={toggleTheme}
-                            label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                        />
+                        <ThemeToggle />
 
-                        <div className="text-right hidden sm:block">
-                            <p className="text-sm font-heading font-medium leading-tight">
-                                {user.fullName}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-sans">
-                                {user.primaryEmailAddress?.emailAddress}
-                            </p>
+                        <div className="axiom-userchip">
+                            <div className="hidden sm:block min-w-0 text-right">
+                                <p className="truncate text-sm font-heading font-semibold leading-tight">
+                                    {user.fullName}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground font-sans">
+                                    {user.primaryEmailAddress?.emailAddress}
+                                </p>
+                            </div>
+                            <UserButton />
                         </div>
-                        <UserButton />
                     </div>
                 </header>
 

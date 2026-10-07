@@ -1,18 +1,16 @@
 import {Link} from "react-router-dom";
-import Axiom40Mark from "../brand/Axiom40Mark";
 import NeoIconButton from "../neo/NeoIconButton";
 import NeoIcon from "../icons/NeoIcons";
 
 /**
- * Icon rail used by the participant and admin workspaces: mark on top, one tile per destination,
+ * Floating icon dock used by the participant and admin workspaces: a back-to-landing tile on top, one tile per destination,
  * optional footer. Items: {label, path, icon, active}. Hidden below md, where MobileTabs takes over.
  */
-export function SidebarRail({items, homePath, homeLabel, footer}) {
+export function SidebarRail({items, footer}) {
   return (
     <aside className="neo-rail" aria-label="Workspace">
-      <Link to={homePath} className="neo-rail-mark" aria-label={homeLabel}>
-        <Axiom40Mark className="h-11 w-auto" />
-      </Link>
+      <NeoIconButton to="/" icon="BackIcon" label="Back to landing page" />
+      <span className="neo-rail-divider" aria-hidden="true" />
       <nav className="neo-rail-nav" aria-label="Primary">
         {items.map((item) => (
           <NeoIconButton key={item.path} to={item.path} icon={item.icon} label={item.label} active={item.active} />
