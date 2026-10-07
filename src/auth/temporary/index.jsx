@@ -9,6 +9,7 @@
  */
 import {createContext, useCallback, useContext, useEffect, useMemo, useState} from "react";
 import {useNavigate} from "react-router-dom";
+import {avatarDataUri} from "../../lib/avatar";
 
 const AUTH_BASE = "/api/auth";
 const PLACEHOLDER_TOKEN = "temporary-session";
@@ -36,12 +37,6 @@ function writeProfile(id, patch) {
   return all[id];
 }
 
-function initialsAvatar(label) {
-  const letter = (label || "?").trim().charAt(0).toUpperCase();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#87C14D"/><text x="32" y="43" font-family="sans-serif" font-size="30" font-weight="700" text-anchor="middle" fill="#114111">${letter}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
 function buildUser(sessionUser, profileOverride, onUpdate) {
   const email = sessionUser.email;
   const profile = {...readProfile(sessionUser.id), ...profileOverride};
@@ -54,7 +49,7 @@ function buildUser(sessionUser, profileOverride, onUpdate) {
     firstName,
     lastName,
     fullName,
-    imageUrl: initialsAvatar(firstName || email),
+    imageUrl: avatarDataUri(email),
     primaryEmailAddress: {emailAddress: email},
     emailAddresses: [{emailAddress: email}],
     primaryPhoneNumber: null,

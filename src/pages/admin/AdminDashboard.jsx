@@ -1,19 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion as Motion } from "framer-motion";
-import {
-  Calendar,
-  Users,
-  Trophy,
-  Activity,
-  Plus,
-  ArrowUpRight,
-  Shield,
-} from "lucide-react";
+import {Calendar, Users, Trophy, Activity, Plus, ArrowUpRight} from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 import { AdminApi } from "../../services/api";
 import { useSocket, SocketEvents } from "../../hooks/useSocket";
 import Sculpture from "../../components/brand/Sculpture";
+import {UserAvatar} from "../../components/ui/UserAvatar";
+import CountUp from "../../components/ui/CountUp";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminDashboard() {
   const { getToken } = useAuth();
@@ -154,7 +149,8 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-card/70 border border-border/70 rounded-xl p-5 backdrop-blur-sm flex flex-col justify-between"
+              whileHover={{ y: -3 }}
+              className="bg-card/70 border border-border/70 hover:border-primary/50 hover:shadow-md transition-[border-color,box-shadow] rounded-xl p-5 backdrop-blur-sm flex flex-col justify-between"
             >
               <div className="flex items-start justify-between mb-3">
                 <div
@@ -168,7 +164,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-0.5">
-                  {stat.value}
+                  <CountUp value={stat.value} />
                 </div>
                 <div className="text-xs font-sans text-muted-foreground font-medium">
                   {stat.label}
@@ -239,10 +235,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
           {recentEvents.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground font-sans">
-              <Calendar className="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true" />
-              <p className="text-xs">No tournaments recorded yet</p>
-            </div>
+            <EmptyState compact icon={Calendar} title="No tournaments yet" description="Created tournaments will be listed here." />
           ) : (
             <>
               {/* Desktop View */}
@@ -314,8 +307,8 @@ export default function AdminDashboard() {
                     to={`/admin/events/${event.id}`}
                     className="block p-3 rounded-lg bg-background/50 border border-border/70 hover:bg-muted/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                           <Calendar className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
                         </div>
@@ -364,10 +357,7 @@ export default function AdminDashboard() {
           </Link>
         </div>
         {recentDebates.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground font-sans">
-            <Trophy className="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true" />
-            <p className="text-xs">No debates recorded recently</p>
-          </div>
+          <EmptyState compact icon={Trophy} title="No debates yet" description="Recent debates appear once rounds are drawn." />
         ) : (
           <>
             {/* Desktop View */}
@@ -398,28 +388,8 @@ export default function AdminDashboard() {
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="flex -space-x-2">
-                            {debate.debater1.imageUrl ? (
-                              <img
-                                src={debate.debater1.imageUrl}
-                                alt=""
-                                className="w-7 h-7 rounded-full border-2 border-card object-cover"
-                              />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-blue-500">
-                                {debate.debater1.firstName?.[0] || "U"}
-                              </div>
-                            )}
-                            {debate.debater2.imageUrl ? (
-                              <img
-                                src={debate.debater2.imageUrl}
-                                alt=""
-                                className="w-7 h-7 rounded-full border-2 border-card object-cover"
-                              />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-emerald-500">
-                                {debate.debater2.firstName?.[0] || "U"}
-                              </div>
-                            )}
+                            <UserAvatar user={debate.debater1} size="xs" className="w-7 h-7 border-2 border-card ring-0" />
+                            <UserAvatar user={debate.debater2} size="xs" className="w-7 h-7 border-2 border-card ring-0" />
                           </div>
                           <span className="text-sm font-sans font-medium text-foreground">
                             {debate.debater1.firstName} vs {debate.debater2.firstName}
@@ -492,28 +462,8 @@ export default function AdminDashboard() {
 
                   <div className="flex items-center gap-2.5">
                     <div className="flex -space-x-1.5 shrink-0">
-                      {debate.debater1.imageUrl ? (
-                        <img
-                          src={debate.debater1.imageUrl}
-                          alt=""
-                          className="w-7 h-7 rounded-full border-2 border-card object-cover"
-                        />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-blue-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-blue-500">
-                          {debate.debater1.firstName?.[0] || "U"}
-                        </div>
-                      )}
-                      {debate.debater2.imageUrl ? (
-                        <img
-                          src={debate.debater2.imageUrl}
-                          alt=""
-                          className="w-7 h-7 rounded-full border-2 border-card object-cover"
-                        />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-emerald-500/20 border-2 border-card flex items-center justify-center text-[10px] font-bold text-emerald-500">
-                          {debate.debater2.firstName?.[0] || "U"}
-                        </div>
-                      )}
+                      <UserAvatar user={debate.debater1} size="xs" className="w-7 h-7 border-2 border-card ring-0" />
+                      <UserAvatar user={debate.debater2} size="xs" className="w-7 h-7 border-2 border-card ring-0" />
                     </div>
                     <div className="min-w-0">
                       <p className="font-sans font-medium text-xs truncate text-foreground">

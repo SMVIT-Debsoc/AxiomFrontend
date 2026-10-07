@@ -1,16 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion as Motion } from "framer-motion";
-import {
-  Activity,
-  Calendar,
-  ChevronRight,
-  Search,
-  Clock,
-  Loader2,
-} from "lucide-react";
+import {Calendar, ChevronRight, Search, Clock, Loader2} from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi, EventApi } from "../../services/api";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminRounds() {
   const { getToken } = useAuth();
@@ -106,19 +100,15 @@ export default function AdminRounds() {
       </div>
 
       {filteredEvents.length === 0 ? (
-        <div className="text-center py-16 bg-card/60 border border-border/70 rounded-xl">
-          <Activity className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
-          <h3 className="text-lg font-heading font-bold mb-1 text-foreground">No Active Rounds Found</h3>
-          <p className="text-sm text-muted-foreground mb-5 font-sans">
-            {searchQuery ? "No rounds matched your search query." : "Create rounds within a tournament to manage them here."}
-          </p>
-          <Link
-            to="/admin/events"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Go to Events
-          </Link>
-        </div>
+        <EmptyState
+          title={searchQuery ? "No round matched" : "No rounds yet"}
+          description={searchQuery ? "No rounds matched your search query." : "Create rounds within a tournament to manage them here."}
+          action={
+            <Link to="/admin/events" className="axiom-button axiom-button--green axiom-press axiom-sheen">
+              Go to events
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-8">
           {filteredEvents.map((event) => (

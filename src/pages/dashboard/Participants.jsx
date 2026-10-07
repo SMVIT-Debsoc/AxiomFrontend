@@ -13,6 +13,7 @@ import {EventApi} from "../../services/api";
 import {useEventSocket} from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {ParticipantsListSkeleton} from "../../components/ui/Skeleton";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function Participants() {
   const {eventId} = useParams();
@@ -162,14 +163,12 @@ export default function Participants() {
       {/* Participants List */}
       <div className="space-y-2.5">
         {filteredParticipants.length === 0 ? (
-          <div className="text-center py-12 bg-card border border-border rounded-xl">
-            <Users className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" aria-hidden="true" />
-            <p className="text-muted-foreground font-sans text-sm">
-              {searchQuery
-                ? "No debaters found matching your query."
-                : "No debaters registered yet."}
-            </p>
-          </div>
+          <EmptyState
+            compact
+            icon={Users}
+            title={searchQuery ? "No match" : "No debaters yet"}
+            description={searchQuery ? "No debaters found matching your query." : "No debaters registered yet."}
+          />
         ) : (
           filteredParticipants.map((participant, index) => (
             <Motion.div

@@ -95,6 +95,16 @@ CSS entrances and short state transitions replace orbital/particle effects. Fram
 
 Skip links, semantic section headings, labeled role-access fields, announced validation errors, named icon controls and visible keyboard focus accompany the visual system. Mobile navigation remains a usable disclosure; protected workspace navigation retains desktop/sidebar and mobile/bottom-navigation behavior. Browser zoom is no longer disabled by the viewport metadata.
 
+### Workspace rail, icons and components
+
+Participant and admin workspaces share one icon rail (`src/components/layout/SidebarRail.jsx`): a tile per destination, labels as tooltips and accessible names, a bottom tab bar below 768px. The admin mobile drawer keeps full labels.
+
+- **Icons**: `src/components/icons/NeoIcons.jsx` holds 11 glyphs from the *Neubrutalism Icons Set (Community)* Figma file (Live stroke sheet), taken from the SVG export supplied by the project owner. Only the glyphs are used; the Figma tile and shadow are redrawn in CSS. Check the file's licence before publishing.
+- **Components**: `src/components/neo/` re-implements IconButton, Button, Card, ProgressBar and ToggleSwitch from the MIT-licensed [Neo-Brutalism UI library](https://github.com/marieooq/neo-brutalism-ui-library) (marieooq) with AXIOM colours. Dialog, Dropdown, Checkbox and Input were not adopted; existing AXIOM controls remain.
+- **Profile pictures**: `src/lib/avatar.js` draws a sculptural portrait (halo, headdress, jewellery, palette) deterministically from the account email, id or name. `UserAvatar` shows a person's own photo when they have one and this portrait otherwise; no initials. With Clerk, `AvatarSync` uploads the portrait once as the profile image for accounts without a photo (untested without a Clerk key).
+- **Empty states**: `EmptyState` (halo, rotating rays, the sculpture) replaces plain "nothing here" blocks; `compact` for panels.
+- **Motion**: staggered rise on dashboard blocks, count-up stats, bar fill, card lift, press and sheen, route transitions. All transform/opacity; `prefers-reduced-motion` disables them.
+
 ## Deployment notes
 
 ### Authentication modes

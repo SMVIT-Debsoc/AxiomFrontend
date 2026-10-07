@@ -20,6 +20,7 @@ import { AdminApi, EventApi } from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { useSocket, SocketEvents } from "../../hooks/useSocket";
 import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminEvents() {
   const { getToken } = useAuth();
@@ -167,20 +168,16 @@ export default function AdminEvents() {
 
       {/* Events List */}
       {filteredEvents.length === 0 ? (
-        <div className="text-center py-16 bg-card/60 border border-border/70 rounded-xl">
-          <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
-          <h3 className="text-lg font-heading font-bold mb-1 text-foreground">No Tournaments Found</h3>
-          <p className="text-sm text-muted-foreground mb-5 font-sans">
-            {searchQuery ? "No events matched your search query." : "Create your first tournament to get started."}
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-sans font-medium hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            <span>Create Event</span>
-          </button>
-        </div>
+        <EmptyState
+          title={searchQuery ? "Nothing matched" : "No tournaments yet"}
+          description={searchQuery ? "No events matched your search query." : "Create your first tournament to get started."}
+          action={
+            <button onClick={() => setShowCreateModal(true)} className="axiom-button axiom-button--green axiom-press axiom-sheen">
+              <Plus size={16} aria-hidden="true" />
+              <span>Create event</span>
+            </button>
+          }
+        />
       ) : (
         <>
           {/* Desktop Table */}

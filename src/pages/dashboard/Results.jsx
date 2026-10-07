@@ -19,6 +19,7 @@ import {
 import {cn} from "../../lib/utils";
 import {useEventSocket} from "../../hooks/useSocket";
 import {CardSkeleton, LeaderboardSkeleton} from "../../components/ui/Skeleton";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function Results() {
   const {eventId} = useParams();
@@ -213,12 +214,7 @@ export default function Results() {
           className="space-y-3"
         >
           {getMyEventDebates().length === 0 ? (
-            <div className="text-center py-12 bg-card border border-border rounded-xl">
-              <Trophy className="w-10 h-10 mx-auto mb-3 text-muted-foreground/60" />
-              <p className="text-sm text-muted-foreground">
-                No debate results yet for this event.
-              </p>
-            </div>
+            <EmptyState compact icon={Trophy} title="No results yet" description="No debate results yet for this event." />
           ) : (
             getMyEventDebates().map((debate, index) => {
               const round = rounds.find((r) => r.id === debate.roundId);

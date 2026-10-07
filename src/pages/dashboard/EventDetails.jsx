@@ -23,6 +23,7 @@ import { cn } from "../../lib/utils";
 import { useEventSocket } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { EventDetailsSkeleton } from "../../components/ui/Skeleton";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function EventDetails() {
   const { id } = useParams();
@@ -542,10 +543,7 @@ export default function EventDetails() {
               className="space-y-3"
             >
               {rounds.length === 0 ? (
-                <div className="p-12 text-center text-muted-foreground bg-card border border-border rounded-xl">
-                  <Clock className="w-10 h-10 mx-auto mb-3 opacity-50" aria-hidden="true" />
-                  <p className="text-sm font-sans">No rounds have been scheduled yet.</p>
-                </div>
+                <EmptyState compact icon={Clock} title="No rounds scheduled" description="The schedule appears here once rounds are created." />
               ) : (
                 rounds.map((round) => (
                   <Link
@@ -636,14 +634,12 @@ export default function EventDetails() {
                   const query = searchQuery.toLowerCase();
                   return fullName.includes(query) || college.includes(query);
                 }).length === 0 ? (
-                  <div className="text-center py-12 bg-card border border-border rounded-xl">
-                    <School className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" aria-hidden="true" />
-                    <p className="text-muted-foreground font-sans text-sm">
-                      {searchQuery
-                        ? "No participants found matching your search."
-                        : "No participants registered yet."}
-                    </p>
-                  </div>
+                  <EmptyState
+                    compact
+                    icon={School}
+                    title={searchQuery ? "No match" : "No debaters yet"}
+                    description={searchQuery ? "No participants found matching your search." : "No participants registered yet."}
+                  />
                 ) : (
                   participants
                     .filter((p) => {

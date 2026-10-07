@@ -19,6 +19,8 @@ import {
   ProfileHeaderSkeleton,
   CardSkeleton,
 } from "../../components/ui/Skeleton";
+import {UserAvatar} from "../../components/ui/UserAvatar";
+import NeoCard from "../../components/neo/NeoCard";
 
 export default function Profile({isOnboarding = false}) {
   const {user, isLoaded} = useUser();
@@ -208,7 +210,7 @@ export default function Profile({isOnboarding = false}) {
   const isProfileComplete = formData.college && formData.mobile;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className={isOnboarding ? "max-w-2xl mx-auto space-y-6" : "max-w-5xl mx-auto space-y-6"}>
       {/* Onboarding Header */}
       {isOnboarding && (
         <div className="axiom-page-header mb-6 text-center">
@@ -263,14 +265,11 @@ export default function Profile({isOnboarding = false}) {
         </div>
       )}
 
+      <div className={isOnboarding ? "" : "grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] items-start"}>
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         {/* Profile Card Header */}
         <div className="p-5 border-b border-border bg-muted/20 flex items-center gap-3.5">
-          <img
-            src={user.imageUrl}
-            alt="Profile avatar"
-            className="w-12 h-12 rounded-full border border-border object-cover flex-shrink-0"
-          />
+          <UserAvatar user={user} name={`${formData.firstName} ${formData.lastName}`.trim()} size="xl" className="axiom-avatar-pop" />
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-heading font-bold text-foreground truncate">
               {formData.firstName} {formData.lastName}
@@ -432,6 +431,31 @@ export default function Profile({isOnboarding = false}) {
             </button>
           </div>
         </form>
+      </div>
+
+      {!isOnboarding && (
+        <NeoCard
+          role="complementary"
+          aria-label="Your portrait"
+          className="hidden lg:block overflow-hidden text-center axiom-rise"
+          style={{"--i": 2}}
+        >
+          <div className="bg-primary px-6 pt-8 pb-6">
+            <UserAvatar
+              user={user}
+              name={`${formData.firstName} ${formData.lastName}`.trim()}
+              size="3xl"
+              className="mx-auto border-4 border-[var(--axiom-paper)] ring-0 axiom-avatar-pop"
+            />
+          </div>
+          <div className="p-5 space-y-1.5">
+            <p className="axiom-eyebrow text-primary">Your portrait</p>
+            <p className="text-sm text-muted-foreground font-sans leading-relaxed">
+              Drawn for you from your account, so you look the same to every judge, opponent and organiser on AXIOM.
+            </p>
+          </div>
+        </NeoCard>
+      )}
       </div>
     </div>
   );

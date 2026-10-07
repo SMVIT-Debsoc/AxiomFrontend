@@ -16,6 +16,7 @@ import {OnboardingGuard} from "./components/OnboardingGuard";
 import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
 import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
 import ApiAuthSync from "./components/ApiAuthSync";
+import AvatarSync from "./components/AvatarSync";
 import {ToastProvider} from "./components/ui/Toast";
 
 // Role selection pages
@@ -47,6 +48,7 @@ function App() {
             <Preloader />
             <ToastProvider>
                 <ApiAuthSync />
+                <AvatarSync />
                 <BrowserRouter>
                     <Routes>
                         {/* Auth redirect handler - processes admin/user routing after sign-in */}

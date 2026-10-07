@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi, EventApi, RoundApi } from "../../services/api";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminResults() {
     const { getToken } = useAuth();
@@ -165,9 +166,7 @@ export default function AdminResults() {
     const renderRounds = () => (
         <div className="space-y-3">
             {filteredRounds.length === 0 ? (
-                <div className="text-center py-12 bg-card/40 rounded-xl border border-dashed border-border/80">
-                    <p className="text-xs text-muted-foreground font-sans">No rounds found for this tournament.</p>
-                </div>
+                <EmptyState compact icon={Trophy} title="No rounds yet" description="No rounds found for this tournament." />
             ) : (
                 filteredRounds.map((round) => (
                     <Motion.button

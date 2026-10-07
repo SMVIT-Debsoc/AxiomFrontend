@@ -1,19 +1,10 @@
 import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect } from "react";
 import { motion as Motion } from "framer-motion";
-import {
-    MapPin,
-    Plus,
-    Search,
-    Trash2,
-    Edit,
-    Loader2,
-    Building2,
-    Users,
-    X,
-} from "lucide-react";
+import {MapPin, Plus, Search, Trash2, Edit, Loader2, Users, X} from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { AdminApi } from "../../services/api";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminRooms() {
     const { getToken } = useAuth();
@@ -134,20 +125,16 @@ export default function AdminRooms() {
             </div>
 
             {filteredRooms.length === 0 ? (
-                <div className="text-center py-16 bg-card/60 border border-border/70 rounded-xl">
-                    <Building2 className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
-                    <h3 className="text-lg font-heading font-bold mb-1 text-foreground">No Rooms Configured</h3>
-                    <p className="text-sm text-muted-foreground mb-5 font-sans">
-                        {searchQuery ? "No rooms matched your search." : "Add rooms to start allocating debate matchups."}
-                    </p>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        <Plus className="w-4 h-4" aria-hidden="true" />
-                        <span>Add First Room</span>
+                <EmptyState
+                  title={searchQuery ? "No room matched" : "No rooms yet"}
+                  description={searchQuery ? "No rooms matched your search." : "Add rooms to start allocating debate matchups."}
+                  action={
+                    <button onClick={() => setShowCreateModal(true)} className="axiom-button axiom-button--green axiom-press axiom-sheen">
+                      <Plus size={16} aria-hidden="true" />
+                      <span>Add first room</span>
                     </button>
-                </div>
+                  }
+                />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
                     {filteredRooms.map((room, index) => (

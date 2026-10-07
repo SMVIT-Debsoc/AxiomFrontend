@@ -19,6 +19,11 @@ import {useToast} from "../../hooks/useToast"
 import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
 import {useEventSocket} from "../../hooks/useSocket";
 import Sculpture from "../../components/brand/Sculpture";
+import {UserAvatar} from "../../components/ui/UserAvatar";
+import EmptyState from "../../components/ui/EmptyState";
+import CountUp from "../../components/ui/CountUp";
+import NeoButton from "../../components/neo/NeoButton";
+import NeoProgressBar from "../../components/neo/NeoProgressBar";
 
 export default function DashboardHome() {
   const {getToken} = useAuth();
@@ -151,12 +156,6 @@ export default function DashboardHome() {
   const displayName = userData?.firstName
     ? `${userData.firstName} ${userData.lastName || ""}`.trim()
     : clerkUser?.fullName || "User";
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
   const college = userData?.college || "Complete your profile";
 
   const stats = [
@@ -181,9 +180,9 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-6xl">
       {/* Page Header */}
-      <div className="axiom-page-header">
+      <div className="axiom-page-header axiom-rise">
         <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
           Overview
         </span>
@@ -203,21 +202,13 @@ export default function DashboardHome() {
         </div>
       )}
 
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start">
+      <div className="space-y-6 min-w-0">
       {/* Profile / Performance Overview Surface */}
-      <div className="bg-card border border-border p-6 rounded-xl relative overflow-hidden">
+      <div className="bg-card border border-border p-6 rounded-xl relative overflow-hidden axiom-rise" style={{"--i": 1}}>
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-5">
-            {clerkUser?.imageUrl ? (
-              <img
-                src={clerkUser.imageUrl}
-                alt={displayName}
-                className="w-14 h-14 rounded-full object-cover border border-border shrink-0"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xl font-heading font-bold text-primary shrink-0">
-                {initials}
-              </div>
-            )}
+            <UserAvatar user={clerkUser} name={displayName} size="xl" className="axiom-avatar-pop" />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-heading font-bold text-foreground truncate">{displayName}</h2>
@@ -230,19 +221,29 @@ export default function DashboardHome() {
           </div>
 
           <div className="grid grid-cols-3 gap-2 bg-muted/30 border border-border/60 rounded-lg p-3 text-center">
-            {stats.map((stat) => (
+            {stats.map((stat, index) => (
               <div
                 key={stat.label}
-                className="border-r last:border-0 border-border/50 px-1"
+                className="border-r last:border-0 border-border/50 px-1 axiom-rise"
+                style={{"--i": index + 3}}
               >
                 <div className={`text-xl font-heading font-bold ${stat.color}`}>
-                  {stat.value}
+                  <CountUp value={stat.value} />
                 </div>
                 <div className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground mt-0.5">
                   {stat.label}
                 </div>
               </div>
             ))}
+          </div>
+          <div className="mt-4">
+            <p className="mb-1.5 text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground">
+              Win rate
+            </p>
+            <NeoProgressBar
+              label="Qualify rate"
+              value={userData?.stats?.totalDebates > 0 ? Math.round(userData.stats.winRate) : 0}
+            />
           </div>
         </div>
 
@@ -258,7 +259,9 @@ export default function DashboardHome() {
           initial={{y: 14, opacity: 0}}
           animate={{y: 0, opacity: 1}}
           transition={{duration: 0.3}}
-          className="bg-card border border-border hover:border-primary/40 transition-colors p-6 rounded-xl relative"
+          className="bg-card border border-border hover:border-primary/40 hover:shadow-md transition-[border-color,box-shadow] p-6 rounded-xl relative"
+          whileHover={{y: -3}}
+          whileTap={{scale: 0.99}}
         >
           <Link
             to={`/dashboard/events/${activeEvent.id}`}
@@ -296,24 +299,35 @@ export default function DashboardHome() {
           </Link>
         </Motion.div>
       ) : (
-        <div className="bg-card border border-border p-6 rounded-xl text-center">
-          <Calendar className="w-10 h-10 mx-auto mb-2 text-muted-foreground" aria-hidden="true" />
-          <h3 className="font-heading font-bold text-base mb-1 text-foreground">No Active Events</h3>
-          <p className="text-muted-foreground font-sans text-xs mb-3">
-            Check out upcoming tournaments
-          </p>
-          <Link
-            to="/dashboard/events"
-            className="inline-flex px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Browse Events
-          </Link>
-        </div>
+        <EmptyState
+          title="The arena is quiet"
+          description="No tournament is running right now. Browse upcoming events and take your place."
+          action={
+            <NeoButton to="/dashboard/events">
+              Browse events <ArrowRight size={16} aria-hidden="true" />
+            </NeoButton>
+          }
+        />
       )}
+
+      <aside className="hidden lg:grid grid-cols-[1fr_auto] items-end overflow-hidden rounded-xl bg-primary text-[var(--axiom-ink)] axiom-rise" style={{"--i": 5}} aria-label="Quick links">
+        <div className="p-6 self-center">
+          <p className="axiom-eyebrow mb-2">Between rounds</p>
+          <p className="text-4xl leading-none uppercase" style={{fontFamily: "var(--font-display)"}}>Clarity<br />under pressure.</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link to="/dashboard/events" className="axiom-button axiom-press">Events</Link>
+            <Link to="/dashboard/profile" className="axiom-button axiom-button--outline axiom-press">Profile</Link>
+          </div>
+        </div>
+        <Sculpture variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
+      </aside>
+      </div>
+
+      <div className="space-y-6 min-w-0">
 
       {/* Check-In Status */}
       {currentRound && (
-        <div className="space-y-2">
+        <div className="space-y-2 axiom-rise" style={{"--i": 2}}>
           <div className="flex items-center justify-between px-0.5">
             <h3 className="font-heading font-bold text-base text-foreground">Check-In Status</h3>
             <span className="text-xs text-muted-foreground font-sans">
@@ -414,7 +428,7 @@ export default function DashboardHome() {
 
       {/* Draw Status Section */}
       {currentRound && (
-        <div className="space-y-2">
+        <div className="space-y-2 axiom-rise" style={{"--i": 3}}>
           <div className="flex items-center justify-between px-0.5">
             <h3 className="font-heading font-bold text-base text-foreground">Draw Status</h3>
             <span className="text-xs text-muted-foreground font-sans">
@@ -485,7 +499,7 @@ export default function DashboardHome() {
       )}
 
       {/* Next Debate */}
-      <div className="space-y-2">
+      <div className="space-y-2 axiom-rise" style={{"--i": 4}}>
         <div className="flex items-center justify-between px-0.5">
           <h3 className="font-heading font-bold text-base text-foreground">Your Next Debate</h3>
           <Link
@@ -529,13 +543,15 @@ export default function DashboardHome() {
             </div>
           </div>
         ) : (
-          <div className="bg-card border border-border p-5 rounded-xl text-center">
-            <Trophy className="w-8 h-8 mx-auto mb-1.5 text-muted-foreground" aria-hidden="true" />
-            <p className="text-muted-foreground font-sans text-xs">
-              No upcoming debates scheduled
-            </p>
-          </div>
+          <EmptyState
+            compact
+            icon={Trophy}
+            title="No debate on the horizon"
+            description="Your next pairing appears here once the draw is released."
+          />
         )}
+      </div>
+      </div>
       </div>
     </div>
   );

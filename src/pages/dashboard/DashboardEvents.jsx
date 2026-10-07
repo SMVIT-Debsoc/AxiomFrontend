@@ -1,11 +1,12 @@
 import {useState, useEffect, useCallback, useRef} from "react";
 import {motion as Motion} from "framer-motion";
-import {Calendar, Trophy} from "lucide-react";
+import {Trophy} from "lucide-react";
 import {useAuth} from "@clerk/clerk-react";
 import {EventApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
 import {useSocket, SocketEvents} from "../../hooks/useSocket";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function DashboardEvents() {
   const [events, setEvents] = useState([]);
@@ -76,7 +77,7 @@ export default function DashboardEvents() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-6xl">
       <div className="axiom-page-header max-w-full">
         <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
           Competitions
@@ -97,24 +98,22 @@ export default function DashboardEvents() {
       )}
 
       {events.length === 0 && !error ? (
-        <div className="text-center py-16 bg-card border border-border rounded-xl">
-          <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-lg font-heading font-bold mb-1 text-foreground">No Events Yet</h3>
-          <p className="text-muted-foreground font-sans text-sm max-w-md mx-auto">
-            There are no tournaments available at the moment. Check back soon for announcements.
-          </p>
-        </div>
+        <EmptyState
+          title="No events yet"
+          description="There are no tournaments available at the moment. Check back soon for announcements."
+        />
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {events.map((event, i) => (
             <Motion.div
               key={event.id}
               initial={{opacity: 0, y: 14}}
               animate={{opacity: 1, y: 0}}
               transition={{delay: i * 0.05, duration: 0.3}}
-              className="group relative min-w-0 p-5 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors"
+              whileHover={{y: -3}}
+              className="group relative min-w-0 p-5 rounded-xl bg-card border border-border hover:border-primary/40 hover:shadow-md transition-[border-color,box-shadow]"
             >
-              <div className="relative flex flex-col gap-4">
+              <div className="relative flex h-full flex-col justify-between gap-4">
                 {/* Top row: Date + Title */}
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-primary/10 flex flex-col items-center justify-center border border-primary/20">

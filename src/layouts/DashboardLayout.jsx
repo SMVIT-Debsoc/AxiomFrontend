@@ -6,21 +6,10 @@ import {
     RedirectToSignIn,
     useAuth,
 } from "@clerk/clerk-react";
-import {
-    LayoutDashboard,
-    Calendar,
-    Users,
-    Menu,
-    ShieldCheck,
-    Sun,
-    Moon,
-} from "lucide-react";
-
-import {cn} from "../lib/utils";
-import {motion as Motion} from "framer-motion";
+import {SidebarRail, MobileTabs} from "../components/layout/SidebarRail";
+import NeoToggleSwitch from "../components/neo/NeoToggleSwitch";
 import {useTheme} from "../hooks/useTheme"
 import Axiom40Logo from "../components/brand/Axiom40Logo";
-import Sculpture from "../components/brand/Sculpture";
 
 const isLocalhost = ["localhost", "127.0.0.1"].includes(
     window.location.hostname,
@@ -30,13 +19,12 @@ const API_BASE_URL = isLocalhost
     : "/api";
 
 const sidebarItems = [
-    {icon: LayoutDashboard, label: "Overview", path: "/dashboard"},
-    {icon: Calendar, label: "Events", path: "/dashboard/events"},
-    {icon: Users, label: "Profile", path: "/dashboard/profile"},
+    {icon: "LayoutIcon", label: "Overview", path: "/dashboard"},
+    {icon: "EventsIcon", label: "Events", path: "/dashboard/events"},
+    {icon: "PortraitIcon", label: "Profile", path: "/dashboard/profile"},
 ];
 
 export default function DashboardLayout() {
-    const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
     const {user, isLoaded, isSignedIn} = useUser();
@@ -88,115 +76,19 @@ export default function DashboardLayout() {
 
     if (isAdmin) {
         currentSidebarItems.push({
-            icon: ShieldCheck,
+            icon: "AppsIcon",
             label: "Admin Panel",
             path: "/admin",
         });
     }
+    const navItems = currentSidebarItems.map((item) => ({
+        ...item,
+        active: location.pathname === item.path,
+    }));
 
     return (
         <div className="min-h-screen bg-background text-foreground flex axiom-workspace">
-            {/* Desktop Sidebar */}
-            <Motion.aside
-                initial={{x: 0}}
-                animate={{width: desktopSidebarOpen ? 240 : 80}}
-                className="fixed md:relative z-30 h-screen border-r border-border bg-card/60 backdrop-blur-xl hidden md:flex flex-col"
-            >
-                <div className={cn("h-20 flex items-center border-b border-border/60", desktopSidebarOpen ? "px-5" : "px-3")}>
-                    <Link
-                        to="/dashboard"
-                        className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md p-1 group"
-                        aria-label="AXIOM 4.0 Dashboard Home"
-                    >
-                        <Axiom40Logo
-                            variant="nav"
-                            className={cn(
-                                "text-primary transition-colors",
-                                desktopSidebarOpen ? "w-28" : "w-11 mx-auto",
-                            )}
-                        />
-                    </Link>
-                </div>
-
-                <div className="flex-1 py-4 flex flex-col gap-1.5 px-3 overflow-y-auto no-scrollbar">
-                    {currentSidebarItems.map((item) => {
-                        const isActive = location.pathname === item.path;
-                        const Icon = item.icon;
-
-                        return (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                title={item.label}
-                                aria-label={item.label}
-                                className={cn(
-                                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative font-sans text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                    isActive
-                                        ? "bg-primary text-primary-foreground font-semibold shadow-sm"
-                                        : "text-muted-foreground hover:bg-muted/80 hover:text-foreground font-medium",
-                                )}
-                            >
-                                <Icon
-                                    className={cn(
-                                        "w-4 h-4 shrink-0 transition-transform group-hover:scale-105",
-                                        !desktopSidebarOpen && "mx-auto",
-                                    )}
-                                    aria-hidden="true"
-                                />
-                                {desktopSidebarOpen && (
-                                    <span className="truncate">
-                                        {item.label}
-                                    </span>
-                                )}
-
-                                {isActive && !desktopSidebarOpen && (
-                                    <Motion.div
-                                        layoutId="activeStrip"
-                                        className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-r-full"
-                                    />
-                                )}
-                            </Link>
-                        );
-                    })}
-                </div>
-
-                {/* Editorial accent preview in sidebar */}
-                {desktopSidebarOpen && (
-                    <div className="mx-3 my-2 p-3 rounded-lg border border-border/60 bg-muted/20 relative overflow-hidden select-none">
-                        <div className="relative z-10">
-                            <span className="axiom-eyebrow text-[10px] tracking-wider uppercase text-primary font-heading font-semibold block mb-0.5">
-                                AXIOM 4.0
-                            </span>
-                            <p className="text-xs text-muted-foreground font-sans leading-tight">
-                                The art of articulation
-                            </p>
-                        </div>
-                        <div className="absolute -right-2 -bottom-3 w-16 h-20 opacity-20 pointer-events-none overflow-hidden">
-                            <Sculpture variant="detail" className="w-full h-full object-cover grayscale contrast-125" />
-                        </div>
-                    </div>
-                )}
-
-                <div className="p-3 border-t border-border/60">
-                    <button
-                        onClick={() =>
-                            setDesktopSidebarOpen(!desktopSidebarOpen)
-                        }
-                        aria-label={desktopSidebarOpen ? "Collapse View" : "Expand navigation sidebar"}
-                        title={desktopSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-                        className="w-full flex items-center justify-center gap-2 p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors text-xs font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        {desktopSidebarOpen ? (
-                            <>
-                                <Menu className="w-4 h-4" aria-hidden="true" />
-                                <span>Collapse View</span>
-                            </>
-                        ) : (
-                            <Menu className="w-4 h-4" aria-hidden="true" />
-                        )}
-                    </button>
-                </div>
-            </Motion.aside>
+            <SidebarRail items={navItems} homePath="/dashboard" homeLabel="AXIOM 4.0 Dashboard Home" />
 
             {/* Content Area */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
@@ -213,32 +105,11 @@ export default function DashboardLayout() {
                     </div>
 
                     <div className="flex items-center gap-3 ml-auto">
-                        {/* Theme Toggle Button */}
-                        <Motion.button
-                            onClick={toggleTheme}
-                            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-                            className="relative p-2 rounded-lg bg-muted/60 hover:bg-muted border border-border text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            whileTap={{scale: 0.95}}
-                            whileHover={{scale: 1.05}}
-                        >
-                            <Motion.div
-                                initial={false}
-                                animate={{
-                                    rotate: theme === "dark" ? 0 : 180,
-                                }}
-                                transition={{
-                                    duration: 0.4,
-                                    ease: [0.22, 1, 0.36, 1],
-                                }}
-                            >
-                                {theme === "dark" ? (
-                                    <Moon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                                ) : (
-                                    <Sun className="w-4 h-4 text-amber-500" aria-hidden="true" />
-                                )}
-                            </Motion.div>
-                        </Motion.button>
+                        <NeoToggleSwitch
+                            checked={theme === "dark"}
+                            onChange={toggleTheme}
+                            label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                        />
 
                         <div className="text-right hidden sm:block">
                             <p className="text-sm font-heading font-medium leading-tight">
@@ -254,46 +125,10 @@ export default function DashboardLayout() {
 
                 {/* Scrollable Main Content */}
                 <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 pb-24 md:pb-8 scroll-smooth min-w-0">
-                    <Outlet />
+                    <div key={location.pathname} className="axiom-rise"><Outlet /></div>
                 </main>
 
-                {/* Mobile Bottom Navigation */}
-                <nav
-                    className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border z-50 pb-[env(safe-area-inset-bottom)]"
-                    aria-label="Mobile Navigation"
-                >
-                    <div className="flex items-center justify-around py-1.5 px-2">
-                        {currentSidebarItems.slice(0, 5).map((item) => {
-                            const isActive = location.pathname === item.path;
-                            const Icon = item.icon;
-
-                            return (
-                                <Link
-                                    key={item.path}
-                                    to={item.path}
-                                    aria-label={item.label}
-                                    className={cn(
-                                        "flex flex-col items-center gap-1 py-1.5 px-3 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                        isActive
-                                            ? "text-primary font-semibold"
-                                            : "text-muted-foreground hover:text-foreground",
-                                    )}
-                                >
-                                    <Icon
-                                        className={cn(
-                                            "w-4 h-4",
-                                            isActive && "scale-110",
-                                        )}
-                                        aria-hidden="true"
-                                    />
-                                    <span className="text-[10px] font-sans font-medium">
-                                        {item.label === "Admin Panel" ? "Admin" : item.label}
-                                    </span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </nav>
+                <MobileTabs items={navItems.slice(0, 5).map((item) => ({...item, label: item.label === "Admin Panel" ? "Admin" : item.label}))} />
             </div>
         </div>
     );

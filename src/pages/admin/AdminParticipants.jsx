@@ -1,21 +1,13 @@
 import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion as Motion } from "framer-motion";
-import {
-  Users,
-  Search,
-  Mail,
-  Trash2,
-  Loader2,
-  RotateCcw,
-  UserPlus,
-  X,
-} from "lucide-react";
+import {Search, Mail, Trash2, Loader2, RotateCcw, UserPlus, X} from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "@clerk/clerk-react";
 import { UserApi, EventApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminParticipants() {
   const { getToken } = useAuth();
@@ -167,13 +159,10 @@ export default function AdminParticipants() {
       </div>
 
       {filteredParticipants.length === 0 && !loading ? (
-        <div className="text-center py-16 bg-card/60 border border-border/70 rounded-xl">
-          <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
-          <h3 className="text-lg font-heading font-bold mb-1 text-foreground">No Participants Found</h3>
-          <p className="text-sm text-muted-foreground font-sans">
-            {searchQuery ? "Try a different search query." : "Wait for debaters to register or add them manually."}
-          </p>
-        </div>
+        <EmptyState
+          title={searchQuery ? "Nobody matched" : "No participants yet"}
+          description={searchQuery ? "Try a different search query." : "Wait for debaters to register or add them manually."}
+        />
       ) : (
         <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
           <div className="overflow-x-auto no-scrollbar">

@@ -20,9 +20,11 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
+import {UserAvatar} from "../../components/ui/UserAvatar";
 import { AdminApi, EventApi } from "../../services/api";
 import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
 import { useEventSocket } from "../../hooks/useSocket";
+import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminEventDetails() {
   const { id: eventId } = useParams();
@@ -343,19 +345,17 @@ export default function AdminEventDetails() {
                 </div>
 
                 {rounds.length === 0 ? (
-                  <div className="p-10 text-center border-2 border-dashed border-border/80 rounded-xl bg-card/40">
-                    <Activity className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
-                    <h3 className="font-heading font-bold text-base text-foreground mb-1">No Rounds Configured</h3>
-                    <p className="text-xs text-muted-foreground mb-5 font-sans">
-                      Start your tournament by creating the first preliminary round.
-                    </p>
-                    <button
-                      onClick={() => setShowCreateRound(true)}
-                      className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      Create Round 1
-                    </button>
-                  </div>
+                  <EmptyState
+                    compact
+                    icon={Activity}
+                    title="No rounds configured"
+                    description="Start your tournament by creating the first preliminary round."
+                    action={
+                      <button onClick={() => setShowCreateRound(true)} className="axiom-button axiom-button--green axiom-press">
+                        Create Round 1
+                      </button>
+                    }
+                  />
                 ) : (
                   <div className="space-y-3">
                     {rounds.map((round) => (
@@ -470,13 +470,12 @@ export default function AdminEventDetails() {
                 </div>
 
                 {participants.length === 0 ? (
-                  <div className="p-10 text-center border-2 border-dashed border-border/80 rounded-xl bg-card/40">
-                    <Users className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-30" aria-hidden="true" />
-                    <h3 className="font-heading font-bold text-base text-foreground mb-1">No Participants Registered</h3>
-                    <p className="text-xs text-muted-foreground font-sans">
-                      Enroll registered debaters manually or share tournament registration links.
-                    </p>
-                  </div>
+                  <EmptyState
+                    compact
+                    icon={Users}
+                    title="No participants registered"
+                    description="Enroll registered debaters manually or share tournament registration links."
+                  />
                 ) : (
                   <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
                     <div className="overflow-x-auto no-scrollbar">
@@ -497,10 +496,7 @@ export default function AdminEventDetails() {
                             >
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs shrink-0">
-                                    {p.firstName?.[0]}
-                                    {p.lastName?.[0]}
-                                  </div>
+                                  <UserAvatar user={p} size="xs" className="w-7 h-7" />
                                   <span className="font-sans font-medium text-sm text-foreground">
                                     {p.firstName} {p.lastName}
                                   </span>
@@ -684,10 +680,7 @@ export default function AdminEventDetails() {
                     className="w-full flex items-center justify-between p-3 rounded-lg border border-border/70 hover:bg-muted/50 transition-all group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs shrink-0">
-                        {u.firstName?.[0]}
-                        {u.lastName?.[0]}
-                      </div>
+                      <UserAvatar user={u} size="sm" />
                       <div className="min-w-0">
                         <p className="text-xs font-heading font-semibold text-foreground truncate">
                           {u.firstName} {u.lastName}
