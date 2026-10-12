@@ -112,7 +112,7 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Owner's Vercel screenshot confirmed public frontend origin `https://axiom40.vercel.app`. Current `vercel.json` routes `/api/*` through that origin to the legacy App Runner API; Google callback is documented as `https://axiom40.vercel.app/api/auth/callback/google`, with `BETTER_AUTH_URL` set to the same public origin. Store credentials on the API service that actually serves this proxy target; Vercel env only needs the public feature flag.
 - Verification: frontend lint/build, 31 API/date unit tests, 4 readiness checks, and all 42 isolated Chromium fixtures pass. API Prisma validation/build and 3 unit checks pass. API PostgreSQL integration tests remain skipped because no local database is running. Browser fixtures mock the Google exchange; no real Google client credentials have been configured or exercised.
 - Visual review confirmed the public entry and the account-mode switch keep the AXIOM neomorphic styling. Build still emits the existing large-JavaScript-chunk advisory.
-- These changes are local and uncommitted; they have not been pushed or deployed. Before enabling Google: create a Google OAuth Web client with authorized origin `https://axiom40.vercel.app` and redirect URI `https://axiom40.vercel.app/api/auth/callback/google`; set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the active API service; set Vercel `VITE_GOOGLE_AUTH_ENABLED=true` and redeploy. Never commit or paste the client secret in chat. Then perform real Google new-user, returning-user, verified-email linking, session, profile completion, and event auto-enrollment tests.
+- The participant auth and Google OAuth wiring changes were pushed in frontend commit `292805e` and API commit `e436d4f` on 2026-10-12. Google remains gated until the API provider credentials and frontend `VITE_GOOGLE_AUTH_ENABLED=true` are configured. Never commit or paste the client secret in chat. Then perform real Google new-user, returning-user, verified-email linking, session, profile completion, and event auto-enrollment tests.
 
 ## Vercel Web Analytics (2026-10-12)
 
@@ -121,3 +121,10 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Added unit coverage for static routes, dynamic route normalization, and auth path collapsing.
 - Verification: lint, 35 unit tests, 4 readiness checks, 42 browser fixtures, and production build pass. Existing Vite chunk-size advisory remains.
 - Vercel's project dashboard must have Web Analytics enabled for production events to arrive; after deployment, verify visits in the Web Analytics panel.
+
+## Push and production verification (2026-10-12)
+
+- Pushed frontend `292805e feat: ship participant auth and analytics flow` and API `e436d4f feat: configure Google auth and remove public admin key` to their `main` branches.
+- GitHub Actions passed for both pushes: frontend run `38231602724` (lint, unit/readiness tests, build, 42 browser fixtures); API run `38231602895` (Prisma validation, build, unit tests; local PostgreSQL integration skipped).
+- Verified `https://axiom40.vercel.app` serves the new frontend bundle and `/_vercel/insights/script.js` returns HTTP 200. User can test the deployed participant sign-in/registration UX and analytics integration.
+- Render deployment is being handled separately. The Vercel `/api` rewrite still targets the App Runner host in `vercel.json`; confirm the API runtime and Google credentials before testing live Google OAuth. No OAuth secrets were read or changed in this task.
