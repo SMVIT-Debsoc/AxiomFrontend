@@ -117,6 +117,10 @@ try {
     await page.locator('.axiom-participant-access').getByRole('link',{name:'Sign in',exact:true}).waitFor();
     await page.locator('.axiom-participant-access').getByRole('link',{name:'Create account',exact:true}).waitFor();
     await page.getByRole('button',{name:'Continue with Google'}).waitFor();
+    await page.locator('.axiom-tape').waitFor();
+    await page.locator('#discourse-title').waitFor();
+    await page.locator('#editorial-title').waitFor();
+    await page.locator('.axiom-footer').waitFor();
     assert.equal(await page.getByRole('button',{name:/Sign in as Admin|I’m an admin/}).count(),0,'Public entry exposes administrator sign-in');
   },'Public UI');
   for(const path of ['/dashboard','/dashboard/events','/dashboard/events/e1','/dashboard/events/e1/rounds/r1','/complete-profile','/admin','/admin/events']) {

@@ -128,3 +128,11 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - GitHub Actions passed for both pushes: frontend run `38231602724` (lint, unit/readiness tests, build, 42 browser fixtures); API run `38231602895` (Prisma validation, build, unit tests; local PostgreSQL integration skipped).
 - Verified `https://axiom40.vercel.app` serves the new frontend bundle and `/_vercel/insights/script.js` returns HTTP 200. User can test the deployed participant sign-in/registration UX and analytics integration.
 - Render deployment is being handled separately. The Vercel `/api` rewrite still targets the App Runner host in `vercel.json`; confirm the API runtime and Google credentials before testing live Google OAuth. No OAuth secrets were read or changed in this task.
+
+## Restore original landing page content (2026-10-12)
+
+- Restored the original AXIOM landing-page composition around the participant entry card: AXIOM hero logo/sticker, Discover AXIOM link, scrolling Tape, discourse/editorial sections, and footer.
+- Kept the current participant Sign in / Create account card as the landing-page access control, with Google sign-in shown when the frontend feature flag is enabled. The public admin entry remains hidden.
+- Extended the browser audit to assert the scrolling sections and footer remain present alongside participant access and Google sign-in, preventing a future auth-page refactor from silently replacing the landing page.
+- Validation underway: lint, production build, readiness/unit tests, and full browser audit. The frontend build still reports the existing >500 kB JavaScript chunk advisory.
+- Preserve the untracked `.agent-team/` directory; it is user-owned and is not part of this fix.
