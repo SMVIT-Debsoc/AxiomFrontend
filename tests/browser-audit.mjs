@@ -26,7 +26,8 @@ async function waitForServer() {
   throw new Error('Audit server did not start');
 }
 async function fixture(page, {signedIn=false, admin=false, complete=true, profileError=false, enrolled=false,
-  enrollError=false, enrollFalse=false, checkedIn=false, checkInError=false, window='open', published=false, resultsPublished=false, assigned=false}={}) {
+  enrollError=false, enrollFalse=false, checkedIn=false, checkInError=false, window='open', published=false, resultsPublished=false, assigned=false,
+  possibleTypo=false, autoEnrollOnProfileComplete=false, signupAlreadyExists=false}={}) {
   const now=Date.now();
   const user={id:'u1', firstName:'Audit',lastName:'Participant',email:'audit@example.invalid',college:complete?'Test College':'',mobile:complete?'9999999999':''};
   const round={id:'r1',eventId:'e1',name:'Audit Round',roundNumber:1,status:'ONGOING',pairingsPublished:published,resultsPublished,
@@ -34,7 +35,7 @@ async function fixture(page, {signedIn=false, admin=false, complete=true, profil
     checkInEndTime:new Date(now+(window==='closed'?-1000:60000)).toISOString()};
   const event={id:'e1',name:'Audit Tournament',description:'Isolated fixture',status:'ONGOING',startDate:new Date(now).toISOString(),endDate:new Date(now+86400000).toISOString(),rounds:[round],_count:{participants:0,rounds:1}};
   const debate={id:'d1',roundId:'r1',eventId:'e1',debater1Id:'u1',debater2Id:'u2',debater1:user,debater2:{id:'u2',firstName:'Audit',lastName:'Opponent'},room:{id:'room1',name:'Audit Hall'},judgeName:'Audit Judge',status:'COMPLETED',winnerId:'u1',debater1Score:80,debater2Score:75,isPromoted:true,resultsPublished};
-  const state={user,round,event,debate,enrolled,checkedIn,signedIn,requests:[],events:[event]};
+  const state={user,round,event,debate,enrolled,checkedIn,signedIn,possibleTypo,autoEnrollOnProfileComplete,signupAlreadyExists,requests:[],events:[event]};
   await page.route('**/*', async route => {
     const req=route.request();const url=new URL(req.url());
     if(url.pathname.startsWith('/socket.io')) return route.fulfill({status:503,body:'Fixture socket unavailable'});
@@ -43,12 +44,19 @@ async function fixture(page, {signedIn=false, admin=false, complete=true, profil
       state.requests.push({path,method,body:req.postData()});
       const reply=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
       if(path==='/auth/get-session') return reply(state.signedIn?{session:{id:'fixture-session',expiresAt:new Date(now+86400000).toISOString(),token:'fixture-cookie',userId:'audit-user'},user:{id:'audit-user',email:'audit@example.invalid',emailVerified:true,name:'Audit Participant',image:null,createdAt:new Date(now).toISOString(),updatedAt:new Date(now).toISOString()}}:null);
+      if(path==='/auth/sign-up/email' && method==='POST' && state.signupAlreadyExists) return reply({message:'User already exists or failed to create user.'},422);
+      if(path==='/users/check-email' && method==='POST') return reply({success:true,possibleTypo:state.possibleTypo});
       if(path==='/auth/sign-out' && method==='POST') {state.signedIn=false;return reply({success:true});}
       if(path==='/auth/update-user' && method==='POST') return reply({user:{id:'audit-user',email:'audit@example.invalid',emailVerified:true,name:req.postDataJSON().name,image:null}});
       if(path==='/admin/me') return reply(admin?{success:true,admin:{id:'a1'}}:{error:'Forbidden'},admin?200:403);
       if(path==='/admin/validate-key') return reply({success:true,valid:false});
       if(path==='/users/me') return profileError?reply({error:'Fixture profile unavailable'},503):reply({success:true,user:state.user});
-      if(path==='/users/profile' && method==='PUT') {Object.assign(state.user,req.postDataJSON());return reply({success:true,user:state.user});}
+      if(path==='/users/profile' && method==='PUT') {
+        Object.assign(state.user,req.postDataJSON());
+        const autoEnrollment=state.autoEnrollOnProfileComplete?{id:'e1',name:state.event.name}:null;
+        if(autoEnrollment) state.enrolled=true;
+        return reply({success:true,user:state.user,autoEnrollment});
+      }
       if(path==='/events' && method==='POST') {const data=req.postDataJSON();state.events.push({...data,id:'e2',status:'UPCOMING',rounds:[]});return reply({success:true,event:state.events.at(-1)});}
       if(path==='/events' && method==='GET') return reply({success:true,events:state.events});
       if(path==='/events/e1/enrollment-status') return reply({success:true,isEnrolled:state.enrolled});
@@ -123,12 +131,44 @@ try {
   await run('sign-in presents the Better Auth email and password form',{},async page=>{
     await page.goto(origin+'/sign-in');await page.getByLabel('Email',{exact:true}).waitFor();
     assert.equal(await page.getByText('Temporary sign-in',{exact:true}).count(),0,'Temporary sign-in is visible');
+    await page.getByRole('navigation',{name:'Account access'}).getByRole('link',{name:/Create account/}).waitFor({state:'visible'});
+    await page.locator('.axiom-auth-create-callout').getByRole('link',{name:/Create account/}).waitFor({state:'visible'});
   });
   await run('sign-up presents account registration rather than a shared sign-in form',{},async page=>{
     await page.goto(origin+'/sign-up');await page.getByLabel('Email',{exact:true}).waitFor();
     assert.equal(await page.getByLabel('Passcode',{exact:true}).count(),0,'Sign-up renders the shared passcode sign-in');
     assert.equal(await page.getByLabel('Full name',{exact:true}).count(),1);
     assert.equal(await page.locator('#auth-password').getAttribute('minlength'),'10');
+    await page.getByRole('navigation',{name:'Account access'}).getByText('Create account',{exact:true}).waitFor({state:'visible'});
+    await page.getByRole('heading',{name:'Create your account',level:2}).waitFor({state:'visible'});
+  });
+  await run('password recovery pages retain a usable auth card',{},async page=>{
+    await page.goto(origin+'/forgot-password');await page.getByRole('heading',{name:'Reset your password'}).waitFor({state:'visible'});
+    await page.getByLabel('Email',{exact:true}).waitFor({state:'visible'});
+    await page.goto(origin+'/reset-password?token=fixture-token');
+    await page.getByRole('heading',{name:'Choose a new password'}).waitFor({state:'visible'});
+    await page.getByLabel('Confirm password',{exact:true}).waitFor({state:'visible'});
+  });
+  await run('registration warns about a near-match before creating an account',{possibleTypo:true},async (page,state)=>{
+    await page.goto(origin+'/sign-up');
+    await page.getByLabel('Full name',{exact:true}).fill('Audit Participant');
+    await page.getByLabel('Email',{exact:true}).fill('audit@example.invalid');
+    await page.locator('#auth-password').fill('strong-test-password');
+    await page.getByRole('button',{name:'Create account'}).click();
+    await page.getByRole('alert').filter({hasText:'A registered email has a very similar spelling.'}).waitFor({state:'visible'});
+    assert.ok(state.requests.some(request=>request.path==='/users/check-email'),'email typo check was not requested');
+    assert.equal(state.requests.some(request=>request.path==='/auth/sign-up/email'),false,'account creation happened before user confirmed the email spelling');
+  });
+  await run('existing Better Auth account is directed to normal sign-in',{signupAlreadyExists:true},async (page,state)=>{
+    await page.goto(origin+'/sign-up');
+    await page.getByLabel('Full name',{exact:true}).fill('Audit Participant');
+    await page.getByLabel('Email',{exact:true}).fill('audit@example.invalid');
+    await page.locator('#auth-password').fill('strong-test-password');
+    await page.getByRole('button',{name:'Create account'}).click();
+    await page.waitForURL('**/sign-in?email=audit%40example.invalid&notice=account-exists');
+    assert.equal(await page.getByLabel('Email',{exact:true}).inputValue(),'audit@example.invalid');
+    await page.getByRole('status').filter({hasText:'An account may already use this email.'}).waitFor({state:'visible'});
+    assert.ok(state.requests.some(request=>request.path==='/auth/sign-up/email'),'duplicate account case did not reach Better Auth sign-up handling');
   });
   await run('sign-out clears the cookie-backed session and returns to public entry',{signedIn:true},async (page,state)=>{
     await page.goto(origin+'/dashboard');await page.getByRole('button',{name:'Sign out'}).click();
@@ -143,6 +183,13 @@ try {
     await page.getByRole('button',{name:/Sign in as Debater/}).waitFor();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
   });
+  await run('mobile registration keeps form controls and account switch visible without horizontal overflow',{},async page=>{
+    await page.setViewportSize({width:390,height:844});await page.goto(origin+'/sign-up');
+    await page.getByRole('heading',{name:'Create your account',level:2}).waitFor();
+    await page.getByRole('navigation',{name:'Account access'}).getByRole('link',{name:'Sign in'}).waitFor({state:'visible'});
+    await page.getByLabel('Email',{exact:true}).waitFor({state:'visible'});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+  });
   await run('incomplete profile redirects to onboarding',{signedIn:true,complete:false},async page=>{
     await page.goto(origin+'/dashboard/events');await page.waitForURL('**/complete-profile');await visible(page,'Complete Your Profile');
   });
@@ -150,14 +197,14 @@ try {
     await page.goto(origin+'/dashboard/events');await visible(page,'We could not verify your profile');
     assert.equal(await page.getByText('Audit Tournament',{exact:true}).count(),0,'Event access is granted after mandatory profile verification fails');
   });
-  await run('profile completion does not claim event enrollment or attendance',{signedIn:true,complete:false,checkInError:true},async (page,state)=>{
+  await run('profile completion auto-enrolls into the configured event without checking in',{signedIn:true,complete:false,checkInError:true,autoEnrollOnProfileComplete:true},async (page,state)=>{
     await page.goto(origin+'/complete-profile');await visible(page,'Complete Your Profile');
     await page.getByPlaceholder('e.g. National Law School of India University').fill('Test College');
     await page.getByPlaceholder('+91 98765 43210').fill('9999999999');
     await page.getByRole('button',{name:/Complete Profile & Register/}).click();
-    await page.waitForURL('**/dashboard');
-    await visible(page,'Profile Complete! 🎉');
-    assert.equal(state.enrolled,false);
+    await page.waitForURL('**/dashboard/events/e1');
+    await visible(page,'Enrolled');
+    assert.equal(state.enrolled,true);
     assert.equal(state.requests.some(request=>request.path==='/check-in'),false,'Profile completion must not bypass event enrollment and attendance controls');
   });
   await run('explicit event enrollment persists across reload',{signedIn:true},async (page,state)=>{

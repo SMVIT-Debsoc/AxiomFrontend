@@ -118,6 +118,7 @@ export async function apiRequest(
 
 // User Endpoints
 export const UserApi = {
+    checkEmail: (email) => apiRequest("/users/check-email", "POST", {email}, null, {requireAuth: false}),
     getProfile: (token) => apiRequest("/users/me", "GET", null, token),
     updateProfile: (data, token) =>
         apiRequest("/users/profile", "PUT", data, token),

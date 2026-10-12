@@ -110,7 +110,7 @@ export default function Profile({isOnboarding = false}) {
       });
 
       // The backend reads the current account name from the verified session.
-      await UserApi.updateProfile(
+      const profileResponse = await UserApi.updateProfile(
         {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -123,8 +123,14 @@ export default function Profile({isOnboarding = false}) {
       );
 
       if (isOnboarding) {
-        toast.success("Profile Complete! 🎉", "Your profile has been saved. Browse events to register for a tournament.");
-        navigate("/dashboard", {replace: true});
+        const event = profileResponse.autoEnrollment;
+        if (event) {
+          toast.success("Profile Complete! 🎉", `You are registered for ${event.name}.`);
+          navigate(`/dashboard/events/${encodeURIComponent(event.id)}`, {replace: true});
+        } else {
+          toast.info("Profile Complete! 🎉", "Your profile is saved, but automatic event registration is unavailable right now. Browse events to check enrollment options.");
+          navigate("/dashboard/events", {replace: true});
+        }
       } else {
         setSuccess(true);
         toast.success(

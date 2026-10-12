@@ -631,3 +631,76 @@ html .axiom-workspace .axiom-rounds-banner .axiom-sculpture { height: 9rem; marg
   ::-webkit-scrollbar-thumb { background: ButtonText; border-color: Canvas; }
   ::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active { background: Highlight; }
 }
+
+/* Focused sign-in and registration: the mode switch and primary action stay visible. */
+.axiom-auth-grid {
+  grid-template-columns: minmax(0, .92fr) minmax(25rem, 1.08fr);
+  gap: clamp(2.5rem, 6vw, 6.5rem);
+  padding-block: clamp(1.5rem, 4vh, 3.5rem);
+}
+.axiom-auth-title h1 { max-width: 14ch; font-size: clamp(3.5rem, 5.8vw, 6.25rem); line-height: .94; text-wrap: balance; }
+.axiom-auth-title > p:not(.axiom-eyebrow) { font-size: clamp(.95rem, 1.3vw, 1.125rem); line-height: 1.6; }
+.axiom-auth-grid .axiom-registration-art { height: clamp(14rem, 26vh, 19rem); margin-top: 2rem; }
+.axiom-auth-grid .axiom-registration-art img { height: 110%; width: auto; max-width: 54%; object-fit: contain; top: auto; right: 12%; bottom: -2%; }
+.axiom-auth-grid .axiom-registration-art > span { font-size: clamp(2rem, 3.5vw, 3.2rem); line-height: .98; }
+.axiom-auth-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; max-width: 34rem; margin-top: 1.5rem; }
+.axiom-auth-steps li { display: flex; align-items: center; gap: .55rem; min-width: 0; color: hsl(var(--muted-foreground)); }
+.axiom-auth-steps li > span { display: grid; place-items: center; flex: 0 0 1.8rem; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: hsl(var(--muted)); font-size: .75rem; font-weight: 800; }
+.axiom-auth-steps li[aria-current="step"] { color: hsl(var(--foreground)); }
+.axiom-auth-steps li[aria-current="step"] > span { background: var(--axiom-green-primary); color: #171b16; box-shadow: 2px 2px 0 var(--nb-shadow); }
+.axiom-auth-steps strong, .axiom-auth-steps small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.axiom-auth-steps strong { font-family: var(--font-heading); font-size: .88rem; }
+.axiom-auth-steps small { margin-top: .08rem; font-size: .7rem; }
+.axiom-auth-card { display: block; width: 100%; max-width: 37rem; justify-self: end; padding: clamp(1.1rem, 2.5vw, 1.8rem); background: hsl(var(--card)); border: 1px solid hsl(var(--border) / .7); border-radius: 1.15rem; box-shadow: var(--float-shadow-hover); }
+.axiom-auth-mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; margin-bottom: 1rem; padding: .35rem; border-radius: .8rem; background: hsl(var(--muted) / .72); box-shadow: inset 2px 2px 5px rgb(23 27 22 / .09); }
+.axiom-auth-mode-switch > :is(a, span) { display: flex; min-height: 3rem; align-items: center; justify-content: center; gap: .4rem; padding: .65rem .75rem; border: 2px solid transparent; border-radius: .6rem; color: hsl(var(--muted-foreground)); font-family: var(--font-heading); font-size: 1rem; font-weight: 700; text-align: center; text-decoration: none; transition: transform 150ms var(--axiom-ease), color 150ms, background-color 150ms, box-shadow 150ms; }
+.axiom-auth-mode-switch > [aria-current="page"] { background: var(--axiom-green-primary); border-color: var(--nb-line); color: #171b16; box-shadow: 3px 3px 0 var(--nb-shadow); }
+.axiom-auth-mode-switch > a:hover { color: hsl(var(--foreground)); background: hsl(var(--card)); }
+.axiom-auth-mode-switch > a:active { transform: translate(2px, 2px); box-shadow: none; }
+.axiom-auth-form { display: grid; gap: .35rem; }
+.axiom-auth-form-heading { margin-bottom: .35rem; }
+.axiom-auth-form-heading .axiom-eyebrow { margin-bottom: .35rem; color: var(--axiom-brand-text); }
+.axiom-auth-form-heading h2 { font-family: var(--font-heading); font-size: clamp(1.7rem, 3vw, 2.1rem); font-weight: 750; line-height: 1.1; }
+.axiom-auth-form-heading > p:last-child { margin-top: .45rem; color: hsl(var(--muted-foreground)); font-size: .92rem; line-height: 1.45; }
+.axiom-auth-form > label { margin-top: .25rem; color: hsl(var(--foreground)); font-size: .85rem; font-weight: 700; }
+.axiom-auth-form > input { width: 100%; min-height: 3.1rem; margin: 0 0 .25rem; padding: .7rem .9rem; border: 2px solid var(--nb-line); border-radius: .65rem; background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: inset 2px 2px 6px rgb(23 27 22 / .09), inset -2px -2px 6px rgb(255 255 255 / .72); }
+.axiom-auth-form .axiom-password { margin-bottom: .25rem; }
+.axiom-auth-form .axiom-password-input { width: 100%; min-height: 3.1rem; margin: 0; padding: .7rem 2.9rem .7rem .9rem; border: 2px solid var(--nb-line); border-radius: .65rem; background: hsl(var(--background)); color: hsl(var(--foreground)); box-shadow: inset 2px 2px 6px rgb(23 27 22 / .09), inset -2px -2px 6px rgb(255 255 255 / .72); }
+.dark .axiom-auth-form > input { box-shadow: inset 2px 2px 6px rgb(0 0 0 / .45), inset -2px -2px 6px rgb(255 255 255 / .035); }
+.dark .axiom-auth-form .axiom-password-input { box-shadow: inset 2px 2px 6px rgb(0 0 0 / .45), inset -2px -2px 6px rgb(255 255 255 / .035); }
+.axiom-auth-form input:focus-visible { outline: 3px solid var(--axiom-focus, var(--axiom-brand-text)); outline-offset: 3px; }
+.axiom-auth-form .axiom-auth-hint { margin: -.2rem 0 .3rem; color: hsl(var(--muted-foreground)); font-size: .78rem; }
+.axiom-auth-form .axiom-auth-submit { min-height: 3.35rem; margin-top: .55rem; border: 2px solid var(--nb-line); border-radius: .65rem; box-shadow: 4px 4px 0 var(--nb-shadow); color: #171b16; font-size: 1rem; }
+.axiom-auth-form .axiom-auth-submit:disabled { cursor: wait; opacity: .72; }
+.axiom-auth-create-callout { display: grid; gap: .2rem; margin-top: .9rem; padding: .8rem 1rem; border-radius: .75rem; background: hsl(var(--muted) / .68); }
+.axiom-auth-create-callout > span { color: hsl(var(--muted-foreground)); font-size: .78rem; }
+.axiom-auth-create-callout a, .axiom-auth-footnote a { color: var(--axiom-brand-text); font-weight: 750; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.axiom-auth-create-callout a { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-heading); font-size: 1.05rem; }
+.axiom-auth-footnote { margin-top: .85rem; color: hsl(var(--muted-foreground)); font-size: .85rem; text-align: center; }
+.axiom-auth-footnote a:hover, .axiom-auth-create-callout a:hover { color: var(--axiom-green-dark); }
+.dark .axiom-auth-mode-switch { background: hsl(var(--muted) / .5); box-shadow: inset 2px 2px 6px rgb(0 0 0 / .48); }
+.dark .axiom-auth-form > input { border-color: var(--nb-line); }
+@media (max-width: 767px) {
+  .axiom-auth-grid { grid-template-columns: 1fr; gap: 1.5rem; padding-block: 1.5rem 2.5rem; }
+  .axiom-auth-title h1 { max-width: 12ch; font-size: clamp(3rem, 12vw, 4.25rem); }
+  .axiom-auth-grid .axiom-registration-art { display: none; }
+  .axiom-auth-grid .axiom-auth-card { max-width: 38rem; justify-self: center; }
+  .axiom-auth-steps { gap: .35rem; margin-top: 1rem; }
+  .axiom-auth-steps li { gap: .35rem; }
+  .axiom-auth-steps small { display: none; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .axiom-auth-grid { grid-template-columns: minmax(0, .88fr) minmax(23rem, 1.12fr); gap: 2rem; }
+  .axiom-auth-title h1 { max-width: 14ch; font-size: clamp(3.2rem, 5.8vw, 4.2rem); }
+  .axiom-auth-steps { gap: .3rem; }
+  .axiom-auth-steps li { gap: .3rem; }
+  .axiom-auth-steps small { display: none; }
+}
+@media (max-width: 400px) {
+  .axiom-auth-card { padding: 1.1rem; }
+  .axiom-auth-mode-switch > :is(a, span) { font-size: .9rem; }
+  .axiom-auth-steps strong { font-size: .8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .axiom-auth-mode-switch > :is(a, span) { transition: none; }
+}

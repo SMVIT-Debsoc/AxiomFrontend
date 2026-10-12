@@ -49,6 +49,15 @@ test('public admin-key validation also sends cookies without bearer credentials'
   assert.equal(calls[0].headers.Authorization, undefined);
   assert.deepEqual(JSON.parse(calls[0].body), {secretKey: 'test-only-key'});
 });
+test('registration email preflight sends the candidate email to the public endpoint', async () => {
+  responses.push(json({success: true, possibleTypo: false}));
+  const result = await api.UserApi.checkEmail('new@example.com');
+  assert.equal(result.possibleTypo, false);
+  assert.equal(calls[0].url, 'https://fixture.invalid/api/users/check-email');
+  assert.equal(calls[0].method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].body), {email: 'new@example.com'});
+  assert.equal(calls[0].credentials, 'include');
+});
 test('401 revalidates Better Auth session once and retries with cookies', async () => {
   let count = 0;
   api.setApiAuthRefreshProvider(async () => { count++; return true; });

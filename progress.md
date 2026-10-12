@@ -75,3 +75,20 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Frontend hosting is not fully provisioned in code: the Render frontend service URL and same-origin `/api/*` and `/socket.io/*` routes remain unconfirmed. Disable frontend Render dashboard auto-deploy to avoid a second deploy when using the hook.
 - Verification for this follow-up passed: frontend lint, build, 30 unit/contract tests, 3 readiness tests, and 36 Chromium fixtures; backend Prisma validation/build/unit check; Python YAML parsing for both Actions workflows and the API Blueprint; `git diff --check` in both repositories.
 - No Render secret was read or used and no deploy hook was triggered. Live Render service routing, secrets, DB migration, SMTP, and participant/admin journeys remain BLOCKED until a verified staging target and Render service configuration are available.
+
+## Signup typo check and profile-completion enrollment (2026-10-12)
+
+- Added a rate-limited public `POST /api/users/check-email` preflight. It checks one-character email edits against Better Auth accounts, participant records, and admin records using exact indexed email lookups. The API returns only a boolean typo warning and never returns a matching address.
+- The registration form requires an extra confirmation when a near-match exists. Editing the email clears that confirmation. When Better Auth reports an existing account at signup, the user is routed to normal sign-in with the email prefilled and an account-exists notice.
+- Profile completion now calls idempotent backend auto-enrollment for the configured `AXIOM_EVENT_ID`, or the latest upcoming/ongoing event whose name starts with “Axiom”. It refuses to enroll incomplete profiles or into closed/arbitrary events. A successful completion opens the enrolled event; if automatic enrollment is unavailable, it opens the event list with an explanatory notice.
+- Added backend unit coverage for one-edit candidates, an API request contract, and browser fixtures for typo warning, existing-account sign-in routing, and profile-completion auto-enrollment.
+- Files changed in both repos: frontend auth/API/profile/browser tests; API user controller/routes, auto-enrollment helper, rate-limit middleware, email similarity utility, and unit tests. No schema migration is needed.
+- Validation for this feature: frontend lint/build pass; 31 frontend API/date tests, 3 readiness checks, and 38 browser fixtures pass. API build and Prisma validation pass; 3 email-similarity tests pass. The API auto-enrollment integration check skipped because no local PostgreSQL is listening. Real Better Auth, SMTP, database writes, and configured Axiom event enrollment remain staging-only checks.
+
+## Sign-in and registration UX (2026-10-12)
+
+- Reworked the shared auth frame to make Sign in and Create account a prominent segmented switch and added a second high-visibility create-account callout on sign-in.
+- Registration now explains the sequence (account → profile → event), gives the form a clear participant heading, adds a password-length hint, and keeps the active action prominent. The existing typo confirmation and duplicate-account redirect remain in place.
+- Kept AXIOM's green/ink palette, raised card shadows, inset input surfaces and hard-edged CTA treatment. Tuned desktop/tablet/mobile sizes, focus rings, and reduced-motion behavior. Forgot/reset password pages were checked after the auth-card styling update.
+- Local preview: `http://127.0.0.1:5173/sign-up` (development server was started for the UI review; stop it after work is complete).
+- Validation: lint, build, 31 unit/API/date tests, 3 readiness checks, and all 40 isolated browser fixtures pass, including mobile registration overflow and persistent password recovery layouts. The production JS chunk remains above Vite's existing 500 kB advisory threshold. No deployment or push was performed.
