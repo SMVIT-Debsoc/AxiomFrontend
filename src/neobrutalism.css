@@ -692,7 +692,8 @@ html .axiom-workspace .axiom-rounds-banner .axiom-sculpture { height: 9rem; marg
 .axiom-participant-access h2 { margin-top: .25rem; font-family: var(--font-heading); font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 800; line-height: 1.1; }
 .axiom-participant-access-copy { margin: .5rem 0 1rem; color: hsl(var(--muted-foreground)); font-size: .9rem; line-height: 1.45; }
 .axiom-google-auth--landing { margin: 0 0 .85rem; }
-.axiom-google-auth--landing .axiom-google-button { min-height: 3.4rem; background: var(--axiom-green-primary); color: #171b16; }
+.axiom-google-auth--landing .axiom-google-button { min-height: 3.4rem; background: linear-gradient(90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75%) 0 0 / 100% 3px no-repeat, var(--axiom-green-primary); color: #171b16; }
+.axiom-google-auth--landing .axiom-google-button:hover:not(:disabled) { background: linear-gradient(90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75%) 0 0 / 100% 3px no-repeat, hsl(var(--muted) / .7); }
 .axiom-entry-email-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
 .axiom-entry-email-actions .axiom-button { min-height: 3rem; justify-content: center; padding-inline: .65rem; font-size: .9rem; }
 .axiom-participant-access-note { margin-top: .85rem; color: hsl(var(--muted-foreground)); font-size: .75rem; line-height: 1.4; }
