@@ -22,7 +22,7 @@ Last updated: 2026-10-12 (Asia/Kolkata)
 - Preserved participant/admin/tournament records. Added `authUserId`, separate Better Auth tables, and made the old `clerkId` database columns nullable via Prisma field aliases (`legacyAuthId`) in the additive migration:
   `/home/rosso/Projects/Axiom26/prisma/migrations/20261012090000_better_auth/migration.sql`
 - Added Better Auth socket authentication and event membership/admin checks before joining event/round rooms; browser sends credentials and disconnects on sign-out.
-- Corrected Azure Static Web Apps output from `build` to Vite's `dist`.
+- Removed the legacy Azure deployment workflow files; added readiness and Render deployment configuration in the follow-up section below.
 - Removed unused backend Clerk/axios/bcrypt/JWT/Morgan packages; moved Prisma CLI to dev dependencies; aligned Prisma packages at 7.10.0 and applied semver-safe `npm audit fix` updates.
 - Read the `vercel:auth` skill and used official Better Auth integration/Prisma/session guidance; owner instructions took precedence over its general auth options.
 
@@ -49,7 +49,7 @@ Backend (`/home/rosso/Projects/Axiom26`):
 
 ## Exact release blockers / next work
 
-1. Confirm the canonical deployed frontend and API. The repo has a Vercel proxy to an App Runner URL and two Azure workflows; the Azure static flow has `dist` now but no linked API function, while the Vercel `/api` and `/socket.io` proxies are the intended same-origin session route. Do not assume which deployment is live.
+1. Confirm the canonical deployed frontend and API. The Azure workflows are removed. Render GitHub Actions now run CI and require a manual workflow dispatch to deploy via the per-repository `RENDER_DEPLOY_HOOK_URL`; API Blueprint disables native auto-deploy. Confirm Render frontend route configuration and actual canonical origins before deploying. The existing `vercel.json` still points at an App Runner API, so do not treat it as Render routing.
 2. Provision an isolated PostgreSQL staging DB and configure backend secrets there: unique `BETTER_AUTH_SECRET` (32+ chars), `BETTER_AUTH_URL`, `FRONTEND_URL`, exact `CORS_ORIGIN`, `DATABASE_SSL=true`, `ADMIN_SECRET_KEY` (24+ chars), and SMTP settings. Values must stay secret.
 3. Review the additive migration against the actual staging schema, back up staging, apply `prisma migrate deploy` there, and test repeatability/rollback planning. Never migrate production without explicit owner go-ahead and confirmed backup.
 4. Run real signup → email verification → session persists on refresh → sign-out revokes session; bad/duplicate password, expired link, password reset, recovery-email delivery, and hostile-origin/CSRF checks.
@@ -64,3 +64,14 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Better Auth rate limiting currently uses its in-memory store. If the API runs multiple instances, configure supported shared secondary storage and test the policy.
 - Database integration output is not auth integration evidence. `npm run test:integration` requires an available disposable DB and should fail when unavailable.
 - The audit verdict remains **NOT VERIFIED FOR PRODUCTION** until real staging auth, database persistence, email, deployment routing and the end-to-end tournament journey pass.
+
+
+## Deployment workflow follow-up (2026-10-12)
+
+- Removed both Azure workflows from `/home/rosso/Projects/AxiomFrontend/.github/workflows/`.
+- Added frontend and API GitHub Actions that run repository checks on PRs and pushes to `main`. A separate `workflow_dispatch` input gates Render deploy hooks; ordinary code pushes do not call the hook.
+- The Render hook secret must be configured separately in each repo as `RENDER_DEPLOY_HOOK_URL`. Missing it causes an explicit workflow failure only when an operator checks `deploy` and dispatches the workflow.
+- Updated `/home/rosso/Projects/Axiom26/render.yaml` to use Better Auth/SMTP/Postgres TLS variables and `autoDeployTrigger: off`. Its existing startup command still runs `prisma migrate deploy`; only dispatch an API deployment after reviewing the target staging DB and backup.
+- Frontend hosting is not fully provisioned in code: the Render frontend service URL and same-origin `/api/*` and `/socket.io/*` routes remain unconfirmed. Disable frontend Render dashboard auto-deploy to avoid a second deploy when using the hook.
+- Verification for this follow-up passed: frontend lint, build, 30 unit/contract tests, 3 readiness tests, and 36 Chromium fixtures; backend Prisma validation/build/unit check; Python YAML parsing for both Actions workflows and the API Blueprint; `git diff --check` in both repositories.
+- No Render secret was read or used and no deploy hook was triggered. Live Render service routing, secrets, DB migration, SMTP, and participant/admin journeys remain BLOCKED until a verified staging target and Render service configuration are available.

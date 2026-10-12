@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile, readdir} from 'node:fs/promises';
 import {resolveConfig} from 'vite';
 
 const config = await resolveConfig({logLevel:'silent'}, 'build', 'production');
@@ -19,8 +19,17 @@ test('user-required Better Auth integration must exist in this checkout', async 
   assert.match(client, /signIn\.email/);
   assert.doesNotMatch(client, /temporary-session|TEMP_.*PASSCODE/);
 });
-test('Azure static deployment output must match Vite build output', async () => {
-  const yaml = await readFile(new URL('../.github/workflows/azure-static-web-apps-brave-coast-0915f1900.yml', import.meta.url), 'utf8');
-  const output = yaml.match(/output_location:\s*["']?([^"'\s]+)/)?.[1];
-  assert.equal(output, config.build.outDir, 'Azure workflow points at a different output directory from Vite.');
+test('Azure deploy workflows are removed and Render deploy waits for CI', async () => {
+  const workflowDirectory = new URL('../.github/workflows/', import.meta.url);
+  const files = await readdir(workflowDirectory);
+  assert.equal(files.some(file => file.toLowerCase().includes('azure')), false,
+    'Azure deployment workflow is still active.');
+  const workflow = await readFile(new URL('../.github/workflows/render-deploy.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /npm run build/);
+  assert.match(workflow, /npm run test:browser/);
+  assert.match(workflow, /RENDER_DEPLOY_HOOK_URL/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /inputs\.deploy == true/);
+  assert.match(workflow, /branches: \[main\]/);
+  assert.equal(config.build.outDir, 'dist', 'Frontend production artifacts must still use Vite dist output.');
 });

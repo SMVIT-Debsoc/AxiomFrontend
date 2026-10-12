@@ -119,6 +119,12 @@ The backend migration adds Better Auth storage and nullable identity links witho
 
 The repository contains no canonical public deployment hostname. Social image paths are origin-relative; publishing infrastructure should resolve them to the canonical absolute site URL when that hostname is established. No unrelated domain or fabricated canonical URL is supplied.
 
+### Render GitHub Actions
+
+The Azure deployment workflows have been removed. The frontend and API repositories now run their checks on pull requests and pushes to `main`; deployment is a separate manual GitHub Actions run after CI passes. Add each Render service's deploy hook as `RENDER_DEPLOY_HOOK_URL` in that repository's Actions secrets, then run its **Frontend CI and Render deploy** or **API CI and Render deploy** workflow on `main` with `deploy` checked. Keep Render auto-deploy disabled for the frontend service as well, to avoid duplicate deploys; the API Blueprint sets `autoDeployTrigger: off`.
+
+The API's Render Blueprint requires the Better Auth, SMTP, origin, admin-secret, and PostgreSQL TLS settings in Render's environment. The Render deploy hook only starts deployment; it does not verify real authentication or participant journeys. Review and back up the intended staging database before deploying the API because its current start command runs `prisma migrate deploy`. The frontend Render service must preserve same-origin `/api/*` and `/socket.io/*` routing to the API for cookie authentication; confirm the actual service URLs and routes before release.
+
 ### Sculpture credits
 
 All figures are from the Cleveland Museum of Art Open Access programme (CC0), cut out from the museum photographs and converted to greyscale (`src/components/brand/figures.js` holds the list and the stable per-place picks).

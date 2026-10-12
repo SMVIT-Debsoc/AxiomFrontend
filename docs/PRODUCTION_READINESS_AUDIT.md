@@ -16,7 +16,7 @@ Audit date: 2026-10-12 (Asia/Kolkata). See [progress.md](../progress.md) for exa
 | Frontend lint | PASS | `npm run lint`, no errors or warnings. |
 | Frontend production build | PASS with warning | `npm run build`; output `dist`; JS ~820 kB minified / ~221 kB gzip, above Vite's 500 kB warning. |
 | Frontend unit/API/date tests | PASS | `npm test`, 30/30. Covers cookie credentials, 401 refresh, HTTP 200 `success:false`, request contracts and timezone conversion. |
-| Frontend readiness config checks | PASS | `npm run test:readiness`, 3/3; checks Better Auth client, no temporary auth, Vite output vs Azure SWA output. |
+| Frontend readiness config checks | PASS | `npm run test:readiness`, 3/3; checks Better Auth client, no temporary auth, removal of Azure workflows and manual Render deployment gating. |
 | Frontend Playwright fixture journeys | PASS | `npm run test:browser`, 36/36 Chromium scenarios; artifacts in ignored `audit-artifacts/`. All auth/business API/socket traffic is intercepted. |
 | Frontend production dependency audit | PASS | `npm audit --omit=dev`, zero advisories at audit time. |
 | Prisma schema validation | PASS | `npx prisma validate`; database not contacted. |
@@ -35,7 +35,7 @@ Browser fixtures cover public entry, signed-out guard behavior, sign-in/sign-up 
 - Production configuration requires Better Auth URL/origins/secrets, SMTP, and verified PostgreSQL TLS. CORS is an explicit origin allowlist. Helmet security headers, health/readiness behavior and Better Auth endpoint rate limits are configured.
 - Socket connections require a Better Auth session; event/round room joins check the authenticated user's event membership or admin record.
 - Profile failure no longer passes users through mandatory gates. Completing a profile no longer reports enrollment or check-in; event enrollment is explicit and checks both HTTP and business success. The interface updates check-in availability at the configured boundaries and displays free-text judge assignments.
-- Added password reset routes, unknown-route recovery, and corrected the Azure Static Web Apps output directory to `dist`.
+- Added password reset routes and unknown-route recovery. After the initial audit, both Azure deployment workflows were removed and Render GitHub Actions were added for CI and manually triggered deploy hooks.
 
 ## Remaining blockers and risks
 
@@ -47,9 +47,9 @@ The UI tests return a fixture session from `/api/auth/get-session`; there is no 
 
 ### P0 — Deployment target is ambiguous
 
-The repository has a Vercel config proxying `/api` and `/socket.io` to App Runner, an Azure Static Web Apps workflow (now outputs `dist`), and a separate Azure Web App workflow. The latter is not configured as an API reverse proxy; the Azure Static Web App workflow has no linked API project. Better Auth production cookies require the frontend and API to use the intended same-origin proxy or another verified cookie-safe design. No canonical frontend hostname or live deployment was given.
+The Azure deployment workflows have since been removed. Both repositories now define GitHub Actions verification, with manually triggered Render deploy hooks after checks pass. The API Blueprint sets `autoDeployTrigger: off` and lists Better Auth, SMTP, and TLS environment variables. The frontend still contains a Vercel rewrite to an App Runner origin, and no Render frontend URL or route configuration was supplied. Better Auth cookies require the frontend and API to use the intended same-origin proxy or another verified cookie-safe design. No canonical frontend hostname or live deployment was verified.
 
-**Release gate:** owner/operator must identify the canonical hosting workflow and confirm that its API/auth/socket routes reach the Better Auth backend. Test deep-link refresh, sign-in cookie set/read/clear, email callback and authenticated API requests on that actual host.
+**Release gate:** add each service's `RENDER_DEPLOY_HOOK_URL` Actions secret; confirm the Render frontend's same-origin API/socket routes and disable its dashboard auto-deploy to avoid duplicate deploys. Sync the API Blueprint, verify all secret environment variables and the backed-up staging database, then manually run the workflows. Test deep-link refresh, sign-in cookie set/read/clear, email callback, and authenticated API requests on the actual host. The API Render command runs `prisma migrate deploy` at startup, so review and back up the target database before deploying.
 
 ### P1 — Backend advisory findings remain
 
