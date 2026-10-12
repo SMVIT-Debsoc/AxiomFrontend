@@ -18,12 +18,15 @@ let browser;
 const results = [];
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve,milliseconds));
 async function waitForServer() {
-  for(let attempt=0; attempt<60; attempt++) {
+  for(let attempt=0; attempt<300; attempt++) {
     if(server.exitCode !== null) throw new Error(`Audit server stopped: ${serverLog.slice(-600)}`);
-    if(serverLog.includes('Local:')) return;
+    try {
+      const response = await fetch(origin, {signal: AbortSignal.timeout(500)});
+      if(response.ok) return;
+    } catch {}
     await delay(100);
   }
-  throw new Error('Audit server did not start');
+  throw new Error(`Audit server did not start: ${serverLog.slice(-1200)}`);
 }
 async function fixture(page, {signedIn=false, admin=false, complete=true, profileError=false, enrolled=false,
   enrollError=false, enrollFalse=false, checkedIn=false, checkInError=false, window='open', published=false, resultsPublished=false, assigned=false,
