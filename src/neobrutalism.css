@@ -692,8 +692,12 @@ html .axiom-workspace .axiom-rounds-banner .axiom-sculpture { height: 9rem; marg
 .axiom-participant-access h2 { margin-top: .25rem; font-family: var(--font-heading); font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 800; line-height: 1.1; }
 .axiom-participant-access-copy { margin: .5rem 0 1rem; color: hsl(var(--muted-foreground)); font-size: .9rem; line-height: 1.45; }
 .axiom-google-auth--landing { margin: 0 0 .85rem; }
-.axiom-google-auth--landing .axiom-google-button { min-height: 3.4rem; background: linear-gradient(90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75%) 0 0 / 100% 3px no-repeat, var(--axiom-green-primary); color: #171b16; }
-.axiom-google-auth--landing .axiom-google-button:hover:not(:disabled) { background: linear-gradient(90deg, #4285F4 0 25%, #34A853 25% 50%, #FBBC05 50% 75%, #EA4335 75%) 0 0 / 100% 3px no-repeat, hsl(var(--muted) / .7); }
+.axiom-google-auth--landing .axiom-google-button { position: relative; isolation: isolate; overflow: hidden; min-height: 3.4rem; background: var(--axiom-green-primary); color: #171b16; }
+.axiom-google-auth--landing .axiom-google-button::before { position: absolute; z-index: -1; inset: 0; background: linear-gradient(110deg, transparent 22%, rgb(66 133 244 / .2) 39%, rgb(52 168 83 / .16) 51%, rgb(251 188 5 / .22) 64%, rgb(234 67 53 / .18) 76%, transparent 92%); background-size: 220% 100%; animation: axiom-google-sheen 5s ease-in-out infinite; content: ""; pointer-events: none; }
+.axiom-google-auth--landing .axiom-google-button > * { position: relative; z-index: 1; }
+.axiom-google-auth--landing .axiom-google-button:hover:not(:disabled) { background: hsl(var(--muted) / .7); }
+@keyframes axiom-google-sheen { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .axiom-google-auth--landing .axiom-google-button::before { animation: none; background-position: 50% 0; } }
 .axiom-entry-email-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
 .axiom-entry-email-actions .axiom-button { min-height: 3rem; justify-content: center; padding-inline: .65rem; font-size: .9rem; }
 .axiom-participant-access-note { margin-top: .85rem; color: hsl(var(--muted-foreground)); font-size: .75rem; line-height: 1.4; }
