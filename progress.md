@@ -127,7 +127,7 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Pushed frontend `292805e feat: ship participant auth and analytics flow` and API `e436d4f feat: configure Google auth and remove public admin key` to their `main` branches.
 - GitHub Actions passed for both pushes: frontend run `38231602724` (lint, unit/readiness tests, build, 42 browser fixtures); API run `38231602895` (Prisma validation, build, unit tests; local PostgreSQL integration skipped).
 - Verified `https://axiom40.vercel.app` serves the new frontend bundle and `/_vercel/insights/script.js` returns HTTP 200. User can test the deployed participant sign-in/registration UX and analytics integration.
-- Render deployment is being handled separately. The Vercel `/api` rewrite still targets the App Runner host in `vercel.json`; confirm the API runtime and Google credentials before testing live Google OAuth. No OAuth secrets were read or changed in this task.
+- Render deployment is being handled separately. At this stage the Vercel `/api` rewrite still targeted the App Runner host in `vercel.json`; the follow-up entry below records when it was changed to Render. No OAuth secrets were read or changed in this task.
 
 ## Restore original landing page content (2026-10-12)
 
@@ -136,3 +136,10 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Extended the browser audit to assert the scrolling sections and footer remain present alongside participant access and Google sign-in, preventing a future auth-page refactor from silently replacing the landing page.
 - Validation underway: lint, production build, readiness/unit tests, and full browser audit. The frontend build still reports the existing >500 kB JavaScript chunk advisory.
 - Preserve the untracked `.agent-team/` directory; it is user-owned and is not part of this fix.
+
+## Route Vercel API traffic to Render (2026-10-12)
+
+- Rechecked `https://axiom26-aezg.onrender.com`: after the service warmed up, `GET /health/live` returned 200, `GET /api/auth/get-session` returned 200 with an anonymous `null` session, and invalid `POST /api/auth/sign-up/email` returned the expected 400 validation response. This confirms the Better Auth routes are now live.
+- `POST /api/auth/sign-in/social` with provider `google` returned `PROVIDER_NOT_FOUND`. Google OAuth is still not enabled on the Render API; its operator must add both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` and redeploy.
+- Updated Vercel rewrites for `/api/*` and `/socket.io/*` to `https://axiom26-aezg.onrender.com`, replacing the previous App Runner target. Once deployed, participant email auth should use the live Render API through same-origin Vercel routes.
+- No Render deployment was triggered, and no secrets were read or modified.

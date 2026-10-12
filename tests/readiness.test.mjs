@@ -30,6 +30,12 @@ test('public account access is participant-only and Google remains credential-ga
   assert.doesNotMatch(form, /axiom-auth-create-callout/);
   assert.match(form, /provider: "google"/);
 });
+test('production API and socket rewrites target the active Render API', async () => {
+  const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  const rewrites = new Map(vercel.rewrites.map(({source, destination}) => [source, destination]));
+  assert.equal(rewrites.get('/api/(.*)'), 'https://axiom26-aezg.onrender.com/api/$1');
+  assert.equal(rewrites.get('/socket.io/(.*)'), 'https://axiom26-aezg.onrender.com/socket.io/$1');
+});
 test('Azure deploy workflows are removed and Render deploy waits for CI', async () => {
   const workflowDirectory = new URL('../.github/workflows/', import.meta.url);
   const files = await readdir(workflowDirectory);
