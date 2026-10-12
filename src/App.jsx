@@ -43,6 +43,7 @@ import AdminRooms from "./pages/admin/AdminRooms";
 import AdminPlaceholder from "./pages/admin/AdminPlaceholder";
 import Preloader from "./components/Preloader";
 import NotFoundPage from "./pages/NotFoundPage";
+import {VercelAnalytics} from "./components/analytics/VercelAnalytics";
 
 function App() {
     return (
@@ -51,6 +52,7 @@ function App() {
             <ToastProvider>
                 <ApiAuthSync />
                 <BrowserRouter>
+                    <VercelAnalytics />
                     <Routes>
                         {/* Auth redirect handler - processes admin/user routing after sign-in */}
                         <Route

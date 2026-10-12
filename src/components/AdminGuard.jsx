@@ -1,5 +1,5 @@
 import {useState, useEffect} from "react";
-import {useUser, useAuth} from "../auth/client.jsx";
+import {useUser} from "../auth/client.jsx";
 import {useNavigate} from "react-router-dom";
 import {ShieldX} from "lucide-react";
 import {AdminApi} from "../services/api";
@@ -7,7 +7,6 @@ import LoadingIndicator from "./ui/LoadingIndicator";
 
 export function AdminGuard({children}) {
     const {user, isLoaded} = useUser();
-    const {getToken} = useAuth();
     const navigate = useNavigate();
     const [checking, setChecking] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -23,39 +22,7 @@ export function AdminGuard({children}) {
             }
 
             try {
-                const token = await getToken();
-
-                // First, check if this is a new admin trying to onboard (from localStorage)
-                const pendingRole = sessionStorage.getItem("pendingRole");
-                const secretKey = sessionStorage.getItem("adminSecretKey");
-
-                if (pendingRole === "admin" && secretKey) {
-                    // Try to onboard as admin
-                    try {
-                        const response = await AdminApi.onboard(
-                            secretKey,
-                            token
-                        );
-                        // Clear localStorage
-                        sessionStorage.removeItem("pendingRole");
-                        sessionStorage.removeItem("adminSecretKey");
-
-                        if (response.success) {
-                            setIsAdmin(true);
-                            setChecking(false);
-                            return;
-                        }
-                    } catch (onboardError) {
-                        // If onboarding fails, check if already an admin
-                        console.log(
-                            "Onboard failed, checking existing admin status:",
-                            onboardError.message
-                        );
-                    }
-                }
-
-                // Check if user is already an admin
-                const response = await AdminApi.getProfile(token);
+                const response = await AdminApi.getProfile();
                 if (response.success && response.admin) {
                     setIsAdmin(true);
                 } else {
@@ -67,15 +34,12 @@ export function AdminGuard({children}) {
                     ? "You do not have admin access"
                     : "Admin verification failed. Please try again.");
             } finally {
-                // Clear any pending admin data
-                sessionStorage.removeItem("pendingRole");
-                sessionStorage.removeItem("adminSecretKey");
                 setChecking(false);
             }
         };
 
         verifyAdmin();
-    }, [isLoaded, user, getToken, navigate]);
+    }, [isLoaded, user, navigate]);
 
     if (!isLoaded || checking) {
         return <LoadingIndicator fullScreen label="Verifying admin access" />;

@@ -198,14 +198,7 @@ export const AdminApi = {
     apiRequest: apiRequest,
     getProfile: (token) => apiRequest("/admin/me", "GET", null, token),
 
-    onboard: (secretKey, token) =>
-        apiRequest("/admin/onboard", "POST", {secretKey}, token),
     getDashboard: (token) => apiRequest("/admin/dashboard", "GET", null, token),
-    // Public endpoint - validates secret key before sign-in
-    validateKey: (secretKey) =>
-        apiRequest("/admin/validate-key", "POST", {secretKey}, null, {
-            requireAuth: false,
-        }),
 
     // Advanced Admin Controls
     createEvent: (data, token) => apiRequest("/events", "POST", data, token),

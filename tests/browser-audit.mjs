@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 // All business API/socket traffic is intercepted; no production records are changed.
 const origin = 'http://127.0.0.1:5175';
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5175','--strictPort'], {
-  env: {...process.env, VITE_AUTH_PROVIDER:'temporary'}, stdio:['ignore','pipe','pipe'],
+  env: {...process.env, VITE_AUTH_PROVIDER:'temporary', VITE_GOOGLE_AUTH_ENABLED:'true'}, stdio:['ignore','pipe','pipe'],
 });
 let serverLog = '';
 server.stdout.on('data', data => {serverLog += data;});
@@ -38,7 +38,7 @@ async function fixture(page, {signedIn=false, admin=false, complete=true, profil
     checkInEndTime:new Date(now+(window==='closed'?-1000:60000)).toISOString()};
   const event={id:'e1',name:'Audit Tournament',description:'Isolated fixture',status:'ONGOING',startDate:new Date(now).toISOString(),endDate:new Date(now+86400000).toISOString(),rounds:[round],_count:{participants:0,rounds:1}};
   const debate={id:'d1',roundId:'r1',eventId:'e1',debater1Id:'u1',debater2Id:'u2',debater1:user,debater2:{id:'u2',firstName:'Audit',lastName:'Opponent'},room:{id:'room1',name:'Audit Hall'},judgeName:'Audit Judge',status:'COMPLETED',winnerId:'u1',debater1Score:80,debater2Score:75,isPromoted:true,resultsPublished};
-  const state={user,round,event,debate,enrolled,checkedIn,signedIn,possibleTypo,autoEnrollOnProfileComplete,signupAlreadyExists,requests:[],events:[event]};
+  const state={user,round,event,debate,enrolled,checkedIn,signedIn,possibleTypo,autoEnrollOnProfileComplete,signupAlreadyExists,requests:[],googleAuthRequests:[],events:[event]};
   await page.route('**/*', async route => {
     const req=route.request();const url=new URL(req.url());
     if(url.pathname.startsWith('/socket.io')) return route.fulfill({status:503,body:'Fixture socket unavailable'});
@@ -46,6 +46,7 @@ async function fixture(page, {signedIn=false, admin=false, complete=true, profil
       const path=url.pathname.slice(4);const method=req.method();
       state.requests.push({path,method,body:req.postData()});
       const reply=(data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
+      if(path==='/auth/sign-in/social' && method==='POST') {state.googleAuthRequests.push(req.postDataJSON());return reply({message:'Google OAuth is not configured in this fixture'},501);}
       if(path==='/auth/get-session') return reply(state.signedIn?{session:{id:'fixture-session',expiresAt:new Date(now+86400000).toISOString(),token:'fixture-cookie',userId:'audit-user'},user:{id:'audit-user',email:'audit@example.invalid',emailVerified:true,name:'Audit Participant',image:null,createdAt:new Date(now).toISOString(),updatedAt:new Date(now).toISOString()}}:null);
       if(path==='/auth/sign-up/email' && method==='POST' && state.signupAlreadyExists) return reply({message:'User already exists or failed to create user.'},422);
       if(path==='/users/check-email' && method==='POST') return reply({success:true,possibleTypo:state.possibleTypo});
@@ -111,31 +112,39 @@ const visible = async (page,text) => {
 try {
   await waitForServer();
   browser=await chromium.launch({headless:true,...(process.env.AUDIT_BROWSER_EXECUTABLE?{executablePath:process.env.AUDIT_BROWSER_EXECUTABLE}:{})});
-  await run('public entry redirects and renders role selection',{},async page=>{
+  await run('public entry offers participant sign-in, registration and Google',{},async page=>{
     await page.goto(origin+'/');await page.waitForURL('**/login-select');
-    await page.getByRole('button',{name:/Sign in as Debater/}).waitFor();
+    await page.locator('.axiom-participant-access').getByRole('link',{name:'Sign in',exact:true}).waitFor();
+    await page.locator('.axiom-participant-access').getByRole('link',{name:'Create account',exact:true}).waitFor();
+    await page.getByRole('button',{name:'Continue with Google'}).waitFor();
+    assert.equal(await page.getByRole('button',{name:/Sign in as Admin|I’m an admin/}).count(),0,'Public entry exposes administrator sign-in');
   },'Public UI');
   for(const path of ['/dashboard','/dashboard/events','/dashboard/events/e1','/dashboard/events/e1/rounds/r1','/complete-profile','/admin','/admin/events']) {
     await run(`signed-out access to ${path} is blocked`,{},async page=>{
       await page.goto(origin+path);await page.waitForURL('**/login-select');
     },'Anonymous route guard fixture');
   }
-  await run('returning debater entry opens sign-in',{},async page=>{
-    await page.goto(origin+'/login-select');await page.getByRole('button',{name:/Sign in as Debater/}).click();await page.waitForURL('**/sign-in?role=user');
+  await run('returning participant entry opens sign-in',{},async page=>{
+    await page.goto(origin+'/login-select');await page.locator('.axiom-participant-access').getByRole('link',{name:'Sign in',exact:true}).click();await page.waitForURL('**/sign-in');
   });
-  await run('invalid organizer key displays rejection',{},async page=>{
-    await page.goto(origin+'/login-select');await page.getByRole('button',{name:/Sign in as Admin/}).click();
-    await page.getByLabel('Admin secret key',{exact:true}).fill('invalid-fixture-key');
-    await page.getByRole('button',{name:/Continue to sign in/}).click();await visible(page,'Invalid admin secret key. Access denied.');
+  await run('existing admin accounts can still enter through direct protected access',{signedIn:true,admin:true},async page=>{
+    await page.goto(origin+'/auth-redirect');await page.waitForURL('**/admin');
   });
-  await run('new debater registration opens sign-up',{},async page=>{
-    await page.goto(origin+'/get-started');await page.getByRole('button',{name:/I’m a debater/}).click();await page.waitForURL('**/sign-up*');
+  await run('participant entry has no public admin sign-in or account option',{},async page=>{
+    await page.goto(origin+'/login-select');
+    assert.equal(await page.getByRole('button',{name:/Sign in as Admin|I’m an admin/}).count(),0);
+    assert.equal(await page.getByLabel('Admin secret key',{exact:true}).count(),0);
+    assert.equal(await page.getByRole('button',{name:/Sign in as Admin/}).count(),0);
+  });
+  await run('public registration route opens sign-up directly',{},async page=>{
+    await page.goto(origin+'/get-started');await page.waitForURL('**/sign-up');
   });
   await run('sign-in presents the Better Auth email and password form',{},async page=>{
     await page.goto(origin+'/sign-in');await page.getByLabel('Email',{exact:true}).waitFor();
     assert.equal(await page.getByText('Temporary sign-in',{exact:true}).count(),0,'Temporary sign-in is visible');
     await page.getByRole('navigation',{name:'Account access'}).getByRole('link',{name:/Create account/}).waitFor({state:'visible'});
-    await page.locator('.axiom-auth-create-callout').getByRole('link',{name:/Create account/}).waitFor({state:'visible'});
+    await page.getByRole('button',{name:'Sign in with Google'}).waitFor({state:'visible'});
+    assert.equal(await page.locator('.axiom-auth-create-callout').count(),0,'Duplicate small create-account link is visible');
   });
   await run('sign-up presents account registration rather than a shared sign-in form',{},async page=>{
     await page.goto(origin+'/sign-up');await page.getByLabel('Email',{exact:true}).waitFor();
@@ -143,6 +152,8 @@ try {
     assert.equal(await page.getByLabel('Full name',{exact:true}).count(),1);
     assert.equal(await page.locator('#auth-password').getAttribute('minlength'),'10');
     await page.getByRole('navigation',{name:'Account access'}).getByText('Create account',{exact:true}).waitFor({state:'visible'});
+    await page.getByRole('button',{name:'Sign up with Google'}).waitFor({state:'visible'});
+    assert.equal(await page.getByText('Already registered?',{exact:false}).count(),0,'Duplicate small sign-in link is visible');
     await page.getByRole('heading',{name:'Create your account',level:2}).waitFor({state:'visible'});
   });
   await run('password recovery pages retain a usable auth card',{},async page=>{
@@ -173,6 +184,14 @@ try {
     await page.getByRole('status').filter({hasText:'An account may already use this email.'}).waitFor({state:'visible'});
     assert.ok(state.requests.some(request=>request.path==='/auth/sign-up/email'),'duplicate account case did not reach Better Auth sign-up handling');
   });
+  await run('Google sign-in starts the Better Auth social flow',{},async(page,state)=>{
+    await page.goto(origin+'/sign-in');
+    await page.getByRole('button',{name:'Sign in with Google'}).click();
+    await page.getByRole('alert').filter({hasText:'Google OAuth is not configured in this fixture'}).waitFor({state:'visible'});
+    assert.equal(state.googleAuthRequests.length,1);
+    assert.equal(state.googleAuthRequests[0].provider,'google');
+    assert.equal(state.googleAuthRequests[0].callbackURL,origin+'/auth-redirect');
+  });
   await run('sign-out clears the cookie-backed session and returns to public entry',{signedIn:true},async (page,state)=>{
     await page.goto(origin+'/dashboard');await page.getByRole('button',{name:'Sign out'}).click();
     await page.waitForURL('**/login-select');assert.equal(state.signedIn,false);
@@ -183,7 +202,7 @@ try {
   });
   await run('mobile public entry has no horizontal page overflow',{},async page=>{
     await page.setViewportSize({width:390,height:844});await page.goto(origin+'/login-select');
-    await page.getByRole('button',{name:/Sign in as Debater/}).waitFor();
+    await page.getByRole('button',{name:'Continue with Google'}).waitFor();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
   });
   await run('mobile registration keeps form controls and account switch visible without horizontal overflow',{},async page=>{

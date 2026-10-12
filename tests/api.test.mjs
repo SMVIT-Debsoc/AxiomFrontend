@@ -42,12 +42,12 @@ test('profile request uses the configured URL and HTTP-only session cookies', as
   assert.equal(calls[0].credentials, 'include');
   assert.equal(calls[0].headers.Authorization, undefined);
 });
-test('public admin-key validation also sends cookies without bearer credentials', async () => {
-  responses.push(json({success: true, valid: false}));
-  await api.AdminApi.validateKey('test-only-key');
+test('admin access check uses the Better Auth session cookie', async () => {
+  responses.push(json({success: true, admin: {id: 'a1'}}));
+  await api.AdminApi.getProfile();
+  assert.equal(calls[0].url, 'https://fixture.invalid/api/admin/me');
   assert.equal(calls[0].credentials, 'include');
   assert.equal(calls[0].headers.Authorization, undefined);
-  assert.deepEqual(JSON.parse(calls[0].body), {secretKey: 'test-only-key'});
 });
 test('registration email preflight sends the candidate email to the public endpoint', async () => {
   responses.push(json({success: true, possibleTypo: false}));

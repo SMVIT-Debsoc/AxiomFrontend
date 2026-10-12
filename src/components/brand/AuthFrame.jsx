@@ -9,7 +9,7 @@ export default function AuthFrame({registration = false, showModeSwitcher = fals
                 <h1>{registration ? <>Take your place.<br />Make your case.</> : <>Your voice.<br />Your arena.</>}</h1>
                 <p className="text-muted-foreground max-w-sm">{registration ? "Create your account, complete your profile, and step into the tournament." : "Sign in to continue to your debates, rounds and results."}</p>
                 {registration && <ol className="axiom-auth-steps" aria-label="Registration steps">
-                    <li aria-current="step"><span>1</span><div><strong>Account</strong><small>Email and password</small></div></li>
+                    <li aria-current="step"><span>1</span><div><strong>Account</strong><small>Email or Google</small></div></li>
                     <li><span>2</span><div><strong>Profile</strong><small>Your participant details</small></div></li>
                     <li><span>3</span><div><strong>Event</strong><small>Join the tournament</small></div></li>
                 </ol>}
@@ -19,7 +19,7 @@ export default function AuthFrame({registration = false, showModeSwitcher = fals
                 {showModeSwitcher && <nav className="axiom-auth-mode-switch" aria-label="Account access">
                     {registration
                         ? <><Link to="/sign-in">Sign in</Link><span aria-current="page">Create account</span></>
-                        : <><span aria-current="page">Sign in</span><Link to="/get-started">Create account <span aria-hidden="true">↗</span></Link></>}
+                        : <><span aria-current="page">Sign in</span><Link to="/sign-up">Create account</Link></>}
                 </nav>}
                 {children}
             </div>

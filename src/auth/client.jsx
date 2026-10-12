@@ -18,6 +18,8 @@ export const authClient = createAuthClient({
   basePath: "/api/auth",
 });
 
+export const googleAuthEnabled = import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
+
 function useSessionUser() {
   const state = authClient.useSession();
   const raw = state.data?.user;
@@ -134,8 +136,9 @@ function AuthForm({registration = false}) {
       <header className="axiom-auth-form-heading">
         <p className="axiom-eyebrow">Participant access</p>
         <h2 id="auth-form-title">{registration ? "Create your account" : "Sign in"}</h2>
-        <p>{registration ? "Start with your email. We’ll guide you through the next steps." : "Pick up where you left off in the AXIOM arena."}</p>
+        <p>{registration ? "Use Google or email. We’ll guide you through the next steps." : "Pick up where you left off in the AXIOM arena."}</p>
       </header>
+      <GoogleAuthButton registration={registration} />
       {registration && <><label htmlFor="auth-name">Full name</label><input id="auth-name" autoComplete="name" required value={name} onChange={event=>setName(event.target.value)} /></>}
       <label htmlFor="auth-email">Email</label>
       <input id="auth-email" type="email" required autoComplete="email" value={email} onChange={event=>{setEmail(event.target.value);setPossibleTypo(false);setCheckedEmail("");setError("");}} />
@@ -147,9 +150,6 @@ function AuthForm({registration = false}) {
       <button type="submit" disabled={busy} className="axiom-auth-submit w-full bg-primary px-4 py-2.5 font-heading font-semibold text-primary-foreground disabled:opacity-60">
         {busy ? (registration ? "Checking email…" : "Signing in…") : (registration ? (possibleTypo ? "Continue with this email" : "Create account") : "Sign in")}
       </button>
-      {registration
-        ? <p className="axiom-auth-footnote">Already registered? <Link to="/sign-in">Sign in</Link></p>
-        : <p className="axiom-auth-create-callout"><span>New to AXIOM?</span><Link to="/get-started">Create account <span aria-hidden="true">↗</span></Link></p>}
       {!registration && searchParams.get("notice") === "account-exists" && <p role="status" className="mt-3 text-center text-sm">An account may already use this email. Sign in or reset your password.</p>}
       {!registration && <p className="axiom-auth-footnote"><Link to="/forgot-password">Forgot password?</Link></p>}
     </form>
@@ -161,6 +161,37 @@ export function SignUp() { return <AuthForm registration />; }
 export function SignedIn({children}) { return useAuth().isSignedIn ? children : null; }
 export function SignedOut({children}) { const {isLoaded,isSignedIn}=useAuth(); return isLoaded && !isSignedIn ? children : null; }
 export function RedirectToSignIn() { return <Navigate to="/login-select" replace />; }
+
+export function GoogleAuthButton({registration = false, landing = false}) {
+  const [busy,setBusy] = useState(false);
+  const [error,setError] = useState("");
+  if (!googleAuthEnabled) return null;
+
+  const signInWithGoogle = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: new URL("/auth-redirect", window.location.origin).toString(),
+      });
+      if (result.error) throw new Error(result.error.message || "Google sign-in could not start.");
+    } catch (failure) {
+      setError(failure.message || "Google sign-in could not start. Please try again.");
+      setBusy(false);
+    }
+  };
+
+  return <div className={landing ? "axiom-google-auth axiom-google-auth--landing" : "axiom-google-auth"}>
+    <button type="button" className="axiom-google-button" onClick={signInWithGoogle} disabled={busy} aria-busy={busy}>
+      <svg aria-hidden="true" viewBox="0 0 48 48" focusable="false"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.7-.4-4H24v7.6h11a9.4 9.4 0 0 1-4.1 6.2v5h6.6c3.9-3.6 6.1-8.8 6.1-14.8Z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.7-3.6-11.3-8.5H6v5.2A20 20 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.7 27.7a12 12 0 0 1 0-7.4v-5.2H6a20 20 0 0 0 0 17.8l6.7-5.2Z"/><path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4A20 20 0 0 0 6 15.1l6.7 5.2c1.6-4.9 6-8.5 11.3-8.5Z"/></svg>
+      <span>{busy ? "Connecting to Google…" : landing ? "Continue with Google" : registration ? "Sign up with Google" : "Sign in with Google"}</span>
+    </button>
+    {error && <p className="axiom-google-error" role="alert">{error}</p>}
+    {!landing && <div className="axiom-auth-divider" role="separator"><span>or continue with email</span></div>}
+  </div>;
+}
+
 export function SignInButton({children}) {
   const click = () => window.location.assign("/sign-in");
   if (isValidElement(children)) return cloneElement(children, {onClick: (event) => { children.props.onClick?.(event); if (!event.defaultPrevented) click(); }});

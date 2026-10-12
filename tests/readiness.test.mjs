@@ -17,7 +17,18 @@ test('user-required Better Auth integration must exist in this checkout', async 
   assert.match(client, /better-auth\/react/);
   assert.match(client, /signUp\.email/);
   assert.match(client, /signIn\.email/);
+  assert.match(client, /signIn\.social/);
+  assert.match(client, /VITE_GOOGLE_AUTH_ENABLED/);
   assert.doesNotMatch(client, /temporary-session|TEMP_.*PASSCODE/);
+});
+test('public account access is participant-only and Google remains credential-gated', async () => {
+  const entry = await readFile(new URL('../src/components/brand/RoleAccess.jsx', import.meta.url), 'utf8');
+  const login = await readFile(new URL('../src/pages/LoginSelectPage.jsx', import.meta.url), 'utf8');
+  const form = await readFile(new URL('../src/auth/client.jsx', import.meta.url), 'utf8');
+  assert.match(entry, /Participant access/);
+  assert.doesNotMatch(`${entry}\n${login}`, /Sign in as Admin|I’m an admin|admin-key|validateKey/);
+  assert.doesNotMatch(form, /axiom-auth-create-callout/);
+  assert.match(form, /provider: "google"/);
 });
 test('Azure deploy workflows are removed and Render deploy waits for CI', async () => {
   const workflowDirectory = new URL('../.github/workflows/', import.meta.url);

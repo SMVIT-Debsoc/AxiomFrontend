@@ -8,12 +8,13 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test tests/api.test.mjs tests/datetime.test.mjs",
+    "test": "node --test tests/api.test.mjs tests/analytics.test.mjs tests/datetime.test.mjs",
     "test:browser": "node tests/browser-audit.mjs",
     "test:readiness": "node --test tests/readiness.test.mjs"
   },
   "dependencies": {
     "@theme-toggles/react": "^5.0.5",
+    "@vercel/analytics": "^2.0.1",
     "better-auth": "^1.7.7",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.26",
