@@ -1,9 +1,8 @@
 import {useState, useEffect} from "react";
-import {useUser, useAuth} from "@clerk/clerk-react";
+import {useUser, useAuth} from "../auth/client.jsx";
 import {useNavigate} from "react-router-dom";
 import {ShieldX} from "lucide-react";
 import {AdminApi} from "../services/api";
-import {isTemporaryAuth} from "../auth/mode";
 import LoadingIndicator from "./ui/LoadingIndicator";
 
 export function AdminGuard({children}) {
@@ -23,20 +22,12 @@ export function AdminGuard({children}) {
                 return;
             }
 
-            if (isTemporaryAuth) {
-                // Temporary Auth.js session: the role comes from the session, not the Clerk-backed API.
-                if (user.publicMetadata?.role === "ADMIN") setIsAdmin(true);
-                else setError("You do not have admin access");
-                setChecking(false);
-                return;
-            }
-
             try {
                 const token = await getToken();
 
                 // First, check if this is a new admin trying to onboard (from localStorage)
-                const pendingRole = localStorage.getItem("pendingRole");
-                const secretKey = localStorage.getItem("adminSecretKey");
+                const pendingRole = sessionStorage.getItem("pendingRole");
+                const secretKey = sessionStorage.getItem("adminSecretKey");
 
                 if (pendingRole === "admin" && secretKey) {
                     // Try to onboard as admin
@@ -46,8 +37,8 @@ export function AdminGuard({children}) {
                             token
                         );
                         // Clear localStorage
-                        localStorage.removeItem("pendingRole");
-                        localStorage.removeItem("adminSecretKey");
+                        sessionStorage.removeItem("pendingRole");
+                        sessionStorage.removeItem("adminSecretKey");
 
                         if (response.success) {
                             setIsAdmin(true);
@@ -72,13 +63,13 @@ export function AdminGuard({children}) {
                 }
             } catch (err) {
                 console.error("Admin verification failed:", err);
-                setError(
-                    "Admin verification failed. You may not have admin access."
-                );
+                setError(err.status === 403 || /forbidden/i.test(err.message || "")
+                    ? "You do not have admin access"
+                    : "Admin verification failed. Please try again.");
             } finally {
                 // Clear any pending admin data
-                localStorage.removeItem("pendingRole");
-                localStorage.removeItem("adminSecretKey");
+                sessionStorage.removeItem("pendingRole");
+                sessionStorage.removeItem("adminSecretKey");
                 setChecking(false);
             }
         };

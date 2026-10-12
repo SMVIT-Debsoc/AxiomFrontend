@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { motion as Motion } from "framer-motion";
 import {MapPin, Plus, Search, Trash2, Edit, Users, X} from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { AdminApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
 

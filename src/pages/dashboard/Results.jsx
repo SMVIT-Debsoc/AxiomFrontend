@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   RefreshCw,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
+import {useAuth} from "../../auth/client.jsx";
 import {
   EventApi,
   DebateApi,

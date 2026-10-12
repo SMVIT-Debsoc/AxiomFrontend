@@ -1,17 +1,9 @@
 import {useEffect, useState} from "react";
-import {useUser, useAuth} from "@clerk/clerk-react";
+import {useUser} from "../auth/client.jsx";
 import {useNavigate} from "react-router-dom";
 import {ShieldX} from "lucide-react";
 import {AdminApi, UserApi} from "../services/api";
-import {isTemporaryAuth} from "../auth/mode";
 import LoadingIndicator from "./ui/LoadingIndicator";
-
-const isLocalhost = ["localhost", "127.0.0.1"].includes(
-    window.location.hostname,
-);
-const API_BASE_URL = isLocalhost
-    ? import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-    : "/api";
 
 /**
  * This component handles post-authentication redirects.
@@ -20,137 +12,73 @@ const API_BASE_URL = isLocalhost
  */
 export function AuthRedirectHandler() {
     const {user, isLoaded} = useUser();
-    const {getToken} = useAuth();
     const navigate = useNavigate();
     const [status, setStatus] = useState("Verifying your credentials...");
     const [accessDenied, setAccessDenied] = useState(false);
+    const [redirectError, setRedirectError] = useState("");
 
     useEffect(() => {
         const handleRedirect = async () => {
             if (!isLoaded) return;
-
             if (!user) {
                 navigate("/login-select", {replace: true});
                 return;
             }
-            if (isTemporaryAuth) {
-                navigate(user.publicMetadata?.role === "ADMIN" ? "/admin" : "/dashboard", {replace: true});
-                return;
-            }
-
-
+            const pendingRole = sessionStorage.getItem("pendingRole");
+            const secretKey = sessionStorage.getItem("adminSecretKey");
             try {
-                const token = await getToken();
-
-                // Check if admin login is pending
-                const pendingRole = localStorage.getItem("pendingRole");
-                const secretKey = localStorage.getItem("adminSecretKey");
-
                 if (pendingRole === "admin" && secretKey) {
                     setStatus("Verifying admin credentials...");
-
-                    // First, check if user is already an admin (silently)
                     try {
-                        const adminCheckResponse = await fetch(
-                            `${API_BASE_URL}/admin/me`,
-                            {
-                                headers: {
-                                    Authorization: `Bearer ${token}`,
-                                    "Content-Type": "application/json",
-                                },
-                            },
-                        );
-
-                        if (adminCheckResponse.ok) {
-                            const adminCheck = await adminCheckResponse.json();
-                            if (adminCheck.success && adminCheck.admin) {
-                                // Already an admin, go to admin dashboard
-                                localStorage.removeItem("pendingRole");
-                                localStorage.removeItem("adminSecretKey");
-                                setStatus("Welcome back, Admin!");
-                                navigate("/admin", {replace: true});
-                                return;
-                            }
+                        const existing = await AdminApi.getProfile();
+                        if (existing.success && existing.admin) {
+                            sessionStorage.removeItem("pendingRole");
+                            sessionStorage.removeItem("adminSecretKey");
+                            navigate("/admin", {replace: true});
+                            return;
                         }
                     } catch {
-                        // Not an existing admin, try to onboard
+                        // A new verified account has no admin row yet; onboarding below decides access.
                     }
-
-                    // Try to onboard as new admin
                     try {
-                        const response = await AdminApi.onboard(
-                            secretKey,
-                            token,
-                        );
-                        localStorage.removeItem("pendingRole");
-                        localStorage.removeItem("adminSecretKey");
-
+                        const response = await AdminApi.onboard(secretKey);
                         if (response.success) {
-                            setStatus("Admin access granted! Redirecting...");
+                            sessionStorage.removeItem("pendingRole");
+                            sessionStorage.removeItem("adminSecretKey");
                             navigate("/admin", {replace: true});
                             return;
                         }
-                    } catch (onboardError) {
-                        console.log("Onboard error:", onboardError.message);
-
-                        // Check if error is "already admin"
-                        if (onboardError.message?.includes("already")) {
-                            localStorage.removeItem("pendingRole");
-                            localStorage.removeItem("adminSecretKey");
-                            navigate("/admin", {replace: true});
-                            return;
-                        }
-
-                        // Invalid secret key - show access denied
-                        localStorage.removeItem("pendingRole");
-                        localStorage.removeItem("adminSecretKey");
-                        setAccessDenied(true);
+                    } catch (error) {
+                        sessionStorage.removeItem("pendingRole");
+                        sessionStorage.removeItem("adminSecretKey");
+                        if (/invalid admin secret key/i.test(error.message || "")) setAccessDenied(true);
+                        else setRedirectError(error.message || "Admin setup could not be completed.");
                         return;
                     }
                 }
-
-                // No pending admin role - check if returning admin (silently)
                 try {
-                    const adminCheckResponse = await fetch(
-                        `${API_BASE_URL}/admin/me`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                                "Content-Type": "application/json",
-                            },
-                        },
-                    );
-
-                    if (adminCheckResponse.ok) {
-                        const adminResponse = await adminCheckResponse.json();
-                        if (adminResponse.success && adminResponse.admin) {
-                            // User is an admin, redirect to admin dashboard
-                            localStorage.removeItem("pendingRole");
-                            localStorage.removeItem("adminSecretKey");
-                            navigate("/admin", {replace: true});
-                            return;
-                        }
+                    const existing = await AdminApi.getProfile();
+                    if (existing.success && existing.admin) {
+                        sessionStorage.removeItem("pendingRole");
+                        sessionStorage.removeItem("adminSecretKey");
+                        navigate("/admin", {replace: true});
+                        return;
                     }
                 } catch {
-                    // Not an admin, continue to user dashboard
+                    // Participant accounts are expected to receive a forbidden/not-found admin response.
                 }
-
-                // Clear any pending data and go to user dashboard
-                localStorage.removeItem("pendingRole");
-                localStorage.removeItem("adminSecretKey");
                 setStatus("Setting up your profile...");
-                await UserApi.getProfile(token);
+                await UserApi.getProfile();
+                sessionStorage.removeItem("pendingRole");
+                sessionStorage.removeItem("adminSecretKey");
                 navigate("/dashboard", {replace: true});
             } catch (error) {
                 console.error("Auth redirect error:", error);
-                localStorage.removeItem("pendingRole");
-                localStorage.removeItem("adminSecretKey");
-                navigate("/dashboard", {replace: true});
+                setRedirectError(error.message || "We could not finish setting up your account.");
             }
         };
-
         handleRedirect();
-    }, [isLoaded, user, getToken, navigate]);
+    }, [isLoaded, user, navigate]);
 
     // Show access denied screen for invalid admin secret key
     if (accessDenied) {
@@ -188,5 +116,14 @@ export function AuthRedirectHandler() {
         );
     }
 
+    if (redirectError) return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-6">
+            <div className="max-w-md text-center">
+                <h2 className="mb-2 text-2xl font-bold">Account setup could not finish</h2>
+                <p role="alert" className="mb-5 text-muted-foreground">{redirectError}</p>
+                <button className="axiom-button axiom-button--green" onClick={() => window.location.reload()}>Try again</button>
+            </div>
+        </div>
+    );
     return <LoadingIndicator fullScreen label={status || "Verifying your credentials..."} />;
 }

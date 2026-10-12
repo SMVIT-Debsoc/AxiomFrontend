@@ -8,7 +8,7 @@ import {
   School,
   CheckCircle,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
+import {useAuth} from "../../auth/client.jsx";
 import {EventApi} from "../../services/api";
 import {useEventSocket} from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";

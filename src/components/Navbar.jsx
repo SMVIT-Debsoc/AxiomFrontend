@@ -1,18 +1,16 @@
 import {useState, useEffect, useRef} from "react";
 import {Link, useLocation} from "react-router-dom";
 import {Menu, X, ArrowUpRight} from "lucide-react";
-import {useAuth, UserButton} from "@clerk/clerk-react";
+import {useAuth, UserButton} from "../auth/client.jsx";
 import Axiom40Logo from "./brand/Axiom40Logo";
 import ThemeToggle from "./ui/ThemeToggle";
-
-const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
+import {AdminApi} from "../services/api";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
-    const {isSignedIn, getToken} = useAuth();
+    const {isSignedIn} = useAuth();
     const toggleRef = useRef(null);
 
     useEffect(() => {
@@ -20,15 +18,13 @@ export default function Navbar() {
         const checkAdminStatus = async () => {
             if (!isSignedIn) return;
             try {
-                const token = await getToken();
-                const response = await fetch(`${API_BASE_URL}/admin/me`, {headers: {Authorization: `Bearer ${token}`, "Content-Type": "application/json"}});
-                const data = response.ok ? await response.json() : null;
+                const data = await AdminApi.getProfile();
                 if (active) setIsAdmin(!!(data?.success && data.admin));
             } catch { if (active) setIsAdmin(false); }
         };
         checkAdminStatus();
         return () => { active = false; };
-    }, [isSignedIn, getToken]);
+    }, [isSignedIn]);
 
     useEffect(() => {
         if (!isOpen) return;

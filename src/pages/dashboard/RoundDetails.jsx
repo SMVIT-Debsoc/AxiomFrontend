@@ -14,7 +14,7 @@ import {
   Swords,
   Timer,
 } from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
+import {useAuth} from "../../auth/client.jsx";
 import {RoundApi, CheckInApi, DebateApi, UserApi} from "../../services/api";
 import {socketService, SocketEvents} from "../../services/socket";
 import {useToast} from "../../hooks/useToast"
@@ -33,6 +33,7 @@ export default function RoundDetails() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [clockNow, setClockNow] = useState(Date.now());
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("my-debate");
   const [allDebates, setAllDebates] = useState([]);
@@ -194,7 +195,7 @@ export default function RoundDetails() {
   // Check-in window helpers
   const isCheckInOpen = () => {
     if (!round?.checkInStartTime || !round?.checkInEndTime) return false;
-    const now = new Date();
+    const now = new Date(clockNow);
     return (
       now >= new Date(round.checkInStartTime) &&
       now <= new Date(round.checkInEndTime)
@@ -225,6 +226,23 @@ export default function RoundDetails() {
   };
 
   const userPosition = getUserPosition();
+
+  const checkInStartTime = round?.checkInStartTime;
+  const checkInEndTime = round?.checkInEndTime;
+  useEffect(() => {
+    if (!checkInStartTime || !checkInEndTime) return;
+    let timer;
+    const updateAtBoundary = () => {
+      const now = Date.now();
+      setClockNow(now);
+      const nextBoundary = [Date.parse(checkInStartTime), Date.parse(checkInEndTime)]
+        .filter((time) => time > now)
+        .sort((a, b) => a - b)[0];
+      if (nextBoundary) timer = window.setTimeout(updateAtBoundary, nextBoundary - now + 5);
+    };
+    updateAtBoundary();
+    return () => window.clearTimeout(timer);
+  }, [checkInStartTime, checkInEndTime]);
 
   if (loading) {
     return <RoundDetailsSkeleton />;
@@ -399,7 +417,7 @@ export default function RoundDetails() {
                     <div>
                       <p className="font-heading font-semibold text-xs text-foreground">Check-in Not Available</p>
                       <p className="text-xs font-sans">
-                        {new Date() < new Date(round.checkInStartTime)
+                        {clockNow < new Date(round.checkInStartTime).getTime()
                           ? "Check-in has not started yet"
                           : "Check-in window has closed"}
                       </p>
@@ -505,14 +523,15 @@ export default function RoundDetails() {
                       </div>
                     )}
 
-                    {myDebate.adjudicator && (
+                    {(myDebate.adjudicator || myDebate.judgeName) && (
                       <div className="flex items-center gap-2 p-2.5 bg-muted/30 border border-border/40 rounded-lg">
                         <Gavel className="w-4 h-4 text-amber-500 shrink-0" aria-hidden="true" />
                         <div>
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Adjudicator</p>
                           <p className="font-medium text-foreground">
-                            {myDebate.adjudicator.firstName}{" "}
-                            {myDebate.adjudicator.lastName}
+                            {myDebate.adjudicator
+                              ? [myDebate.adjudicator.firstName, myDebate.adjudicator.lastName].filter(Boolean).join(" ")
+                              : myDebate.judgeName}
                           </p>
                         </div>
                       </div>

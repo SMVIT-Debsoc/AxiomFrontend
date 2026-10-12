@@ -12,7 +12,7 @@ import {
   Lock,
   ArrowRight,
 } from "lucide-react";
-import {useAuth, useUser} from "@clerk/clerk-react";
+import {useAuth, useUser} from "../../auth/client.jsx";
 import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {useToast} from "../../hooks/useToast"
@@ -28,7 +28,7 @@ import JourneyCard from "../../components/dashboard/JourneyCard";
 
 export default function DashboardHome() {
   const {getToken} = useAuth();
-  const {user: clerkUser, isLoaded: clerkLoaded} = useUser();
+  const {user: authUser, isLoaded: authLoaded} = useUser();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,7 +44,7 @@ export default function DashboardHome() {
 
   // Fetch data function extracted for reuse
   const fetchDashboardData = async () => {
-    if (!clerkLoaded) return;
+    if (!authLoaded) return;
 
     try {
       const token = await getTokenRef.current();
@@ -125,7 +125,7 @@ export default function DashboardHome() {
   useEffect(() => {
     fetchDashboardData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clerkLoaded]);
+  }, [authLoaded]);
 
   // Real-time updates
   useEventSocket(activeEvent?.id, {
@@ -153,10 +153,10 @@ export default function DashboardHome() {
     return <DashboardHomeSkeleton />;
   }
 
-  // Use fetched data or fallback to Clerk data
+  // Use fetched data or fallback to account data
   const displayName = userData?.firstName
     ? `${userData.firstName} ${userData.lastName || ""}`.trim()
-    : clerkUser?.fullName || "User";
+    : authUser?.fullName || "User";
   const college = userData?.college || "Complete your profile";
 
   const stats = [
@@ -209,7 +209,7 @@ export default function DashboardHome() {
       <div className="bg-card border border-border p-6 rounded-xl relative overflow-hidden axiom-rise" style={{"--i": 1}}>
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-5">
-            <UserAvatar user={clerkUser} name={displayName} size="xl" className="axiom-avatar-pop" />
+            <UserAvatar user={authUser} name={displayName} size="xl" className="axiom-avatar-pop" />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-heading font-bold text-foreground truncate">{displayName}</h2>

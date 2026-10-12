@@ -1,4 +1,4 @@
-import {SignIn} from "@clerk/clerk-react";
+import {SignIn} from "../auth/client.jsx";
 import AuthFrame from "../components/brand/AuthFrame";
 
 export default function SignInPage() {
@@ -6,10 +6,6 @@ export default function SignInPage() {
     return (
         <AuthFrame>
             <SignIn
-                path="/sign-in"
-                routing="path"
-                signUpUrl="/get-started"
-                forceRedirectUrl="/auth-redirect"
             />
         </AuthFrame>
     );

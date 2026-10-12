@@ -9,7 +9,7 @@ import {
     ArrowLeft,
 } from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { AdminApi, EventApi, RoundApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
 

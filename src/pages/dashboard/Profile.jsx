@@ -1,5 +1,5 @@
 import {useState, useEffect} from "react";
-import {useUser, useAuth} from "@clerk/clerk-react";
+import {useUser, useAuth} from "../../auth/client.jsx";
 import {useNavigate} from "react-router-dom";
 import {
   User,
@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   UserCircle,
 } from "lucide-react";
-import {UserApi, EventApi, CheckInApi} from "../../services/api";
+import {UserApi} from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import {ProfileSkeleton} from "../../components/ui/Skeleton";
 import {UserAvatar} from "../../components/ui/UserAvatar";
@@ -49,7 +49,7 @@ export default function Profile({isOnboarding = false}) {
           const response = await UserApi.getProfile(token);
           const dbUser = response.user;
 
-          // Populate form with backend data, falling back to Clerk data
+          // Populate the form with saved profile and Better Auth account data
           setFormData({
             firstName: dbUser?.firstName || user.firstName || "",
             lastName: dbUser?.lastName || user.lastName || "",
@@ -61,7 +61,7 @@ export default function Profile({isOnboarding = false}) {
           });
         } catch (err) {
           console.error("Error fetching profile:", err);
-          // Fallback to Clerk data if backend fetch fails
+          // Keep the form editable; submitting still requires the API to work
           setFormData({
             firstName: user.firstName || "",
             lastName: user.lastName || "",
@@ -103,7 +103,13 @@ export default function Profile({isOnboarding = false}) {
     try {
       const token = await getToken();
 
-      // Sync with Backend (this will upsert the user)
+      // Keep the Better Auth account name consistent with the profile form
+      await user.update({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      });
+
+      // The backend reads the current account name from the verified session.
       await UserApi.updateProfile(
         {
           firstName: formData.firstName,
@@ -116,63 +122,8 @@ export default function Profile({isOnboarding = false}) {
         token
       );
 
-      // Also update Clerk user data for consistency
-      await user.update({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-      });
-
       if (isOnboarding) {
-        // If onboarding, register for current event and redirect to dashboard
-        try {
-          // Fetch current/ongoing events
-          const eventsResponse = await EventApi.list(token, "ONGOING");
-          const ongoingEvents = eventsResponse.events || [];
-
-          if (ongoingEvents.length > 0) {
-            const currentEvent = ongoingEvents[0];
-
-            // Check if there's an ongoing round to check into
-            const ongoingRound = currentEvent.rounds?.find(
-              (r) => r.status === "ONGOING"
-            );
-
-            if (ongoingRound) {
-              try {
-                // Auto check-in if check-in is open
-                await CheckInApi.checkIn(ongoingRound.id, token);
-                toast.success(
-                  "Registered Successfully! 🎉",
-                  `You have been registered for ${currentEvent.name} and checked in!`
-                );
-              } catch {
-                // Check-in might not be open yet, that's okay
-                toast.success(
-                  "Registered Successfully! 🎉",
-                  `You have been registered for ${currentEvent.name}!`
-                );
-              }
-            } else {
-              toast.success(
-                "Registered Successfully! 🎉",
-                `You have been registered for ${currentEvent.name}!`
-              );
-            }
-          } else {
-            toast.success(
-              "Profile Complete! 🎉",
-              "Your profile has been saved. Check events to register!"
-            );
-          }
-        } catch (eventError) {
-          console.error("Event registration error:", eventError);
-          toast.success(
-            "Profile Complete! 🎉",
-            "Your profile has been saved successfully!"
-          );
-        }
-
-        // Redirect to dashboard
+        toast.success("Profile Complete! 🎉", "Your profile has been saved. Browse events to register for a tournament.");
         navigate("/dashboard", {replace: true});
       } else {
         setSuccess(true);

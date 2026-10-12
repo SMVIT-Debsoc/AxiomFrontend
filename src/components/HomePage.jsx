@@ -3,12 +3,12 @@ import {
     SignedIn,
     SignedOut,
     UserButton,
-} from "@clerk/clerk-react";
+} from "../auth/client.jsx";
 import {Link} from "react-router-dom";
-import {useClerk} from "@clerk/clerk-react";
+import {useAuth} from "../auth/client.jsx";
 
 function HomePage() {
-    const {signOut} = useClerk();
+    const {signOut} = useAuth();
 
     const handleLogout = async () => {
         await signOut();

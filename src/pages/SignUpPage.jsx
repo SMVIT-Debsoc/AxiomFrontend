@@ -1,4 +1,4 @@
-import {SignUp} from "@clerk/clerk-react";
+import {SignUp} from "../auth/client.jsx";
 import AuthFrame from "../components/brand/AuthFrame";
 
 export default function SignUpPage() {
@@ -7,9 +7,6 @@ export default function SignUpPage() {
         <AuthFrame registration>
             <SignUp
                 path="/sign-up"
-                routing="path"
-                signInUrl="/login-select"
-                forceRedirectUrl="/auth-redirect"
             />
         </AuthFrame>
     );

@@ -1,0 +1,185 @@
+{
+  "scope": "Isolated Better Auth UI/API fixtures; not live auth/backend verification",
+  "results": [
+    {
+      "name": "public entry redirects and renders role selection",
+      "kind": "Public UI",
+      "status": "PASS"
+    },
+    {
+      "name": "signed-out access to /dashboard is blocked",
+      "kind": "Anonymous route guard fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "signed-out access to /dashboard/events is blocked",
+      "kind": "Anonymous route guard fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "signed-out access to /dashboard/events/e1 is blocked",
+      "kind": "Anonymous route guard fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "signed-out access to /dashboard/events/e1/rounds/r1 is blocked",
+      "kind": "Anonymous route guard fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "signed-out access to /complete-profile is blocked",
+      "kind": "Anonymous route guard fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "signed-out access to /admin is blocked",
+      "kind": "Anonymous route guard fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "signed-out access to /admin/events is blocked",
+      "kind": "Anonymous route guard fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "returning debater entry opens sign-in",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "invalid organizer key displays rejection",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "new debater registration opens sign-up",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "sign-in presents the Better Auth email and password form",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "sign-up presents account registration rather than a shared sign-in form",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "sign-out clears the cookie-backed session and returns to public entry",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "unknown route displays a usable recovery page",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile public entry has no horizontal page overflow",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "incomplete profile redirects to onboarding",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "profile API outage blocks onboarding-dependent event access",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "profile completion does not claim event enrollment or attendance",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "explicit event enrollment persists across reload",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "HTTP-denied enrollment displays error and keeps enroll action",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "business-rejected enrollment must not show success",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "open round check-in persists across reload",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "closed round window prevents check-in",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "denied round check-in does not display presence",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "published pairing displays opponent, position and room",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "manually assigned judge is shown to the participant",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "unpublished pairings hide opponent and room",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "unpublished results show awaiting selection",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "published promotion is visible in event results",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "check-in window opening updates the button without a reload",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "check-in window closing removes the action without a reload",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "participant cannot open admin workspace",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "admin event creation sends dates and updates list",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "admin event edit persists across reload",
+      "kind": "UI fixture",
+      "status": "PASS"
+    },
+    {
+      "name": "admin event delete persists across reload",
+      "kind": "UI fixture",
+      "status": "PASS"
+    }
+  ]
+}

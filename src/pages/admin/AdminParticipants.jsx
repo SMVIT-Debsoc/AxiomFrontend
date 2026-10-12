@@ -4,7 +4,7 @@ import { motion as Motion } from "framer-motion";
 import {Search, Mail, Trash2, RotateCcw, UserPlus, X} from "lucide-react";
 import { cn } from "../../lib/utils";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { UserApi, EventApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { useSocket, SocketEvents } from "../../hooks/useSocket";

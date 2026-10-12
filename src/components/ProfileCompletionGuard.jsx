@@ -1,5 +1,5 @@
 import {useState, useEffect} from "react";
-import {useUser, useAuth} from "@clerk/clerk-react";
+import {useUser, useAuth} from "../auth/client.jsx";
 import {Navigate, useLocation} from "react-router-dom";
 import {UserApi} from "../services/api";
 import {ProfileHeaderSkeleton, CardSkeleton} from "./ui/Skeleton";
@@ -15,6 +15,7 @@ export function ProfileCompletionGuard({children}) {
   const location = useLocation();
   const [checking, setChecking] = useState(true);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -28,10 +29,9 @@ export function ProfileCompletionGuard({children}) {
             response.user?.college && response.user?.mobile
           );
           setIsProfileComplete(profileComplete);
-        } catch (error) {
-          console.error("Error checking profile:", error);
-          // On error, allow access but they may hit issues later
-          setIsProfileComplete(true);
+        } catch (failure) {
+          console.error("Error checking profile:", failure);
+          setError(failure.message || "Your profile could not be checked.");
         }
         setChecking(false);
       } else if (isLoaded && !user) {
@@ -52,6 +52,16 @@ export function ProfileCompletionGuard({children}) {
       </div>
     );
   }
+
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="max-w-md text-center">
+        <h2 className="mb-2 text-xl font-semibold">We could not verify your profile</h2>
+        <p role="alert" className="mb-5 text-muted-foreground">{error}</p>
+        <button className="axiom-button axiom-button--green" onClick={() => { setError(""); setChecking(true); UserApi.getProfile().then((response) => { setIsProfileComplete(Boolean(response.user?.college && response.user?.mobile)); setChecking(false); }).catch((failure) => { setError(failure.message || "Retry failed."); setChecking(false); }); }}>Retry</button>
+      </div>
+    </div>
+  );
 
   // If profile incomplete, redirect to complete-profile page
   if (!isProfileComplete) {

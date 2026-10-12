@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion as Motion } from "framer-motion";
 import {Calendar, Users, Trophy, Activity, Plus, ArrowUpRight} from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { Link } from "react-router-dom";
 import { AdminApi } from "../../services/api";
 import { useSocket, SocketEvents } from "../../hooks/useSocket";

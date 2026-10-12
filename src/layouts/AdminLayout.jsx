@@ -13,7 +13,7 @@ import {
     X,
 } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
-import { UserButton, useUser } from "@clerk/clerk-react";
+import { UserButton, useUser } from "../auth/client.jsx";
 import { useSocketStatus } from "../hooks/useSocket";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import { cn } from "../lib/utils";

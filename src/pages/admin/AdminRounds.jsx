@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion as Motion } from "framer-motion";
 import {Calendar, ChevronRight, Search, Clock} from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { AdminApi, EventApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
 

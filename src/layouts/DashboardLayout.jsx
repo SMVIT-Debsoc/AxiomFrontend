@@ -4,20 +4,13 @@ import {
     UserButton,
     useUser,
     RedirectToSignIn,
-    useAuth,
-} from "@clerk/clerk-react";
+} from "../auth/client.jsx";
 import {SidebarRail, MobileTabs} from "../components/layout/SidebarRail";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import LoadingIndicator from "../components/ui/LoadingIndicator";
-
-const isLocalhost = ["localhost", "127.0.0.1"].includes(
-    window.location.hostname,
-);
-const API_BASE_URL = isLocalhost
-    ? import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-    : "/api";
+import {AdminApi} from "../services/api";
 
 const sidebarItems = [
     {icon: "LayoutIcon", label: "Overview", path: "/dashboard"},
@@ -29,29 +22,14 @@ export default function DashboardLayout() {
     const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
     const {user, isLoaded, isSignedIn} = useUser();
-    const {getToken} = useAuth();
 
     // Check admin status to show admin link (silently - 403 is expected for non-admins)
     useEffect(() => {
         const checkAdmin = async () => {
             if (isSignedIn) {
                 try {
-                    const token = await getToken();
-                    // Direct fetch to avoid logging expected 403 errors
-                    const response = await fetch(`${API_BASE_URL}/admin/me`, {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            "Content-Type": "application/json",
-                        },
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        setIsAdmin(data.success && !!data.admin);
-                    } else {
-                        // 403 is expected for non-admins, silently set to false
-                        setIsAdmin(false);
-                    }
+                    const data = await AdminApi.getProfile();
+                    setIsAdmin(data.success && !!data.admin);
                 } catch {
                     // Network error or other issue - assume not admin
                     setIsAdmin(false);
@@ -59,7 +37,7 @@ export default function DashboardLayout() {
             }
         };
         checkAdmin();
-    }, [isSignedIn, getToken]);
+    }, [isSignedIn]);
 
     if (!isLoaded) {
         return <LoadingIndicator fullScreen label="Opening your debate workspace" />;

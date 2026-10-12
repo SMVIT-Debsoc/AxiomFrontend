@@ -1,6 +1,6 @@
 # AXIOM 4.0 Frontend
 
-SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Clerk and Socket.IO. The AXIOM 4.0 identity pairs Indian goddess stone sculpture with green digital fields and condensed editorial typography.
+SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Better Auth and Socket.IO. The AXIOM 4.0 identity pairs Indian goddess stone sculpture with green digital fields and condensed editorial typography.
 
 ## Run locally
 
@@ -9,13 +9,13 @@ npm install
 npm run dev
 ```
 
-Configure a local `.env.local` with the project's **existing** Clerk development publishable key:
+Configure `.env.local` only when the API is not running on `http://localhost:3000/api`:
 
 ```dotenv
-VITE_CLERK_PUBLISHABLE_KEY=<your Clerk development publishable key>
+VITE_API_URL=http://localhost:3000/api
 ```
 
-Never commit credentials. No authentication bypass or demo account is shipped. A missing key intentionally retains the original startup error. Local API requests default to `http://localhost:3000/api`; use `VITE_API_URL` for another backend. Existing `VITE_SOCKET_URL` and `VITE_SOCKET_TRANSPORTS` options remain supported. Deployed `/api` and `/socket.io` rewrites remain in `vercel.json`.
+Never commit credentials. Better Auth runs in the API backend and uses an HTTP-only session cookie. Local requests default to `http://localhost:3000/api`; deployed requests use the same-origin `/api` proxy. Existing `VITE_SOCKET_URL` and `VITE_SOCKET_TRANSPORTS` options remain supported.
 
 Existing checks:
 
@@ -25,18 +25,18 @@ npm run build
 npm run preview
 ```
 
-There is no repository unit-test, formatter, TypeScript, or component-test script.
+`npm test` runs isolated API contract and date-time tests; Playwright UI checks run with `npm run test:browser`.
 
 ## Route architecture
 
 - `/` still redirects to `/login-select`: the role selector is now the flagship event-poster experience, followed by discourse and tournament-workspace sections.
 - `/about`: the complete public editorial experience; `/get-started`: participant/admin role selection.
-- `/sign-in/*`, `/sign-up/*`, `/auth-redirect`: existing Clerk routing and role-aware authentication redirects.
+- `/sign-in/*`, `/sign-up/*`, `/forgot-password`, `/reset-password`, `/auth-redirect`: Better Auth account access and role-aware redirects.
 - `/complete-profile`, `/dashboard/*`: protected participant profile, events, enrollment, check-in, pairings, rounds and results.
 - `/admin/*`: protected tournament operations, events, participants, rooms, round management, promotion, results and leaderboard.
 - Existing settings screens remain informational; the redesign does not claim to add a settings backend.
 
-No endpoint, role value, storage identifier, environment contract or backend was renamed for the identity migration. Navigation's previously unhandled `/events` link now targets the existing `/dashboard/events` route.
+Business API paths and role records remain stable; browser authentication now uses Better Auth HTTP-only sessions. Navigation's previously unhandled `/events` link now targets the existing `/dashboard/events` route.
 
 ## Design system
 
@@ -102,7 +102,7 @@ Participant and admin workspaces share one floating icon dock, vertically centre
 - **Icons**: `src/components/icons/NeoIcons.jsx` holds 11 glyphs from the *Neubrutalism Icons Set (Community)* Figma file (Live stroke sheet), taken from the SVG export supplied by the project owner. Only the glyphs are used; the Figma tile and shadow are redrawn in CSS. Check the file's licence before publishing.
 - **Theme toggle**: `ThemeToggle` combines the Lightbulb of [theme-toggles](https://github.com/AlfieJones/theme-toggles) with the blur-circle reveal of [react-theme-switch-animation](https://github.com/MinhOmega/react-theme-switch-animation) (both MIT, installed). It sits in the workspace headers, the public navbar and the landing header; the landing page has a full dark treatment.
 - **Components**: `src/components/neo/` re-implements IconButton, Button, Card and ProgressBar from the MIT-licensed [Neo-Brutalism UI library](https://github.com/marieooq/neo-brutalism-ui-library) (marieooq) with AXIOM colours. Dialog, Dropdown, Checkbox and Input were not adopted; existing AXIOM controls remain.
-- **Profile pictures**: `src/lib/avatar.js` draws a sculptural portrait (halo, headdress, jewellery, palette) deterministically from the account email, id or name. `UserAvatar` shows a person's own photo when they have one and this portrait otherwise; no initials. With Clerk, `AvatarSync` uploads the portrait once as the profile image for accounts without a photo (untested without a Clerk key).
+- **Profile pictures**: `src/lib/avatar.js` draws a sculptural portrait (halo, headdress, jewellery, palette) deterministically from the account email, id or name. `UserAvatar` shows a person's own photo when they have one and this portrait otherwise; no initials.
 - **Empty states**: `EmptyState` (halo, rotating rays, the sculpture) replaces plain "nothing here" blocks; `compact` for panels.
 - **Workspace spacing and contrast**: category badges, titles and descriptions occupy separate rows. The compact between-rounds banner places its actions beside the copy on desktop and wraps them on mobile; green surfaces use explicit ink/paper foregrounds in both themes.
 - **Loading**: `Skeleton` mirrors the dashboard, profile and results layouts with stone/green shimmer placeholders. `LoadingIndicator` supplies a rotating halo and animated voice bars during account, page and admin loading. Loading labels are announced separately from decorative placeholders; reduced motion uses static shapes without adding a loading delay.
@@ -111,22 +111,11 @@ Participant and admin workspaces share one floating icon dock, vertically centre
 
 ## Deployment notes
 
-### Authentication modes
+### Better Auth configuration
 
-`vite.config.js` picks the auth provider at build time:
+The browser talks to Better Auth at `/api/auth/*`; in production the same-origin `/api` rewrite must reach the API backend. Local development uses `http://localhost:3000/api` unless `VITE_API_URL` is set. The backend requires `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `FRONTEND_URL`, an explicit `CORS_ORIGIN` list, and SMTP settings for email verification and password recovery. See the backend's `.env.sample` for exact names. Email verification is required before a new account can enter the app or claim an existing participant/admin record. Never ship a passcode or temporary-sign-in fallback.
 
-| Condition | Provider |
-|---|---|
-| `VITE_AUTH_PROVIDER=temporary` or no `VITE_CLERK_PUBLISHABLE_KEY` | **Temporary Auth.js sign-in** (`api/auth.js`, client in `src/auth/temporary`) |
-| `VITE_CLERK_PUBLISHABLE_KEY` set (or `VITE_AUTH_PROVIDER=clerk`) | Clerk (unchanged) |
-
-Temporary mode aliases `@clerk/clerk-react` to `src/auth/temporary`, so no page code changes. Server environment (Vercel project settings, or `.env.local` for `npm run dev`; see `.env.example`): `AUTH_SECRET`, `TEMP_ADMIN_PASSCODE`, `TEMP_PARTICIPANT_PASSCODE`. With none set, nobody can sign in. The email is free-form; the passcode decides the role.
-
-Limits: the backend verifies Clerk tokens, so a temporary session only gates the UI and authenticated API calls will be rejected. A build with neither a Clerk key nor temporary mode is a blank page: `main.jsx` throws on a missing key and the bundler removes the app.
-
-To return to Clerk: set `VITE_CLERK_PUBLISHABLE_KEY` and redeploy. To delete the temporary path: remove `api/auth.js`, the `/api/auth` rewrite in `vercel.json`, `src/auth`, the `devAuthRoute`/alias/define parts of `vite.config.js`, the `isTemporaryAuth` branches in `AdminGuard`, `AuthRedirectHandler` and `main.jsx`, and `@auth/core`.
-
-The host's Clerk configuration and backend access are required to verify real authentication and authenticated operations. Isolated UI fixtures used during local visual QA are not production authentication evidence and are not part of the repository.
+The backend migration adds Better Auth storage and nullable identity links without deleting existing participant, admin, event, pairing or result data. Review the generated database migration and take a verified backup before applying it to production. Do not apply it until the production database target is confirmed.
 
 The repository contains no canonical public deployment hostname. Social image paths are origin-relative; publishing infrastructure should resolve them to the canonical absolute site URL when that hostname is established. No unrelated domain or fabricated canonical URL is supplied.
 
@@ -145,3 +134,18 @@ All figures are from the Cleveland Museum of Art Open Access programme (CC0), cu
 | River Goddess Ganga, Mathura, c. 700 | 1966.119 | Sign-in, dashboard profile card |
 
 Museum records: `https://www.clevelandart.org/art/<accession>`. The museum titles are used as given; no specific deity or debating association is claimed beyond them.
+
+## Production readiness audit (11 October 2026)
+
+The current audit verdict remains **NOT VERIFIED FOR PRODUCTION** until a real Better Auth backend, database migration, email delivery and user/event journey pass end-to-end. See [the evidence report](docs/PRODUCTION_READINESS_AUDIT.md), [the reusable full audit/testing prompt](docs/PRODUCTION_AUDIT_PROMPT.md) and [the continuation log](progress.md).
+
+Added checks:
+
+```sh
+npm test                         # isolated API contracts and event date behavior
+npx playwright install chromium
+npm run test:browser             # isolated Better Auth UI fixtures; never live auth proof
+npm run test:readiness           # repository configuration gates
+```
+
+Browser tests start their own local server and intercept Better Auth/business API/socket requests. They preserve failed requirements and write ignored screenshots/results to `audit-artifacts/`. Real Better Auth, SMTP, and backend/database end-to-end testing remain required before release.

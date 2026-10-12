@@ -1,7 +1,7 @@
 import {useState, useEffect, useCallback, useRef} from "react";
 import {motion as Motion} from "framer-motion";
 import {Trophy} from "lucide-react";
-import {useAuth} from "@clerk/clerk-react";
+import {useAuth} from "../../auth/client.jsx";
 import {EventApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";

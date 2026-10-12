@@ -181,14 +181,14 @@ export function avatarDataUri(seed) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(avatarSvg(seed).replace(/\n/g, ""))}`;
 }
 
-/** Clerk serves a generic placeholder (`{"type":"default"...}` base64) when no photo was uploaded. */
+/** The old auth provider served a generic placeholder (`{"type":"default"...}` base64) when no photo was uploaded. */
 export function hasRealPhoto(url) {
   if (!url || typeof url !== "string") return false;
   if (url.startsWith("data:")) return true;
   return !/img\.clerk\.(com|dev)\/eyJ0eXBlIjoiZGVmYXVsdCI/.test(url);
 }
 
-/** Stable identity for a user-like object coming from Clerk, the API, or the temporary session. */
+/** Stable identity for a user-like object coming from Better Auth or the API. */
 export function avatarSeed(user, fallbackName = "") {
   return (
     user?.primaryEmailAddress?.emailAddress ||
@@ -201,7 +201,7 @@ export function avatarSeed(user, fallbackName = "") {
   );
 }
 
-/** Rasterise the generated avatar to a PNG blob (for Clerk's setProfileImage). */
+/** Rasterise the generated avatar to a PNG blob (for account profile image upload). */
 export async function avatarPngBlob(seed, size = 512) {
   const image = new Image();
   image.decoding = "async";

@@ -19,7 +19,7 @@ import {
   Shield,
   X,
 } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import { AdminApi, EventApi } from "../../services/api";
 import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";

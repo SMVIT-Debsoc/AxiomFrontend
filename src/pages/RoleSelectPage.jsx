@@ -16,7 +16,7 @@ export default function RoleSelectPage() {
             setShowSecretKeyInput(true);
         } else {
             // Navigate to user sign-in
-            navigate("/sign-in?role=user");
+            navigate("/sign-up?role=user");
         }
     };
 
@@ -27,8 +27,8 @@ export default function RoleSelectPage() {
         }
 
         // Store secret key in localStorage (persists across OAuth redirects)
-        localStorage.setItem("adminSecretKey", secretKey);
-        localStorage.setItem("pendingRole", "admin");
+        sessionStorage.setItem("adminSecretKey", secretKey);
+        sessionStorage.setItem("pendingRole", "admin");
 
         // Navigate to sign-up with admin role
         navigate("/sign-up?role=admin");

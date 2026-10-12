@@ -1,10 +1,8 @@
 import {useRef, useEffect, useCallback} from "react";
-import { useAuth } from "@clerk/clerk-react";
+import {useAuth} from "../auth/client.jsx";
 
 /**
- * Returns a stable getToken function that never changes its reference,
- * preventing useCallback/useEffect infinite loops caused by Clerk's
- * getToken being a new function on every render.
+ * Returns a stable compatibility function for session-cookie authentication.
  */
 export function useStableToken() {
     const { getToken } = useAuth();

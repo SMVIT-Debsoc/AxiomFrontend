@@ -12,11 +12,12 @@ import RoundDetails from "./pages/dashboard/RoundDetails";
 import Results from "./pages/dashboard/Results";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import {OnboardingGuard} from "./components/OnboardingGuard";
 import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
 import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
 import ApiAuthSync from "./components/ApiAuthSync";
-import AvatarSync from "./components/AvatarSync";
 import {ToastProvider} from "./components/ui/Toast";
 
 // Role selection pages
@@ -41,6 +42,7 @@ import AdminParticipants from "./pages/admin/AdminParticipants";
 import AdminRooms from "./pages/admin/AdminRooms";
 import AdminPlaceholder from "./pages/admin/AdminPlaceholder";
 import Preloader from "./components/Preloader";
+import NotFoundPage from "./pages/NotFoundPage";
 
 function App() {
     return (
@@ -48,7 +50,6 @@ function App() {
             <Preloader />
             <ToastProvider>
                 <ApiAuthSync />
-                <AvatarSync />
                 <BrowserRouter>
                     <Routes>
                         {/* Auth redirect handler - processes admin/user routing after sign-in */}
@@ -82,9 +83,11 @@ function App() {
                                 element={<RoleSelectPage />}
                             />
 
-                            {/* Clerk auth routes - need wildcard for SSO callbacks */}
+                            {/* Better Auth session routes */}
                             <Route path="/sign-in/*" element={<SignInPage />} />
                             <Route path="/sign-up/*" element={<SignUpPage />} />
+                            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                            <Route path="/reset-password" element={<ResetPasswordPage />} />
                         </Route>
 
                         {/* Profile Completion Route - Without ProfileCompletionGuard */}
@@ -186,6 +189,7 @@ function App() {
                                 }
                             />
                         </Route>
+                        <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                 </BrowserRouter>
             </ToastProvider>

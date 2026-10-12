@@ -5,24 +5,13 @@ const isLocalhost =
 
 // In local development call backend directly, otherwise use same-origin /api
 // (which can be proxied by hosting platform rewrites).
-const DEFAULT_API_BASE_URL = isLocalhost ? "http://localhost:3000/api" : "/api";
-const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
+const DEFAULT_API_BASE_URL = isLocalhost ? `http://${window.location.hostname}:3000/api` : "/api";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
 
-let authTokenProvider = null;
+let authRefreshProvider = null;
 
-export function setApiAuthTokenProvider(provider) {
-    authTokenProvider = typeof provider === "function" ? provider : null;
-}
-
-async function getFreshToken() {
-    if (!authTokenProvider) return null;
-
-    try {
-        return (await authTokenProvider({skipCache: true})) || null;
-    } catch (error) {
-        console.error("[API Request] Failed to retrieve auth token", error);
-        return null;
-    }
+export function setApiAuthRefreshProvider(provider) {
+    authRefreshProvider = typeof provider === "function" ? provider : null;
 }
 
 /**
@@ -30,7 +19,7 @@ async function getFreshToken() {
  * @param {string} endpoint - The API endpoint (e.g., '/events')
  * @param {string} method - HTTP method (GET, POST, etc.)
  * @param {object} [body] - Request body
- * @param {string} [token] - Clerk JWT token
+ * @param {string} [token] - Deprecated compatibility argument; sessions use HTTP-only cookies
  * @returns {Promise<any>}
  */
 export async function apiRequest(
@@ -46,21 +35,13 @@ export async function apiRequest(
         "Content-Type": "application/json",
     };
 
-    let resolvedToken = token || (await getFreshToken());
-
-    if (resolvedToken) {
-        headers["Authorization"] = `Bearer ${resolvedToken}`;
-    } else if (requireAuth) {
-        const authError = new Error(
-            "Authentication token missing. Please sign in again.",
-        );
-        authError.code = "AUTH_TOKEN_MISSING";
-        throw authError;
-    }
+    void token;
+    void requireAuth;
 
     const config = {
         method,
         headers,
+        credentials: "include",
     };
 
     if (body) {
@@ -78,26 +59,11 @@ export async function apiRequest(
         if (isLocalhost) console.log(`[API] ${method} ${path}`);
         let response = await fetch(url, config);
 
-        // 1. Check for Clerk Redirects (Native fetch follows 302, resulting in response.redirected or HTML response)
-        const clerkStatus = response.headers.get("x-clerk-auth-status");
+        // Reject auth proxy redirects: API callers must always receive JSON.
         const wasRedirected = response.redirected && response.url.endsWith("/");
-        
-        let needsRetry = false;
-        if (retryAuthFailure && !token && authTokenProvider) {
-            if (response.status === 401 || response.status === 403 || wasRedirected || clerkStatus === "signed-out") {
-                needsRetry = true;
-            }
-        }
-
-        if (needsRetry) {
-            console.warn(`[API] Auth failure (${response.status}) or expired token detected during ${path}. Retrying with fresh token...`);
-            const refreshedToken = await getFreshToken();
-
-            if (refreshedToken) {
-                resolvedToken = refreshedToken;
-                config.headers["Authorization"] = `Bearer ${refreshedToken}`;
-                response = await fetch(url, config);
-            }
+        if (retryAuthFailure && response.status === 401 && authRefreshProvider) {
+            const sessionStillActive = await authRefreshProvider().catch(() => false);
+            if (sessionStillActive) response = await fetch(url, config);
         }
 
         let data;
@@ -128,11 +94,19 @@ export async function apiRequest(
         }
 
         if (!response.ok) {
-            throw new Error(
+            const failure = new Error(
                 data.error ||
                     data.message ||
                     `API request failed with status ${response.status}`,
             );
+            failure.status = response.status;
+            throw failure;
+        }
+
+        // The backend uses both HTTP errors and {success:false} payloads; never
+        // let a 200 response accidentally satisfy onboarding or enrollment.
+        if (data?.success === false) {
+            throw new Error(data.error || data.message || "The request was not completed.");
         }
 
         return data;

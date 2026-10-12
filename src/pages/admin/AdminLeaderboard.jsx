@@ -6,7 +6,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { StatsApi, EventApi } from "../../services/api";
 import { useSocket, SocketEvents } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";

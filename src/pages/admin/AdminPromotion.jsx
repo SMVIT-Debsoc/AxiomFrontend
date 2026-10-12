@@ -12,7 +12,7 @@ import {
   EyeOff,
   ShieldCheck,
 } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { AdminApi } from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { UserAvatar } from "../../components/ui/UserAvatar";

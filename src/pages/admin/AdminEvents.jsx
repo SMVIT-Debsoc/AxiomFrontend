@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { cn } from "../../lib/utils";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { Link } from "react-router-dom";
 import { AdminApi, EventApi } from "../../services/api";
 import {useToast} from "../../hooks/useToast"

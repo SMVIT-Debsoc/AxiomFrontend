@@ -16,8 +16,8 @@ import {
   MessageCircle,
   RefreshCw,
 } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
-import {EventApi, DebateApi, UserApi} from "../../services/api";
+import { useAuth } from "../../auth/client.jsx";
+import {AdminApi, EventApi, DebateApi, UserApi} from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { cn } from "../../lib/utils";
 import { useEventSocket } from "../../hooks/useSocket";
@@ -49,13 +49,8 @@ export default function EventDetails() {
   // Admin check
   useEffect(() => {
     const checkAdmin = async () => {
-      const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-      const API_BASE_URL = isLocalhost ? import.meta.env.VITE_API_URL || "http://localhost:3000/api" : "/api";
       try {
-        const token = await getTokenRef.current();
-        await fetch(`${API_BASE_URL}/admin/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await AdminApi.getProfile();
       } catch {
         // An unavailable admin check does not block participant event access.
       }
@@ -219,7 +214,8 @@ export default function EventDetails() {
     try {
       setEnrolling(true);
       const token = await getToken();
-      await EventApi.enroll(id, token);
+      const enrollment = await EventApi.enroll(id, token);
+      if (!enrollment?.success) throw new Error(enrollment?.error || "Enrollment could not be confirmed.");
       toast.success(
         "Enrolled Successfully!",
         "You have been registered for this event."

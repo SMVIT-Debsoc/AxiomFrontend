@@ -20,7 +20,7 @@ function getSocketUrl() {
 
     // Local dev should hit local backend directly.
     if (isLocalhost) {
-        return "http://localhost:3000";
+        return `http://${window.location.hostname}:3000`;
     }
 
     // In deployed frontend, use same-origin and rely on host rewrites/proxy for /socket.io.
@@ -127,6 +127,7 @@ class SocketService {
 
         this.socket = io(SOCKET_URL, {
             transports: SOCKET_TRANSPORTS,
+            withCredentials: true,
             upgrade: true,
             reconnection: true,
             reconnectionAttempts: Infinity,

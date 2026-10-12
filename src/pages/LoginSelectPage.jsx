@@ -43,8 +43,8 @@ export default function LoginSelectPage() {
 
             if (response.success && response.valid) {
                 // Key is valid, store and proceed to sign-in
-                localStorage.setItem("adminSecretKey", secretKey);
-                localStorage.setItem("pendingRole", "admin");
+                sessionStorage.setItem("adminSecretKey", secretKey);
+                sessionStorage.setItem("pendingRole", "admin");
                 navigate("/sign-in?role=admin");
             } else {
                 setError("Invalid admin secret key. Access denied.");

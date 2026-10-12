@@ -1,10 +1,11 @@
-import {useUser, useAuth} from "@clerk/clerk-react";
-import {useEffect, useState} from "react";
+import {useUser, useAuth} from "../auth/client.jsx";
+import {useState} from "react";
 import {useNavigate} from "react-router-dom";
+import {UserApi} from "../services/api";
 
 function ProtectedPage() {
     const {user} = useUser();
-    const {getToken, signOut} = useAuth();
+    const {signOut} = useAuth();
     const navigate = useNavigate();
     const [backendUserData, setBackendUserData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -15,44 +16,11 @@ function ProtectedPage() {
         console.log("User logged out successfully");
     };
 
-    // Log user details from Clerk (frontend)
-    useEffect(() => {
-        if (user) {
-            console.log("=== USER DETAILS FROM CLERK (FRONTEND) ===");
-            console.log("User ID:", user.id);
-            console.log("Email:", user.emailAddresses[0]?.emailAddress);
-            console.log("Phone:", user.phoneNumbers[0]?.phoneNumber);
-            console.log("First Name:", user.firstName);
-            console.log("Last Name:", user.lastName);
-            console.log("Full Name:", user.fullName);
-            console.log("Profile Image:", user.imageUrl);
-            console.log("Created At:", user.createdAt);
-            console.log("External Accounts:", user.externalAccounts);
-            console.log("Phone Numbers:", user.phoneNumbers);
-            console.log("Full User Object:", user);
-            console.log("==========================================");
-        }
-    }, [user]);
-
-    // Fetch user details from backend
     const fetchBackendUser = async () => {
         try {
             setLoading(true);
-            const token = await getToken();
-
-            console.log("Fetching user from backend...");
-            const response = await fetch("http://localhost:3000/api/users/me", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            const data = await response.json();
-            console.log("=== USER DETAILS FROM BACKEND ===");
-            console.log(data);
-            console.log("=================================");
-
-            setBackendUserData(data.user);
+            const response = await UserApi.getProfile();
+            setBackendUserData(response.user);
         } catch (error) {
             console.error("Error fetching user from backend:", error);
         } finally {
@@ -67,7 +35,7 @@ function ProtectedPage() {
                 Hello,{" "}
                 {user?.firstName || user?.emailAddresses[0]?.emailAddress}!
             </p>
-            <p>You successfully signed in with Google through Clerk.</p>
+            <p>You are signed in to your AXIOM account.</p>
 
             <div
                 style={{

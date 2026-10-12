@@ -8,7 +8,7 @@ import {
     AlertCircle,
     Save
 } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { AdminApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";

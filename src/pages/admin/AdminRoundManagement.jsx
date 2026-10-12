@@ -19,7 +19,7 @@ import {
     CheckCircle2,
     X,
 } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../../auth/client.jsx";
 import { cn } from "../../lib/utils";
 import { AdminApi, EventApi } from "../../services/api";
 import { useRoundSocket } from "../../hooks/useSocket";
