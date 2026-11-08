@@ -286,7 +286,7 @@ export default function AdminLive() {
 
             <div role="tablist" aria-label="Rounds" className="mb-4 flex gap-2 overflow-x-auto pb-1">
                 {rounds.map((r) => (
-                    <button key={r.id} type="button" role="tab" aria-selected={r.id === roundId} onClick={() => setRoundId(r.id)} className={cn("min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold", r.id === roundId ? "border-[#0D4C3C] bg-[#0D4C3C] text-[#F4F1EB] dark:border-[#7BA05B] dark:bg-[#7BA05B] dark:text-[#0F2A22]" : "border-input bg-card text-foreground")}>
+                    <button key={r.id} type="button" role="tab" aria-selected={r.id === roundId} onClick={() => setRoundId(r.id)} className={cn("min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold", r.id === roundId ? "border-[#1E3B2F] bg-[#1E3B2F] text-[#F4EAD5] dark:border-[#FF3EA5] dark:bg-[#FF3EA5] dark:text-[#142A21]" : "border-input bg-card text-foreground")}>
                         Round {r.roundNumber} · {roundWord(r.status)}
                     </button>
                 ))}
@@ -298,10 +298,10 @@ export default function AdminLive() {
                     const isCurrent = i === step;
                     return (
                         <li key={s.label}>
-                            <button type="button" onClick={() => setViewStep(i)} aria-current={i === currentStep ? "step" : undefined} className={cn("flex min-h-12 w-full flex-col items-start gap-0.5 rounded-xl border px-2 py-2 text-left md:px-3.5", isCurrent ? "border-2 border-[#0D4C3C] bg-[#0D4C3C] text-[#F4F1EB] dark:border-[#7BA05B] dark:bg-[#1C4A3A]" : i < currentStep ? "border-transparent bg-[#E6EEDB] text-[#0F2A22] dark:bg-[#1C4A3A] dark:text-[#E6EEDB]" : "border-border bg-card text-foreground")}>
+                            <button type="button" onClick={() => setViewStep(i)} aria-current={i === currentStep ? "step" : undefined} className={cn("flex min-h-12 w-full flex-col items-start gap-0.5 rounded-xl border px-2 py-2 text-left md:px-3.5", isCurrent ? "border-2 border-[#1E3B2F] bg-[#1E3B2F] text-[#F4EAD5] dark:border-[#FF3EA5] dark:bg-[#2B5241]" : i < currentStep ? "border-transparent bg-[#EBDFC4] text-[#142A21] dark:bg-[#2B5241] dark:text-[#EBDFC4]" : "border-border bg-card text-foreground")}>
                                 <span className="hidden text-[11px] font-bold uppercase tracking-[0.06em] opacity-80 md:block">0{i + 1} · {stepState(i)}</span>
                                 <span className="text-[12px] font-bold md:text-[15px]"><span className="md:hidden">{s.short}</span><span className="hidden md:inline">{s.label}</span></span>
-                                <span aria-hidden="true" className={cn("mt-1 h-1 w-full rounded-full md:hidden", i <= currentStep ? "bg-[#7BA05B]" : "bg-border")} />
+                                <span aria-hidden="true" className={cn("mt-1 h-1 w-full rounded-full md:hidden", i <= currentStep ? "bg-[#FF3EA5]" : "bg-border")} />
                             </button>
                         </li>
                     );
@@ -323,11 +323,11 @@ export default function AdminLive() {
                 </section>
 
                 <aside aria-label="Next action" className="order-1 flex flex-col gap-3 lg:order-2">
-                    <div className="rounded-[20px] bg-[#0D4C3C] p-5 text-[#F4F1EB] dark:bg-[#1C4A3A]">
-                        <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#A9C48F]">Do this next</p>
-                        <h2 className="mt-1.5 font-heading text-2xl font-bold leading-tight text-[#F4F1EB]">{next.title}</h2>
+                    <div className="rounded-[20px] bg-[#1E3B2F] p-5 text-[#F4EAD5] dark:bg-[#2B5241]">
+                        <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#FF8CC8]">Do this next</p>
+                        <h2 className="mt-1.5 font-heading text-2xl font-bold leading-tight text-[#F4EAD5]">{next.title}</h2>
                         <p className="m-0 mt-2 text-[15px] leading-normal text-[#E4E0D6]">{next.body}</p>
-                        <button type="button" onClick={next.run} disabled={next.working || next.disabled} className="mt-4 hidden min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#F4F1EB] px-4 text-base font-bold text-[#0D4C3C] hover:bg-white disabled:opacity-60 md:flex">
+                        <button type="button" onClick={next.run} disabled={next.working || next.disabled} className="mt-4 hidden min-h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#F4EAD5] px-4 text-base font-bold text-[#1E3B2F] hover:bg-white disabled:opacity-60 md:flex">
                             {next.working && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}{next.cta}
                         </button>
                     </div>
@@ -468,7 +468,7 @@ function ResultsPanel({done, total, pending, resultsPublished, roundId}) {
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-baseline justify-between"><h2 className="font-heading text-xl font-bold">Ballots in</h2><p className="m-0 font-display text-3xl text-primary">{done} / {total}</p></div>
-            <div aria-hidden="true" className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-[#7BA05B]" style={{width: `${pct}%`}} /></div>
+            <div aria-hidden="true" className="h-2.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-[#FF3EA5]" style={{width: `${pct}%`}} /></div>
             {pending.length === 0 ? (
                 <p className="m-0 text-muted-foreground">{done === 0 ? "No debates to score yet." : resultsPublished ? "All ballots are in and results are public." : "All ballots are in. Publish results from the panel."} <Link className="font-semibold text-primary underline underline-offset-2" to={`/admin/rounds/${roundId}/promotion`}>Review & promote</Link></p>
             ) : (

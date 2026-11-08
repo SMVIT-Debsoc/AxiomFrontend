@@ -1,6 +1,6 @@
 # AXIOM 4.0 Frontend
 
-SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Better Auth and Socket.IO. The AXIOM 4.0 identity pairs Indian deity sculpture with green digital fields and condensed editorial typography.
+SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Better Auth and Socket.IO. The AXIOM 4.0 identity pairs Indian deity sculpture with a Butter Cream / Forest Green / Hot Pink palette and condensed editorial typography.
 
 ## Run locally
 
@@ -44,13 +44,15 @@ Business API paths and role records remain stable; browser authentication now us
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--axiom-green-primary` | `#87C14D` | Hero, principal CTA, selection |
-| `--axiom-green-dark` | `#6CA038` | CTA hover and dimensional accents |
-| `--axiom-green-light` | `#A2CF75` | Light accents, footer wordmark, tonal interaction |
-| `--axiom-logo-ink` | `#114111` | Logo-specific forest ink |
+| `--axiom-alabaster` | `#F4EAD5` Butter Cream (~60%) | Page background, light surfaces |
+| `--axiom-jungle` | `#1E3B2F` Forest Green (~30%) | Text, hero panels, sidebar, dark surfaces |
+| `--axiom-green-primary` | `#FF3EA5` Hot Pink (~10%) | Principal CTA, selection, accents |
+| `--axiom-green-dark` | `#E02B8C` | CTA hover and dimensional accents |
+| `--axiom-green-light` | `#FF8CC8` | Light accents, footer wordmark, tonal interaction |
+| `--axiom-logo-ink` | `#142A21` | Ink on pink |
 | `--axiom-ink`, `--axiom-paper`, `--axiom-stone` | Neutral tokens | Information surfaces and editorial rhythm |
 
-Green backgrounds use dark ink. Small colored text uses a darker accessible brand-text token in light mode rather than the primary green itself. Workspaces preserve the existing stored light/dark preference. Container width, responsive gutters, section spacing, small radius, type families and motion timing are centralized.
+Pink backgrounds use dark ink (#142A21, 4.7:1); forest on pink is for large text only. Pink is never used as small text on cream (2.7:1). Legacy token names are kept but now hold the new palette. Workspaces preserve the existing stored light/dark preference. Container width, responsive gutters, section spacing, small radius, type families and motion timing are centralized.
 
 The public rhythm is poster → reasoned information → stone/editorial interlude → functional tournament information → green closing statement. Workspaces use rules, indexed labels, tabular data and neutral surfaces rather than repeating the poster or surrounding every section with glass. Translucency is restricted to navigation and the sculpture-overlapping access panel.
 

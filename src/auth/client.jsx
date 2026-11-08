@@ -88,35 +88,35 @@ const GOOGLE_VARIANTS = {
   // Large hero button on the dark-green panel, moss ring
   hero: {
     wrap: "w-full",
-    button: "flex h-[68px] w-full items-center justify-center gap-3.5 rounded-[18px] bg-[#F4F1EB] px-5 text-[19px] font-extrabold text-[#0D4C3C] shadow-[0_0_0_5px_#7BA05B,0_16px_30px_rgba(0,0,0,.33)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A9C48F] disabled:opacity-70 md:h-[72px] md:text-[21px]",
-    icon: "h-[42px] w-[42px] border border-[#DCD6C8]",
+    button: "flex h-[68px] w-full items-center justify-center gap-3.5 rounded-[18px] bg-[#F4EAD5] px-5 text-[19px] font-extrabold text-[#1E3B2F] shadow-[0_0_0_5px_#FF3EA5,0_16px_30px_rgba(0,0,0,.33)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FF8CC8] disabled:opacity-70 md:h-[72px] md:text-[21px]",
+    icon: "h-[42px] w-[42px] border border-[#DCCFB3]",
     svg: 26,
   },
   // Compact pill in the header
   header: {
     wrap: "",
-    button: "inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-[#0D4C3C] py-0 pl-1.5 pr-4 text-sm font-bold text-[#F4F1EB] transition hover:shadow-[0_0_0_3px_#7BA05B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7BA05B] disabled:opacity-70",
+    button: "inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-[#1E3B2F] py-0 pl-1.5 pr-4 text-sm font-bold text-[#F4EAD5] transition hover:shadow-[0_0_0_3px_#FF3EA5] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FF3EA5] disabled:opacity-70",
     icon: "h-8 w-8",
     svg: 18,
   },
   // Sticky bottom bar on phones
   bar: {
     wrap: "w-full",
-    button: "flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-[#0D4C3C] text-lg font-extrabold text-[#F4F1EB] shadow-[0_0_0_4px_#7BA05B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A9C48F] disabled:opacity-70",
+    button: "flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-[#1E3B2F] text-lg font-extrabold text-[#F4EAD5] shadow-[0_0_0_4px_#FF3EA5] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FF8CC8] disabled:opacity-70",
     icon: "h-[38px] w-[38px]",
     svg: 22,
   },
   // On a dark jungle panel
   onDark: {
     wrap: "",
-    button: "inline-flex min-h-[60px] items-center gap-3.5 rounded-[14px] bg-[#F4F1EB] px-6 text-lg font-bold text-[#0D4C3C] transition hover:bg-white hover:shadow-[0_0_0_3px_#7BA05B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7BA05B] disabled:opacity-70",
-    icon: "h-9 w-9 border border-[#DCD6C8]",
+    button: "inline-flex min-h-[60px] items-center gap-3.5 rounded-[14px] bg-[#F4EAD5] px-6 text-lg font-bold text-[#1E3B2F] transition hover:bg-white hover:shadow-[0_0_0_3px_#FF3EA5] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FF3EA5] disabled:opacity-70",
+    icon: "h-9 w-9 border border-[#DCCFB3]",
     svg: 22,
   },
   // Default, used anywhere else
   default: {
     wrap: "w-full",
-    button: "flex min-h-[52px] w-full items-center justify-center gap-3 rounded-2xl bg-[#0D4C3C] px-5 text-base font-bold text-[#F4F1EB] shadow-[0_0_0_3px_#7BA05B] transition hover:bg-[#2D5A4A] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A9C48F] disabled:opacity-70",
+    button: "flex min-h-[52px] w-full items-center justify-center gap-3 rounded-2xl bg-[#1E3B2F] px-5 text-base font-bold text-[#F4EAD5] shadow-[0_0_0_3px_#FF3EA5] transition hover:bg-[#2E5645] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FF8CC8] disabled:opacity-70",
     icon: "h-9 w-9",
     svg: 22,
   },

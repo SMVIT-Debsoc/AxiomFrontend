@@ -14,12 +14,12 @@ const sizes = {
 
 // Brand-only palettes: blob, face ink, cheek, backdrop tint.
 const PALETTES = [
-  {blob: "#7BA05B", ink: "#0F2A22", cheek: "#A9C48F", back: "#E6EEDB"},
-  {blob: "#0D4C3C", ink: "#F4F1EB", cheek: "#7BA05B", back: "#CFE0D2"},
-  {blob: "#A9C48F", ink: "#0F2A22", cheek: "#F4F1EB", back: "#DDE8CF"},
-  {blob: "#2D5A4A", ink: "#F4F1EB", cheek: "#A9C48F", back: "#D9E6DC"},
-  {blob: "#F4F1EB", ink: "#0D4C3C", cheek: "#7BA05B", back: "#BFD4B0"},
-  {blob: "#E6EEDB", ink: "#0D4C3C", cheek: "#7BA05B", back: "#9DBB84"},
+  {blob: "#FF3EA5", ink: "#142A21", cheek: "#FF8CC8", back: "#EBDFC4"},
+  {blob: "#1E3B2F", ink: "#F4EAD5", cheek: "#FF3EA5", back: "#EADDC0"},
+  {blob: "#FF8CC8", ink: "#142A21", cheek: "#F4EAD5", back: "#FFE0F0"},
+  {blob: "#2E5645", ink: "#F4EAD5", cheek: "#FF8CC8", back: "#F6D5E8"},
+  {blob: "#F4EAD5", ink: "#1E3B2F", cheek: "#FF3EA5", back: "#FFC8E3"},
+  {blob: "#EBDFC4", ink: "#1E3B2F", cheek: "#FF3EA5", back: "#FF9CCF"},
 ];
 const BLOBS = [
   "M50 10C72 8 92 26 90 50C88 76 70 92 48 90C26 88 10 72 10 50C10 28 28 12 50 10Z",
@@ -104,7 +104,7 @@ function Face({seed, px}) {
       </defs>
       <rect width="100" height="100" fill={p.back} />
       <g className="axa-body">
-        {sprout && <path d="M50 16Q47 5 38 5Q40 15 50 17M50 16Q55 3 64 5Q62 14 50 17" fill="#7BA05B" stroke="#0F2A22" strokeOpacity=".35" strokeWidth="1" strokeLinejoin="round" />}
+        {sprout && <path d="M50 16Q47 5 38 5Q40 15 50 17M50 16Q55 3 64 5Q62 14 50 17" fill="#FF3EA5" stroke="#142A21" strokeOpacity=".35" strokeWidth="1" strokeLinejoin="round" />}
         <path d={blob} fill={p.blob} />
         <path d={blob} fill={`url(#g${uid})`} />
         {showCheeks && <><ellipse cx="30" cy="61" rx="5" ry="3.2" fill={p.cheek} opacity=".5" /><ellipse cx="70" cy="61" rx="5" ry="3.2" fill={p.cheek} opacity=".5" /></>}
