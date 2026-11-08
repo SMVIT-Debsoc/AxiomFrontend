@@ -1,15 +1,16 @@
+import {lazy, Suspense} from "react";
 import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
-import Placeholder from "./pages/Placeholder";
-import Home from "./pages/Home";
+const Placeholder = lazy(() => import("./pages/Placeholder"));
+const Home = lazy(() => import("./pages/Home"));
 import DashboardLayout from "./layouts/DashboardLayout";
-import DashboardHome from "./pages/dashboard/DashboardHome";
-import DashboardEvents from "./pages/dashboard/DashboardEvents";
-import EventDetails from "./pages/dashboard/EventDetails";
-import Profile from "./pages/dashboard/Profile";
-import Participants from "./pages/dashboard/Participants";
-import RoundDetails from "./pages/dashboard/RoundDetails";
-import Results from "./pages/dashboard/Results";
+const DashboardHome = lazy(() => import("./pages/dashboard/DashboardHome"));
+const DashboardEvents = lazy(() => import("./pages/dashboard/DashboardEvents"));
+const EventDetails = lazy(() => import("./pages/dashboard/EventDetails"));
+const Profile = lazy(() => import("./pages/dashboard/Profile"));
+const Participants = lazy(() => import("./pages/dashboard/Participants"));
+const RoundDetails = lazy(() => import("./pages/dashboard/RoundDetails"));
+const Results = lazy(() => import("./pages/dashboard/Results"));
 import {OnboardingGuard} from "./components/OnboardingGuard";
 import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
 import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
@@ -21,24 +22,24 @@ import LandingPage from "./pages/LandingPage";
 // Admin imports
 import {AdminGuard} from "./components/AdminGuard";
 import AdminLayout from "./layouts/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminLive from "./pages/admin/AdminLive";
-import AdminPeople from "./pages/admin/AdminPeople";
-import AdminEvents from "./pages/admin/AdminEvents";
-import AdminEventDetails from "./pages/admin/AdminEventDetails";
-import AdminRoundManagement from "./pages/admin/AdminRoundManagement";
-import AdminRounds from "./pages/admin/AdminRounds";
-import AdminResultSubmission from "./pages/admin/AdminResultSubmission";
-import AdminPromotion from "./pages/admin/AdminPromotion";
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminLive = lazy(() => import("./pages/admin/AdminLive"));
+const AdminPeople = lazy(() => import("./pages/admin/AdminPeople"));
+const AdminEvents = lazy(() => import("./pages/admin/AdminEvents"));
+const AdminEventDetails = lazy(() => import("./pages/admin/AdminEventDetails"));
+const AdminRoundManagement = lazy(() => import("./pages/admin/AdminRoundManagement"));
+const AdminRounds = lazy(() => import("./pages/admin/AdminRounds"));
+const AdminResultSubmission = lazy(() => import("./pages/admin/AdminResultSubmission"));
+const AdminPromotion = lazy(() => import("./pages/admin/AdminPromotion"));
 
-import AdminResults from "./pages/admin/AdminResults";
-import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
-import AdminParticipants from "./pages/admin/AdminParticipants";
+const AdminResults = lazy(() => import("./pages/admin/AdminResults"));
+const AdminLeaderboard = lazy(() => import("./pages/admin/AdminLeaderboard"));
+const AdminParticipants = lazy(() => import("./pages/admin/AdminParticipants"));
 
-import AdminRooms from "./pages/admin/AdminRooms";
-import AdminPlaceholder from "./pages/admin/AdminPlaceholder";
+const AdminRooms = lazy(() => import("./pages/admin/AdminRooms"));
+const AdminPlaceholder = lazy(() => import("./pages/admin/AdminPlaceholder"));
 import Preloader from "./components/Preloader";
-import NotFoundPage from "./pages/NotFoundPage";
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 import {VercelAnalytics} from "./components/analytics/VercelAnalytics";
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
                 <ApiAuthSync />
                 <BrowserRouter>
                     <VercelAnalytics />
+                    <Suspense fallback={<div className="min-h-svh bg-background" role="status" aria-label="Loading" />}>
                     <Routes>
                         {/* Auth redirect handler - processes admin/user routing after sign-in */}
                         <Route
@@ -173,6 +175,7 @@ function App() {
                         </Route>
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
+                    </Suspense>
                 </BrowserRouter>
             </ToastProvider>
         </>

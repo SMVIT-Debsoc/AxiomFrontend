@@ -1,12 +1,12 @@
 import {useState, useEffect} from "react";
 import {Outlet, Link, useLocation} from "react-router-dom";
 import {
-    UserButton,
     useUser,
     RedirectToSignIn,
 } from "../auth/client.jsx";
 import {SidebarRail, MobileTabs} from "../components/layout/SidebarRail";
 import ThemeToggle from "../components/ui/ThemeToggle";
+import AccountMenu from "../components/ui/AccountMenu";
 import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import LoadingIndicator from "../components/ui/LoadingIndicator";
@@ -21,7 +21,7 @@ const sidebarItems = [
 export default function DashboardLayout() {
     const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
-    const {user, isLoaded, isSignedIn} = useUser();
+    const {isLoaded, isSignedIn} = useUser();
 
     // Check admin status to show admin link (silently - 403 is expected for non-admins)
     useEffect(() => {
@@ -82,17 +82,7 @@ export default function DashboardLayout() {
                     <div className="flex items-center gap-3 ml-auto">
                         <ThemeToggle />
 
-                        <div className="axiom-userchip">
-                            <div className="hidden sm:block min-w-0 text-right">
-                                <p className="truncate text-sm font-heading font-semibold leading-tight">
-                                    {user.fullName}
-                                </p>
-                                <p className="truncate text-xs text-muted-foreground font-sans">
-                                    {user.primaryEmailAddress?.emailAddress}
-                                </p>
-                            </div>
-                            <UserButton />
-                        </div>
+                        <AccountMenu />
                     </div>
                 </header>
 

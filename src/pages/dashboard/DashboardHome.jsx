@@ -5,7 +5,6 @@ import {
   Calendar,
   ArrowUpRight,
   CheckCircle2,
-  MapPin,
   Loader2,
   XCircle,
   Swords,
@@ -414,8 +413,8 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* Draw Status Section */}
-      {currentRound && (
+      {/* Draw Status Section (when the draw is out and you have a debate, it is shown in "Your Next Debate" instead) */}
+      {currentRound && !(currentRound.pairingsPublished && nextDebate) && (
         <div className="space-y-2 axiom-rise" style={{"--i": 3}}>
           <div className="flex items-center justify-between px-0.5">
             <h3 className="font-heading font-bold text-base text-foreground">Draw Status</h3>
@@ -500,8 +499,13 @@ export default function DashboardHome() {
         {nextDebate ? (
           <div className="bg-card border border-border p-5 rounded-xl">
             <div className="flex justify-between items-start mb-3">
-              <span className="text-primary font-heading font-semibold text-xs uppercase tracking-wider">
+              <span className="flex items-center gap-2 text-primary font-heading font-semibold text-xs uppercase tracking-wider">
                 {nextDebate.round?.name || "Upcoming Round"}
+                {nextDebate.round?.pairingsPublished && (
+                  <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] px-2 py-0.5 rounded font-heading font-semibold tracking-wider">
+                    Draw released
+                  </span>
+                )}
               </span>
               <span className="text-muted-foreground text-xs font-sans">
                 Room: {nextDebate.room?.name || "TBD"}
@@ -514,21 +518,13 @@ export default function DashboardHome() {
                 : "Motion will be announced soon"}
             </p>
 
-            <div className="flex gap-2">
-              <Link
-                to={`/dashboard/events/${nextDebate.round.eventId}/rounds/${nextDebate.round.id}`}
-                className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-xs text-center flex items-center justify-center hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                View Details
-              </Link>
-              <Link
-                to={`/dashboard/events/${nextDebate.round.eventId}/rounds/${nextDebate.round.id}`}
-                aria-label="View debate room location"
-                className="p-2 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <MapPin className="w-4 h-4" aria-hidden="true" />
-              </Link>
-            </div>
+            <Link
+              to={`/dashboard/events/${nextDebate.round?.eventId || activeEvent?.id}/rounds/${nextDebate.round?.id}`}
+              className="group flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span>{nextDebate.round?.pairingsPublished ? "View draw, room & opponent" : "View details"}</span>
+              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </Link>
           </div>
         ) : (
           <EmptyState
