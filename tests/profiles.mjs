@@ -28,21 +28,21 @@ export const PROFILES = {
     signedIn: true,
     admin: false,
     enrolled: true,
-    self: {id: 'u-self', firstName: 'Test', lastName: 'Participant', email: `participant.test@${TEST_EMAIL_DOMAIN}`, college: 'Test College', mobile: '+919900000009', usn: '', gender: ''},
+    self: {id: 'u-self', firstName: 'Test', lastName: 'Participant', email: `participant.test@${TEST_EMAIL_DOMAIN}`, college: 'Test College', mobile: '+919900000009', usn: 'TST22CS099', gender: ''},
   },
   // Organiser: /api/admin/me returns 200.
   admin: {
     signedIn: true,
     admin: true,
     enrolled: false,
-    self: {id: 'u-organiser', firstName: 'Test', lastName: 'Organiser', email: `organiser.test@${TEST_EMAIL_DOMAIN}`, college: 'Test Organising Team', mobile: '+919900000000', usn: '', gender: ''},
+    self: {id: 'u-organiser', firstName: 'Test', lastName: 'Organiser', email: `organiser.test@${TEST_EMAIL_DOMAIN}`, college: 'Test Organising Team', mobile: '+919900000000', usn: 'TST22CS000', gender: ''},
   },
   // Same as a participant, but tries to reach /admin. /api/admin/me returns 403.
   nonAdminTriesAdmin: {
     signedIn: true,
     admin: false,
     enrolled: true,
-    self: {id: 'u-self', firstName: 'Test', lastName: 'Participant', email: `participant.test@${TEST_EMAIL_DOMAIN}`, college: 'Test College', mobile: '+919900000009', usn: '', gender: ''},
+    self: {id: 'u-self', firstName: 'Test', lastName: 'Participant', email: `participant.test@${TEST_EMAIL_DOMAIN}`, college: 'Test College', mobile: '+919900000009', usn: 'TST22CS099', gender: ''},
   },
 };
 
@@ -138,7 +138,7 @@ export const ROUTES = [
   ['GET', '/admin/rounds/:id/performers', () => [200, {success: true, resultsPublished: false, performers: []}]],
   ['PUT', '/check-in/round/:id/user/:uid', () => [200, {success: true}]],
   ['GET', '/check-in/round/:id/me', () => [200, {success: true, isCheckedIn: false, checkIn: null}]],
-  ['GET', '/debates/my-debates', (s) => [200, {success: true, debates: s.debates.filter((d) => s.self && (d.debater1Id === s.self.id || d.debater2Id === s.self.id))}]],
+  ['GET', '/debates/my-debates', (s) => [200, {success: true, debates: s.debates.filter((d) => s.self && (d.debater1Id === s.self.id || d.debater2Id === s.self.id)).map((d) => ({...d, round: s.event.rounds.find((r) => r.id === d.roundId)}))}]],
   ['GET', '/debates/round/:id', (s) => [200, {success: true, debates: s.debates}]],
   ['GET', '/stats/my-stats', () => [200, {success: true, stats: {totalDebates: 0, wins: 0, losses: 0}}]],
   ['GET', '/stats/leaderboard', () => [200, {success: true, leaderboard: []}]],

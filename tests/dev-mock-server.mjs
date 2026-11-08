@@ -16,7 +16,7 @@ import {PROFILES, buildData, matchRoute} from './profiles.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.PORT || 5175);
 const origin = `http://localhost:${port}`;
-const outDir = path.join(root, '.dev-mock-dist');
+const outDir = path.join(root, 'node_modules', '.dev-mock-dist');
 
 if (!process.env.MOCK_SKIP_BUILD) {
   const build = spawnSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--outDir', outDir, '--emptyOutDir'], {
@@ -62,6 +62,7 @@ http.createServer((req, res) => {
     res.writeHead(302, {location: entry[1]});
     return res.end();
   }
+  if (url.pathname.startsWith('/_vercel/')) return send(res, 204, 'text/plain', '');
   if (url.pathname.startsWith('/socket.io')) {
     if (req.method === 'POST') return send(res, 200, 'text/plain', 'ok');
     if (!url.searchParams.get('sid')) return send(res, 200, 'text/plain', `0${JSON.stringify({sid: 'mock', upgrades: [], pingInterval: 25000, pingTimeout: 20000, maxPayloadSize: 1000000})}`);
