@@ -95,11 +95,11 @@ function ProfileSettings() {
     e.preventDefault();
 
     // Validate mandatory fields for onboarding
-    if (isOnboarding && (!formData.college || !formData.mobile)) {
-      setError("College and Mobile Number are required to continue.");
+    if (isOnboarding && (!formData.college || !formData.mobile || !formData.usn.trim())) {
+      setError("College, Mobile Number and USN are required to continue.");
       toast.error(
         "Required Fields",
-        "Please fill in your college and mobile number."
+        "Please fill in your college, mobile number and USN."
       );
       return;
     }
@@ -158,7 +158,7 @@ function ProfileSettings() {
     return <ProfileSkeleton isOnboarding={isOnboarding} />;
   }
 
-  const isProfileComplete = formData.college && formData.mobile;
+  const isProfileComplete = formData.college && formData.mobile && formData.usn;
   const completeness = (() => {
     const items = [
       {label: "First and last name", ok: Boolean(formData.firstName && formData.lastName)},
@@ -318,12 +318,13 @@ function ProfileSettings() {
                 <Hash className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" /> USN / Student
                 ID
                 <span className="text-[10px] text-muted-foreground">
-                  (Optional)
+                  (Required)
                 </span>
               </label>
               <input
                 id="profile-usn"
                 name="usn"
+                required
                 value={formData.usn}
                 onChange={handleChange}
                 className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"

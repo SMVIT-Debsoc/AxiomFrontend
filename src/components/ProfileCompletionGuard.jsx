@@ -6,7 +6,7 @@ import {ProfileHeaderSkeleton, CardSkeleton} from "./ui/Skeleton";
 
 /**
  * ProfileCompletionGuard - Ensures user has completed mandatory profile fields
- * (college and mobile) before accessing dashboard features.
+ * (college, mobile and USN) before accessing dashboard features.
  * Redirects to /complete-profile if profile is incomplete.
  */
 export function ProfileCompletionGuard({children}) {
@@ -26,7 +26,7 @@ export function ProfileCompletionGuard({children}) {
 
           // Check if mandatory fields are complete
           const profileComplete = !!(
-            response.user?.college && response.user?.mobile
+            response.user?.college && response.user?.mobile && response.user?.usn
           );
           setIsProfileComplete(profileComplete);
         } catch (failure) {
@@ -58,7 +58,7 @@ export function ProfileCompletionGuard({children}) {
       <div className="max-w-md text-center">
         <h2 className="mb-2 text-xl font-semibold">We could not verify your profile</h2>
         <p role="alert" className="mb-5 text-muted-foreground">{error}</p>
-        <button className="axiom-button axiom-button--green" onClick={() => { setError(""); setChecking(true); UserApi.getProfile().then((response) => { setIsProfileComplete(Boolean(response.user?.college && response.user?.mobile)); setChecking(false); }).catch((failure) => { setError(failure.message || "Retry failed."); setChecking(false); }); }}>Retry</button>
+        <button className="axiom-button axiom-button--green" onClick={() => { setError(""); setChecking(true); UserApi.getProfile().then((response) => { setIsProfileComplete(Boolean(response.user?.college && response.user?.mobile && response.user?.usn)); setChecking(false); }).catch((failure) => { setError(failure.message || "Retry failed."); setChecking(false); }); }}>Retry</button>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ function nationalDigits(value) {
 }
 
 function Steps({step}) {
-    const items = ["Signed in with Google", "Two details", `Registered for ${E.name}`];
+    const items = ["Signed in with Google", "Three details", `Registered for ${E.name}`];
     return (
         <ol aria-label="Registration progress" className="relative m-0 mt-8 flex list-none flex-col gap-3.5 p-0">
             {items.map((label, i) => {
@@ -50,9 +50,8 @@ export default function CompleteProfile() {
     const [error, setError] = useState("");
     const [done, setDone] = useState(null); // {event, debaterId}
     const [form, setForm] = useState({firstName: "", lastName: "", college: "", usn: "", mobile: "", gender: ""});
-    const [showUsn, setShowUsn] = useState(false);
     const [editName, setEditName] = useState(false);
-    const [touched, setTouched] = useState({college: false, mobile: false});
+    const [touched, setTouched] = useState({college: false, mobile: false, usn: false});
 
     useEffect(() => {
         if (!isLoaded || !user) return undefined;
@@ -74,7 +73,6 @@ export default function CompleteProfile() {
                 mobile: nationalDigits(db?.mobile),
                 gender: db?.gender || "",
             });
-            setShowUsn(Boolean(db?.usn));
             setLoading(false);
         })();
         return () => { cancelled = true; };
@@ -83,7 +81,8 @@ export default function CompleteProfile() {
     const digits = form.mobile;
     const collegeOk = form.college.trim().length > 1;
     const mobileOk = digits.length === 10;
-    const ready = collegeOk && mobileOk;
+    const usnOk = form.usn.trim().length >= 4;
+    const ready = collegeOk && mobileOk && usnOk;
     const firstName = form.firstName || user?.firstName || "there";
     const fullName = `${form.firstName} ${form.lastName}`.trim() || user?.fullName || user?.email || "Participant";
     const email = user?.primaryEmailAddress?.emailAddress || "";
@@ -91,14 +90,15 @@ export default function CompleteProfile() {
     const hint = useMemo(() => {
         if (ready) return `You will be enrolled in ${E.name} automatically.`;
         if (!collegeOk) return "Add your college to continue.";
-        return "Enter a 10-digit mobile number.";
-    }, [ready, collegeOk]);
+        if (!mobileOk) return "Enter a 10-digit mobile number.";
+        return "Add your USN / student ID.";
+    }, [ready, collegeOk, mobileOk]);
 
     const set = (name, value) => { setForm((f) => ({...f, [name]: value})); setError(""); };
 
     const submit = async (event) => {
         event.preventDefault();
-        if (!ready || saving) { setTouched({college: true, mobile: true}); return; }
+        if (!ready || saving) { setTouched({college: true, mobile: true, usn: true}); return; }
         setSaving(true);
         setError("");
         try {
@@ -108,7 +108,7 @@ export default function CompleteProfile() {
                 firstName: form.firstName,
                 lastName: form.lastName,
                 college: form.college.trim(),
-                usn: form.usn,
+                usn: form.usn.trim(),
                 mobile: `+91${digits}`,
                 gender: form.gender,
             }, token);
@@ -206,7 +206,7 @@ export default function CompleteProfile() {
 
                     <div className="flex flex-col gap-1">
                         <h1 className="font-display text-[44px] font-normal leading-[0.95] text-primary lg:text-[64px] lg:leading-[0.92]">Almost in, {firstName}.</h1>
-                        <p className="m-0 text-[15px] leading-normal text-muted-foreground lg:mt-2 lg:text-[17px]">Two details so organisers can seat you and reach you on the day.</p>
+                        <p className="m-0 text-[15px] leading-normal text-muted-foreground lg:mt-2 lg:text-[17px]">Three details so organisers can seat you and reach you on the day.</p>
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -230,13 +230,11 @@ export default function CompleteProfile() {
                         <p id="cp-mobile-hint" className={`m-0 text-[13px] ${touched.mobile && !mobileOk ? "font-medium text-destructive" : "text-muted-foreground"}`}>{touched.mobile && !mobileOk ? "Enter a 10-digit mobile number." : "Only used for event updates on the day."}</p>
                     </div>
 
-                    <button type="button" onClick={() => setShowUsn((v) => !v)} aria-expanded={showUsn} className="min-h-11 self-start p-0 text-[15px] font-semibold text-primary underline underline-offset-4">{showUsn ? "Hide student ID" : "+ Add student ID (optional)"}</button>
-                    {showUsn && (
-                        <div className="-mt-2 flex flex-col gap-2">
-                            <label htmlFor="cp-usn" className="text-[15px] font-semibold">USN / student ID <span className="font-normal text-muted-foreground">(optional)</span></label>
-                            <input id="cp-usn" className={inputBase} value={form.usn} onChange={(e) => set("usn", e.target.value)} autoComplete="off" placeholder="e.g. 1MV22CS001" />
-                        </div>
-                    )}
+                    <div className="flex flex-col gap-2">
+                        <label htmlFor="cp-usn" className="text-[15px] font-semibold">USN / student ID</label>
+                        <input id="cp-usn" name="usn" className={inputBase} value={form.usn} onChange={(e) => set("usn", e.target.value.toUpperCase())} onBlur={() => setTouched((t) => ({...t, usn: true}))} autoComplete="off" autoCapitalize="characters" placeholder="e.g. 1MV22CS001" aria-describedby="cp-usn-hint" aria-invalid={touched.usn && !usnOk} />
+                        <p id="cp-usn-hint" className={`m-0 text-[13px] ${touched.usn && !usnOk ? "font-medium text-destructive" : "text-muted-foreground"}`}>{touched.usn && !usnOk ? "Enter your USN / student ID." : "Used to verify you are a student on the day."}</p>
+                    </div>
 
                     {error && <p role="alert" className="m-0 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm font-medium text-destructive">{error}</p>}
 

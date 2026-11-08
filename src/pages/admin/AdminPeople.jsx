@@ -209,7 +209,7 @@ function QrModal({onClose}) {
     };
     return (
         <Sheet title="Join link" onClose={onClose}>
-            <p className="m-0 text-muted-foreground">Debaters open this address, sign in with Google and add two details. Print it as a QR at the desk using any QR generator.</p>
+            <p className="m-0 text-muted-foreground">Debaters open this address, sign in with Google and add three details. Print it as a QR at the desk using any QR generator.</p>
             <p className="my-4 break-all rounded-2xl bg-muted p-4 text-center font-heading text-2xl font-bold text-primary">{url}</p>
             <button type="button" onClick={copy} className="ax-primary-btn w-full">{copied ? "Copied" : "Copy link"}</button>
         </Sheet>

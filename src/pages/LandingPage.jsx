@@ -8,13 +8,13 @@ import {EVENT_CONFIG as E} from "../config/event";
 
 const STEPS = [
     {n: "01", title: "Continue with Google", body: "One tap. Your name, email and photo come across automatically.", short: "Name and email come across automatically."},
-    {n: "02", title: "Add college & mobile", body: "Two fields on one screen. Your student ID is optional and can wait.", short: "Two fields on one screen. That's it."},
+    {n: "02", title: "Add college, mobile & USN", body: "Three fields on one screen. About 30 seconds.", short: "Three fields on one screen. That's it."},
     {n: "03", title: "You're registered", body: "We enrol you in AXIOM 4.0 automatically. On the day, check in from your phone to get your room.", short: "Auto-enrolled. Check in from your phone on the day."},
 ];
 
 const FAQ = [
     {q: "Do I need a Google account?", a: "Yes. Google is the only sign-in for AXIOM 4.0. Any Gmail or college Google Workspace account works."},
-    {q: "Can I register at the venue?", a: "Yes. Scan the QR at the desk, sign in, add two details, done. Organisers see you appear instantly."},
+    {q: "Can I register at the venue?", a: "Yes. Scan the QR at the desk, sign in, add three details, done. Organisers see you appear instantly."},
     {q: "Who can take part?", a: E.eligibility},
 ];
 
@@ -65,7 +65,7 @@ export default function LandingPage() {
                         Ancient thought.<br /><span className="text-[#2D5A4A] dark:text-[#A9C48F]">New arguments.</span>
                     </h1>
                     <p className="hidden max-w-[520px] text-[19px] leading-relaxed text-muted-foreground md:block">
-                        {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google, add two details, and you're in.
+                        {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google, add your details, and you're in.
                     </p>
                     <div id="hero-cta" ref={heroCta} className="hidden max-w-[520px] md:block">
                         <GoogleAuthButton variant="hero" />
