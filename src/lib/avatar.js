@@ -11,18 +11,18 @@
  */
 
 const PALETTES = [
-  {bg: "#9A9A9A", halo: "#BBBBBB", figure: "#111111", accent: "#F5F5F5"},
-  {bg: "#111111", halo: "#222222", figure: "#F5F5F5", accent: "#9A9A9A"},
-  {bg: "#F5F5F5", halo: "#9A9A9A", figure: "#111111", accent: "#444444"},
-  {bg: "#444444", halo: "#9A9A9A", figure: "#F5F5F5", accent: "#111111"},
-  {bg: "#BBBBBB", halo: "#F5F5F5", figure: "#111111", accent: "#222222"},
-  {bg: "#222222", halo: "#444444", figure: "#FFFFFF", accent: "#BBBBBB"},
-  {bg: "#FFFFFF", halo: "#BBBBBB", figure: "#222222", accent: "#9A9A9A"},
-  {bg: "#222222", halo: "#9A9A9A", figure: "#F5F5F5", accent: "#BBBBBB"},
-  {bg: "#9A9A9A", halo: "#111111", figure: "#FFFFFF", accent: "#111111"},
-  {bg: "#F5F5F5", halo: "#111111", figure: "#444444", accent: "#FFFFFF"},
-  {bg: "#444444", halo: "#222222", figure: "#111111", accent: "#F5F5F5"},
-  {bg: "#111111", halo: "#9A9A9A", figure: "#F5F5F5", accent: "#111111"},
+  {bg: "#BEE7B8", halo: "#A9D8A2", figure: "#3A2304", accent: "#EDF4E6"},
+  {bg: "#3A2304", halo: "#4C2E05", figure: "#EDF4E6", accent: "#BEE7B8"},
+  {bg: "#EDF4E6", halo: "#BEE7B8", figure: "#3A2304", accent: "#6B4A1A"},
+  {bg: "#6B4A1A", halo: "#BEE7B8", figure: "#EDF4E6", accent: "#3A2304"},
+  {bg: "#A9D8A2", halo: "#EDF4E6", figure: "#3A2304", accent: "#4C2E05"},
+  {bg: "#4C2E05", halo: "#6B4A1A", figure: "#FFFFFF", accent: "#A9D8A2"},
+  {bg: "#FFFFFF", halo: "#A9D8A2", figure: "#4C2E05", accent: "#BEE7B8"},
+  {bg: "#4C2E05", halo: "#BEE7B8", figure: "#EDF4E6", accent: "#A9D8A2"},
+  {bg: "#BEE7B8", halo: "#3A2304", figure: "#FFFFFF", accent: "#3A2304"},
+  {bg: "#EDF4E6", halo: "#3A2304", figure: "#6B4A1A", accent: "#FFFFFF"},
+  {bg: "#6B4A1A", halo: "#4C2E05", figure: "#3A2304", accent: "#EDF4E6"},
+  {bg: "#3A2304", halo: "#BEE7B8", figure: "#EDF4E6", accent: "#3A2304"},
 ];
 
 /** FNV-1a. */

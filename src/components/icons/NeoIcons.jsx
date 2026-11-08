@@ -42,7 +42,7 @@ const PortraitIcon = () => (
   <g transform="translate(-714 -714)">
       <path d="M768 762V734H728V762H768Z" fill="currentColor" stroke="currentColor" strokeWidth="8" />
       <path d="M732 728H740" stroke="currentColor" strokeWidth="4" fill="none" />
-      <circle cx="748" cy="748" r="12" fill="var(--neo-cut, #EBEBEB)" />
+      <circle cx="748" cy="748" r="12" fill="var(--neo-cut, #DFE9D5)" />
       <circle cx="748" cy="748" r="8" fill="currentColor" />
   </g>
 );
@@ -72,18 +72,18 @@ const RoundsIcon = () => (
 const IdCardIcon = () => (
   <g transform="translate(-1098 -138)">
       <path d="M1152 188V156H1112V188H1152Z" fill="currentColor" stroke="currentColor" strokeWidth="8" />
-      <path d="M1114 160H1122" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="4" fill="none" />
-      <path d="M1146 184H1150" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="4" fill="none" />
-      <path d="M1138 184H1142" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="4" fill="none" />
-      <path d="M1114 172H1150" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="4" fill="none" />
+      <path d="M1114 160H1122" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="4" fill="none" />
+      <path d="M1146 184H1150" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="4" fill="none" />
+      <path d="M1138 184H1142" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="4" fill="none" />
+      <path d="M1114 172H1150" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="4" fill="none" />
   </g>
 );
 
 const RoomsIcon = () => (
   <g transform="translate(-714 -522)">
       <path d="M768 571V547H748L744 541H728V571H768Z" fill="currentColor" stroke="currentColor" strokeWidth="8" />
-      <path d="M766 551H730" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="4" fill="none" />
-      <path d="M750 559H730" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="4" fill="none" />
+      <path d="M766 551H730" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="4" fill="none" />
+      <path d="M750 559H730" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="4" fill="none" />
   </g>
 );
 
@@ -118,8 +118,8 @@ const SettingsIcon = () => (
 const ExitIcon = () => (
   <g transform="translate(-522 -714)">
       <path d="M574 768V728H538V768H574Z" fill="currentColor" stroke="currentColor" strokeWidth="8" />
-      <path d="M553 734L565 748L553 762" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="8" fill="none" />
-      <path d="M564 748H538" stroke="var(--neo-cut, #EBEBEB)" strokeWidth="8" fill="none" />
+      <path d="M553 734L565 748L553 762" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="8" fill="none" />
+      <path d="M564 748H538" stroke="var(--neo-cut, #DFE9D5)" strokeWidth="8" fill="none" />
   </g>
 );
 
