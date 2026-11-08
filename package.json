@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "node --test tests/api.test.mjs tests/analytics.test.mjs tests/datetime.test.mjs",
     "test:browser": "node tests/browser-audit.mjs",
+    "dev:mock": "node tests/dev-mock-server.mjs",
     "test:readiness": "node --test tests/readiness.test.mjs"
   },
   "dependencies": {

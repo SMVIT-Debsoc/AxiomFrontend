@@ -28,3 +28,4 @@ audit-artifacts/
 .vercel
 .env*
 .agent-team/
+.dev-mock-dist
