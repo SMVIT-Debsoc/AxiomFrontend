@@ -25,7 +25,11 @@ export const EVENT_CONFIG = {
     entryFeeNote: "Entry · [OR YOUR FEE]",
     regionLabel: "[CITY / REGION]",
     judgePanel: "[JUDGE PANEL DETAIL]",
+    round1CheckIn: "[TIME]",
     eligibility: "[ELIGIBILITY — e.g. any enrolled college student]",
 };
 
 export const isPlaceholder = (value) => typeof value === "string" && /\[[^\]]+\]/.test(value);
+
+// Quick-pick chips on the complete-profile screen. Edit to match your likely colleges.
+export const COLLEGE_SUGGESTIONS = ["Sir MVIT", "RVCE", "BMSCE", "PES University"];

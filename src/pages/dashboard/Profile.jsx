@@ -19,8 +19,14 @@ import {ProfileSkeleton} from "../../components/ui/Skeleton";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import NeoCard from "../../components/neo/NeoCard";
 import NeoProgressBar from "../../components/neo/NeoProgressBar";
+import CompleteProfile from "./CompleteProfile";
 
 export default function Profile({isOnboarding = false}) {
+  return isOnboarding ? <CompleteProfile /> : <ProfileSettings />;
+}
+
+function ProfileSettings() {
+  const isOnboarding = false;
   const {user, isLoaded} = useUser();
   const {getToken} = useAuth();
   const navigate = useNavigate();

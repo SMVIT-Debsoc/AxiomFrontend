@@ -75,12 +75,10 @@ function App() {
                             path="/complete-profile"
                             element={
                                 <OnboardingGuard>
-                                    <DashboardLayout />
+                                    <Profile isOnboarding />
                                 </OnboardingGuard>
                             }
-                        >
-                            <Route index element={<Profile isOnboarding />} />
-                        </Route>
+                        />
 
                         {/* Dashboard Routes - Protected (User) */}
                         <Route
