@@ -2,9 +2,7 @@
 import {useCallback, useMemo, useState} from "react";
 import {createAuthClient} from "better-auth/react";
 import {cloneElement, isValidElement} from "react";
-import {Link, Navigate, useNavigate, useSearchParams} from "react-router-dom";
-import PasswordInput from "../components/ui/PasswordInput";
-import {UserApi} from "../services/api";
+import {Navigate} from "react-router-dom";
 
 const defaultApiUrl = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? `http://${window.location.hostname}:3000/api`
@@ -82,90 +80,58 @@ export function AuthProvider({children}) {
   return children;
 }
 
-function AuthForm({registration = false}) {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [email,setEmail] = useState(() => searchParams.get("email") || "");
-  const [password,setPassword] = useState("");
-  const [name,setName] = useState("");
-  const [error,setError] = useState("");
-  const [possibleTypo,setPossibleTypo] = useState(false);
-  const [checkedEmail,setCheckedEmail] = useState("");
-  const [busy,setBusy] = useState(false);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      const normalizedEmail = email.trim().toLowerCase();
-      if (registration && checkedEmail !== normalizedEmail) {
-        const preflight = await UserApi.checkEmail(normalizedEmail);
-        setCheckedEmail(normalizedEmail);
-        if (preflight.possibleTypo) {
-          setPossibleTypo(true);
-          return;
-        }
-      }
-      setPossibleTypo(false);
-      const result = registration
-        ? await authClient.signUp.email({name:name.trim(),email:normalizedEmail,password,callbackURL:"/auth-redirect"})
-        : await authClient.signIn.email({email:normalizedEmail,password,callbackURL:"/auth-redirect"});
-      if (result.error) {
-        const details = `${result.error.code || ""} ${result.error.message || ""}`;
-        if (registration && /already.?exists|already.?registered|email.*taken|user.*exists/i.test(details)) {
-          navigate(`/sign-in?email=${encodeURIComponent(normalizedEmail)}&notice=account-exists`,{replace:true});
-          return;
-        }
-        throw new Error(result.error.message || "Authentication failed");
-      }
-      if (registration && result.data?.user && !result.data?.token) {
-        setError("Check your email to verify your new account before signing in.");
-        return;
-      }
-      navigate("/auth-redirect",{replace:true});
-    } catch (failure) {
-      setError(failure.message || "Authentication failed. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submit} className="axiom-auth-form w-full max-w-md text-card-foreground" aria-labelledby="auth-form-title">
-      <header className="axiom-auth-form-heading">
-        <p className="axiom-eyebrow">Participant access</p>
-        <h2 id="auth-form-title">{registration ? "Create your account" : "Sign in"}</h2>
-        <p>{registration ? "Use Google or email. We’ll guide you through the next steps." : "Pick up where you left off in the AXIOM arena."}</p>
-      </header>
-      <GoogleAuthButton registration={registration} />
-      {registration && <><label htmlFor="auth-name">Full name</label><input id="auth-name" autoComplete="name" required value={name} onChange={event=>setName(event.target.value)} /></>}
-      <label htmlFor="auth-email">Email</label>
-      <input id="auth-email" type="email" required autoComplete="email" value={email} onChange={event=>{setEmail(event.target.value);setPossibleTypo(false);setCheckedEmail("");setError("");}} />
-      <label htmlFor="auth-password">Password</label>
-      <PasswordInput id="auth-password" required minLength={10} autoComplete={registration ? "new-password" : "current-password"} value={password} onChange={event=>setPassword(event.target.value)} aria-describedby={registration ? "auth-password-hint" : undefined} />
-      {registration && <p id="auth-password-hint" className="axiom-auth-hint">Use at least 10 characters.</p>}
-      {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
-      {possibleTypo && <p role="alert" className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-foreground">A registered email has a very similar spelling. Please check for a typo. If this address is correct, continue to create your account.</p>}
-      <button type="submit" disabled={busy} className="axiom-auth-submit w-full bg-primary px-4 py-2.5 font-heading font-semibold text-primary-foreground disabled:opacity-60">
-        {busy ? (registration ? "Checking email…" : "Signing in…") : (registration ? (possibleTypo ? "Continue with this email" : "Create account") : "Sign in")}
-      </button>
-      {!registration && searchParams.get("notice") === "account-exists" && <p role="status" className="mt-3 text-center text-sm">An account may already use this email. Sign in or reset your password.</p>}
-      {!registration && <p className="axiom-auth-footnote"><Link to="/forgot-password">Forgot password?</Link></p>}
-    </form>
-  );
-}
-
-export function SignIn() { return <AuthForm />; }
-export function SignUp() { return <AuthForm registration />; }
 export function SignedIn({children}) { return useAuth().isSignedIn ? children : null; }
 export function SignedOut({children}) { const {isLoaded,isSignedIn}=useAuth(); return isLoaded && !isSignedIn ? children : null; }
-export function RedirectToSignIn() { return <Navigate to="/login-select" replace />; }
+export function RedirectToSignIn() { return <Navigate to="/" replace />; }
 
-export function GoogleAuthButton({registration = false, landing = false}) {
+const GOOGLE_VARIANTS = {
+  // Large hero button on the dark-green panel, moss ring
+  hero: {
+    wrap: "w-full",
+    button: "flex h-[68px] w-full items-center justify-center gap-3.5 rounded-[18px] bg-[#F4F1EB] px-5 text-[19px] font-extrabold text-[#0D4C3C] shadow-[0_0_0_5px_#7BA05B,0_16px_30px_rgba(0,0,0,.33)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A9C48F] disabled:opacity-70 md:h-[72px] md:text-[21px]",
+    icon: "h-[42px] w-[42px] border border-[#DCD6C8]",
+    svg: 26,
+  },
+  // Compact pill in the header
+  header: {
+    wrap: "",
+    button: "inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-[#0D4C3C] py-0 pl-1.5 pr-4 text-sm font-bold text-[#F4F1EB] transition hover:shadow-[0_0_0_3px_#7BA05B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7BA05B] disabled:opacity-70",
+    icon: "h-8 w-8",
+    svg: 18,
+  },
+  // Sticky bottom bar on phones
+  bar: {
+    wrap: "w-full",
+    button: "flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-[#0D4C3C] text-lg font-extrabold text-[#F4F1EB] shadow-[0_0_0_4px_#7BA05B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A9C48F] disabled:opacity-70",
+    icon: "h-[38px] w-[38px]",
+    svg: 22,
+  },
+  // On a dark jungle panel
+  onDark: {
+    wrap: "",
+    button: "inline-flex min-h-[60px] items-center gap-3.5 rounded-[14px] bg-[#F4F1EB] px-6 text-lg font-bold text-[#0D4C3C] transition hover:bg-white hover:shadow-[0_0_0_3px_#7BA05B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#7BA05B] disabled:opacity-70",
+    icon: "h-9 w-9 border border-[#DCD6C8]",
+    svg: 22,
+  },
+  // Default, used anywhere else
+  default: {
+    wrap: "w-full",
+    button: "flex min-h-[52px] w-full items-center justify-center gap-3 rounded-2xl bg-[#0D4C3C] px-5 text-base font-bold text-[#F4F1EB] shadow-[0_0_0_3px_#7BA05B] transition hover:bg-[#2D5A4A] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A9C48F] disabled:opacity-70",
+    icon: "h-9 w-9",
+    svg: 22,
+  },
+};
+
+export function GoogleAuthButton({variant = "default", label = "Register with Google", busyLabel = "Connecting to Google…"}) {
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState("");
-  if (!googleAuthEnabled) return null;
+  const v = GOOGLE_VARIANTS[variant] || GOOGLE_VARIANTS.default;
+
+  // Google is the only sign-in path, so the button is always rendered. When the
+  // deployment has not enabled it (VITE_GOOGLE_AUTH_ENABLED !== "true") say so plainly.
+  if (!googleAuthEnabled) {
+    return <p role="alert" className="rounded-xl border border-[#E8CE96] bg-[#F6EBD6] px-4 py-3 text-sm font-medium text-[#6B4510]">Sign-in is unavailable right now. Please try again later or ask an organiser for help.</p>;
+  }
 
   const signInWithGoogle = async () => {
     setBusy(true);
@@ -182,18 +148,19 @@ export function GoogleAuthButton({registration = false, landing = false}) {
     }
   };
 
-  return <div className={landing ? "axiom-google-auth axiom-google-auth--landing" : "axiom-google-auth"}>
-    <button type="button" className="axiom-google-button" onClick={signInWithGoogle} disabled={busy} aria-busy={busy}>
-      <svg aria-hidden="true" viewBox="0 0 48 48" focusable="false"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.7-.4-4H24v7.6h11a9.4 9.4 0 0 1-4.1 6.2v5h6.6c3.9-3.6 6.1-8.8 6.1-14.8Z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.7-3.6-11.3-8.5H6v5.2A20 20 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.7 27.7a12 12 0 0 1 0-7.4v-5.2H6a20 20 0 0 0 0 17.8l6.7-5.2Z"/><path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4A20 20 0 0 0 6 15.1l6.7 5.2c1.6-4.9 6-8.5 11.3-8.5Z"/></svg>
-      <span>{busy ? "Connecting to Google…" : landing ? "Continue with Google" : registration ? "Sign up with Google" : "Sign in with Google"}</span>
+  return <div className={v.wrap}>
+    <button type="button" className={v.button} onClick={signInWithGoogle} disabled={busy} aria-busy={busy} data-google-cta={variant}>
+      <span className={`grid shrink-0 place-items-center rounded-full bg-white ${v.icon}`}>
+        <svg aria-hidden="true" viewBox="0 0 48 48" width={v.svg} height={v.svg} focusable="false"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.7-.4-4H24v7.6h11a9.4 9.4 0 0 1-4.1 6.2v5h6.6c3.9-3.6 6.1-8.8 6.1-14.8Z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.7-3.6-11.3-8.5H6v5.2A20 20 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.7 27.7a12 12 0 0 1 0-7.4v-5.2H6a20 20 0 0 0 0 17.8l6.7-5.2Z"/><path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4A20 20 0 0 0 6 15.1l6.7 5.2c1.6-4.9 6-8.5 11.3-8.5Z"/></svg>
+      </span>
+      <span>{busy ? busyLabel : label}</span>
     </button>
-    {error && <p className="axiom-google-error" role="alert">{error}</p>}
-    {!landing && <div className="axiom-auth-divider" role="separator"><span>or continue with email</span></div>}
+    {error && <p className="mt-2 text-sm font-medium text-[#a51818]" role="alert">{error}</p>}
   </div>;
 }
 
 export function SignInButton({children}) {
-  const click = () => window.location.assign("/sign-in");
+  const click = () => window.location.assign("/");
   if (isValidElement(children)) return cloneElement(children, {onClick: (event) => { children.props.onClick?.(event); if (!event.defaultPrevented) click(); }});
   return <button type="button" onClick={click}>{children}</button>;
 }

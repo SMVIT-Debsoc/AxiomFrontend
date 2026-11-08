@@ -17,7 +17,7 @@ export function AdminGuard({children}) {
             if (!isLoaded) return;
 
             if (!user) {
-                navigate("/login-select");
+                navigate("/");
                 return;
             }
 
@@ -65,7 +65,7 @@ export function AdminGuard({children}) {
                             Go to User Dashboard
                         </button>
                         <button
-                            onClick={() => navigate("/login-select")}
+                            onClick={() => navigate("/")}
                             className="w-full py-2.5 rounded-lg border border-border hover:bg-muted transition-colors"
                         >
                             Sign in with different account

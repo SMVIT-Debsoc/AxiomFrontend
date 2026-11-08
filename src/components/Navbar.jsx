@@ -44,10 +44,10 @@ export default function Navbar() {
             <div className="axiom-container axiom-navbar-inner">
                 <Link to="/" onClick={() => setIsOpen(false)} aria-label="AXIOM 4.0 home"><Axiom40Logo /></Link>
                 <div className="hidden md:flex items-center gap-5">{links.map(renderLink)}</div>
-                <div className="hidden md:flex items-center gap-4"><ThemeToggle />{isSignedIn ? <UserButton afterSignOutUrl="/" /> : <><Link className="axiom-nav-link" to="/login-select">Sign in</Link><Link className="axiom-button axiom-button--green" to="/get-started">Get started<ArrowUpRight size={16} aria-hidden="true" /></Link></>}</div>
+                <div className="hidden md:flex items-center gap-4"><ThemeToggle />{isSignedIn ? <UserButton afterSignOutUrl="/" /> : <><Link className="axiom-nav-link" to="/">Sign in</Link><Link className="axiom-button axiom-button--green" to="/">Register<ArrowUpRight size={16} aria-hidden="true" /></Link></>}</div>
                 <div className="md:hidden flex items-center gap-2"><ThemeToggle />{isSignedIn && <UserButton afterSignOutUrl="/" />}<button ref={toggleRef} className="p-3" onClick={() => setIsOpen(!isOpen)} aria-label={isOpen ? "Close menu" : "Open menu"} aria-expanded={isOpen} aria-controls="mobile-navigation">{isOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button></div>
             </div>
-            {isOpen && <div id="mobile-navigation" className="axiom-container axiom-mobile-menu md:hidden">{links.map(renderLink)}{!isSignedIn && <><Link className="axiom-nav-link" to="/login-select" onClick={() => setIsOpen(false)}>Sign in</Link><Link className="axiom-button axiom-button--green" to="/get-started" onClick={() => setIsOpen(false)}>Get started<ArrowUpRight size={16} aria-hidden="true" /></Link></>}</div>}
+            {isOpen && <div id="mobile-navigation" className="axiom-container axiom-mobile-menu md:hidden">{links.map(renderLink)}{!isSignedIn && <><Link className="axiom-nav-link" to="/" onClick={() => setIsOpen(false)}>Sign in</Link><Link className="axiom-button axiom-button--green" to="/" onClick={() => setIsOpen(false)}>Get started<ArrowUpRight size={16} aria-hidden="true" /></Link></>}</div>}
         </nav>
     );
 }

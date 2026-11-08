@@ -10,19 +10,13 @@ import Profile from "./pages/dashboard/Profile";
 import Participants from "./pages/dashboard/Participants";
 import RoundDetails from "./pages/dashboard/RoundDetails";
 import Results from "./pages/dashboard/Results";
-import SignInPage from "./pages/SignInPage";
-import SignUpPage from "./pages/SignUpPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
 import {OnboardingGuard} from "./components/OnboardingGuard";
 import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
 import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
 import ApiAuthSync from "./components/ApiAuthSync";
 import {ToastProvider} from "./components/ui/Toast";
 
-// Role selection pages
-import RoleSelectPage from "./pages/RoleSelectPage";
-import LoginSelectPage from "./pages/LoginSelectPage";
+import LandingPage from "./pages/LandingPage";
 
 // Admin imports
 import {AdminGuard} from "./components/AdminGuard";
@@ -60,17 +54,13 @@ function App() {
                             element={<AuthRedirectHandler />}
                         />
 
-                        {/* Root redirects to login-select (Login first approach - no navbar) */}
-                        <Route
-                            path="/"
-                            element={<Navigate to="/login-select" replace />}
-                        />
+                        {/* Landing: Google-only registration / sign-in */}
+                        <Route path="/" element={<LandingPage />} />
 
-                        {/* Login Select Page - No navbar/footer */}
-                        <Route
-                            path="/login-select"
-                            element={<LoginSelectPage />}
-                        />
+                        {/* Legacy auth URLs: kept so old links land on the landing page */}
+                        {["/login-select", "/sign-in/*", "/sign-up/*", "/forgot-password", "/reset-password", "/get-started"].map((path) => (
+                            <Route key={path} path={path} element={<Navigate to="/" replace />} />
+                        ))}
 
                         {/* Public Routes with Navbar */}
                         <Route element={<MainLayout />}>
@@ -78,18 +68,6 @@ function App() {
                                 path="/about"
                                 element={<Home />}
                             />
-
-                            {/* Role selection routes */}
-                            <Route
-                                path="/get-started"
-                                element={<RoleSelectPage />}
-                            />
-
-                            {/* Better Auth session routes */}
-                            <Route path="/sign-in/*" element={<SignInPage />} />
-                            <Route path="/sign-up/*" element={<SignUpPage />} />
-                            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                            <Route path="/reset-password" element={<ResetPasswordPage />} />
                         </Route>
 
                         {/* Profile Completion Route - Without ProfileCompletionGuard */}

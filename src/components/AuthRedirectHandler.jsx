@@ -19,7 +19,7 @@ export function AuthRedirectHandler() {
         const handleRedirect = async () => {
             if (!isLoaded) return;
             if (!user) {
-                navigate("/login-select", {replace: true});
+                navigate("/", {replace: true});
                 return;
             }
             // Remove values left by the retired public admin-onboarding screen.

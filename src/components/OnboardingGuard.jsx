@@ -29,7 +29,7 @@ export function OnboardingGuard({children}) {
                 setChecking(false);
             } else if (isLoaded && !user) {
                 // Not authenticated, redirect to login
-                navigate("/login-select", {replace: true});
+                navigate("/", {replace: true});
                 setChecking(false);
             }
         };
