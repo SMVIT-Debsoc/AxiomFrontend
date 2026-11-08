@@ -22,6 +22,8 @@ import LandingPage from "./pages/LandingPage";
 import {AdminGuard} from "./components/AdminGuard";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminLive from "./pages/admin/AdminLive";
+import AdminPeople from "./pages/admin/AdminPeople";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminEventDetails from "./pages/admin/AdminEventDetails";
 import AdminRoundManagement from "./pages/admin/AdminRoundManagement";
@@ -128,7 +130,9 @@ function App() {
                                 </AdminGuard>
                             }
                         >
-                            <Route index element={<AdminDashboard />} />
+                            <Route index element={<AdminLive />} />
+                            <Route path="overview" element={<AdminDashboard />} />
+                            <Route path="people" element={<AdminPeople />} />
                             <Route path="events" element={<AdminEvents />} />
                             <Route
                                 path="events/:id"

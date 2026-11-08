@@ -716,3 +716,23 @@
   }
 }
 
+
+/* Organiser workspace: flat cards that sit outside the neobrutalism card selectors. */
+@layer components {
+  .ax-card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 18px; }
+  .ax-card--soft { background: hsl(var(--accent)); border-color: transparent; }
+  .ax-primary-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 52px; padding: 0 1.25rem; border-radius: 14px; background: #0D4C3C; color: #F4F1EB; font-weight: 700; font-size: 1rem; border: 0; }
+  .ax-primary-btn:hover:not(:disabled) { background: #2D5A4A; }
+  .ax-primary-btn:disabled { opacity: .55; cursor: not-allowed; }
+  .dark .ax-primary-btn { background: #7BA05B; color: #0F2A22; }
+  .dark .ax-primary-btn:hover:not(:disabled) { background: #A9C48F; }
+  .ax-ghost-btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; padding: 0 1rem; border-radius: 12px; border: 1.5px solid hsl(var(--input)); background: transparent; color: hsl(var(--foreground)); font-weight: 600; font-size: .9rem; }
+  .ax-ghost-btn:hover:not(:disabled) { background: hsl(var(--accent)); }
+  .ax-ghost-btn:disabled { opacity: .55; cursor: not-allowed; }
+  .ax-chip { display: inline-flex; align-items: center; border-radius: 999px; padding: .15rem .6rem; font-size: .75rem; font-weight: 700; }
+  .ax-chip--ok { background: #E6EEDB; color: #0D4C3C; }
+  .ax-chip--warn { background: #F6EBD6; color: #6B4510; }
+  .ax-chip--idle { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .dark .ax-chip--ok { background: #1C4A3A; color: #E6EEDB; }
+  .dark .ax-chip--warn { background: #4a3a14; color: #F6EBD6; }
+}

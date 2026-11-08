@@ -1153,7 +1153,7 @@ export default function AdminRoundManagement() {
     );
 }
 
-function AllocateRoomsModal({
+export function AllocateRoomsModal({
     onClose,
     onConfirm,
     totalDebates,
