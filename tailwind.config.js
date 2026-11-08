@@ -1,4 +1,17 @@
 /** @type {import('tailwindcss').Config} */
+const greenRamp = {
+    50: "#E6EEDB", 100: "#D9E6CB", 200: "#C2D6AD", 300: "#A9C48F", 400: "#7BA05B",
+    500: "#2D5A4A", 600: "#0D4C3C", 700: "#0A3D30", 800: "#082F25", 900: "#06241C", 950: "#041A14",
+};
+const warnRamp = {
+    50: "#F6EBD6", 100: "#F1E0BB", 200: "#E8CE96", 300: "#E0BC74", 400: "#D4A24C",
+    500: "#B8832F", 600: "#8F6320", 700: "#6B4510", 800: "#55360D", 900: "#40290A", 950: "#2B1B06",
+};
+const infoRamp = {
+    50: "#EAF1EE", 100: "#D5E3DD", 200: "#B1C9BF", 300: "#8BAC9E", 400: "#5F8A79",
+    500: "#3F6E5D", 600: "#2D5A4A", 700: "#244A3C", 800: "#1B392E", 900: "#142B22", 950: "#0C1B15",
+};
+
 export default {
     darkMode: ["class"],
     content: [
@@ -28,6 +41,20 @@ export default {
                     light: "var(--axiom-green-light)",
                     ink: "var(--axiom-logo-ink)",
                 },
+                emerald: greenRamp,
+                green: greenRamp,
+                teal: greenRamp,
+                lime: greenRamp,
+                amber: warnRamp,
+                yellow: warnRamp,
+                blue: infoRamp,
+                sky: infoRamp,
+                cyan: infoRamp,
+                jungle: "var(--axiom-jungle)",
+                "slate-green": "var(--axiom-slate)",
+                moss: "var(--axiom-moss)",
+                alabaster: "var(--axiom-alabaster)",
+                "soft-green": "var(--axiom-soft-green)",
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",
                 ring: "hsl(var(--ring))",
