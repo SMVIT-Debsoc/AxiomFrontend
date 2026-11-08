@@ -32,7 +32,7 @@
   --nb-green: #B9F5D8;
   --btn-bg: #B9F5D8; --btn-fg: #141510; --btn-hover: #9FE3C2;
   --nb-green-soft: #3A3E34;
-  --nb-warn: #4a3a14;
+  --nb-warn: #2F3A2D;
   --nb-danger: #5a2530;
   --nb-info: #373737;
   --nb-muted: #2F322A;
@@ -603,7 +603,7 @@ html .axiom-workspace .axiom-rounds-banner .axiom-sculpture { height: 9rem; marg
 .axiom-rounds-banner .axiom-eyebrow { color: #141510; }
 .axiom-rounds-banner .axiom-button { background: #141510; color: #FFFFFF; border-color: #141510; }
 .axiom-rounds-banner .axiom-button--outline { background: #FFFFFF; color: #141510; border-color: #141510; }
-.axiom-rounds-banner .axiom-button:hover { background: #3C3C3C; color: #FFFFFF; box-shadow: var(--nb-elev-1); }
+.axiom-rounds-banner .axiom-button:hover { background: #2F322A; color: #FFFFFF; box-shadow: var(--nb-elev-1); }
 .axiom-rounds-banner .axiom-button--outline:hover { background: #DAF1E6; color: #141510; }
 .axiom-rounds-banner .axiom-button:focus-visible { outline: 3px solid #141510; outline-offset: 4px; }
 .axiom-workspace .neo-progress-text { color: hsl(var(--foreground)); }

@@ -27,7 +27,7 @@
     --axiom-alabaster: #EAFBF5;
     --axiom-soft-green: #D4EDE1;
     --axiom-warn-surface: #E6F8F1;
-    --axiom-warn-text: #6B4510;
+    --axiom-warn-text: #3F5E45;
     --axiom-border: #B8D5C5;
     /* Legacy names: green-* is the moss accent (always paired with ink text). */
     --axiom-green-primary: #B9F5D8;
@@ -73,7 +73,7 @@
     --ring: 130 14% 45%;
     --axiom-error: var(--axiom-error-light);
     --axiom-status-success: var(--axiom-brand-text-light);
-    --axiom-status-warning: #6B4510;
+    --axiom-status-warning: #3F5E45;
     --axiom-status-danger: #9e1b38;
     --axiom-status-info: #3A4C3F;
     --axiom-glass: rgb(234 251 245 / .92);
@@ -100,7 +100,7 @@
     --ring: 151 75% 84%;
     --axiom-error: #ff9c9c;
     --axiom-status-success: var(--axiom-green-light);
-    --axiom-status-warning: #e8c077;
+    --axiom-status-warning: #AAD2BA;
     --axiom-status-danger: #B8D5C5;
     --axiom-status-info: #A5C4B1;
     --axiom-glass: rgb(14 15 11 / .92);
@@ -732,10 +732,10 @@
   .ax-ghost-btn:disabled { opacity: .55; cursor: not-allowed; }
   .ax-chip { display: inline-flex; align-items: center; border-radius: 999px; padding: .15rem .6rem; font-size: .75rem; font-weight: 700; }
   .ax-chip--ok { background: #D4EDE1; color: #1D1E18; }
-  .ax-chip--warn { background: #E6F8F1; color: #6B4510; }
+  .ax-chip--warn { background: #E6F8F1; color: #3F5E45; }
   .ax-chip--idle { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
   .dark .ax-chip--ok { background: #3A3E34; color: #D4EDE1; }
-  .dark .ax-chip--warn { background: #4a3a14; color: #E6F8F1; }
+  .dark .ax-chip--warn { background: #2F3A2D; color: #E6F8F1; }
 }
 
 /* ---------- Google CTA: pulsing moss ring + light sheen so the main action is the first thing the eye lands on ---------- */

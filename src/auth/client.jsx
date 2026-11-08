@@ -130,7 +130,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
   // Google is the only sign-in path, so the button is always rendered. When the
   // deployment has not enabled it (VITE_GOOGLE_AUTH_ENABLED !== "true") say so plainly.
   if (!googleAuthEnabled) {
-    return <p role="alert" className="rounded-xl border border-[#E8CE96] bg-[#E6F8F1] px-4 py-3 text-sm font-medium text-[#6B4510]">Sign-in is unavailable right now. Please try again later or ask an organiser for help.</p>;
+    return <p role="alert" className="rounded-xl border border-[#AAD2BA] bg-[#E6F8F1] px-4 py-3 text-sm font-medium text-[#3F5E45]">Sign-in is unavailable right now. Please try again later or ask an organiser for help.</p>;
   }
 
   const signInWithGoogle = async () => {
