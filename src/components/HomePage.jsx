@@ -57,7 +57,7 @@ function HomePage() {
                                 style={{
                                     padding: "10px 20px",
                                     fontSize: "16px",
-                                    background: "#28a745",
+                                    background: "#767676",
                                     color: "white",
                                     border: "none",
                                     borderRadius: "5px",

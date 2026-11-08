@@ -1,6 +1,6 @@
 # AXIOM 4.0 Frontend
 
-SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Better Auth and Socket.IO. The AXIOM 4.0 identity pairs Indian deity sculpture with a Butter Cream / Forest Green / Hot Pink palette and condensed editorial typography.
+SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Better Auth and Socket.IO. The AXIOM 4.0 identity pairs Indian deity sculpture with a neutral placeholder palette (new palette pending) and condensed editorial typography.
 
 ## Run locally
 

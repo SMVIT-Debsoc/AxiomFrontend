@@ -57,12 +57,12 @@ export default function LandingPage() {
             {/* SCROLL 1: hero */}
             <section id="top" aria-label={`${E.name} registration`} className="mx-auto grid max-w-[1280px] items-stretch gap-4 px-4 pb-6 md:grid-cols-2 md:gap-6 md:px-6 md:pb-10">
                 <div className="order-2 flex flex-col justify-center gap-6 md:order-1 md:py-8">
-                    <p className="hidden items-center gap-2 self-start rounded-full bg-[#FF3EA5] px-3.5 py-2 text-[13px] font-semibold uppercase tracking-[0.04em] text-[#142A21] md:inline-flex">
-                        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#1E3B2F]" />
+                    <p className="hidden items-center gap-2 self-start rounded-full bg-[#9A9A9A] px-3.5 py-2 text-[13px] font-semibold uppercase tracking-[0.04em] text-[#111111] md:inline-flex">
+                        <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#222222]" />
                         Registrations open · closes {E.registrationCloses}
                     </p>
                     <h1 id="hero-title" className="hidden font-display text-[clamp(64px,9vw,128px)] font-normal leading-[0.88] tracking-[0.01em] text-primary md:block">
-                        Ancient thought.<br /><span className="text-[#2E5645] dark:text-[#FF8CC8]">New arguments.</span>
+                        Ancient thought.<br /><span className="text-[#444444] dark:text-[#BBBBBB]">New arguments.</span>
                     </h1>
                     <p className="hidden max-w-[520px] text-[19px] leading-relaxed text-muted-foreground md:block">
                         {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google, add your details, and you're in.
@@ -73,14 +73,14 @@ export default function LandingPage() {
                 </div>
 
                 {/* Panel: on phones this holds headline + CTA; on desktop it is the sculpture + facts */}
-                <div className="relative order-1 flex min-h-[560px] flex-col justify-between overflow-hidden rounded-[28px] bg-[#1E3B2F] p-5 text-[#F4EAD5] md:order-2 md:min-h-[520px] md:justify-end md:p-0">
-                    <div aria-hidden="true" className="absolute inset-0 opacity-50 md:opacity-[0.55]" style={{backgroundImage: "linear-gradient(#2E5645 1px, transparent 1px), linear-gradient(90deg, #2E5645 1px, transparent 1px)", backgroundSize: "40px 40px"}} />
+                <div className="relative order-1 flex min-h-[560px] flex-col justify-between overflow-hidden rounded-[28px] bg-[#222222] p-5 text-[#F5F5F5] md:order-2 md:min-h-[520px] md:justify-end md:p-0">
+                    <div aria-hidden="true" className="absolute inset-0 opacity-50 md:opacity-[0.55]" style={{backgroundImage: "linear-gradient(#444444 1px, transparent 1px), linear-gradient(90deg, #444444 1px, transparent 1px)", backgroundSize: "40px 40px"}} />
                     <Sculpture figure="shiva-music" eager className="!absolute -right-10 top-2.5 !h-[420px] !w-auto opacity-55 mix-blend-luminosity md:right-[6%] md:top-auto md:bottom-0 md:!h-full md:max-w-[70%] md:opacity-90 md:object-bottom" />
 
                     <div className="relative flex flex-col gap-3.5 md:hidden">
-                        <p className="inline-flex items-center gap-2 self-start rounded-full bg-[#FF3EA5] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-[#142A21]"><span aria-hidden="true" className="h-[7px] w-[7px] rounded-full bg-[#1E3B2F]" />Registrations open</p>
-                        <h1 className="font-display text-[72px] font-normal leading-[0.86] text-[#F4EAD5]">Ancient<br />thought.<br /><span className="text-[#FF3EA5]">New<br />arguments.</span></h1>
-                        <p className="m-0 max-w-[250px] text-base leading-normal text-[#E4E0D6]">{E.organiser}'s debate tournament. Register in about a minute.</p>
+                        <p className="inline-flex items-center gap-2 self-start rounded-full bg-[#9A9A9A] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-[#111111]"><span aria-hidden="true" className="h-[7px] w-[7px] rounded-full bg-[#222222]" />Registrations open</p>
+                        <h1 className="font-display text-[72px] font-normal leading-[0.86] text-[#F5F5F5]">Ancient<br />thought.<br /><span className="text-[#9A9A9A]">New<br />arguments.</span></h1>
+                        <p className="m-0 max-w-[250px] text-base leading-normal text-[#E0E0E0]">{E.organiser}'s debate tournament. Register in about a minute.</p>
                     </div>
 
                     <div className="relative mt-6 flex flex-col gap-2.5 md:hidden">
@@ -101,11 +101,11 @@ export default function LandingPage() {
                     {STEPS.map((s, i) => {
                         const dark = i === 2;
                         return (
-                            <li key={s.n} className={`flex gap-3.5 rounded-[18px] p-4 md:flex-col md:gap-3 md:rounded-[22px] md:p-7 ${dark ? "bg-[#2E5645] text-[#F4EAD5]" : "border border-border bg-card"}`}>
-                                <span className="w-[34px] shrink-0 font-display text-[40px] leading-[0.9] text-[#FF3EA5] md:w-auto md:text-[56px] md:leading-none">{s.n}</span>
+                            <li key={s.n} className={`flex gap-3.5 rounded-[18px] p-4 md:flex-col md:gap-3 md:rounded-[22px] md:p-7 ${dark ? "bg-[#444444] text-[#F5F5F5]" : "border border-border bg-card"}`}>
+                                <span className="w-[34px] shrink-0 font-display text-[40px] leading-[0.9] text-[#9A9A9A] md:w-auto md:text-[56px] md:leading-none">{s.n}</span>
                                 <div>
-                                    <h3 className={`m-0 font-heading text-[19px] font-bold md:text-2xl ${dark ? "text-[#F4EAD5]" : "text-primary"}`}>{s.title}</h3>
-                                    <p className={`m-0 mt-1 text-[15px] leading-snug md:mt-3 md:text-base md:leading-relaxed ${dark ? "text-[#E4E0D6]" : "text-muted-foreground"}`}><span className="md:hidden">{s.short}</span><span className="hidden md:inline">{s.body}</span></p>
+                                    <h3 className={`m-0 font-heading text-[19px] font-bold md:text-2xl ${dark ? "text-[#F5F5F5]" : "text-primary"}`}>{s.title}</h3>
+                                    <p className={`m-0 mt-1 text-[15px] leading-snug md:mt-3 md:text-base md:leading-relaxed ${dark ? "text-[#E0E0E0]" : "text-muted-foreground"}`}><span className="md:hidden">{s.short}</span><span className="hidden md:inline">{s.body}</span></p>
                                 </div>
                             </li>
                         );
@@ -113,9 +113,9 @@ export default function LandingPage() {
                 </ol>
 
                 <div className="mt-8 grid items-stretch gap-4 md:mt-14 md:grid-cols-2">
-                    <div className="hidden flex-col justify-between gap-6 rounded-[22px] bg-[#FF3EA5] p-8 text-[#142A21] md:flex">
+                    <div className="hidden flex-col justify-between gap-6 rounded-[22px] bg-[#9A9A9A] p-8 text-[#111111] md:flex">
                         <p className="m-0 text-[13px] font-bold uppercase tracking-[0.08em]">Why compete</p>
-                        <h2 className="font-display text-[clamp(44px,5vw,64px)] font-normal leading-[0.92] text-[#142A21]">Not louder.<br />More considered.</h2>
+                        <h2 className="font-display text-[clamp(44px,5vw,64px)] font-normal leading-[0.92] text-[#111111]">Not louder.<br />More considered.</h2>
                         <p className="m-0 max-w-[460px] text-[17px] leading-relaxed">Debate the motions that matter against sharp speakers from across {E.regionLabel}, judged by {E.judgePanel}.</p>
                     </div>
                     <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 md:gap-4">
@@ -141,11 +141,11 @@ export default function LandingPage() {
             </section>
 
             <section aria-labelledby="cta-title" className="px-4 pb-6 md:px-6">
-                <div className="relative mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-8 overflow-hidden rounded-3xl bg-[#1E3B2F] p-5 py-6 text-[#F4EAD5] md:rounded-[32px] md:p-[clamp(32px,6vw,72px)]">
+                <div className="relative mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-8 overflow-hidden rounded-3xl bg-[#222222] p-5 py-6 text-[#F5F5F5] md:rounded-[32px] md:p-[clamp(32px,6vw,72px)]">
                     <Sculpture figure="vishnu" className="!absolute -right-5 -top-2.5 !h-[260px] !w-auto opacity-20 mix-blend-luminosity md:right-[26%] md:top-auto md:bottom-0 md:!h-full md:opacity-[0.18]" />
                     <div className="relative flex flex-col gap-2 md:gap-3">
-                        <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#FF8CC8] md:text-[13px]">The floor is yours</p>
-                        <h2 id="cta-title" className="font-display text-[64px] font-normal leading-[0.88] text-[#F4EAD5] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>
+                        <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#BBBBBB] md:text-[13px]">The floor is yours</p>
+                        <h2 id="cta-title" className="font-display text-[64px] font-normal leading-[0.88] text-[#F5F5F5] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>
                     </div>
                     <div className="relative hidden md:block"><GoogleAuthButton variant="onDark" /></div>
                 </div>
@@ -168,8 +168,8 @@ export default function LandingPage() {
 }
 
 function Stat({value, label, tone}) {
-    const styles = tone === "moss" ? "bg-[#FF3EA5] text-[#142A21]" : tone === "jungle" ? "bg-[#1E3B2F] text-[#F4EAD5]" : "border border-border bg-card text-primary";
-    const labelStyle = tone === "moss" ? "text-[#142A21]" : tone === "jungle" ? "text-[#E4E0D6]" : "text-muted-foreground";
+    const styles = tone === "moss" ? "bg-[#9A9A9A] text-[#111111]" : tone === "jungle" ? "bg-[#222222] text-[#F5F5F5]" : "border border-border bg-card text-primary";
+    const labelStyle = tone === "moss" ? "text-[#111111]" : tone === "jungle" ? "text-[#E0E0E0]" : "text-muted-foreground";
     return (
         <li className={`flex flex-col gap-0.5 rounded-[18px] p-4 md:gap-1.5 md:rounded-[22px] md:p-6 ${styles}`}>
             <p className="m-0 font-display text-[44px] leading-none md:text-[52px]">{value}</p>

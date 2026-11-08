@@ -135,7 +135,7 @@ export default function AdminPeople() {
                         </label>
                         <div role="group" aria-label="Filter" className="flex gap-1.5">
                             {FILTERS.map(([key, label]) => (
-                                <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={cn("min-h-10 rounded-full border px-3.5 text-sm font-semibold", filter === key ? "border-[#1E3B2F] bg-[#1E3B2F] text-[#F4EAD5] dark:border-[#FF3EA5] dark:bg-[#FF3EA5] dark:text-[#142A21]" : "border-input bg-card")}>{label}</button>
+                                <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={cn("min-h-10 rounded-full border px-3.5 text-sm font-semibold", filter === key ? "border-[#222222] bg-[#222222] text-[#F5F5F5] dark:border-[#9A9A9A] dark:bg-[#9A9A9A] dark:text-[#111111]" : "border-input bg-card")}>{label}</button>
                             ))}
                         </div>
                     </div>
@@ -144,7 +144,7 @@ export default function AdminPeople() {
                     <ul className="m-0 flex list-none flex-col gap-2 p-0 md:hidden">
                         {shown.slice(0, 200).map((u) => (
                             <li key={u.id} className="flex items-center gap-3 rounded-2xl border border-border p-3">
-                                <div aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#2E5645] font-heading font-bold text-[#F4EAD5]">{initials(u)}</div>
+                                <div aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#444444] font-heading font-bold text-[#F5F5F5]">{initials(u)}</div>
                                 <div className="min-w-0 flex-1"><p className="m-0 truncate font-bold">{nameOf(u)}</p><p className="m-0 truncate text-[13px] text-muted-foreground">{u.college || "No college"}{u.usn ? ` · ${u.usn}` : ""}</p></div>
                                 <span className={cn("ax-chip", statusChip[u.status][1])}>{statusChip[u.status][0]}</span>
                             </li>
