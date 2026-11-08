@@ -48,16 +48,16 @@ function EventSwitcher({className}) {
     const {events, event, setEventId, loading} = useAdminEvent();
     return (
         <label className={cn("block", className)}>
-            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[#AEBD93]">Event</span>
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[#93B1A7]">Event</span>
             <select
                 value={event?.id || ""}
                 onChange={(e) => setEventId(e.target.value)}
                 disabled={loading || events.length === 0}
                 aria-label="Switch event"
-                className="h-11 w-full rounded-xl border border-[#6B4A1A] bg-[#4A2E07] px-3 text-[15px] font-semibold text-[#EDF4E6] disabled:opacity-70"
+                className="h-11 w-full rounded-xl border border-[#47695F] bg-[#2A4640] px-3 text-[15px] font-semibold text-[#EEF8E4] disabled:opacity-70"
             >
                 {events.length === 0 && <option value="">{loading ? "Loading events…" : "No events yet"}</option>}
-                {events.map((e) => <option key={e.id} value={e.id} className="text-[#3A2304]">{e.name}</option>)}
+                {events.map((e) => <option key={e.id} value={e.id} className="text-[#172923]">{e.name}</option>)}
             </select>
         </label>
     );
@@ -92,36 +92,36 @@ function Shell() {
             <a className="axiom-skip" href="#admin-main">Skip to content</a>
 
             {/* Desktop sidebar */}
-            <nav aria-label="Organiser" className="sticky top-0 hidden h-svh w-[248px] shrink-0 flex-col gap-1.5 overflow-y-auto bg-[#4C2E05] px-3.5 py-5 text-[#EDF4E6] md:flex dark:bg-[#2A1A03]">
+            <nav aria-label="Organiser" className="sticky top-0 hidden h-svh w-[248px] shrink-0 flex-col gap-1.5 overflow-y-auto bg-[#243D38] px-3.5 py-5 text-[#EEF8E4] md:flex dark:bg-[#101E1B]">
                 <div className="flex items-center gap-2.5 px-2 pb-4">
-                    <Link to="/admin" aria-label="AXIOM 4.0 organiser home"><Axiom40Logo variant="nav" className="!w-24 text-[#EDF4E6]" /></Link>
-                    <span className="rounded-md bg-[#BEE7B8] px-2 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#3A2304]">Organiser</span>
+                    <Link to="/admin" aria-label="AXIOM 4.0 organiser home"><Axiom40Logo variant="nav" className="!w-24 text-[#EEF8E4]" /></Link>
+                    <span className="rounded-md bg-[#C5EDAC] px-2 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#172923]">Organiser</span>
                 </div>
                 <EventSwitcher className="mb-3" />
                 {GROUPS.map((group) => (
                     <div key={group.title} className="flex flex-col gap-1">
-                        <p className="mx-2 mb-0.5 mt-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#AEBD93]">{group.title}</p>
+                        <p className="mx-2 mb-0.5 mt-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#93B1A7]">{group.title}</p>
                         {group.items.map((item) => {
                             const active = isActive(item, location.pathname);
                             return (
-                                <NavLink key={item.path} to={item.path} aria-current={active ? "page" : undefined} className={cn(linkBase, active ? "bg-[#EDF4E6] font-bold text-[#4C2E05]" : "text-[#EDF4E6] hover:bg-[#6B4A1A]")}>
+                                <NavLink key={item.path} to={item.path} aria-current={active ? "page" : undefined} className={cn(linkBase, active ? "bg-[#EEF8E4] font-bold text-[#243D38]" : "text-[#EEF8E4] hover:bg-[#47695F]")}>
                                     <span className="flex items-center gap-2.5"><item.icon size={18} aria-hidden="true" />{item.label}</span>
                                 </NavLink>
                             );
                         })}
                     </div>
                 ))}
-                <div className="mt-auto flex flex-col gap-3 border-t border-[#6B4A1A] pt-4">
+                <div className="mt-auto flex flex-col gap-3 border-t border-[#47695F] pt-4">
                     <div className="flex items-center gap-2.5 px-1">
                         <div className="min-w-0 flex-1">
                             <p className="m-0 truncate text-sm font-semibold">{user?.fullName || "Organiser"}</p>
-                            <p className="m-0 text-xs text-[#AEBD93]">Organiser</p>
+                            <p className="m-0 text-xs text-[#93B1A7]">Organiser</p>
                         </div>
                         <ThemeToggle />
                     </div>
                     <div className="flex items-center justify-between gap-2 px-1 text-sm">
-                        <Link to="/dashboard" className="font-semibold text-[#EDF4E6] underline underline-offset-4">Participant view</Link>
-                        <div className="text-[#EDF4E6] [&_button]:text-[#EDF4E6] [&_span]:text-[#EDF4E6]"><UserButton /></div>
+                        <Link to="/dashboard" className="font-semibold text-[#EEF8E4] underline underline-offset-4">Participant view</Link>
+                        <div className="text-[#EEF8E4] [&_button]:text-[#EEF8E4] [&_span]:text-[#EEF8E4]"><UserButton /></div>
                     </div>
                 </div>
             </nav>
@@ -130,16 +130,16 @@ function Shell() {
                 {/* Phone top bar */}
                 <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background px-3 py-2 md:hidden">
                     <div className="min-w-0 flex-1 [&_span]:hidden [&_select]:h-10 [&_select]:border-border [&_select]:bg-card [&_select]:text-foreground"><EventSwitcher /></div>
-                    <div role="status" aria-label={socketConnected ? "Live sync on" : "Connecting"} className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold", socketConnected ? "bg-[#DFE9D5] text-[#4C2E05] dark:bg-[#5A3A0C] dark:text-[#DFE9D5]" : "bg-destructive/10 text-destructive")}>
-                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#4C2E05] dark:bg-[#BEE7B8] axiom-live-dot" : "bg-destructive animate-pulse")} />
+                    <div role="status" aria-label={socketConnected ? "Live sync on" : "Connecting"} className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold", socketConnected ? "bg-[#DBEACF] text-[#243D38] dark:bg-[#345650] dark:text-[#DBEACF]" : "bg-destructive/10 text-destructive")}>
+                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#243D38] dark:bg-[#C5EDAC] axiom-live-dot" : "bg-destructive animate-pulse")} />
                         {socketConnected ? "Live" : "…"}
                     </div>
                     <ThemeToggle />
                 </header>
 
                 <div className="hidden items-center justify-end px-8 pt-4 md:flex">
-                    <div role="status" className={cn("flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold", socketConnected ? "bg-[#DFE9D5] text-[#4C2E05] dark:bg-[#5A3A0C] dark:text-[#DFE9D5]" : "bg-destructive/10 text-destructive")}>
-                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#4C2E05] dark:bg-[#BEE7B8] axiom-live-dot" : "bg-destructive animate-pulse")} />
+                    <div role="status" className={cn("flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold", socketConnected ? "bg-[#DBEACF] text-[#243D38] dark:bg-[#345650] dark:text-[#DBEACF]" : "bg-destructive/10 text-destructive")}>
+                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#243D38] dark:bg-[#C5EDAC] axiom-live-dot" : "bg-destructive animate-pulse")} />
                         {socketConnected ? "Live sync on" : "Connecting…"}
                     </div>
                 </div>
@@ -149,14 +149,14 @@ function Shell() {
                 </main>
 
                 {/* Phone bottom tab bar */}
-                <nav aria-label="Organiser" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t border-[#6B4A1A] bg-[#4C2E05] pb-[env(safe-area-inset-bottom)] text-[#EDF4E6] md:hidden dark:bg-[#2A1A03]">
+                <nav aria-label="Organiser" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t border-[#47695F] bg-[#243D38] pb-[env(safe-area-inset-bottom)] text-[#EEF8E4] md:hidden dark:bg-[#101E1B]">
                     {tabs.map((t) => (
-                        <Link key={t.path} to={t.path} aria-current={t.active ? "page" : undefined} className={cn("flex flex-col items-center justify-center gap-0.5 text-xs font-semibold", t.active ? "text-[#EDF4E6]" : "text-[#D0DDC3]")}>
-                            <span className={cn("grid h-7 w-12 place-items-center rounded-full", t.active && "bg-[#6B4A1A]")}><t.icon size={18} aria-hidden="true" /></span>{t.label}
+                        <Link key={t.path} to={t.path} aria-current={t.active ? "page" : undefined} className={cn("flex flex-col items-center justify-center gap-0.5 text-xs font-semibold", t.active ? "text-[#EEF8E4]" : "text-[#C9DEC1]")}>
+                            <span className={cn("grid h-7 w-12 place-items-center rounded-full", t.active && "bg-[#47695F]")}><t.icon size={18} aria-hidden="true" /></span>{t.label}
                         </Link>
                     ))}
-                    <button type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-current={moreActive ? "page" : undefined} className={cn("flex flex-col items-center justify-center gap-0.5 text-xs font-semibold", moreActive ? "text-[#EDF4E6]" : "text-[#D0DDC3]")}>
-                        <span className={cn("grid h-7 w-12 place-items-center rounded-full", moreActive && "bg-[#6B4A1A]")}><Ellipsis size={18} aria-hidden="true" /></span>More
+                    <button type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-current={moreActive ? "page" : undefined} className={cn("flex flex-col items-center justify-center gap-0.5 text-xs font-semibold", moreActive ? "text-[#EEF8E4]" : "text-[#C9DEC1]")}>
+                        <span className={cn("grid h-7 w-12 place-items-center rounded-full", moreActive && "bg-[#47695F]")}><Ellipsis size={18} aria-hidden="true" /></span>More
                     </button>
                 </nav>
 
