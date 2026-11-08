@@ -18,25 +18,6 @@ const FAQ = [
     {q: "Who can take part?", a: E.eligibility},
 ];
 
-function FactGrid({className = ""}) {
-    const facts = [
-        ["When", E.dates],
-        ["Where", E.venueShort],
-        ["Format", E.format],
-        ["Prize pool", E.prizePool],
-    ];
-    return (
-        <dl className={className}>
-            {facts.map(([k, v]) => (
-                <div key={k} className="rounded-[14px] border border-border bg-card px-3 py-2.5 md:px-0 md:py-0 md:border-0 md:bg-transparent md:rounded-none">
-                    <dt className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground md:text-xs">{k}</dt>
-                    <dd className="m-0 mt-0.5 font-heading text-[17px] font-bold text-primary md:mt-1 md:text-xl">{v}</dd>
-                </div>
-            ))}
-        </dl>
-    );
-}
-
 export default function LandingPage() {
     const heroCta = useRef(null);
     const phoneCta = useRef(null);
@@ -86,17 +67,15 @@ export default function LandingPage() {
                     <p className="hidden max-w-[520px] text-[19px] leading-relaxed text-muted-foreground md:block">
                         {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google, add two details, and you're in.
                     </p>
-                    <div id="hero-cta" ref={heroCta} className="hidden max-w-[520px] flex-col gap-3 rounded-3xl border-2 border-[#7BA05B] bg-secondary p-5 md:flex">
+                    <div id="hero-cta" ref={heroCta} className="hidden max-w-[520px] md:block">
                         <GoogleAuthButton variant="hero" />
-                        <p className="m-0 text-sm leading-snug text-muted-foreground"><strong className="text-foreground">Free · about 1 minute · Google sign-in only.</strong> Already registered? The same button signs you back in.</p>
                     </div>
-                    <FactGrid className="grid grid-cols-2 gap-2 md:hidden" />
                 </div>
 
                 {/* Panel: on phones this holds headline + CTA; on desktop it is the sculpture + facts */}
                 <div className="relative order-1 flex min-h-[560px] flex-col justify-between overflow-hidden rounded-[28px] bg-[#0D4C3C] p-5 text-[#F4F1EB] md:order-2 md:min-h-[520px] md:justify-end md:p-0">
                     <div aria-hidden="true" className="absolute inset-0 opacity-50 md:opacity-[0.55]" style={{backgroundImage: "linear-gradient(#2D5A4A 1px, transparent 1px), linear-gradient(90deg, #2D5A4A 1px, transparent 1px)", backgroundSize: "40px 40px"}} />
-                    <Sculpture figure="vidyadevi" eager className="!absolute -right-10 top-2.5 !h-[420px] !w-auto opacity-55 mix-blend-luminosity md:right-[6%] md:top-auto md:bottom-0 md:!h-full md:max-w-[70%] md:opacity-90 md:object-bottom" />
+                    <Sculpture figure="shiva-music" eager className="!absolute -right-10 top-2.5 !h-[420px] !w-auto opacity-55 mix-blend-luminosity md:right-[6%] md:top-auto md:bottom-0 md:!h-full md:max-w-[70%] md:opacity-90 md:object-bottom" />
 
                     <div className="relative flex flex-col gap-3.5 md:hidden">
                         <p className="inline-flex items-center gap-2 self-start rounded-full bg-[#7BA05B] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-[#0F2A22]"><span aria-hidden="true" className="h-[7px] w-[7px] rounded-full bg-[#0D4C3C]" />Registrations open</p>
@@ -106,14 +85,8 @@ export default function LandingPage() {
 
                     <div className="relative mt-6 flex flex-col gap-2.5 md:hidden">
                         <div ref={phoneCta}><GoogleAuthButton variant="hero" /></div>
-                        <p className="m-0 mt-1 text-center text-[13px] text-[#E4E0D6]">Free · ~1 minute · new or returning, same button</p>
                     </div>
 
-                    <dl className="relative m-5 hidden grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-4 rounded-[18px] bg-[#F4F1EB] p-5 text-[#0D4C3C] md:grid">
-                        {[["When", E.dates], ["Where", E.venue], ["Format", E.format], ["Prize pool", E.prizePool]].map(([k, v]) => (
-                            <div key={k}><dt className="text-xs font-semibold uppercase tracking-[0.06em] text-[#4A5F57]">{k}</dt><dd className="m-0 mt-1 font-heading text-xl font-bold">{v}</dd></div>
-                        ))}
-                    </dl>
                 </div>
             </section>
 
@@ -168,8 +141,8 @@ export default function LandingPage() {
             </section>
 
             <section aria-labelledby="cta-title" className="px-4 pb-6 md:px-6">
-                <div className="relative mx-auto flex max-w-[1280px] flex-wrap items-end justify-between gap-8 overflow-hidden rounded-3xl bg-[#0D4C3C] p-5 py-6 text-[#F4F1EB] md:rounded-[32px] md:p-[clamp(32px,6vw,72px)]">
-                    <Sculpture figure="siddhalakshmi" className="!absolute -right-5 -top-2.5 !h-[260px] !w-auto opacity-20 mix-blend-luminosity md:right-[30%] md:-top-5 md:!h-[140%] md:opacity-[0.16]" />
+                <div className="relative mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-8 overflow-hidden rounded-3xl bg-[#0D4C3C] p-5 py-6 text-[#F4F1EB] md:rounded-[32px] md:p-[clamp(32px,6vw,72px)]">
+                    <Sculpture figure="vishnu" className="!absolute -right-5 -top-2.5 !h-[260px] !w-auto opacity-20 mix-blend-luminosity md:right-[26%] md:top-auto md:bottom-0 md:!h-full md:opacity-[0.18]" />
                     <div className="relative flex flex-col gap-2 md:gap-3">
                         <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#7BA05B] md:text-[13px]">The floor is yours</p>
                         <h2 id="cta-title" className="font-display text-[64px] font-normal leading-[0.88] text-[#F4F1EB] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>
@@ -180,7 +153,7 @@ export default function LandingPage() {
 
             <footer className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
                 <p className="m-0">{E.name} · {E.organiserLong} · {E.city}</p>
-                <p className="m-0">Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1972.152" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a></p>
+                <p className="m-0">Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a></p>
             </footer>
 
             {/* Sticky Google bar, phones only, once the hero button has scrolled away */}

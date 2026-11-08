@@ -1,36 +1,36 @@
 /**
- * Indian goddess sculptures used across the identity. All are in the Cleveland Museum of Art's Open Access
+ * Indian deity sculptures used across the identity. All are male figures in the Cleveland Museum of Art's Open Access
  * programme (CC0). Images are cut out from the museum photographs and converted to greyscale.
  * Keep this list in sync with the credits in Footer.jsx and README.md.
  */
 export const FIGURES = {
-  "mother-goddess": {
-    title: "Mother Goddess", accession: "1970.12", place: "Northwestern India, Rajasthan, Udaipur District, c. 600", cmaId: 144908,
-    sources: [["/brand/mother-goddess-480.webp", 480], ["/brand/mother-goddess-960.webp", 960]], width: 960, height: 2673,
+  "shiva-mahadeva": {
+    title: "Standing Shiva Mahadeva", accession: "1989.369", place: "Northern India, Kashmir, 8th century", cmaId: 154793,
+    sources: [["/brand/shiva-mahadeva-sm.webp", 332], ["/brand/shiva-mahadeva-lg.webp", 603]], width: 603, height: 1106,
   },
-  "vidyadevi": {
-    title: "Vidyadevi (Goddess of Learning)", accession: "1972.152", place: "India, Western Rajasthan, 10th–11th century", cmaId: 146703,
-    sources: [["/brand/vidyadevi-sm.webp", 329], ["/brand/vidyadevi-lg.webp", 640]], width: 640, height: 1400,
+  "shiva-music": {
+    title: "Shiva as Lord of Music", accession: "1971.117", place: "South India, Tamil Nadu, Chola period, c. 1000", cmaId: 145695,
+    sources: [["/brand/shiva-music-sm.webp", 335], ["/brand/shiva-music-lg.webp", 609]], width: 609, height: 1113,
   },
-  "yakshi": {
-    title: "Nature Divinity (Yakshi)", accession: "1968.104", place: "India, Mathura, c. 75 CE", cmaId: 143649,
-    sources: [["/brand/yakshi-sm.webp", 270], ["/brand/yakshi-lg.webp", 526]], width: 526, height: 1400,
+  "surya": {
+    title: "Surya, the Sun God", accession: "1965.557", place: "India, Kashmir, early 700s", cmaId: 142033,
+    sources: [["/brand/surya-sm.webp", 223], ["/brand/surya-lg.webp", 405]], width: 405, height: 1327,
   },
-  "ganga": {
-    title: "River Goddess Ganga", accession: "1966.119", place: "Northern India, Uttar Pradesh, Mathura, c. 700", cmaId: 142284,
-    sources: [["/brand/ganga-sm.webp", 341], ["/brand/ganga-lg.webp", 663]], width: 663, height: 1400,
+  "hanuman": {
+    title: "Monkey General Hanuman", accession: "1980.26", place: "Southern India, Chola period, c. 1000", cmaId: 150048,
+    sources: [["/brand/hanuman-sm.webp", 241], ["/brand/hanuman-lg.webp", 439]], width: 439, height: 1118,
   },
-  "lotus-goddess": {
-    title: "Goddess Holding a Lotus", accession: "1984.2", place: "South India, Tamil Nadu, Chola period, c. 950", cmaId: 151924,
-    sources: [["/brand/lotus-goddess-sm.webp", 236], ["/brand/lotus-goddess-lg.webp", 459]], width: 459, height: 1400,
+  "ganesha": {
+    title: "Ganesha", accession: "1970.62", place: "South India, Chola dynasty, c. 1070", cmaId: 145407,
+    sources: [["/brand/ganesha-sm.webp", 329], ["/brand/ganesha-lg.webp", 599]], width: 599, height: 1142,
   },
-  "durga": {
-    title: "Durga Destroying the Buffalo Demon", accession: "1982.45", place: "Northern India, Kashmir or Himachal Pradesh, 9th–10th century", cmaId: 150996,
-    sources: [["/brand/durga-sm.webp", 459], ["/brand/durga-lg.webp", 892]], width: 892, height: 1400,
+  "nataraja": {
+    title: "Nataraja, Shiva as the Lord of Dance", accession: "1930.331", place: "South India, Tamil Nadu, Chola period, 1000s", cmaId: 111811,
+    sources: [["/brand/nataraja-sm.webp", 553], ["/brand/nataraja-lg.webp", 1006]], width: 1006, height: 1149,
   },
-  "siddhalakshmi": {
-    title: "Goddess Siddhalakshmi", accession: "1982.47", place: "India, Kashmir, 1000s", cmaId: 150998,
-    sources: [["/brand/siddhalakshmi-sm.webp", 352], ["/brand/siddhalakshmi-lg.webp", 685]], width: 685, height: 1400,
+  "vishnu": {
+    title: "Vishnu", accession: "1963.104.2", place: "South India, Tamil Nadu, early Chola, 900–950", cmaId: 138692,
+    sources: [["/brand/vishnu-sm.webp", 256], ["/brand/vishnu-lg.webp", 465]], width: 465, height: 1315,
   },
 };
 

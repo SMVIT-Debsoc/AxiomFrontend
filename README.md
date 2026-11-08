@@ -1,6 +1,6 @@
 # AXIOM 4.0 Frontend
 
-SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Better Auth and Socket.IO. The AXIOM 4.0 identity pairs Indian goddess stone sculpture with green digital fields and condensed editorial typography.
+SMVIT Debsoc's competitive-debate and tournament-management frontend. React 19, React Router 7, Vite, Tailwind CSS 3, Framer Motion, Better Auth and Socket.IO. The AXIOM 4.0 identity pairs Indian deity sculpture with green digital fields and condensed editorial typography.
 
 ## Run locally
 
@@ -75,19 +75,19 @@ No font files were originally present; readable body text remains the existing s
 
 Sources: [Bebas Neue](https://github.com/google/fonts/tree/main/ofl/bebasneue), [League Spartan](https://github.com/google/fonts/tree/main/ofl/leaguespartan). Official TTF sources were converted to WOFF, without changing outlines. Body paragraphs do not use condensed display typography.
 
-### Indian goddess sculpture
+### Indian deity sculpture
 
-The user's specific Indian-goddess direction is implemented with **Mother Goddess**, c. 600, schist, Northwestern India, Rajasthan, Udaipur District; Cleveland Museum of Art, accession **1970.12**, Purchase from the J. H. Wade Fund.
+The identity uses male Indian deity sculptures only. The main figure is **Shiva as Lord of Music**, Chola period, c. 1000, South India, Tamil Nadu; Cleveland Museum of Art, accession **1971.117** (CC0 Open Access).
 
-- [Museum record](https://www.clevelandart.org/art/1970.12)
-- [Museum API: CC0 and image metadata](https://openaccess-api.clevelandart.org/api/artworks/?accession_number=1970.12)
-- Source: museum's `1970.12_print.jpg` photograph, delivered through the museum's responsive image endpoint at 1920px. The unprocessed photograph is not shipped.
-- Production assets: `public/brand/mother-goddess-480.webp` and `mother-goddess-960.webp`.
-- Processing: grayscale conversion, a manually traced outer silhouette, color-assisted masking of enclosed photographic negative spaces, removal of the photographic backdrop/museum stand, proportional resizing and WebP compression. Weathering and carved texture remain; no texture smoothing, synthetic reconstruction or historical relabeling.
-- Used in the entry poster, public editorial transition, registration/authentication frames and quieter workspace accents. Full-figure compositions retain the head; secondary crops are controlled by their section container. Phone art is repositioned beside the text, not simply scaled from desktop.
+- [Museum record](https://www.clevelandart.org/art/1971.117)
+- [Museum API: CC0 and image metadata](https://openaccess-api.clevelandart.org/api/artworks/?accession_number=1971.117)
+- Source: each museum `<accession>_print.jpg` photograph. The unprocessed photographs are not shipped.
+- Production assets: `public/brand/<figure>-sm.webp` and `<figure>-lg.webp` (see `src/components/brand/figures.js`).
+- Processing: background removal with the open `isnet-general-use` segmentation model, grayscale conversion with a light tonal stretch, proportional resizing and WebP compression. Carved and cast texture remains; no smoothing, synthetic reconstruction or historical relabeling.
+- Used in the landing hero, public editorial sections, completion/authentication frames and quieter workspace accents. Phone art is repositioned beside the text, not simply scaled from desktop.
 - `Sculpture.jsx` supplies responsive sources, explicit intrinsic dimensions, eager/high-priority loading only for the entry hero and lazy loading elsewhere. Imagery is decorative (`alt=""`), with visible museum attribution in the colophon/footer.
 
-The museum identifies the work as Mother Goddess; the site does not assign it to an unsupported specific deity or claim a historical association with debating. No Roman image, questionable stock asset, or fabricated religious history is included.
+The museum titles are used as given; the site claims no historical association with debating. No questionable stock asset or fabricated religious history is included.
 
 ### Motion and accessibility
 
@@ -131,13 +131,13 @@ All figures are from the Cleveland Museum of Art Open Access programme (CC0), cu
 
 | Figure | Accession | Where it appears |
 |---|---|---|
-| Mother Goddess, Rajasthan, c. 600 | 1970.12 | Landing hero, footer |
-| Nature Divinity (Yakshi), Mathura, c. 75 CE | 1968.104 | Landing "discipline", sign-up, empty states |
-| Vidyadevi (Goddess of Learning), Rajasthan, 10th–11th c. | 1972.152 | Landing "heritage", get-started, empty states |
-| Durga Destroying the Buffalo Demon, Kashmir/Himachal, 9th–10th c. | 1982.45 | Landing "built for the round" |
-| Goddess Siddhalakshmi, Kashmir, 1000s | 1982.47 | Landing closing section, admin dashboard |
-| Goddess Holding a Lotus, Chola, c. 950 | 1984.2 | About, dashboard panel, empty states |
-| River Goddess Ganga, Mathura, c. 700 | 1966.119 | Sign-in, dashboard profile card |
+| Shiva as Lord of Music, Chola, c. 1000 | 1971.117 | Landing hero, "heritage" section |
+| Standing Shiva Mahadeva, Kashmir, 8th c. | 1989.369 | Default figure, empty states |
+| Surya, the Sun God, Kashmir, early 700s | 1965.557 | Auth frame, empty states |
+| Nataraja, Shiva as the Lord of Dance, Chola, 1000s | 1930.331 | Landing "built for the round" |
+| Vishnu, Tamil Nadu, 900–950 | 1963.104.2 | Landing closing section, admin dashboard, profile completion |
+| Ganesha, Chola, c. 1070 | 1970.62 | About, dashboard panel, empty states |
+| Monkey General Hanuman, Chola, c. 1000 | 1980.26 | Workspace accents |
 
 Museum records: `https://www.clevelandart.org/art/<accession>`. The museum titles are used as given; no specific deity or debating association is claimed beyond them.
 

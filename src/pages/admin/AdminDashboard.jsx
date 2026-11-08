@@ -133,7 +133,7 @@ export default function AdminDashboard() {
         {/* Quiet editorial sculpture overview accent */}
         <div className="absolute right-0 top-0 bottom-0 w-36 md:w-56 opacity-15 pointer-events-none overflow-hidden select-none">
           <Sculpture
-            figure="siddhalakshmi"
+            figure="vishnu"
             variant="portrait"
             className="w-full h-full object-cover object-top grayscale contrast-125"
           />

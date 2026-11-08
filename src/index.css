@@ -736,3 +736,35 @@
   .dark .ax-chip--ok { background: #1C4A3A; color: #E6EEDB; }
   .dark .ax-chip--warn { background: #4a3a14; color: #F6EBD6; }
 }
+
+/* ---------- Google CTA: pulsing moss ring + light sheen so the main action is the first thing the eye lands on ---------- */
+@keyframes axiom-cta-ring {
+  0% { box-shadow: 0 0 0 0 rgb(123 160 91 / .75); }
+  70%, 100% { box-shadow: 0 0 0 18px rgb(123 160 91 / 0); }
+}
+@keyframes axiom-cta-sheen {
+  0%, 45% { background-position: 160% 0; }
+  100% { background-position: -60% 0; }
+}
+[data-google-cta="hero"], [data-google-cta="bar"], [data-google-cta="onDark"] {
+  position: relative;
+  transition: transform 180ms var(--axiom-ease, ease), box-shadow 180ms var(--axiom-ease, ease), background-color 180ms;
+}
+[data-google-cta="hero"]::before, [data-google-cta="bar"]::before, [data-google-cta="onDark"]::before,
+[data-google-cta="hero"]::after, [data-google-cta="bar"]::after, [data-google-cta="onDark"]::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+}
+[data-google-cta="hero"]::before, [data-google-cta="bar"]::before, [data-google-cta="onDark"]::before {
+  animation: axiom-cta-ring 2.2s ease-out infinite;
+}
+[data-google-cta="hero"]::after, [data-google-cta="onDark"]::after {
+  background: linear-gradient(105deg, transparent 38%, rgb(123 160 91 / .38) 50%, transparent 62%);
+  background-size: 250% 100%; animation: axiom-cta-sheen 3.6s ease-in-out infinite;
+}
+[data-google-cta="bar"]::after {
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / .3) 50%, transparent 62%);
+  background-size: 250% 100%; animation: axiom-cta-sheen 3.6s ease-in-out infinite;
+}
+[data-google-cta="hero"]:hover:not(:disabled), [data-google-cta="bar"]:hover:not(:disabled), [data-google-cta="onDark"]:hover:not(:disabled) { transform: translateY(-3px) scale(1.015); }
+[data-google-cta="hero"]:active:not(:disabled), [data-google-cta="bar"]:active:not(:disabled), [data-google-cta="onDark"]:active:not(:disabled) { transform: translateY(0) scale(.98); }
+[data-google-cta][aria-busy="true"]::before, [data-google-cta][aria-busy="true"]::after { animation: none; }

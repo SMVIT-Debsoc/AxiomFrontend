@@ -561,7 +561,7 @@ export default function DashboardHome() {
             <Link to="/dashboard/profile" className="axiom-button axiom-button--outline axiom-press">Profile</Link>
           </div>
         </div>
-        <Sculpture figure="lotus-goddess" variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
+        <Sculpture figure="ganesha" variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
       </aside>
     </div>
   );

@@ -181,7 +181,7 @@ export default function CompleteProfile() {
     return (
         <div className="grid min-h-svh bg-background font-sans text-foreground lg:grid-cols-[520px_1fr]">
             <aside className="relative hidden flex-col gap-6 overflow-hidden bg-[#0D4C3C] p-10 text-[#F4F1EB] lg:flex">
-                <Sculpture figure="siddhalakshmi" className="!absolute -bottom-5 -right-[60px] !h-[640px] !w-auto opacity-30 mix-blend-luminosity" />
+                <Sculpture figure="vishnu" className="!absolute -bottom-5 -right-[60px] !h-[640px] !w-auto opacity-30 mix-blend-luminosity" />
                 <Axiom40Logo variant="nav" className="relative !w-[120px] text-[#F4F1EB]" />
                 <Steps step={1} />
                 <p className="relative mb-0 mt-auto font-display text-[64px] leading-[0.9]">Clarity<br />under pressure.</p>

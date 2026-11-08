@@ -3,7 +3,7 @@ import {ArrowUpRight} from "lucide-react";
 import Sculpture from "../brand/Sculpture";
 import {figureFor} from "../brand/figures";
 
-const FIGURES = ["vidyadevi", "yakshi", "ganga", "lotus-goddess", "siddhalakshmi", "durga"];
+const FIGURES = ["shiva-music", "surya", "hanuman", "ganesha", "vishnu", "nataraja"];
 
 /**
  * Bottom-anchored banner for workspace pages. The page stack is at least viewport tall, so on short

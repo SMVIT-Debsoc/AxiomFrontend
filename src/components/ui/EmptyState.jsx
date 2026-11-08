@@ -3,10 +3,10 @@ import Sculpture from "../brand/Sculpture";
 import {figureFor} from "../brand/figures";
 
 // Upright, single figures that read well inside the round halo.
-const EMPTY_FIGURES = ["mother-goddess", "lotus-goddess", "yakshi", "vidyadevi"];
+const EMPTY_FIGURES = ["shiva-mahadeva", "ganesha", "surya", "shiva-music"];
 
 /**
- * Themed empty state: a green halo with slowly turning rays behind the Mother Goddess sculpture
+ * Themed empty state: a green halo with slowly turning rays behind a deity sculpture
  * (full) or an icon (`compact`, `row`). `row` lays the halo beside the copy for small panels.
  */
 export default function EmptyState({title, description, icon: Icon, action, compact = false, row = false, className}) {

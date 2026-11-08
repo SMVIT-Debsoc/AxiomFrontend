@@ -302,7 +302,7 @@
 .axiom-registration-art img { filter: drop-shadow(5px 5px 0 rgb(15 42 34 / .8)); }
 .axiom-registration-panel { border-block: 3px solid var(--nb-line); }
 
-/* ----- Secondary goddess figures on the public pages ----- */
+/* ----- Secondary deity figures on the public pages ----- */
 .axiom-aside-art, .axiom-about-art, .axiom-cta-art { display: none; pointer-events: none; user-select: none; }
 @media (min-width: 1024px) {
   .axiom-aside-art { display: block; height: 19rem; width: auto; margin-top: 2.5rem; filter: drop-shadow(6px 6px 0 rgb(15 42 34 / .85)); }

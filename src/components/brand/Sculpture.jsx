@@ -1,7 +1,7 @@
 import {FIGURES} from "./figures";
 
-export default function Sculpture({className = "", variant = "portrait", figure = "mother-goddess", eager = false}) {
-    const data = FIGURES[figure] || FIGURES["mother-goddess"];
+export default function Sculpture({className = "", variant = "portrait", figure = "shiva-mahadeva", eager = false}) {
+    const data = FIGURES[figure] || FIGURES["shiva-mahadeva"];
     const largest = data.sources[data.sources.length - 1];
     return (
         <img

@@ -3,7 +3,7 @@
  *
  * Every account without its own photo gets a small sculptural portrait drawn from the brand
  * palette: a halo (prabha) behind a stylised bust with a headdress, jewellery and drapery, in the
- * manner of the Indian goddess sculpture used across the identity. The result is a pure function
+ * manner of the Indian deity sculpture used across the identity. The result is a pure function
  * of the seed (email, id or name), so the same person looks the same everywhere without storage.
  *
  * Variety: 12 palettes x 8 halos x 8 headdresses x 6 jewellery sets x 4 drapery x 3 face shapes
