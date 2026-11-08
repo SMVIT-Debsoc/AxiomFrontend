@@ -10,7 +10,7 @@ import Sculpture from "../../components/brand/Sculpture";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {EVENT_CONFIG as E, COLLEGE_SUGGESTIONS} from "../../config/event";
 
-const inputBase = "box-border h-[52px] w-full rounded-xl border-[1.5px] border-input bg-card px-3.5 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-[#C5EDAC] lg:h-[54px] lg:px-4 lg:text-[17px]";
+const inputBase = "box-border h-[52px] w-full rounded-xl border-[1.5px] border-input bg-card px-3.5 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-[#B9F5D8] lg:h-[54px] lg:px-4 lg:text-[17px]";
 
 // Keep only the 10 national digits; tolerate pasted "+91 98765 43210" / "098765..." values.
 function nationalDigits(value) {
@@ -27,8 +27,8 @@ function Steps({step}) {
             {items.map((label, i) => {
                 const state = i < step ? "done" : i === step ? "current" : "todo";
                 return (
-                    <li key={label} aria-current={state === "current" ? "step" : undefined} className={`flex items-center gap-3.5 text-base ${state === "current" ? "font-bold text-[#EEF8E4]" : "text-[#C9DEC1]"}`}>
-                        <span aria-hidden="true" className={`grid h-8 w-8 place-items-center rounded-full text-sm ${state === "done" ? "bg-[#C5EDAC] text-[#172923]" : state === "current" ? "border-2 border-[#EEF8E4]" : "border-2 border-[#7A918D]"}`}>
+                    <li key={label} aria-current={state === "current" ? "step" : undefined} className={`flex items-center gap-3.5 text-base ${state === "current" ? "font-bold text-[#EAFBF5]" : "text-[#BDD9CA]"}`}>
+                        <span aria-hidden="true" className={`grid h-8 w-8 place-items-center rounded-full text-sm ${state === "done" ? "bg-[#B9F5D8] text-[#141510]" : state === "current" ? "border-2 border-[#EAFBF5]" : "border-2 border-[#6B8F71]"}`}>
                             {state === "done" ? <Check size={16} /> : i + 1}
                         </span>
                         {label}
@@ -146,20 +146,20 @@ export default function CompleteProfile() {
         const ev = done.event;
         return (
             <main className="mx-auto flex min-h-svh max-w-xl flex-col gap-4 bg-background px-5 py-6 font-sans text-foreground">
-                <div className="flex flex-col gap-3.5 rounded-3xl bg-[#243D38] p-6 text-[#EEF8E4]">
-                    <div aria-hidden="true" className="grid h-[52px] w-[52px] place-items-center rounded-full bg-[#C5EDAC] text-[#172923]"><Check size={28} strokeWidth={3} /></div>
-                    <h1 className="font-display text-[56px] font-normal leading-[0.9] text-[#EEF8E4]">You're in, {firstName}.</h1>
-                    <p className="m-0 text-base leading-normal text-[#C9DEC1]">
+                <div className="flex flex-col gap-3.5 rounded-3xl bg-[#1D1E18] p-6 text-[#EAFBF5]">
+                    <div aria-hidden="true" className="grid h-[52px] w-[52px] place-items-center rounded-full bg-[#B9F5D8] text-[#141510]"><Check size={28} strokeWidth={3} /></div>
+                    <h1 className="font-display text-[56px] font-normal leading-[0.9] text-[#EAFBF5]">You're in, {firstName}.</h1>
+                    <p className="m-0 text-base leading-normal text-[#BDD9CA]">
                         {ev ? <>You're registered for {ev.name}. </> : <>Your profile is saved. </>}
                         We've saved {form.college.trim() || "your college"} and your number.
                     </p>
                     {done.debaterId && (
-                        <div className="flex items-center justify-between rounded-[14px] bg-[#47695F] px-4 py-3.5">
+                        <div className="flex items-center justify-between rounded-[14px] bg-[#4A5646] px-4 py-3.5">
                             <div>
-                                <p className="m-0 text-xs font-semibold uppercase tracking-[0.06em] text-[#C9DEC1]">Your debater ID</p>
+                                <p className="m-0 text-xs font-semibold uppercase tracking-[0.06em] text-[#BDD9CA]">Your debater ID</p>
                                 <p className="m-0 mt-0.5 font-heading text-[26px] font-bold tracking-[0.06em]">{done.debaterId}</p>
                             </div>
-                            <p className="m-0 text-right text-[13px] text-[#C9DEC1]">Show this<br />at the desk</p>
+                            <p className="m-0 text-right text-[13px] text-[#BDD9CA]">Show this<br />at the desk</p>
                         </div>
                     )}
                 </div>
@@ -171,7 +171,7 @@ export default function CompleteProfile() {
                     </p>
                 </div>
                 <div className="mt-auto flex flex-col gap-2.5">
-                    <Link to="/dashboard" replace className="grid h-14 place-items-center rounded-2xl bg-[#243D38] text-[17px] font-bold text-[#EEF8E4] no-underline hover:bg-[#47695F] dark:bg-[#C5EDAC] dark:text-[#172923]">Go to my dashboard</Link>
+                    <Link to="/dashboard" replace className="grid h-14 place-items-center rounded-2xl bg-[#1D1E18] text-[17px] font-bold text-[#EAFBF5] no-underline hover:bg-[#4A5646] dark:bg-[#B9F5D8] dark:text-[#141510]">Go to my dashboard</Link>
                     <Link to={ev ? `/dashboard/events/${encodeURIComponent(ev.id)}` : "/dashboard/events"} replace className="grid h-12 place-items-center rounded-2xl border-[1.5px] border-input text-[15px] font-semibold text-primary no-underline">{ev ? `View ${ev.name}` : "Browse events"}</Link>
                 </div>
             </main>
@@ -180,17 +180,17 @@ export default function CompleteProfile() {
 
     return (
         <div className="grid min-h-svh bg-background font-sans text-foreground lg:grid-cols-[520px_1fr]">
-            <aside className="relative hidden flex-col gap-6 overflow-hidden bg-[#243D38] p-10 text-[#EEF8E4] lg:flex">
+            <aside className="relative hidden flex-col gap-6 overflow-hidden bg-[#1D1E18] p-10 text-[#EAFBF5] lg:flex">
                 <Sculpture figure="vishnu" className="!absolute -bottom-5 -right-[60px] !h-[640px] !w-auto opacity-30 mix-blend-luminosity" />
-                <Axiom40Logo variant="nav" className="relative !w-[120px] text-[#EEF8E4]" />
+                <Axiom40Logo variant="nav" className="relative !w-[120px] text-[#EAFBF5]" />
                 <Steps step={1} />
                 <p className="relative mb-0 mt-auto font-display text-[64px] leading-[0.9]">Clarity<br />under pressure.</p>
             </aside>
 
             <form onSubmit={submit} noValidate className="flex min-h-svh min-w-0 flex-col lg:min-h-0 lg:items-center lg:justify-center lg:p-10">
                 <div className="flex items-center gap-3 px-5 pt-5 lg:hidden">
-                    <div aria-hidden="true" className="h-1.5 flex-1 rounded-sm bg-[#243D38] dark:bg-[#C5EDAC]" />
-                    <div aria-hidden="true" className="h-1.5 flex-1 rounded-sm bg-[#C5EDAC]" />
+                    <div aria-hidden="true" className="h-1.5 flex-1 rounded-sm bg-[#1D1E18] dark:bg-[#B9F5D8]" />
+                    <div aria-hidden="true" className="h-1.5 flex-1 rounded-sm bg-[#B9F5D8]" />
                     <p className="m-0 whitespace-nowrap text-[13px] font-semibold text-muted-foreground">Last step</p>
                 </div>
 
@@ -215,7 +215,7 @@ export default function CompleteProfile() {
                         {COLLEGE_SUGGESTIONS.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                                 {COLLEGE_SUGGESTIONS.map((c) => (
-                                    <button key={c} type="button" onClick={() => set("college", c)} aria-pressed={form.college === c} className={`min-h-10 rounded-full border px-3.5 text-sm font-medium ${form.college === c ? "border-[#47695F] bg-[#47695F] text-[#EEF8E4]" : "border-input bg-card text-foreground"}`}>{c}</button>
+                                    <button key={c} type="button" onClick={() => set("college", c)} aria-pressed={form.college === c} className={`min-h-10 rounded-full border px-3.5 text-sm font-medium ${form.college === c ? "border-[#4A5646] bg-[#4A5646] text-[#EAFBF5]" : "border-input bg-card text-foreground"}`}>{c}</button>
                                 ))}
                             </div>
                         )}
@@ -239,14 +239,14 @@ export default function CompleteProfile() {
                     {error && <p role="alert" className="m-0 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-sm font-medium text-destructive">{error}</p>}
 
                     <div className="hidden flex-col gap-3 lg:flex">
-                        <button type="submit" disabled={!ready || saving} className="flex h-[60px] items-center justify-center gap-2 rounded-2xl bg-[#243D38] text-lg font-bold text-[#EEF8E4] disabled:cursor-not-allowed disabled:bg-[#B6CDAE] disabled:text-[#4E6761] dark:bg-[#C5EDAC] dark:text-[#172923] dark:disabled:bg-muted dark:disabled:text-muted-foreground">{saving && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}Finish registration</button>
+                        <button type="submit" disabled={!ready || saving} className="flex h-[60px] items-center justify-center gap-2 rounded-2xl bg-[#1D1E18] text-lg font-bold text-[#EAFBF5] disabled:cursor-not-allowed disabled:bg-[#AAC9B6] disabled:text-[#44594A] dark:bg-[#B9F5D8] dark:text-[#141510] dark:disabled:bg-muted dark:disabled:text-muted-foreground">{saving && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}Finish registration</button>
                         <p className="m-0 text-center text-sm text-muted-foreground" aria-live="polite">{hint}</p>
                     </div>
                 </div>
 
                 {/* Sticky finish bar on phones */}
                 <div className="sticky bottom-0 flex flex-col gap-2 border-t border-border bg-background px-5 pb-6 pt-4 lg:hidden">
-                    <button type="submit" disabled={!ready || saving} className="flex h-[58px] items-center justify-center gap-2 rounded-2xl bg-[#243D38] text-lg font-bold text-[#EEF8E4] disabled:cursor-not-allowed disabled:bg-[#B6CDAE] disabled:text-[#4E6761] dark:bg-[#C5EDAC] dark:text-[#172923] dark:disabled:bg-muted dark:disabled:text-muted-foreground">{saving && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}Finish registration</button>
+                    <button type="submit" disabled={!ready || saving} className="flex h-[58px] items-center justify-center gap-2 rounded-2xl bg-[#1D1E18] text-lg font-bold text-[#EAFBF5] disabled:cursor-not-allowed disabled:bg-[#AAC9B6] disabled:text-[#44594A] dark:bg-[#B9F5D8] dark:text-[#141510] dark:disabled:bg-muted dark:disabled:text-muted-foreground">{saving && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}Finish registration</button>
                     <p className="m-0 text-center text-[13px] text-muted-foreground" aria-live="polite">{hint}</p>
                     <button type="button" onClick={() => signOut().catch(() => navigate("/", {replace: true}))} className="min-h-10 text-[13px] font-semibold text-primary underline underline-offset-4">Not you? Sign out</button>
                 </div>

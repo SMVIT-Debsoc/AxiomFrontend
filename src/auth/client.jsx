@@ -88,35 +88,35 @@ const GOOGLE_VARIANTS = {
   // Large hero button on the dark-green panel, moss ring
   hero: {
     wrap: "w-full",
-    button: "flex h-[68px] w-full items-center justify-center gap-3.5 rounded-[18px] bg-[#EEF8E4] px-5 text-[19px] font-extrabold text-[#243D38] shadow-[0_0_0_5px_#C5EDAC,0_16px_30px_rgba(0,0,0,.33)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B0DA98] disabled:opacity-70 md:h-[72px] md:text-[21px]",
-    icon: "h-[42px] w-[42px] border border-[#C5DABD]",
+    button: "flex h-[68px] w-full items-center justify-center gap-3.5 rounded-[18px] bg-[#EAFBF5] px-5 text-[19px] font-extrabold text-[#1D1E18] shadow-[0_0_0_5px_#B9F5D8,0_16px_30px_rgba(0,0,0,.33)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2] disabled:opacity-70 md:h-[72px] md:text-[21px]",
+    icon: "h-[42px] w-[42px] border border-[#B8D5C5]",
     svg: 26,
   },
   // Compact pill in the header
   header: {
     wrap: "",
-    button: "inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-[#243D38] py-0 pl-1.5 pr-4 text-sm font-bold text-[#EEF8E4] transition hover:shadow-[0_0_0_3px_#C5EDAC] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C5EDAC] disabled:opacity-70",
+    button: "inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-[#1D1E18] py-0 pl-1.5 pr-4 text-sm font-bold text-[#EAFBF5] transition hover:shadow-[0_0_0_3px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B9F5D8] disabled:opacity-70",
     icon: "h-8 w-8",
     svg: 18,
   },
   // Sticky bottom bar on phones
   bar: {
     wrap: "w-full",
-    button: "flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-[#243D38] text-lg font-extrabold text-[#EEF8E4] shadow-[0_0_0_4px_#C5EDAC] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B0DA98] disabled:opacity-70",
+    button: "flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-[#1D1E18] text-lg font-extrabold text-[#EAFBF5] shadow-[0_0_0_4px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2] disabled:opacity-70",
     icon: "h-[38px] w-[38px]",
     svg: 22,
   },
   // On a dark jungle panel
   onDark: {
     wrap: "",
-    button: "inline-flex min-h-[60px] items-center gap-3.5 rounded-[14px] bg-[#EEF8E4] px-6 text-lg font-bold text-[#243D38] transition hover:bg-white hover:shadow-[0_0_0_3px_#C5EDAC] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C5EDAC] disabled:opacity-70",
-    icon: "h-9 w-9 border border-[#C5DABD]",
+    button: "inline-flex min-h-[60px] items-center gap-3.5 rounded-[14px] bg-[#EAFBF5] px-6 text-lg font-bold text-[#1D1E18] transition hover:bg-white hover:shadow-[0_0_0_3px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B9F5D8] disabled:opacity-70",
+    icon: "h-9 w-9 border border-[#B8D5C5]",
     svg: 22,
   },
   // Default, used anywhere else
   default: {
     wrap: "w-full",
-    button: "flex min-h-[52px] w-full items-center justify-center gap-3 rounded-2xl bg-[#243D38] px-5 text-base font-bold text-[#EEF8E4] shadow-[0_0_0_3px_#C5EDAC] transition hover:bg-[#47695F] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B0DA98] disabled:opacity-70",
+    button: "flex min-h-[52px] w-full items-center justify-center gap-3 rounded-2xl bg-[#1D1E18] px-5 text-base font-bold text-[#EAFBF5] shadow-[0_0_0_3px_#B9F5D8] transition hover:bg-[#4A5646] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2] disabled:opacity-70",
     icon: "h-9 w-9",
     svg: 22,
   },
@@ -130,7 +130,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
   // Google is the only sign-in path, so the button is always rendered. When the
   // deployment has not enabled it (VITE_GOOGLE_AUTH_ENABLED !== "true") say so plainly.
   if (!googleAuthEnabled) {
-    return <p role="alert" className="rounded-xl border border-[#E8CE96] bg-[#EBF6E0] px-4 py-3 text-sm font-medium text-[#6B4510]">Sign-in is unavailable right now. Please try again later or ask an organiser for help.</p>;
+    return <p role="alert" className="rounded-xl border border-[#E8CE96] bg-[#E6F8F1] px-4 py-3 text-sm font-medium text-[#6B4510]">Sign-in is unavailable right now. Please try again later or ask an organiser for help.</p>;
   }
 
   const signInWithGoogle = async () => {

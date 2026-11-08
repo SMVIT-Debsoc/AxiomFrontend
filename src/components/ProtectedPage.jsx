@@ -41,7 +41,7 @@ function ProtectedPage() {
                 style={{
                     marginTop: "2rem",
                     padding: "1rem",
-                    background: "#1C312C",
+                    background: "#262820",
                     borderRadius: "8px",
                 }}
             >
@@ -123,7 +123,7 @@ function ProtectedPage() {
                     style={{
                         marginTop: "2rem",
                         padding: "1rem",
-                        background: "#DBEACF",
+                        background: "#D4EDE1",
                         borderRadius: "8px",
                     }}
                 >

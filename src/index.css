@@ -19,23 +19,23 @@
 
 @layer base {
   :root {
-    /* Palette: Grey Olive #7A918D, Muted Teal #93B1A7, Muted Teal 2 #99C2A2, Tea Green #C5EDAC, Tea Green 2 #DBFEB8,
-       plus a derived deep teal ink (#172923 / #243D38) for text and primary buttons. Legacy names kept: jungle = deep teal, moss and green-* = tea green accent, alabaster = pale tea-green page tint. */
-    --axiom-jungle: #243D38;
-    --axiom-slate: #47695F;
-    --axiom-moss: #C5EDAC;
-    --axiom-alabaster: #EEF8E4;
-    --axiom-soft-green: #DBEACF;
-    --axiom-warn-surface: #EBF6E0;
+    /* Palette: Carbon Black #1D1E18, Dusty Olive #6B8F71, Celadon #AAD2BA, Frozen Water #D9FFF5, Celadon 2 #B9F5D8.
+       Legacy names kept: jungle = carbon black (text/dark surfaces), moss and green-* = celadon-2 accent (ink text on it), alabaster = frozen-water page tint. */
+    --axiom-jungle: #1D1E18;
+    --axiom-slate: #4A5646;
+    --axiom-moss: #B9F5D8;
+    --axiom-alabaster: #EAFBF5;
+    --axiom-soft-green: #D4EDE1;
+    --axiom-warn-surface: #E6F8F1;
     --axiom-warn-text: #6B4510;
-    --axiom-border: #C5DABD;
+    --axiom-border: #B8D5C5;
     /* Legacy names: green-* is the moss accent (always paired with ink text). */
-    --axiom-green-primary: #C5EDAC;
-    --axiom-green-dark: #7A918D;
-    --axiom-green-light: #B0DA98;
-    --axiom-logo-ink: #172923;
-    --axiom-ink: #172923;
-    --axiom-stone: #EEF8E4;
+    --axiom-green-primary: #B9F5D8;
+    --axiom-green-dark: #6B8F71;
+    --axiom-green-light: #9FE3C2;
+    --axiom-logo-ink: #141510;
+    --axiom-ink: #141510;
+    --axiom-stone: #EAFBF5;
     --axiom-paper: #FFFFFF;
     --font-display: 'Bebas Neue', Impact, sans-serif;
     --font-heading: 'League Spartan', Arial, sans-serif;
@@ -46,64 +46,64 @@
     --axiom-motion: 240ms;
     --axiom-ease: cubic-bezier(.22, 1, .36, 1);
     --radius: .2rem;
-    --primary: 170 26% 19%;
-    --primary-foreground: 90 80% 92%;
-    --axiom-brand-text-light: #243D38;
+    --primary: 70 11% 11%;
+    --primary-foreground: 160 90% 94%;
+    --axiom-brand-text-light: #1D1E18;
     --axiom-error-light: #a51818;
     --destructive: 0 65% 38%;
     --destructive-foreground: 0 0% 100%;
   }
   :root, .light {
     color-scheme: light;
-    --background: 92 65% 94%;
-    --foreground: 168 32% 13%;
-    --card: 92 70% 97%;
-    --card-foreground: 168 32% 13%;
-    --popover: 92 70% 97%;
-    --popover-foreground: 168 32% 13%;
-    --secondary: 100 30% 87%;
-    --secondary-foreground: 168 32% 13%;
-    --muted: 100 30% 87%;
-    --muted-foreground: 168 22% 28%;
-    --accent: 95 64% 84%;
-    --accent-foreground: 168 32% 13%;
-    --border: 150 18% 72%;
-    --input: 170 12% 46%;
+    --background: 160 70% 96%;
+    --foreground: 70 11% 11%;
+    --card: 160 80% 98%;
+    --card-foreground: 70 11% 11%;
+    --popover: 160 80% 98%;
+    --popover-foreground: 70 11% 11%;
+    --secondary: 150 40% 90%;
+    --secondary-foreground: 70 11% 11%;
+    --muted: 150 40% 90%;
+    --muted-foreground: 120 12% 28%;
+    --accent: 151 75% 84%;
+    --accent-foreground: 70 11% 11%;
+    --border: 144 25% 76%;
+    --input: 130 14% 45%;
     --axiom-brand-text: var(--axiom-brand-text-light);
-    --ring: 170 12% 46%;
+    --ring: 130 14% 45%;
     --axiom-error: var(--axiom-error-light);
     --axiom-status-success: var(--axiom-brand-text-light);
     --axiom-status-warning: #6B4510;
     --axiom-status-danger: #9e1b38;
-    --axiom-status-info: #3A5149;
-    --axiom-glass: rgb(238 248 228 / .92);
+    --axiom-status-info: #3A4C3F;
+    --axiom-glass: rgb(234 251 245 / .92);
   }
   .dark {
     color-scheme: dark;
-    --primary: 97 64% 80%;
-    --primary-foreground: 170 30% 10%;
-    --background: 170 28% 8%;
-    --foreground: 90 70% 90%;
-    --card: 170 26% 12%;
-    --card-foreground: 90 70% 90%;
-    --popover: 170 26% 12%;
-    --popover-foreground: 90 70% 90%;
-    --secondary: 170 22% 17%;
-    --secondary-foreground: 90 70% 90%;
-    --muted: 170 22% 17%;
-    --muted-foreground: 150 16% 68%;
-    --accent: 170 22% 20%;
-    --accent-foreground: 90 70% 90%;
-    --border: 170 18% 24%;
-    --input: 170 15% 34%;
+    --primary: 151 75% 84%;
+    --primary-foreground: 70 11% 9%;
+    --background: 70 12% 7%;
+    --foreground: 160 80% 94%;
+    --card: 70 11% 11%;
+    --card-foreground: 160 80% 94%;
+    --popover: 70 11% 11%;
+    --popover-foreground: 160 80% 94%;
+    --secondary: 70 9% 16%;
+    --secondary-foreground: 160 80% 94%;
+    --muted: 70 9% 16%;
+    --muted-foreground: 144 22% 70%;
+    --accent: 70 9% 19%;
+    --accent-foreground: 160 80% 94%;
+    --border: 70 8% 22%;
+    --input: 70 8% 32%;
     --axiom-brand-text: var(--axiom-green-light);
-    --ring: 97 64% 80%;
+    --ring: 151 75% 84%;
     --axiom-error: #ff9c9c;
     --axiom-status-success: var(--axiom-green-light);
     --axiom-status-warning: #e8c077;
-    --axiom-status-danger: #C5DABD;
-    --axiom-status-info: #B2CAAB;
-    --axiom-glass: rgb(16 30 27 / .92);
+    --axiom-status-danger: #B8D5C5;
+    --axiom-status-info: #A5C4B1;
+    --axiom-glass: rgb(14 15 11 / .92);
   }
   * { @apply border-border; }
   html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
@@ -158,9 +158,9 @@
   .axiom-footer a { display: inline-flex; align-items: center; min-height: 44px; }
   .axiom-footer a:hover { color: var(--axiom-green-light); }
   .axiom-footer, .axiom-editorial { --axiom-focus: var(--axiom-green-light); }
-  .axiom-footer-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-top: 1px solid rgb(255 255 255 / .25); padding-top: 1.5rem; font-size: .75rem; color: #93B1A7; }
+  .axiom-footer-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-top: 1px solid rgb(255 255 255 / .25); padding-top: 1.5rem; font-size: .75rem; color: #AAD2BA; }
   .axiom-entry { --axiom-focus: var(--axiom-ink); color: var(--axiom-ink); background: var(--axiom-stone); }
-  .axiom-entry-header { display: flex; align-items: center; justify-content: space-between; min-height: 86px; border-bottom: 1px solid rgb(23 41 35 / .3); background: var(--axiom-green-primary); }
+  .axiom-entry-header { display: flex; align-items: center; justify-content: space-between; min-height: 86px; border-bottom: 1px solid rgb(20 21 16 / .3); background: var(--axiom-green-primary); }
   .axiom-poster { position: relative; overflow: clip; background: var(--axiom-green-primary); min-height: 760px; isolation: isolate; }
   .axiom-poster-grid { position: relative; display: grid; grid-template-columns: 1.25fr 1fr; gap: 2rem; padding-block: 3rem; min-height: 760px; }
   .axiom-poster-brand { position: relative; z-index: 2; }
@@ -171,24 +171,24 @@
   .axiom-poster-note { max-width: 26rem; margin-top: 1.5rem; font-size: .95rem; }
   .axiom-poster-art { position: absolute; width: auto; height: 720px; right: 13%; top: 2rem; z-index: 1; }
   .axiom-poster-index { position: absolute; right: 2.5%; top: 3rem; writing-mode: vertical-rl; }
-  .axiom-poster-access { --axiom-brand-text: var(--axiom-brand-text-light); --axiom-error: var(--axiom-error-light); position: relative; align-self: end; justify-self: end; z-index: 3; width: min(100%, 350px); background: rgb(251 249 245 / .93); border: 1px solid rgb(23 41 35 / .35); padding: 1.5rem; }
+  .axiom-poster-access { --axiom-brand-text: var(--axiom-brand-text-light); --axiom-error: var(--axiom-error-light); position: relative; align-self: end; justify-self: end; z-index: 3; width: min(100%, 350px); background: rgb(251 249 245 / .93); border: 1px solid rgb(20 21 16 / .35); padding: 1.5rem; }
   .axiom-poster-access h2 { font-size: 2.5rem; margin-block: .7rem 1.25rem; }
-  .axiom-role-button { width: 100%; display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-top: 1px solid rgb(23 41 35 / .3); text-align: left; }
+  .axiom-role-button { width: 100%; display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-top: 1px solid rgb(20 21 16 / .3); text-align: left; }
   .axiom-role-button:hover { color: var(--axiom-brand-text); }
   .axiom-role-button > div { flex: 1; }
   .axiom-role-button strong { display: block; font-family: var(--font-heading); font-size: 1.15rem; }
-  .axiom-role-button small { display: block; font-size: .8rem; color: #4E6761; margin-top: .15rem; }
-  .axiom-access-input { width: 100%; padding: .75rem; background: var(--axiom-paper); border: 1px solid #4E6761; margin-block: .5rem 1rem; color: var(--axiom-ink); }
+  .axiom-role-button small { display: block; font-size: .8rem; color: #44594A; margin-top: .15rem; }
+  .axiom-access-input { width: 100%; padding: .75rem; background: var(--axiom-paper); border: 1px solid #44594A; margin-block: .5rem 1rem; color: var(--axiom-ink); }
   .axiom-entry .axiom-button--outline:hover { background: var(--axiom-green-light); }
   .axiom-access-back { display: block; min-height: 44px; font-size: .8rem; }
   .axiom-access-error { font-size: .875rem; color: var(--axiom-error); margin-block: .5rem; }
-  .axiom-access-footer { border-top: 1px solid rgb(23 41 35 / .3); padding-top: 1rem; font-size: .8rem; }
+  .axiom-access-footer { border-top: 1px solid rgb(20 21 16 / .3); padding-top: 1rem; font-size: .8rem; }
   .axiom-access-footer a { text-decoration: underline; text-underline-offset: .2rem; }
   .axiom-principles { padding-block: var(--axiom-section); }
   .axiom-section-top { display: flex; justify-content: space-between; gap: 2rem; border-top: 1px solid currentColor; padding-top: 1rem; margin-bottom: 3rem; }
   .axiom-principles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; }
   .axiom-principles h2 { font-size: clamp(3.5rem, 6vw, 6.5rem); }
-  .axiom-argument { display: grid; grid-template-columns: 3rem 1fr; gap: 1.25rem; padding-block: 1.5rem; border-bottom: 1px solid rgb(23 41 35 / .25); }
+  .axiom-argument { display: grid; grid-template-columns: 3rem 1fr; gap: 1.25rem; padding-block: 1.5rem; border-bottom: 1px solid rgb(20 21 16 / .25); }
   .axiom-argument > span { font-family: var(--font-display); font-size: 2.25rem; }
   .axiom-argument h3 { font-size: 1.5rem; margin-bottom: .5rem; }
   .axiom-argument p { color: hsl(var(--muted-foreground)); max-width: 30rem; }
@@ -197,7 +197,7 @@
   .axiom-editorial-art { position: relative; height: 430px; }
   .axiom-editorial-art img { width: 220px; position: absolute; right: 18%; top: -70px; }
   .axiom-editorial h2 { font-size: clamp(3.5rem, 6.5vw, 7rem); }
-  .axiom-editorial p:not(.axiom-eyebrow) { max-width: 30rem; color: #93B1A7; margin-block: 1.5rem 2rem; }
+  .axiom-editorial p:not(.axiom-eyebrow) { max-width: 30rem; color: #AAD2BA; margin-block: 1.5rem 2rem; }
   .axiom-colophon { font-size: .7rem; color: #B3B3B3; line-height: 1.7; margin-top: 2rem; }
   .axiom-colophon a { text-decoration: underline; }
   .axiom-registration { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: center; padding-block: var(--axiom-section); }
@@ -343,7 +343,7 @@
 .axiom-lift:hover {
   transform: translateY(-3px);
   border-color: hsl(var(--primary) / .55);
-  box-shadow: 0 14px 28px -18px rgb(23 41 35 / .45);
+  box-shadow: 0 14px 28px -18px rgb(20 21 16 / .45);
 }
 .axiom-press { transition: transform 120ms var(--axiom-ease), background-color var(--axiom-motion); }
 .axiom-press:active:not(:disabled) { transform: scale(.97); }
@@ -398,18 +398,18 @@
 
 /* ---------- Neo-brutalist workspace rail, tiles and controls ---------- */
 :root, .light {
-  --neo-tile: #DBEACF;
-  --neo-glyph: #4E6761;
-  --neo-cut: #DBEACF;
-  --neo-edge: #172923;
-  --neo-shadow: #172923;
+  --neo-tile: #D4EDE1;
+  --neo-glyph: #44594A;
+  --neo-cut: #D4EDE1;
+  --neo-edge: #141510;
+  --neo-shadow: #141510;
 }
 .dark {
-  --neo-tile: #2A4640;
-  --neo-glyph: #93B1A7;
-  --neo-cut: #2A4640;
-  --neo-edge: #C5EDAC;
-  --neo-shadow: #C5EDAC;
+  --neo-tile: #2F322A;
+  --neo-glyph: #AAD2BA;
+  --neo-cut: #2F322A;
+  --neo-edge: #B9F5D8;
+  --neo-shadow: #B9F5D8;
 }
 
 .neo-rail {
@@ -548,24 +548,24 @@
 .neo-rail-divider { width: 2rem; height: 2px; border-radius: 2px; background: hsl(var(--border)); }
 
 /* ---------- Dark landing / entry page ---------- */
-.dark .axiom-entry { --axiom-focus: var(--axiom-green-light); --axiom-logo-ink: var(--axiom-green-primary); color: var(--axiom-paper); background: #101E1B; }
+.dark .axiom-entry { --axiom-focus: var(--axiom-green-light); --axiom-logo-ink: var(--axiom-green-primary); color: var(--axiom-paper); background: #161710; }
 .dark .axiom-entry-header, .dark .axiom-poster { background: #181818; }
 .dark .axiom-entry-header { border-bottom-color: rgb(250 250 246 / .18); }
 .dark .axiom-entry .axiom-button--outline { color: var(--axiom-paper); }
 .dark .axiom-entry .axiom-button--outline:hover { background: rgb(135 193 77 / .18); color: var(--axiom-paper); }
 .dark .axiom-poster-heading { color: var(--axiom-paper); }
 .dark .axiom-poster-art { filter: brightness(.85) contrast(1.05); }
-.dark .axiom-poster-access { background: rgb(23 41 35 / .94); border-color: rgb(250 250 246 / .28); color: var(--axiom-paper); --axiom-brand-text: var(--axiom-green-light); --axiom-error: #ff9c9c; }
+.dark .axiom-poster-access { background: rgb(20 21 16 / .94); border-color: rgb(250 250 246 / .28); color: var(--axiom-paper); --axiom-brand-text: var(--axiom-green-light); --axiom-error: #ff9c9c; }
 .dark .axiom-role-button, .dark .axiom-access-footer { border-top-color: rgb(250 250 246 / .2); }
 .dark .axiom-role-button small { color: #B7B7B7; }
-.dark .axiom-access-input { background: #101E1B; border-color: #4E6761; color: var(--axiom-paper); }
+.dark .axiom-access-input { background: #161710; border-color: #44594A; color: var(--axiom-paper); }
 .dark .bg-axiom, .dark .axiom-registration-art, .dark .axiom-poster-access .axiom-eyebrow.on-green { color: var(--axiom-ink); }
 
 /* ---------- Themed Stone/Green Shimmer Skeletons & Axiom Loaders ---------- */
 .axiom-skeleton {
   position: relative;
   overflow: hidden;
-  background-color: var(--axiom-stone, #DBEACF);
+  background-color: var(--axiom-stone, #D4EDE1);
   border-radius: .5rem;
   max-width: 100%;
   min-width: 0;
@@ -618,7 +618,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.85rem;
-  color: var(--axiom-brand-text, #243D38);
+  color: var(--axiom-brand-text, #1D1E18);
   font-family: var(--font-heading);
 }
 .dark .axiom-loader {
@@ -722,26 +722,26 @@
 @layer components {
   .ax-card { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 18px; }
   .ax-card--soft { background: hsl(var(--accent)); border-color: transparent; }
-  .ax-primary-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 52px; padding: 0 1.25rem; border-radius: 14px; background: #243D38; color: #EEF8E4; font-weight: 700; font-size: 1rem; border: 0; }
-  .ax-primary-btn:hover:not(:disabled) { background: #47695F; }
+  .ax-primary-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 52px; padding: 0 1.25rem; border-radius: 14px; background: #1D1E18; color: #EAFBF5; font-weight: 700; font-size: 1rem; border: 0; }
+  .ax-primary-btn:hover:not(:disabled) { background: #4A5646; }
   .ax-primary-btn:disabled { opacity: .55; cursor: not-allowed; }
-  .dark .ax-primary-btn { background: #C5EDAC; color: #172923; }
-  .dark .ax-primary-btn:hover:not(:disabled) { background: #B0DA98; }
+  .dark .ax-primary-btn { background: #B9F5D8; color: #141510; }
+  .dark .ax-primary-btn:hover:not(:disabled) { background: #9FE3C2; }
   .ax-ghost-btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; padding: 0 1rem; border-radius: 12px; border: 1.5px solid hsl(var(--input)); background: transparent; color: hsl(var(--foreground)); font-weight: 600; font-size: .9rem; }
   .ax-ghost-btn:hover:not(:disabled) { background: hsl(var(--accent)); }
   .ax-ghost-btn:disabled { opacity: .55; cursor: not-allowed; }
   .ax-chip { display: inline-flex; align-items: center; border-radius: 999px; padding: .15rem .6rem; font-size: .75rem; font-weight: 700; }
-  .ax-chip--ok { background: #DBEACF; color: #243D38; }
-  .ax-chip--warn { background: #EBF6E0; color: #6B4510; }
+  .ax-chip--ok { background: #D4EDE1; color: #1D1E18; }
+  .ax-chip--warn { background: #E6F8F1; color: #6B4510; }
   .ax-chip--idle { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
-  .dark .ax-chip--ok { background: #345650; color: #DBEACF; }
-  .dark .ax-chip--warn { background: #4a3a14; color: #EBF6E0; }
+  .dark .ax-chip--ok { background: #3A3E34; color: #D4EDE1; }
+  .dark .ax-chip--warn { background: #4a3a14; color: #E6F8F1; }
 }
 
 /* ---------- Google CTA: pulsing moss ring + light sheen so the main action is the first thing the eye lands on ---------- */
 @keyframes axiom-cta-ring {
-  0% { box-shadow: 0 0 0 0 rgb(197 237 172 / .75); }
-  70%, 100% { box-shadow: 0 0 0 18px rgb(197 237 172 / 0); }
+  0% { box-shadow: 0 0 0 0 rgb(185 245 216 / .75); }
+  70%, 100% { box-shadow: 0 0 0 18px rgb(185 245 216 / 0); }
 }
 @keyframes axiom-cta-sheen {
   0%, 45% { background-position: 160% 0; }
@@ -759,7 +759,7 @@
   animation: axiom-cta-ring 2.2s ease-out infinite;
 }
 [data-google-cta="hero"]::after, [data-google-cta="onDark"]::after {
-  background: linear-gradient(105deg, transparent 38%, rgb(197 237 172 / .38) 50%, transparent 62%);
+  background: linear-gradient(105deg, transparent 38%, rgb(185 245 216 / .38) 50%, transparent 62%);
   background-size: 250% 100%; animation: axiom-cta-sheen 3.6s ease-in-out infinite;
 }
 [data-google-cta="bar"]::after {
@@ -795,7 +795,7 @@
 .axa[data-mood="wow"] .axa-m-happy { display: none; }
 .axa[data-mood="wow"] .axa-m-wow { display: inline; }
 .axa[data-photo="true"] { animation: none; }
-@keyframes axa-ring { 0% { box-shadow: 0 0 0 0 rgb(197 237 172 / .7); opacity: 1; } 100% { box-shadow: 0 0 0 10px rgb(197 237 172 / 0); opacity: 0; } }
+@keyframes axa-ring { 0% { box-shadow: 0 0 0 0 rgb(185 245 216 / .7); opacity: 1; } 100% { box-shadow: 0 0 0 10px rgb(185 245 216 / 0); opacity: 0; } }
 @keyframes axa-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
 @keyframes axa-breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-1.2px) scale(1.015); } }
 @media (prefers-reduced-motion: reduce) {
