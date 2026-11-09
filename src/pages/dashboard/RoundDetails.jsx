@@ -461,7 +461,7 @@ export default function RoundDetails() {
                     "p-4 text-white flex items-center gap-3",
                     userPosition.position === "GOV"
                       ? "bg-emerald-600"
-                      : "bg-rose-600"
+                      : "bg-[#1D1E18] dark:bg-[#2F5438]"
                   )}
                 >
                   {userPosition.position === "GOV" ? (
@@ -504,7 +504,7 @@ export default function RoundDetails() {
                         "ml-auto px-2.5 py-0.5 rounded text-[10px] font-heading font-semibold border uppercase tracking-wider",
                         userPosition.opponentPosition === "GOV"
                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                          : "bg-[#1D1E18]/10 text-[#1D1E18] dark:text-[#B9F5D8] border-[#1D1E18]/25"
                       )}
                     >
                       {userPosition.opponentPosition === "GOV" ? "GOV" : "OPP"}
@@ -647,7 +647,7 @@ export default function RoundDetails() {
                           imageUrl={debate.debater2?.imageUrl}
                           size="md"
                         />
-                        <span className="absolute -bottom-1 -right-1 text-[9px] font-heading font-bold text-white bg-rose-600 px-1.5 py-0.2 rounded-full shadow-sm z-10">
+                        <span className="absolute -bottom-1 -right-1 text-[9px] font-heading font-bold text-white bg-[#1D1E18] dark:bg-[#2F5438] px-1.5 py-0.2 rounded-full shadow-sm z-10">
                           OPP
                         </span>
                       </div>
