@@ -8,16 +8,15 @@ test('production build must not select temporary authentication', () => {
   assert.equal(config.plugins.some(plugin => plugin.name.includes('temporary-auth')), false,
     'Temporary authentication server middleware must not be part of the production build.');
 });
-test('user-required Better Auth integration must exist in this checkout', async () => {
+test('user-required Clerk integration must exist in this checkout', async () => {
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url)));
-  assert.ok(pkg.dependencies?.['better-auth'], 'Better Auth client dependency is missing.');
-  assert.equal(pkg.dependencies?.['@clerk/clerk-react'], undefined, 'Clerk client must not be shipped.');
+  assert.ok(pkg.dependencies?.['@clerk/clerk-react'], 'Clerk client dependency is missing.');
+  assert.equal(pkg.dependencies?.['better-auth'], undefined, 'Better Auth client must not be shipped.');
   const client = await readFile(new URL('../src/auth/client.jsx', import.meta.url), 'utf8');
-  assert.match(client, /createAuthClient/);
-  assert.match(client, /better-auth\/react/);
-  assert.match(client, /signIn\.social/);
-  assert.match(client, /VITE_GOOGLE_AUTH_ENABLED/);
-  assert.match(client, /provider: "google"/);
+  assert.match(client, /@clerk\/clerk-react/);
+  assert.match(client, /ClerkProvider/);
+  assert.match(client, /strategy: "oauth_google"/);
+  assert.match(client, /clerkPublishableKey/);
   assert.doesNotMatch(client, /temporary-session|TEMP_.*PASSCODE/);
 });
 test('public account access is participant-only and Google remains credential-gated', async () => {
@@ -25,7 +24,7 @@ test('public account access is participant-only and Google remains credential-ga
   const client = await readFile(new URL('../src/auth/client.jsx', import.meta.url), 'utf8');
   assert.match(landing, /GoogleAuthButton/);
   assert.doesNotMatch(landing, /Sign in as Admin|admin-key|validateKey/);
-  assert.match(client, /provider: "google"/);
+  assert.match(client, /strategy: "oauth_google"/);
 });
 test('production API and socket rewrites target the active Render API', async () => {
   const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));

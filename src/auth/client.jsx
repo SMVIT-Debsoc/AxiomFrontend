@@ -1,88 +1,63 @@
 /* eslint-disable react-refresh/only-export-components */
-import {useCallback, useMemo, useState} from "react";
-import {createAuthClient} from "better-auth/react";
-import {cloneElement, isValidElement} from "react";
-import {Navigate} from "react-router-dom";
+import {useState} from "react";
+import {
+  ClerkProvider,
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+  useAuth,
+  useUser,
+  useSignIn,
+  RedirectToSignIn
+} from "@clerk/clerk-react";
 
-const defaultApiUrl = typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)
-  ? `http://${window.location.hostname}:3000/api`
-  : "/api";
-const apiUrl = import.meta.env.VITE_API_URL || defaultApiUrl;
-const clientOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
-const authBaseURL = `${new URL(apiUrl, clientOrigin).origin}/api/auth`;
+export const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
+export const googleAuthEnabled = Boolean(clerkPublishableKey);
 
-export const authClient = createAuthClient({
-  baseURL: authBaseURL,
-  basePath: "/api/auth",
-});
-
-export const googleAuthEnabled = import.meta.env.VITE_GOOGLE_AUTH_ENABLED === "true";
-
-function useSessionUser() {
-  const state = authClient.useSession();
-  const raw = state.data?.user;
-  const user = useMemo(() => {
-    if (!raw) return null;
-    const [firstName = "", ...rest] = (raw.name || "").trim().split(/\s+/);
-    return {
-      ...raw,
-      id: raw.id,
-      firstName,
-      lastName: rest.join(" "),
-      fullName: raw.name || "",
-      imageUrl: raw.image || null,
-      primaryEmailAddress: {emailAddress: raw.email},
-      emailAddresses: [{emailAddress: raw.email}],
-      primaryPhoneNumber: null,
-      phoneNumbers: [],
-      publicMetadata: {},
-      update: async (patch) => {
-        const name = [patch.firstName, patch.lastName].filter(Boolean).join(" ");
-        const result = await authClient.updateUser({name});
-        if (result.error) throw new Error(result.error.message || "Profile update failed");
-      },
-    };
-  }, [raw]);
-  return {state,user};
-}
-
-export function useAuth() {
-  const {state,user} = useSessionUser();
-  const signOut = useCallback(async () => {
-    const result = await authClient.signOut();
-    if (result.error) throw new Error(result.error.message || "Sign out failed");
-    window.location.assign("/");
-  }, []);
-  return useMemo(() => ({
-    isLoaded: !state.isPending,
-    isSignedIn: Boolean(user),
-    userId: user?.id || null,
-    // Better Auth uses its HTTP-only session cookie. No client bearer token is issued.
-    getToken: async () => null,
-    signOut,
-  }), [state.isPending,user,signOut]);
-}
-
-export function useUser() {
-  const {state,user} = useSessionUser();
-  return useMemo(() => ({isLoaded: !state.isPending, isSignedIn: Boolean(user), user}), [state.isPending,user]);
-}
-
-export function UserButton() {
-  const {user} = useSessionUser();
-  const {signOut} = useAuth();
-  if (!user) return null;
-  return <div className="flex items-center gap-3"><span className="max-w-48 truncate text-sm">{user.email}</span><button type="button" onClick={signOut} className="text-sm underline underline-offset-4">Sign out</button></div>;
-}
-
+/**
+ * AuthProvider wraps the application with ClerkProvider.
+ * If VITE_CLERK_PUBLISHABLE_KEY is not set, it renders a friendly setup guide.
+ */
 export function AuthProvider({children}) {
-  authClient.useSession();
-  return children;
+  if (!clerkPublishableKey) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1D1E18] text-[#EAFBF5] p-6">
+        <div className="max-w-md w-full bg-[#272922] border-2 border-[#B9F5D8] rounded-2xl p-6 shadow-2xl text-center">
+          <div className="w-12 h-12 rounded-full bg-[#B9F5D8] text-[#1D1E18] flex items-center justify-center font-bold text-xl mx-auto mb-4">
+            !
+          </div>
+          <h2 className="text-xl font-extrabold mb-2 text-[#B9F5D8]">Clerk Setup Required</h2>
+          <p className="text-sm text-[#A8B2A6] mb-5 leading-relaxed">
+            Please add your free Clerk publishable key to your environment to activate authentication:
+          </p>
+          <div className="bg-[#1D1E18] p-3 rounded-xl border border-[#4A5646] font-mono text-xs text-[#EAFBF5] text-left overflow-x-auto mb-5 select-all">
+            VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+          </div>
+          <p className="text-xs text-[#A8B2A6]">
+            Get your key from <a href="https://dashboard.clerk.com" target="_blank" rel="noreferrer" className="underline text-[#B9F5D8]">dashboard.clerk.com</a>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
+      {children}
+    </ClerkProvider>
+  );
 }
 
-export function SignedIn({children}) { return useAuth().isSignedIn ? children : null; }
-export function SignedOut({children}) { const {isLoaded,isSignedIn}=useAuth(); return isLoaded && !isSignedIn ? children : null; }
-export function RedirectToSignIn() { return <Navigate to="/" replace />; }
+export {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+  useAuth,
+  useUser,
+  RedirectToSignIn
+};
 
 const GOOGLE_VARIANTS = {
   // Large hero button on the dark-green panel, moss ring
@@ -123,44 +98,58 @@ const GOOGLE_VARIANTS = {
 };
 
 export function GoogleAuthButton({variant = "default", label = "Register with Google", busyLabel = "Connecting to Google…"}) {
-  const [busy,setBusy] = useState(false);
-  const [error,setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const {signIn, isLoaded} = useSignIn();
   const v = GOOGLE_VARIANTS[variant] || GOOGLE_VARIANTS.default;
 
-  // Google is the only sign-in path, so the button is always rendered. When the
-  // deployment has not enabled it (VITE_GOOGLE_AUTH_ENABLED !== "true") say so plainly.
-  if (!googleAuthEnabled) {
-    return <p role="alert" className="rounded-xl border border-[#AAD2BA] bg-[#E6F8F1] px-4 py-3 text-sm font-medium text-[#3F5E45]">Sign-in is unavailable right now. Please try again later or ask an organiser for help.</p>;
+  if (!clerkPublishableKey) {
+    return (
+      <p role="alert" className="rounded-xl border border-[#AAD2BA] bg-[#E6F8F1] px-4 py-3 text-sm font-medium text-[#3F5E45]">
+        Sign-in is unavailable right now. Please set VITE_CLERK_PUBLISHABLE_KEY in .env.
+      </p>
+    );
   }
 
   const signInWithGoogle = async () => {
+    if (!isLoaded || !signIn) return;
     setBusy(true);
     setError("");
+
     try {
-      const result = await authClient.signIn.social({
-        provider: "google",
-        callbackURL: new URL("/auth-redirect", window.location.origin).toString(),
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/auth-redirect",
+        redirectUrlComplete: "/auth-redirect",
       });
-      if (result.error) throw new Error(result.error.message || "Google sign-in could not start.");
     } catch (failure) {
-      setError(failure.message || "Google sign-in could not start. Please try again.");
+      console.error("Clerk Google OAuth initiation failed:", failure);
+      setError(failure.errors?.[0]?.message || failure.message || "Google sign-in could not start.");
       setBusy(false);
     }
   };
 
-  return <div className={v.wrap}>
-    <button type="button" className={v.button} onClick={signInWithGoogle} disabled={busy} aria-busy={busy} data-google-cta={variant}>
-      <span className={`grid shrink-0 place-items-center rounded-full bg-white ${v.icon}`}>
-        <svg aria-hidden="true" viewBox="0 0 48 48" width={v.svg} height={v.svg} focusable="false"><path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.7-.4-4H24v7.6h11a9.4 9.4 0 0 1-4.1 6.2v5h6.6c3.9-3.6 6.1-8.8 6.1-14.8Z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.7-3.6-11.3-8.5H6v5.2A20 20 0 0 0 24 44Z"/><path fill="#FBBC05" d="M12.7 27.7a12 12 0 0 1 0-7.4v-5.2H6a20 20 0 0 0 0 17.8l6.7-5.2Z"/><path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4A20 20 0 0 0 6 15.1l6.7 5.2c1.6-4.9 6-8.5 11.3-8.5Z"/></svg>
-      </span>
-      <span>{busy ? busyLabel : label}</span>
-    </button>
-    {error && <p className="mt-2 text-sm font-medium text-[#a51818]" role="alert">{error}</p>}
-  </div>;
-}
-
-export function SignInButton({children}) {
-  const click = () => window.location.assign("/");
-  if (isValidElement(children)) return cloneElement(children, {onClick: (event) => { children.props.onClick?.(event); if (!event.defaultPrevented) click(); }});
-  return <button type="button" onClick={click}>{children}</button>;
+  return (
+    <div className={v.wrap}>
+      <button
+        type="button"
+        className={v.button}
+        onClick={signInWithGoogle}
+        disabled={busy || !isLoaded}
+        aria-busy={busy}
+        data-google-cta={variant}
+      >
+        <span className={`grid shrink-0 place-items-center rounded-full bg-white ${v.icon}`}>
+          <svg aria-hidden="true" viewBox="0 0 48 48" width={v.svg} height={v.svg} focusable="false">
+            <path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.7-.4-4H24v7.6h11a9.4 9.4 0 0 1-4.1 6.2v5h6.6c3.9-3.6 6.1-8.8 6.1-14.8Z" />
+            <path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.7-3.6-11.3-8.5H6v5.2A20 20 0 0 0 24 44Z" />
+            <path fill="#FBBC05" d="M12.7 27.7a12 12 0 0 1 0-7.4v-5.2H6a20 20 0 0 0 0 17.8l6.7-5.2Z" />
+            <path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4A20 20 0 0 0 6 15.1l6.7 5.2c1.6-4.9 6-8.5 11.3-8.5Z" />
+          </svg>
+        </span>
+        <span>{busy ? busyLabel : label}</span>
+      </button>
+      {error && <p className="mt-2 text-sm font-medium text-[#a51818]" role="alert">{error}</p>}
+    </div>
+  );
 }

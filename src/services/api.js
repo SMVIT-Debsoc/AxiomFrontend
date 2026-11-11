@@ -8,10 +8,25 @@ const isLocalhost =
 const DEFAULT_API_BASE_URL = isLocalhost ? `http://${window.location.hostname}:3000/api` : "/api";
 export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
 
+let authTokenProvider = null;
 let authRefreshProvider = null;
+
+export function setApiAuthTokenProvider(provider) {
+    authTokenProvider = typeof provider === "function" ? provider : null;
+}
 
 export function setApiAuthRefreshProvider(provider) {
     authRefreshProvider = typeof provider === "function" ? provider : null;
+}
+
+async function getFreshToken() {
+    if (!authTokenProvider) return null;
+    try {
+        return (await authTokenProvider({skipCache: true})) || null;
+    } catch (error) {
+        console.error("[API Request] Failed to retrieve auth token", error);
+        return null;
+    }
 }
 
 /**
@@ -19,7 +34,7 @@ export function setApiAuthRefreshProvider(provider) {
  * @param {string} endpoint - The API endpoint (e.g., '/events')
  * @param {string} method - HTTP method (GET, POST, etc.)
  * @param {object} [body] - Request body
- * @param {string} [token] - Deprecated compatibility argument; sessions use HTTP-only cookies
+ * @param {string} [token] - Clerk JWT token or auth token
  * @returns {Promise<any>}
  */
 export async function apiRequest(
@@ -35,7 +50,18 @@ export async function apiRequest(
         "Content-Type": "application/json",
     };
 
-    void token;
+    let resolvedToken = token;
+    if (!resolvedToken && authTokenProvider) {
+        try {
+            resolvedToken = await authTokenProvider();
+        } catch {
+            // fallback
+        }
+    }
+
+    if (resolvedToken) {
+        headers["Authorization"] = `Bearer ${resolvedToken}`;
+    }
     void requireAuth;
 
     const config = {
@@ -61,9 +87,17 @@ export async function apiRequest(
 
         // Reject auth proxy redirects: API callers must always receive JSON.
         const wasRedirected = response.redirected && response.url.endsWith("/");
-        if (retryAuthFailure && response.status === 401 && authRefreshProvider) {
-            const sessionStillActive = await authRefreshProvider().catch(() => false);
-            if (sessionStillActive) response = await fetch(url, config);
+        if (retryAuthFailure && response.status === 401) {
+            if (authTokenProvider) {
+                const fresh = await getFreshToken();
+                if (fresh) {
+                    config.headers["Authorization"] = `Bearer ${fresh}`;
+                    response = await fetch(url, config);
+                }
+            } else if (authRefreshProvider) {
+                const sessionStillActive = await authRefreshProvider().catch(() => false);
+                if (sessionStillActive) response = await fetch(url, config);
+            }
         }
 
         let data;
