@@ -5,7 +5,7 @@ import Axiom40Logo from "../components/brand/Axiom40Logo";
 import Sculpture from "../components/brand/Sculpture";
 import DebSocPromoCard from "../components/brand/DebSocPromoCard";
 import ThemeToggle from "../components/ui/ThemeToggle";
-import {GoogleAuthButton} from "../auth/client.jsx";
+import {GoogleAuthButton, AppleAuthButton} from "../auth/client.jsx";
 import {EVENT_CONFIG as E} from "../config/event";
 
 const STEPS = [
@@ -62,6 +62,7 @@ export default function LandingPage() {
                     </a>
                     <ThemeToggle />
                     <GoogleAuthButton variant="header" label="Sign in" />
+                    <AppleAuthButton variant="header" label="Apple" />
                 </nav>
             </header>
 
@@ -78,8 +79,9 @@ export default function LandingPage() {
                     <p className="hidden max-w-[520px] text-[19px] leading-relaxed text-muted-foreground md:block">
                         {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google, add your details, and you're in.
                     </p>
-                    <div id="hero-cta" ref={heroCta} className="hidden max-w-[520px] md:block">
+                    <div id="hero-cta" ref={heroCta} className="hidden max-w-[520px] flex-col gap-2.5 md:flex">
                         <GoogleAuthButton variant="hero" />
+                        <AppleAuthButton variant="default" />
                     </div>
                 </div>
 
@@ -95,7 +97,10 @@ export default function LandingPage() {
                     </div>
 
                     <div className="relative mt-6 flex flex-col gap-2.5 md:hidden">
-                        <div ref={phoneCta}><GoogleAuthButton variant="hero" /></div>
+                        <div ref={phoneCta} className="flex flex-col gap-2">
+                            <GoogleAuthButton variant="hero" />
+                            <AppleAuthButton variant="default" />
+                        </div>
                     </div>
 
                 </div>
@@ -163,7 +168,7 @@ export default function LandingPage() {
                         <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#9FE3C2] md:text-[13px]">The floor is yours</p>
                         <h2 id="cta-title" className="font-display text-[64px] font-normal leading-[0.88] text-[#EAFBF5] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>
                     </div>
-                    <div className="relative hidden md:block"><GoogleAuthButton variant="onDark" /></div>
+                    <div className="relative hidden md:flex flex-col sm:flex-row gap-3"><GoogleAuthButton variant="onDark" /><AppleAuthButton variant="onDark" /></div>
                 </div>
             </section>
 
@@ -179,7 +184,10 @@ export default function LandingPage() {
                 aria-hidden={!showBar}
                 className={`fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pb-6 pt-3 shadow-[0_-10px_24px_rgba(30,59,47,.16)] transition-transform duration-200 md:hidden ${showBar ? "translate-y-0" : "translate-y-full"}`}
             >
-                <div className={showBar ? "" : "pointer-events-none invisible"}><GoogleAuthButton variant="bar" /></div>
+                <div className={showBar ? "flex gap-2" : "pointer-events-none invisible"}>
+                    <GoogleAuthButton variant="bar" label="Google" />
+                    <AppleAuthButton variant="bar" label="Apple" />
+                </div>
             </div>
         </div>
     );
