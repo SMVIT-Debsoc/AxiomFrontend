@@ -27,6 +27,19 @@ export default function WorkspaceFooter({links, line}) {
             </Link>
           ))}
         </div>
+        <div className="axiom-ws-footer-credit mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Presented by SMVIT Debsoc</span>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://www.smvitdebsoc.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-medium text-primary hover:underline hover:text-[#9FE3C2]"
+          >
+            smvitdebsoc.com
+            <ArrowUpRight size={12} aria-hidden="true" />
+          </a>
+        </div>
       </div>
       <Sculpture figure={figure} variant="detail" className="axiom-ws-footer-art" />
     </aside>

@@ -1,7 +1,9 @@
 import {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
+import {ArrowUpRight} from "lucide-react";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import Sculpture from "../components/brand/Sculpture";
+import DebSocPromoCard from "../components/brand/DebSocPromoCard";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import {GoogleAuthButton} from "../auth/client.jsx";
 import {EVENT_CONFIG as E} from "../config/event";
@@ -49,6 +51,15 @@ export default function LandingPage() {
                 <nav aria-label="Primary" className="flex items-center gap-1 md:gap-2">
                     <a href="#how" className="hidden px-3.5 py-3 text-[15px] font-medium md:inline">How it works</a>
                     <a href="#faq" className="hidden px-3.5 py-3 text-[15px] font-medium md:inline">FAQ</a>
+                    <a
+                        href="https://www.smvitdebsoc.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hidden sm:inline-flex items-center gap-1 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-[#B9F5D8] hover:text-primary"
+                    >
+                        <span>smvitdebsoc.com</span>
+                        <ArrowUpRight size={13} aria-hidden="true" />
+                    </a>
                     <ThemeToggle />
                     <GoogleAuthButton variant="header" label="Sign in" />
                 </nav>
@@ -127,6 +138,11 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* Society Promotion Snippet */}
+            <section aria-label="About the host society" className="mx-auto max-w-[1280px] px-4 pb-6 pt-2 md:px-6 md:pb-10">
+                <DebSocPromoCard />
+            </section>
+
             {/* SCROLL 3: FAQ + CTA */}
             <section id="faq" aria-labelledby="faq-title" className="mx-auto grid max-w-[1280px] gap-4 px-4 pb-6 pt-2 md:grid-cols-2 md:gap-10 md:px-6 md:pb-14 md:pt-6">
                 <h2 id="faq-title" className="font-display text-[44px] font-normal leading-[0.95] text-primary md:text-[clamp(44px,5vw,64px)]">Quick answers</h2>
@@ -153,7 +169,9 @@ export default function LandingPage() {
 
             <footer className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
                 <p className="m-0">{E.name} · {E.organiserLong} · {E.city}</p>
-                <p className="m-0">Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a></p>
+                <p className="m-0">
+                    <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a>
+                </p>
             </footer>
 
             {/* Sticky Google bar, phones only, once the hero button has scrolled away */}
