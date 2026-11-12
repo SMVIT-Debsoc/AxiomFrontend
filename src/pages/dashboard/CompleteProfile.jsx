@@ -21,7 +21,7 @@ function nationalDigits(value) {
 }
 
 function Steps({step}) {
-    const items = ["Signed in with Google", "Three details", `Registered for ${E.name}`];
+    const items = ["Signed in", "Three details", `Registered for ${E.name}`];
     return (
         <ol aria-label="Registration progress" className="relative m-0 mt-8 flex list-none flex-col gap-3.5 p-0">
             {items.map((label, i) => {
@@ -165,7 +165,7 @@ export default function CompleteProfile() {
                 </div>
                 <div className="flex flex-col gap-2.5 rounded-[20px] border border-border bg-card p-[18px]">
                     <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">Up next</p>
-                    <p className="m-0 font-heading text-xl font-bold text-foreground">Round 1 check-in opens {E.round1CheckIn}</p>
+                    <p className="m-0 font-heading text-xl font-bold text-foreground">Check-in opens on tournament day</p>
                     <p className="m-0 text-[15px] leading-normal text-muted-foreground">
                         {ev ? "We'll show a Check in button on your dashboard when it opens. Your room appears once the draw is published." : "Browse events to confirm your enrollment. Your room appears once the draw is published."}
                     </p>

@@ -9,15 +9,14 @@ import {GoogleAuthButton, AppleAuthButton} from "../auth/client.jsx";
 import {EVENT_CONFIG as E} from "../config/event";
 
 const STEPS = [
-    {n: "01", title: "Continue with Google", body: "One tap. Your name, email and photo come across automatically.", short: "Name and email come across automatically."},
+    {n: "01", title: "Sign in with Google or Apple", body: "One tap. Your name, email and photo come across automatically.", short: "Sign in with Google or Apple. Name and email come across automatically."},
     {n: "02", title: "Add college, mobile & USN", body: "Three fields on one screen. About 30 seconds.", short: "Three fields on one screen. That's it."},
     {n: "03", title: "You're registered", body: "We enrol you in AXIOM 4.0 automatically. On the day, check in from your phone to get your room.", short: "Auto-enrolled. Check in from your phone on the day."},
 ];
 
 const FAQ = [
-    {q: "Do I need a Google account?", a: "Yes. Google is the only sign-in for AXIOM 4.0. Any Gmail or college Google Workspace account works."},
+    {q: "How do I sign in?", a: "Sign in with Google or Apple. Any Gmail, college Google Workspace account, or Apple ID works."},
     {q: "Can I register at the venue?", a: "Yes. Scan the QR at the desk, sign in, add three details, done. Organisers see you appear instantly."},
-    {q: "Who can take part?", a: E.eligibility},
 ];
 
 export default function LandingPage() {
@@ -71,13 +70,13 @@ export default function LandingPage() {
                 <div className="order-2 flex flex-col justify-center gap-6 md:order-1 md:py-8">
                     <p className="hidden items-center gap-2 self-start rounded-full bg-[#B9F5D8] px-3.5 py-2 text-[13px] font-semibold uppercase tracking-[0.04em] text-[#141510] md:inline-flex">
                         <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#1D1E18]" />
-                        Registrations open · closes {E.registrationCloses}
+                        Registrations open
                     </p>
                     <h1 id="hero-title" className="hidden font-display text-[clamp(64px,9vw,128px)] font-normal leading-[0.88] tracking-[0.01em] text-primary md:block">
                         Ancient thought.<br /><span className="text-[#4A5646] dark:text-[#9FE3C2]">New arguments.</span>
                     </h1>
                     <p className="hidden max-w-[520px] text-[19px] leading-relaxed text-muted-foreground md:block">
-                        {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google, add your details, and you're in.
+                        {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google or Apple, add your details, and you're in.
                     </p>
                     <div id="hero-cta" ref={heroCta} className="hidden max-w-[520px] flex-col gap-2.5 md:flex">
                         <GoogleAuthButton variant="hero" />
@@ -127,20 +126,6 @@ export default function LandingPage() {
                         );
                     })}
                 </ol>
-
-                <div className="mt-8 grid items-stretch gap-4 md:mt-14 md:grid-cols-2">
-                    <div className="hidden flex-col justify-between gap-6 rounded-[22px] bg-[#B9F5D8] p-8 text-[#141510] md:flex">
-                        <p className="m-0 text-[13px] font-bold uppercase tracking-[0.08em]">Why compete</p>
-                        <h2 className="font-display text-[clamp(44px,5vw,64px)] font-normal leading-[0.92] text-[#141510]">Not louder.<br />More considered.</h2>
-                        <p className="m-0 max-w-[460px] text-[17px] leading-relaxed">Debate the motions that matter against sharp speakers from across {E.regionLabel}, judged by {E.judgePanel}.</p>
-                    </div>
-                    <ul className="m-0 grid list-none grid-cols-2 gap-2.5 p-0 md:gap-4">
-                        <Stat tone="moss" value={E.prelimRounds} label="Preliminary rounds" />
-                        <Stat value={E.breakRounds} label="Break to elimination" />
-                        <Stat value={E.bestSpeakerPrize} label="Best speaker prize" />
-                        <Stat tone="jungle" value={E.entryFee} label={E.entryFeeNote} />
-                    </ul>
-                </div>
             </section>
 
             {/* Society Promotion Snippet */}
@@ -190,16 +175,5 @@ export default function LandingPage() {
                 </div>
             </div>
         </div>
-    );
-}
-
-function Stat({value, label, tone}) {
-    const styles = tone === "moss" ? "bg-[#B9F5D8] text-[#141510]" : tone === "jungle" ? "bg-[#1D1E18] text-[#EAFBF5]" : "border border-border bg-card text-primary";
-    const labelStyle = tone === "moss" ? "text-[#141510]" : tone === "jungle" ? "text-[#BDD9CA]" : "text-muted-foreground";
-    return (
-        <li className={`flex flex-col gap-0.5 rounded-[18px] p-4 md:gap-1.5 md:rounded-[22px] md:p-6 ${styles}`}>
-            <p className="m-0 font-display text-[44px] leading-none md:text-[52px]">{value}</p>
-            <p className={`m-0 text-sm font-semibold md:text-[15px] ${labelStyle}`}>{label}</p>
-        </li>
     );
 }
