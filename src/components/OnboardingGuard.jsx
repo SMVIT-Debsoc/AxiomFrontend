@@ -45,12 +45,25 @@ export function OnboardingGuard({children}) {
         return null;
     }
 
+    const handleRetry = async () => {
+        setError("");
+        setChecking(true);
+        try {
+            const token = await getToken();
+            await UserApi.getProfile(token);
+            setChecking(false);
+        } catch (failure) {
+            setError(failure.message || "Retry failed.");
+            setChecking(false);
+        }
+    };
+
     if (error) return (
         <div className="min-h-screen flex items-center justify-center p-6">
             <div className="max-w-md text-center">
                 <h2 className="mb-2 text-xl font-semibold">Account setup is unavailable</h2>
                 <p role="alert" className="mb-5 text-muted-foreground">{error}</p>
-                <button className="axiom-button axiom-button--green" onClick={() => { setError(""); setChecking(true); UserApi.getProfile().then(() => setChecking(false)).catch((failure) => { setError(failure.message || "Retry failed."); setChecking(false); }); }}>Retry</button>
+                <button className="axiom-button axiom-button--green" onClick={handleRetry}>Retry</button>
             </div>
         </div>
     );
