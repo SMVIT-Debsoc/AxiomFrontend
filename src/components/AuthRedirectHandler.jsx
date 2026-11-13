@@ -39,49 +39,76 @@ export function AuthRedirectHandler() {
         if (!isLoaded || effectiveError || !user) return;
 
         const handleRedirect = async () => {
-            sessionStorage.removeItem("pendingRole");
+            const isAdminFlow = sessionStorage.getItem("adminAuthFlow") === "true";
+            const secretKey = sessionStorage.getItem("adminSecretKey");
+
+            sessionStorage.removeItem("adminAuthFlow");
             sessionStorage.removeItem("adminSecretKey");
+            sessionStorage.removeItem("pendingRole");
 
             try {
                 const token = await getToken();
 
-                // Check Admin and User profiles concurrently for fastest redirect
-                const [adminResult, userResult] = await Promise.allSettled([
-                    AdminApi.getProfile(token),
-                    UserApi.getProfile(token),
-                ]);
+                // 1. ADMIN LOGIN FLOW - ONLY invoked when explicitly logging in as Admin
+                if (isAdminFlow) {
+                    setStatus("Verifying administrator access...");
 
-                if (adminResult.status === "fulfilled" && adminResult.value?.success && adminResult.value?.admin) {
-                    navigate("/admin", {replace: true});
-                    return;
-                }
-
-                if (userResult.status === "fulfilled" && userResult.value?.user) {
-                    const u = userResult.value.user;
-                    if (!u.college || !u.mobile || !u.usn) {
-                        navigate("/complete-profile", {replace: true});
-                    } else {
-                        navigate("/dashboard", {replace: true});
+                    if (secretKey) {
+                        try {
+                            await AdminApi.onboard({secretKey}, token);
+                        } catch (onboardErr) {
+                            console.warn("Admin onboarding check:", onboardErr);
+                        }
                     }
+
+                    try {
+                        const adminRes = await AdminApi.getProfile(token);
+                        if (adminRes?.success && adminRes?.admin) {
+                            sessionStorage.setItem("isAdminSession", "true");
+                            navigate("/admin", {replace: true});
+                            return;
+                        }
+                    } catch (adminErr) {
+                        console.error("Admin verification failed:", adminErr);
+                        setRedirectError("Access denied: This Google account is not registered as an Admin, or the Admin Secret Key was incorrect.");
+                        return;
+                    }
+
+                    setRedirectError("Access denied: This Google account is not an authorized Admin.");
                     return;
                 }
 
-                // If backend is waking up or had a transient error, retry once
-                setStatus("Connecting to debate arena...");
-                await new Promise((res) => setTimeout(res, 1200));
+                // 2. PARTICIPANT REGISTRATION & LOGIN FLOW
+                // Completely separated: NEVER calls any admin endpoint!
+                setStatus("Opening your debate workspace...");
 
                 try {
-                    const freshToken = await getToken();
-                    const retryUser = await UserApi.getProfile(freshToken);
-                    const u = retryUser?.user;
+                    const userRes = await UserApi.getProfile(token);
+                    const u = userRes?.user;
                     if (!u?.college || !u?.mobile || !u?.usn) {
                         navigate("/complete-profile", {replace: true});
                     } else {
                         navigate("/dashboard", {replace: true});
                     }
+                    return;
                 } catch {
-                    // Graceful fallback: user is authenticated with Clerk, navigate to complete-profile
-                    navigate("/complete-profile", {replace: true});
+                    // Backend spin-up retry
+                    setStatus("Connecting to debate arena...");
+                    await new Promise((res) => setTimeout(res, 1000));
+
+                    try {
+                        const freshToken = await getToken();
+                        const retryUser = await UserApi.getProfile(freshToken);
+                        const u = retryUser?.user;
+                        if (!u?.college || !u?.mobile || !u?.usn) {
+                            navigate("/complete-profile", {replace: true});
+                        } else {
+                            navigate("/dashboard", {replace: true});
+                        }
+                    } catch {
+                        // Graceful fallback: authenticated with Google/Clerk, navigate to complete-profile
+                        navigate("/complete-profile", {replace: true});
+                    }
                 }
             } catch (error) {
                 console.error("Auth redirect error:", error);

@@ -17,7 +17,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useAuth } from "../../auth/client.jsx";
-import {AdminApi, EventApi, DebateApi, UserApi} from "../../services/api";
+import {EventApi, DebateApi, UserApi} from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { cn } from "../../lib/utils";
 import { useEventSocket } from "../../hooks/useSocket";
@@ -45,18 +45,6 @@ export default function EventDetails() {
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
-
-  // Admin check
-  useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        await AdminApi.getProfile();
-      } catch {
-        // An unavailable admin check does not block participant event access.
-      }
-    };
-    checkAdmin();
-  }, []); // runs once
 
   // Fetch data function for reuse
   const fetchData = useCallback(async () => {

@@ -1,9 +1,10 @@
 import {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
-import {ArrowUpRight} from "lucide-react";
+import {ArrowUpRight, Shield} from "lucide-react";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import Sculpture from "../components/brand/Sculpture";
 import DebSocPromoCard from "../components/brand/DebSocPromoCard";
+import AdminAccessModal from "../components/brand/AdminAccessModal";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import {GoogleAuthButton} from "../auth/client.jsx";
 import {EVENT_CONFIG as E} from "../config/event";
@@ -23,6 +24,7 @@ export default function LandingPage() {
     const heroCta = useRef(null);
     const phoneCta = useRef(null);
     const [showBar, setShowBar] = useState(false);
+    const [adminModalOpen, setAdminModalOpen] = useState(false);
 
     // Sticky Google bar on phones: appears once the hero button has scrolled out above the viewport.
     useEffect(() => {
@@ -60,6 +62,15 @@ export default function LandingPage() {
                         <ArrowUpRight size={13} aria-hidden="true" />
                     </a>
                     <ThemeToggle />
+                    <button
+                        type="button"
+                        onClick={() => setAdminModalOpen(true)}
+                        className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-[#B9F5D8] hover:text-primary"
+                        aria-label="Admin Portal Access"
+                    >
+                        <Shield size={13} className="text-amber-500 dark:text-amber-400" />
+                        <span>Admin</span>
+                    </button>
                     <GoogleAuthButton variant="header" label="Sign in" />
                 </nav>
             </header>
@@ -157,9 +168,11 @@ export default function LandingPage() {
             <footer className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
                 <p className="m-0">{E.name} · {E.organiserLong} · {E.city}</p>
                 <p className="m-0">
-                    <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a>
+                    <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <button type="button" onClick={() => setAdminModalOpen(true)} className="underline hover:text-[#9FE3C2]">Admin Portal</button> · <a className="underline" href="#top">Back to top</a>
                 </p>
             </footer>
+
+            <AdminAccessModal isOpen={adminModalOpen} onClose={() => setAdminModalOpen(false)} />
 
             {/* Sticky Google bar, phones only, once the hero button has scrolled away */}
             <div

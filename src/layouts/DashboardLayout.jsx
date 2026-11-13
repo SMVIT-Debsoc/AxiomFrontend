@@ -1,4 +1,3 @@
-import {useState, useEffect} from "react";
 import {Outlet, Link, useLocation} from "react-router-dom";
 import {
     useUser,
@@ -10,7 +9,6 @@ import AccountMenu from "../components/ui/AccountMenu";
 import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import LoadingIndicator from "../components/ui/LoadingIndicator";
-import {AdminApi} from "../services/api";
 
 const sidebarItems = [
     {icon: "LayoutIcon", label: "Overview", path: "/dashboard"},
@@ -19,25 +17,9 @@ const sidebarItems = [
 ];
 
 export default function DashboardLayout() {
-    const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
     const {isLoaded, isSignedIn} = useUser();
-
-    // Check admin status to show admin link (silently - 403 is expected for non-admins)
-    useEffect(() => {
-        const checkAdmin = async () => {
-            if (isSignedIn) {
-                try {
-                    const data = await AdminApi.getProfile();
-                    setIsAdmin(data.success && !!data.admin);
-                } catch {
-                    // Network error or other issue - assume not admin
-                    setIsAdmin(false);
-                }
-            }
-        };
-        checkAdmin();
-    }, [isSignedIn]);
+    const isAdmin = typeof window !== "undefined" && sessionStorage.getItem("isAdminSession") === "true";
 
     if (!isLoaded) {
         return <LoadingIndicator fullScreen label="Opening your debate workspace" />;

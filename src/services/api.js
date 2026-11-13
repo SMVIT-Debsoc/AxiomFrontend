@@ -8,6 +8,20 @@ const isLocalhost =
 const DEFAULT_API_BASE_URL = isLocalhost ? `http://${window.location.hostname}:3000/api` : "/api";
 export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
 
+// In-memory request caching for smooth navigation without re-fetching
+const apiCache = new Map();
+const CACHE_TTL_MS = 20000; // 20s client cache for fast tab switching
+
+export function clearApiCache(prefix = null) {
+    if (!prefix) {
+        apiCache.clear();
+        return;
+    }
+    for (const key of apiCache.keys()) {
+        if (key.includes(prefix)) apiCache.delete(key);
+    }
+}
+
 let authTokenProvider = null;
 let authRefreshProvider = null;
 
@@ -72,6 +86,16 @@ export async function apiRequest(
 
     if (body) {
         config.body = JSON.stringify(body);
+    }
+
+    const isGet = method.toUpperCase() === "GET";
+    const cacheKey = `${endpoint}::${resolvedToken ? "auth" : "anon"}`;
+
+    if (isBrowser && isGet && !options.skipCache) {
+        const cached = apiCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            return JSON.parse(JSON.stringify(cached.data));
+        }
     }
 
     try {
@@ -141,6 +165,13 @@ export async function apiRequest(
         // let a 200 response accidentally satisfy onboarding or enrollment.
         if (data?.success === false) {
             throw new Error(data.error || data.message || "The request was not completed.");
+        }
+
+        if (isGet) {
+            apiCache.set(cacheKey, {data, timestamp: Date.now()});
+        } else {
+            // Invalidate cache for mutations
+            clearApiCache(endpoint.split("/")[1] || null);
         }
 
         return data;
@@ -230,6 +261,9 @@ export const StatsApi = {
 // Admin Endpoints
 export const AdminApi = {
     apiRequest: apiRequest,
+    validateKey: (secretKey) =>
+        apiRequest("/admin/validate-key", "POST", {secretKey}, null, {requireAuth: false}),
+    onboard: (data, token) => apiRequest("/admin/onboard", "POST", data, token),
     getProfile: (token) => apiRequest("/admin/me", "GET", null, token),
 
     getDashboard: (token) => apiRequest("/admin/dashboard", "GET", null, token),

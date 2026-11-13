@@ -4,27 +4,12 @@ import {Menu, X, ArrowUpRight} from "lucide-react";
 import {useAuth, UserButton} from "../auth/client.jsx";
 import Axiom40Logo from "./brand/Axiom40Logo";
 import ThemeToggle from "./ui/ThemeToggle";
-import {AdminApi} from "../services/api";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
     const location = useLocation();
     const {isSignedIn} = useAuth();
     const toggleRef = useRef(null);
-
-    useEffect(() => {
-        let active = true;
-        const checkAdminStatus = async () => {
-            if (!isSignedIn) return;
-            try {
-                const data = await AdminApi.getProfile();
-                if (active) setIsAdmin(!!(data?.success && data.admin));
-            } catch { if (active) setIsAdmin(false); }
-        };
-        checkAdminStatus();
-        return () => { active = false; };
-    }, [isSignedIn]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -36,7 +21,7 @@ export default function Navbar() {
     }, [isOpen]);
 
     const links = [{name: "Home", path: "/"}, {name: "Tournaments", path: "/dashboard/events"}, {name: "About", path: "/about"}];
-    if (isSignedIn) links.push({name: "Workspace", path: isAdmin ? "/admin" : "/dashboard"});
+    if (isSignedIn) links.push({name: "Workspace", path: "/dashboard"});
     const renderLink = (link) => <Link key={link.path} to={link.path} className="axiom-nav-link" aria-current={location.pathname === link.path ? "page" : undefined} onClick={() => setIsOpen(false)}>{link.name}</Link>;
 
     return (
