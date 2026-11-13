@@ -29,3 +29,4 @@ audit-artifacts/
 .env*
 .agent-team/
 .dev-mock-dist
+.neon
