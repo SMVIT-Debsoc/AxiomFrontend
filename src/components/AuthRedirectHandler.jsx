@@ -45,19 +45,44 @@ export function AuthRedirectHandler() {
             try {
                 const token = await getToken();
 
-                try {
-                    const existing = await AdminApi.getProfile(token);
-                    if (existing?.success && existing?.admin) {
-                        navigate("/admin", {replace: true});
-                        return;
-                    }
-                } catch {
-                    // Participant accounts are expected to receive a forbidden/not-found admin response.
+                // Check Admin and User profiles concurrently for fastest redirect
+                const [adminResult, userResult] = await Promise.allSettled([
+                    AdminApi.getProfile(token),
+                    UserApi.getProfile(token),
+                ]);
+
+                if (adminResult.status === "fulfilled" && adminResult.value?.success && adminResult.value?.admin) {
+                    navigate("/admin", {replace: true});
+                    return;
                 }
 
-                setStatus("Setting up your profile...");
-                await UserApi.getProfile(token);
-                navigate("/dashboard", {replace: true});
+                if (userResult.status === "fulfilled" && userResult.value?.user) {
+                    const u = userResult.value.user;
+                    if (!u.college || !u.mobile || !u.usn) {
+                        navigate("/complete-profile", {replace: true});
+                    } else {
+                        navigate("/dashboard", {replace: true});
+                    }
+                    return;
+                }
+
+                // If backend is waking up or had a transient error, retry once
+                setStatus("Connecting to debate arena...");
+                await new Promise((res) => setTimeout(res, 1200));
+
+                try {
+                    const freshToken = await getToken();
+                    const retryUser = await UserApi.getProfile(freshToken);
+                    const u = retryUser?.user;
+                    if (!u?.college || !u?.mobile || !u?.usn) {
+                        navigate("/complete-profile", {replace: true});
+                    } else {
+                        navigate("/dashboard", {replace: true});
+                    }
+                } catch {
+                    // Graceful fallback: user is authenticated with Clerk, navigate to complete-profile
+                    navigate("/complete-profile", {replace: true});
+                }
             } catch (error) {
                 console.error("Auth redirect error:", error);
                 setRedirectError(error.message || "We could not finish setting up your account.");

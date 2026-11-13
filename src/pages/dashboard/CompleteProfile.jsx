@@ -65,6 +65,10 @@ export default function CompleteProfile() {
                 console.error("Error fetching profile:", failure);
             }
             if (cancelled) return;
+            if (db?.college && db?.mobile && db?.usn) {
+                navigate("/dashboard", {replace: true});
+                return;
+            }
             setForm({
                 firstName: db?.firstName || user.firstName || "",
                 lastName: db?.lastName || user.lastName || "",
@@ -76,7 +80,7 @@ export default function CompleteProfile() {
             setLoading(false);
         })();
         return () => { cancelled = true; };
-    }, [isLoaded, user, getToken]);
+    }, [isLoaded, user, getToken, navigate]);
 
     const digits = form.mobile;
     const collegeOk = form.college.trim().length > 1;
