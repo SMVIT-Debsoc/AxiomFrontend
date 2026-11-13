@@ -14,6 +14,7 @@ const Results = lazy(() => import("./pages/dashboard/Results"));
 import {OnboardingGuard} from "./components/OnboardingGuard";
 import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
 import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
+import {AuthenticateWithRedirectCallback} from "./auth/client.jsx";
 import ApiAuthSync from "./components/ApiAuthSync";
 import {ToastProvider} from "./components/ui/Toast";
 
@@ -52,6 +53,17 @@ function App() {
                     <VercelAnalytics />
                     <Suspense fallback={<div className="min-h-svh bg-background" role="status" aria-label="Loading" />}>
                     <Routes>
+                        {/* Clerk SSO callback handler - exchanges OAuth code and establishes session */}
+                        <Route
+                            path="/sso-callback"
+                            element={
+                                <AuthenticateWithRedirectCallback
+                                    signInForceRedirectUrl="/auth-redirect"
+                                    signUpForceRedirectUrl="/auth-redirect"
+                                />
+                            }
+                        />
+
                         {/* Auth redirect handler - processes admin/user routing after sign-in */}
                         <Route
                             path="/auth-redirect"

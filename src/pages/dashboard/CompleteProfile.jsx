@@ -103,7 +103,9 @@ export default function CompleteProfile() {
         setError("");
         try {
             const token = await getToken();
-            await user.update({firstName: form.firstName, lastName: form.lastName});
+            await user.update({firstName: form.firstName, lastName: form.lastName}).catch((err) => {
+                console.warn("Clerk name sync skipped:", err);
+            });
             const response = await UserApi.updateProfile({
                 firstName: form.firstName,
                 lastName: form.lastName,

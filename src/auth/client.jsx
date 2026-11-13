@@ -9,7 +9,8 @@ import {
   useAuth,
   useUser,
   useSignIn,
-  RedirectToSignIn
+  RedirectToSignIn,
+  AuthenticateWithRedirectCallback
 } from "@clerk/clerk-react";
 
 export const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
@@ -56,7 +57,8 @@ export {
   UserButton,
   useAuth,
   useUser,
-  RedirectToSignIn
+  RedirectToSignIn,
+  AuthenticateWithRedirectCallback
 };
 
 const GOOGLE_VARIANTS = {
@@ -119,7 +121,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
     try {
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
-        redirectUrl: "/auth-redirect",
+        redirectUrl: "/sso-callback",
         redirectUrlComplete: "/auth-redirect",
       });
     } catch (failure) {

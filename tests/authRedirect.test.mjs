@@ -20,6 +20,7 @@ test('AuthRedirectHandler presents recovery actions instead of redirect loop', a
 test('GoogleAuthButton constructs correct callback URL and error states', async () => {
     const clientCode = await readFile(new URL('../src/auth/client.jsx', import.meta.url), 'utf8');
     assert.match(clientCode, /strategy: "oauth_google"/, 'Must specify strategy oauth_google');
-    assert.match(clientCode, /redirectUrl: "\/auth-redirect"/, 'Must redirect to /auth-redirect');
+    assert.match(clientCode, /redirectUrl: "\/sso-callback"/, 'Must redirect to /sso-callback');
+    assert.match(clientCode, /redirectUrlComplete: "\/auth-redirect"/, 'Must complete redirect to /auth-redirect');
     assert.match(clientCode, /VITE_CLERK_PUBLISHABLE_KEY/, 'Must respect publishable key env');
 });

@@ -19,6 +19,7 @@ const STATIC_ROUTES = new Set([
     "/forgot-password",
     "/reset-password",
     "/auth-redirect",
+    "/sso-callback",
     "/complete-profile",
     "/dashboard",
     "/dashboard/events",
