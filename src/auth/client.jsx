@@ -296,9 +296,35 @@ export function isSessionExistsError(failure) {
 export function GoogleAuthButton({variant = "default", label = "Register with Google", busyLabel = "Connecting to Google…"}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const {isSignedIn, isLoaded: authLoaded} = useAuth();
+  const {isSignedIn, isLoaded: authLoaded, signOut} = useAuth();
   const {signIn, isLoaded} = useSignIn();
   const v = GOOGLE_VARIANTS[variant] || GOOGLE_VARIANTS.default;
+
+  useEffect(() => {
+    if (!isLoaded || !authLoaded || isSignedIn || !signIn) return;
+    let shouldSwitch = false;
+    try {
+      shouldSwitch = sessionStorage.getItem("axiom_switch_google_account") === "1";
+      if (shouldSwitch) {
+        sessionStorage.removeItem("axiom_switch_google_account");
+      }
+    } catch {
+      shouldSwitch = false;
+    }
+    if (!shouldSwitch) return;
+
+    signIn
+      .authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/auth-redirect",
+        oidcPrompt: "select_account",
+      })
+      .catch((failure) => {
+        console.error("Clerk Google account switch failed:", failure);
+        setError(failure.errors?.[0]?.message || failure.message || "Google sign-in could not start.");
+      });
+  }, [authLoaded, isLoaded, isSignedIn, signIn]);
 
   if (!clerkPublishableKey && !isMockAuth) {
     return (
@@ -312,6 +338,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
     try {
       sessionStorage.removeItem("adminAuthFlow");
       sessionStorage.removeItem("adminSecretKey");
+      sessionStorage.removeItem("axiom_switch_google_account");
     } catch {
       // Ignore sessionStorage errors in restricted environments
     }
@@ -330,6 +357,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/auth-redirect",
+        oidcPrompt: "select_account",
       });
     } catch (failure) {
       if (isSessionExistsError(failure)) {
@@ -338,6 +366,37 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
       }
       console.error("Clerk Google OAuth initiation failed:", failure);
       setError(failure.errors?.[0]?.message || failure.message || "Google sign-in could not start.");
+      setBusy(false);
+    }
+  };
+
+  const switchGoogleAccount = async () => {
+    if (!authLoaded) return;
+    setBusy(true);
+    setError("");
+    try {
+      sessionStorage.removeItem("adminAuthFlow");
+      sessionStorage.removeItem("adminSecretKey");
+      sessionStorage.setItem("axiom_switch_google_account", "1");
+    } catch {
+      // Ignore sessionStorage errors in restricted environments
+    }
+    try {
+      if (isSignedIn && typeof signOut === "function") {
+        await signOut();
+      } else if (isLoaded && signIn) {
+        sessionStorage.removeItem("axiom_switch_google_account");
+        await signIn.authenticateWithRedirect({
+          strategy: "oauth_google",
+          redirectUrl: "/sso-callback",
+          redirectUrlComplete: "/auth-redirect",
+          oidcPrompt: "select_account",
+        });
+      }
+    } catch (failure) {
+      sessionStorage.removeItem("axiom_switch_google_account");
+      console.error("Clerk Google account switch failed:", failure);
+      setError(failure.errors?.[0]?.message || failure.message || "Could not switch Google account.");
       setBusy(false);
     }
   };
@@ -360,8 +419,18 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
             <path fill="#EA4335" d="M24 11.8c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 5.8 29.5 4 24 4A20 20 0 0 0 6 15.1l6.7 5.2c1.6-4.9 6-8.5 11.3-8.5Z" />
           </svg>
         </span>
-        <span>{busy ? busyLabel : label}</span>
+        <span>{busy ? busyLabel : isSignedIn && variant === "hero" ? "Continue to Dashboard" : label}</span>
       </button>
+      {isSignedIn && variant !== "header" && variant !== "bar" && (
+        <button
+          type="button"
+          onClick={switchGoogleAccount}
+          disabled={busy}
+          className={`mt-2 block text-left text-xs font-semibold underline underline-offset-4 transition hover:opacity-80 ${variant === "onDark" ? "text-[#B9F5D8]" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Use a different Google account
+        </button>
+      )}
       {error && <p className="mt-2 text-sm font-medium text-[#a51818]" role="alert">{error}</p>}
     </div>
   );

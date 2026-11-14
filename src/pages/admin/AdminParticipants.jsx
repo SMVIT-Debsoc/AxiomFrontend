@@ -1,7 +1,7 @@
 import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion as Motion } from "framer-motion";
-import {Search, Mail, Trash2, RotateCcw, UserPlus, X} from "lucide-react";
+import {Search, Mail, Phone, Trash2, RotateCcw, UserPlus, X} from "lucide-react";
 import { cn } from "../../lib/utils";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "../../auth/client.jsx";
@@ -28,12 +28,13 @@ export default function AdminParticipants() {
     try {
       setLoading(true);
       const token = await getTokenRef.current();
-      const response = await UserApi.list(token);
+      const [response, eventResponse] = await Promise.all([
+        UserApi.list(token),
+        EventApi.list(token),
+      ]);
       if (response.success) {
         setParticipants(response.users || []);
       }
-
-      const eventResponse = await EventApi.list(token);
       if (eventResponse.success) {
         setEvents(eventResponse.events || []);
       }
@@ -68,7 +69,15 @@ export default function AdminParticipants() {
     const college = (p.college || "").toLowerCase();
     const query = searchQuery.toLowerCase();
     const email = (p.email || "").toLowerCase();
-    return name.includes(query) || college.includes(query) || email.includes(query);
+    const mobile = (p.mobile || "").toLowerCase();
+    const usn = (p.usn || "").toLowerCase();
+    return (
+      name.includes(query) ||
+      college.includes(query) ||
+      email.includes(query) ||
+      mobile.includes(query) ||
+      usn.includes(query)
+    );
   });
 
   const handleDelete = async (id, name) => {
@@ -151,7 +160,7 @@ export default function AdminParticipants() {
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <input
           type="text"
-          placeholder="Search by debater name, institution, or email..."
+          placeholder="Search by debater name, phone, USN, institution, or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="Search participants"
@@ -196,24 +205,51 @@ export default function AdminParticipants() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <UserAvatar user={p} size="sm" />
-                          <div>
+                          <div className="min-w-0">
                             <p className="font-heading font-semibold text-sm text-foreground">
                               {p.firstName} {p.lastName}
                             </p>
                             <p className="text-[11px] text-muted-foreground font-mono">
-                              ID: {p.id.substring(0, 8)}
+                              {p.usn ? `USN: ${p.usn}` : `ID: ${p.id.substring(0, 8)}`}
+                              {p.gender ? ` · ${p.gender}` : ""}
                             </p>
+                            <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground md:hidden">
+                              {p.mobile && (
+                                <p className="font-medium text-foreground tabular-nums">
+                                  <a href={`tel:${p.mobile}`} className="hover:underline">{p.mobile}</a>
+                                </p>
+                              )}
+                              {p.email && <p className="truncate">{p.email}</p>}
+                              {p.college && <p className="truncate">{p.college}</p>}
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-5 py-3.5 hidden md:table-cell">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
-                          <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-                          <span>{p.email}</span>
+                        <div className="space-y-1 text-xs text-muted-foreground font-sans">
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                            <span>{p.email || "Not provided"}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-foreground font-medium tabular-nums">
+                            <Phone className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            {p.mobile ? (
+                              <a href={`tel:${p.mobile}`} className="hover:text-primary hover:underline">
+                                {p.mobile}
+                              </a>
+                            ) : (
+                              <span className="text-muted-foreground font-normal">No phone</span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-5 py-3.5 hidden md:table-cell text-xs text-muted-foreground font-sans">
-                        {p.college || "Not provided"}
+                        <p className="text-foreground">{p.college || "Not provided"}</p>
+                        {(p.usn || p.gender) && (
+                          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                            {[p.usn, p.gender].filter(Boolean).join(" · ")}
+                          </p>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 hidden lg:table-cell text-xs text-muted-foreground font-sans">
                         {p.createdAt ? new Date(p.createdAt).toLocaleDateString(undefined, {

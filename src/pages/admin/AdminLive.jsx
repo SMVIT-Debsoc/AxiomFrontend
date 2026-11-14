@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Link, useNavigate} from "react-router-dom";
 import {Loader2, Search} from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
@@ -7,8 +7,9 @@ import {useRoundSocket} from "../../hooks/useSocket";
 import {useToast} from "../../hooks/useToast";
 import {useAdminEvent} from "../../contexts/adminEvent";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import {AllocateRoomsModal} from "./AdminRoundManagement";
 import {cn} from "../../lib/utils";
+
+const AllocateRoomsModal = lazy(() => import("./AdminRoundManagement").then((m) => ({default: m.AllocateRoomsModal})));
 
 const STEPS = [
     {label: "Check-in", short: "Check-in"},
@@ -116,6 +117,7 @@ export default function AdminLive() {
             ? {...d, winnerId: data.winnerId, debater1Score: data.debater1Score, debater2Score: data.debater2Score, status: "COMPLETED"} : d)),
         onRoundStatusChange: (data) => setRound((prev) => (prev ? {...prev, ...data} : prev)),
         onPairingsPublished: (data) => setRound((prev) => (prev ? {...prev, pairingsPublished: data.published} : prev)),
+        onResultsPublished: (data) => setResultsPublished(Boolean(data.published)),
         onRoundUpdated: (data) => { if (data.round) setRound((prev) => ({...prev, ...data.round})); },
     });
 
@@ -310,7 +312,7 @@ export default function AdminLive() {
 
             <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <section aria-label="Step detail" className="ax-card order-2 min-w-0 p-4 md:p-6 lg:order-1">
-                    {step === 0 && <CheckInPanel present={present} total={total} absent={absent.filter((u) => match(fullName(u), u.college))} busy={busy} onMark={markPresent} onPreview={previewPairings} />}
+                    {step === 0 && <CheckInPanel present={present} total={total} absent={absent.filter((u) => match(fullName(u), u.college, u.mobile, u.usn, u.email))} busy={busy} onMark={markPresent} onPreview={previewPairings} />}
                     {step === 1 && <PairingsPanel round={round} debates={debates.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))} onRegenerate={generatePairings} regenerating={busy === "generating"} hasDebates={hasDebates} />}
                     {step === 2 && <RoomsPanel debates={debates.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))} onAllocate={() => setShowAllocate(true)} hasDebates={hasDebates} noJudge={noJudge} roundId={roundId} />}
                     {step === 3 && <PublishPanel checks={[
@@ -348,7 +350,11 @@ export default function AdminLive() {
                 </button>
             </div>
 
-            {showAllocate && <AllocateRoomsModal onClose={() => setShowAllocate(false)} onConfirm={allocateRooms} totalDebates={debates.length} rooms={rooms} loading={busy === "allocating"} />}
+            {showAllocate && (
+                <Suspense fallback={null}>
+                    <AllocateRoomsModal onClose={() => setShowAllocate(false)} onConfirm={allocateRooms} totalDebates={debates.length} rooms={rooms} loading={busy === "allocating"} />
+                </Suspense>
+            )}
         </div>
     );
 }
@@ -388,7 +394,14 @@ function CheckInPanel({present, total, absent, busy, onMark, onPreview}) {
                 <ul className="m-0 flex list-none flex-col gap-2 p-0">
                     {absent.slice(0, 60).map((u) => (
                         <li key={u.id} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5">
-                            <div className="min-w-0 flex-1"><p className="m-0 truncate font-semibold">{fullName(u)}</p><p className="m-0 truncate text-sm text-muted-foreground">{u.college || "No college"}</p></div>
+                            <div className="min-w-0 flex-1">
+                                <p className="m-0 truncate font-semibold">{fullName(u)}</p>
+                                <p className="m-0 truncate text-sm text-muted-foreground">{u.college || "No college"}{u.usn ? ` · ${u.usn}` : ""}</p>
+                                <p className="m-0 truncate text-xs text-muted-foreground tabular-nums">
+                                    {u.mobile ? <a href={`tel:${u.mobile}`} className="font-medium text-foreground hover:underline">{u.mobile}</a> : "No phone"}
+                                    {u.email ? ` · ${u.email}` : ""}
+                                </p>
+                            </div>
                             <button type="button" onClick={() => onMark(u.id)} disabled={busy === `checkin:${u.id}`} className="ax-ghost-btn !min-h-11 shrink-0">{busy === `checkin:${u.id}` ? "…" : "Mark present"}</button>
                         </li>
                     ))}

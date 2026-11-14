@@ -12,9 +12,13 @@ import {cn} from "../../lib/utils";
 
 const nameOf = (u) => `${u?.firstName || ""} ${u?.lastName || ""}`.trim() || u?.email || "Unknown";
 const initials = (u) => nameOf(u).split(/\s+/).slice(0, 2).map((s) => s[0]).join("").toUpperCase();
-const maskMobile = (m) => {
-    const d = String(m || "").replace(/\D/g, "").slice(-10);
-    return d.length === 10 ? `${d.slice(0, 2)}••• ••${d.slice(-3)}` : "";
+const formatMobile = (m) => {
+    const raw = String(m || "").trim();
+    if (!raw) return "";
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length === 10) return `${digits.slice(0, 5)} ${digits.slice(5)}`;
+    if (digits.length === 12 && digits.startsWith("91")) return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+    return raw;
 };
 const ago = (iso) => {
     const t = new Date(iso).getTime();
@@ -90,7 +94,7 @@ export default function AdminPeople() {
     const shown = rows.filter((u) => {
         if (filter === "incomplete" && !incomplete(u)) return false;
         if (filter === "absent" && (presentIds.has(u.id) || !u.enrolled)) return false;
-        return !q || `${nameOf(u)} ${u.email || ""} ${u.college || ""} ${u.usn || ""}`.toLowerCase().includes(q);
+        return !q || `${nameOf(u)} ${u.email || ""} ${u.mobile || ""} ${u.college || ""} ${u.usn || ""} ${u.gender || ""}`.toLowerCase().includes(q);
     });
 
     const lastHour = users.filter((u) => enrolledIds.has(u.id) && u.createdAt && Date.now() - new Date(u.createdAt).getTime() < 3600000).length;
@@ -143,23 +147,30 @@ export default function AdminPeople() {
                     {/* Phone: cards */}
                     <ul className="m-0 flex list-none flex-col gap-2 p-0 md:hidden">
                         {shown.slice(0, 200).map((u) => (
-                            <li key={u.id} className="flex items-center gap-3 rounded-2xl border border-border p-3">
+                            <li key={u.id} className="flex items-start gap-3 rounded-2xl border border-border p-3">
                                 <div aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#4A5646] font-heading font-bold text-[#EAFBF5]">{initials(u)}</div>
-                                <div className="min-w-0 flex-1"><p className="m-0 truncate font-bold">{nameOf(u)}</p><p className="m-0 truncate text-[13px] text-muted-foreground">{u.college || "No college"}{u.usn ? ` · ${u.usn}` : ""}</p></div>
-                                <span className={cn("ax-chip", statusChip[u.status][1])}>{statusChip[u.status][0]}</span>
+                                <div className="min-w-0 flex-1">
+                                    <p className="m-0 truncate font-bold">{nameOf(u)}</p>
+                                    <p className="m-0 truncate text-[13px] text-muted-foreground">{u.college || "No college"}{u.usn ? ` · ${u.usn}` : ""}{u.gender ? ` · ${u.gender}` : ""}</p>
+                                    <p className="m-0 mt-0.5 truncate text-[13px] text-foreground tabular-nums">
+                                        {formatMobile(u.mobile) ? <a className="font-semibold underline-offset-2 hover:underline" href={`tel:${u.mobile}`}>{formatMobile(u.mobile)}</a> : "No phone"}
+                                        {u.email ? ` · ${u.email}` : ""}
+                                    </p>
+                                </div>
+                                <span className={cn("ax-chip shrink-0", statusChip[u.status][1])}>{statusChip[u.status][0]}</span>
                             </li>
                         ))}
                     </ul>
                     {/* Desktop: table */}
                     <div className="hidden overflow-x-auto md:block">
                         <table className="w-full text-left text-[15px]">
-                            <thead><tr className="text-xs uppercase tracking-[0.06em] text-muted-foreground"><th scope="col" className="py-2 pr-3">Debater</th><th scope="col" className="py-2 pr-3">College</th><th scope="col" className="py-2 pr-3">Mobile</th><th scope="col" className="py-2 pr-3">USN</th><th scope="col" className="py-2">Status</th></tr></thead>
+                            <thead><tr className="text-xs uppercase tracking-[0.06em] text-muted-foreground"><th scope="col" className="py-2 pr-3">Debater</th><th scope="col" className="py-2 pr-3">College</th><th scope="col" className="py-2 pr-3">Mobile</th><th scope="col" className="py-2 pr-3">USN / Gender</th><th scope="col" className="py-2">Status</th></tr></thead>
                             <tbody>{shown.slice(0, 300).map((u) => (
                                 <tr key={u.id}>
                                     <td className="py-2.5 pr-3"><span className="font-semibold">{nameOf(u)}</span><br /><span className="text-[13px] text-muted-foreground">{u.email}</span></td>
                                     <td className="py-2.5 pr-3">{u.college || "—"}</td>
-                                    <td className="py-2.5 pr-3 tabular-nums">{maskMobile(u.mobile) || "—"}</td>
-                                    <td className="py-2.5 pr-3">{u.usn || "—"}</td>
+                                    <td className="py-2.5 pr-3 tabular-nums whitespace-nowrap">{formatMobile(u.mobile) ? <a className="font-medium text-foreground hover:text-primary hover:underline" href={`tel:${u.mobile}`}>{formatMobile(u.mobile)}</a> : "—"}</td>
+                                    <td className="py-2.5 pr-3"><span className="font-mono text-xs">{u.usn || "—"}</span>{u.gender ? <span className="ml-1.5 text-xs text-muted-foreground">({u.gender})</span> : null}</td>
                                     <td className="py-2.5"><span className={cn("ax-chip", statusChip[u.status][1])}>{statusChip[u.status][0]}</span></td>
                                 </tr>
                             ))}</tbody>
@@ -221,7 +232,7 @@ function AddWalkInModal({users, enrolledIds, eventId, onClose, onDone}) {
     const toast = useToast();
     const [q, setQ] = useState("");
     const [busyId, setBusyId] = useState(null);
-    const candidates = users.filter((u) => !enrolledIds.has(u.id)).filter((u) => !q.trim() || `${nameOf(u)} ${u.email || ""} ${u.college || ""}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
+    const candidates = users.filter((u) => !enrolledIds.has(u.id)).filter((u) => !q.trim() || `${nameOf(u)} ${u.email || ""} ${u.mobile || ""} ${u.usn || ""} ${u.college || ""}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
     const enroll = async (u) => {
         setBusyId(u.id);
         try {

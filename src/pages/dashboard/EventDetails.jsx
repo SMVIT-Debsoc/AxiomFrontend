@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
@@ -24,7 +24,12 @@ import { useEventSocket } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { EventDetailsSkeleton } from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
-import { WhatsAppFirstLoginModal } from "../../components/dashboard/WhatsAppGroupPrompt";
+
+const WhatsAppFirstLoginModal = lazy(() =>
+  import("../../components/dashboard/WhatsAppGroupPrompt").then((m) => ({
+    default: m.WhatsAppFirstLoginModal,
+  }))
+);
 
 export default function EventDetails() {
   const { id } = useParams();
@@ -47,61 +52,49 @@ export default function EventDetails() {
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-  // Fetch data function for reuse
+  // Fetch data in parallel to minimize loading latency
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const token = await getTokenRef.current();
 
-      // Fetch event details from backend
-      const eventResponse = await EventApi.get(id, token);
-      if (eventResponse.success && eventResponse.event) {
-        setEvent(eventResponse.event);
+      const [
+        eventResponse,
+        enrollmentResponse,
+        partsParams,
+        userResponse,
+        myDebatesResponse,
+      ] = await Promise.all([
+        EventApi.get(id, token),
+        EventApi.getEnrollmentStatus(id, token).catch(() => ({success: false})),
+        EventApi.getParticipants(id, token).catch(() => ({success: false, participants: []})),
+        UserApi.getProfile(token).catch(() => ({success: false})),
+        DebateApi.getMyDebates(token).catch(() => ({success: false, debates: []})),
+      ]);
 
-        // Rounds are included with the event
-        const eventRounds = eventResponse.event.rounds || [];
-        setRounds(eventRounds);
+      if (eventResponse?.success && eventResponse.event) {
+        setEvent(eventResponse.event);
+        setRounds(eventResponse.event.rounds || []);
+        setError(null);
       } else {
         setError("Event not found");
       }
 
-      // Check enrollment status
-      const enrollmentResponse = await EventApi.getEnrollmentStatus(id, token);
-      if (enrollmentResponse.success) {
+      if (enrollmentResponse?.success) {
         setIsEnrolled(enrollmentResponse.isEnrolled);
       }
 
-      // Fetch Participants
-      try {
-        const partsParams = await EventApi.getParticipants(id, token);
-        if (partsParams.success) {
-          setParticipants(partsParams.participants || []);
-        }
-      } catch (e) {
-        console.error("Failed to fetch participants", e);
+      if (partsParams?.success) {
+        setParticipants(partsParams.participants || []);
       }
 
-      // Fetch User Profile (for ID check)
-      try {
-        const userResponse = await UserApi.getProfile(token);
-        if (userResponse.success) {
-          setCurrentUser(userResponse.user);
-        }
-      } catch (e) {
-        console.error("Failed to fetch profile", e);
+      if (userResponse?.success) {
+        setCurrentUser(userResponse.user);
       }
 
-      // Fetch My Debates
-      try {
-        const myDebatesResponse = await DebateApi.getMyDebates(token);
-        if (myDebatesResponse.success) {
-          setMyDebates(myDebatesResponse.debates || []);
-        }
-      } catch (e) {
-        // Silently fail if no debates found or error
-        console.log("No debates or error fetching debates", e);
+      if (myDebatesResponse?.success) {
+        setMyDebates(myDebatesResponse.debates || []);
       }
-
     } catch (err) {
       console.error("Failed to fetch event details", err);
       setError(err.message);
@@ -183,6 +176,12 @@ export default function EventDetails() {
       console.log("[Socket] Leaderboard updated");
       fetchData();
     },
+    onResultsPublished: (data) => {
+      if (data?.published) {
+        toast.success("Results Published!", "Round results and standings are now visible.");
+      }
+      fetchData();
+    },
     onEventUpdated: (data) => {
       console.log("[Socket] Event updated:", data);
       if (data.event) {
@@ -247,7 +246,9 @@ export default function EventDetails() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
-      <WhatsAppFirstLoginModal event={event} />
+      <Suspense fallback={null}>
+        <WhatsAppFirstLoginModal event={event} />
+      </Suspense>
       {/* Header / Breadcrumb */}
       <div>
         <Link
@@ -714,6 +715,19 @@ export default function EventDetails() {
                           const opponent = isDebater1
                             ? debate.debater2
                             : debate.debater1;
+                          const published = Boolean(
+                            debate.resultsPublished || round?.resultsPublished
+                          );
+                          const myScore =
+                            debate.myScore ??
+                            (isDebater1
+                              ? debate.debater1Score
+                              : debate.debater2Score);
+                          const opponentScore =
+                            debate.opponentScore ??
+                            (isDebater1
+                              ? debate.debater2Score
+                              : debate.debater1Score);
 
                           return (
                             <Motion.div
@@ -723,20 +737,25 @@ export default function EventDetails() {
                               transition={{ delay: index * 0.03 }}
                               className={cn(
                                 "bg-card border rounded-xl p-4 transition-colors",
-                                debate.status === "COMPLETED" && round?.resultsPublished && debate.isPromoted
+                                debate.status === "COMPLETED" && published && debate.isPromoted
                                   ? "border-emerald-500/30"
-                                  : debate.status === "COMPLETED" && round?.resultsPublished && !debate.isPromoted
+                                  : debate.status === "COMPLETED" && published && !debate.isPromoted
                                     ? "border-destructive/30 opacity-80"
-                                    : debate.status === "COMPLETED" && !round?.resultsPublished
+                                    : debate.status === "COMPLETED" && !published
                                       ? "border-amber-500/20 bg-amber-500/5 animate-pulse"
                                       : "border-border"
                               )}
                             >
                               <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-heading font-semibold text-foreground">
-                                  {round?.name || `Round ${round?.roundNumber || "?"}`}
-                                </span>
-                                {debate.status === "COMPLETED" && round?.resultsPublished ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-heading font-semibold text-foreground">
+                                    {round?.name || `Round ${round?.roundNumber || "?"}`}
+                                  </span>
+                                  <span className="text-[10px] font-heading uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                                    {isDebater1 ? "GOV" : "OPP"}
+                                  </span>
+                                </div>
+                                {debate.status === "COMPLETED" && published ? (
                                   <div
                                     className={cn(
                                       "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-heading font-semibold border uppercase tracking-wider",
@@ -757,7 +776,7 @@ export default function EventDetails() {
                                       </>
                                     )}
                                   </div>
-                                ) : debate.status === "COMPLETED" && !round?.resultsPublished ? (
+                                ) : debate.status === "COMPLETED" && !published ? (
                                   <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-heading font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-wider">
                                     <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
                                     AWAITING SELECTION
@@ -781,10 +800,25 @@ export default function EventDetails() {
                                   </p>
                                 </div>
                               </div>
+
+                              {published && (myScore != null || opponentScore != null) && (
+                                <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-xs font-sans">
+                                  <span className="text-muted-foreground">Speaker Score</span>
+                                  <span className="font-mono font-semibold text-foreground tabular-nums">
+                                    {myScore != null ? myScore : "—"} vs {opponentScore != null ? opponentScore : "—"}
+                                  </span>
+                                </div>
+                              )}
                             </Motion.div>
                           );
                         })
                     )}
+                    <Link
+                      to={`/dashboard/events/${id}/results`}
+                      className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-primary hover:border-primary/40 transition-colors"
+                    >
+                      Open Full Results &amp; Standings
+                    </Link>
                   </Motion.div>
                 </AnimatePresence>
               </div>

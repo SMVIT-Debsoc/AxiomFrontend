@@ -485,7 +485,7 @@ export default function AdminEventDetails() {
                           <tr>
                             <th scope="col" className="px-4 py-3">Debater</th>
                             <th scope="col" className="px-4 py-3">Institution</th>
-                            <th scope="col" className="px-4 py-3">Email</th>
+                            <th scope="col" className="px-4 py-3">Contact &amp; ID</th>
                             <th scope="col" className="px-4 py-3 hidden lg:table-cell">Enrolled</th>
                           </tr>
                         </thead>
@@ -498,16 +498,33 @@ export default function AdminEventDetails() {
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2.5">
                                   <UserAvatar user={p} size="xs" className="w-7 h-7" />
-                                  <span className="font-sans font-medium text-sm text-foreground">
-                                    {p.firstName} {p.lastName}
-                                  </span>
+                                  <div>
+                                    <span className="font-sans font-medium text-sm text-foreground block">
+                                      {p.firstName} {p.lastName}
+                                    </span>
+                                    {p.gender && (
+                                      <span className="text-[11px] text-muted-foreground font-sans">
+                                        {p.gender}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-xs text-muted-foreground font-sans">
-                                {p.college || "N/A"}
+                                <p className="text-foreground">{p.college || "N/A"}</p>
+                                {p.usn && <p className="text-[11px] font-mono text-muted-foreground mt-0.5">{p.usn}</p>}
                               </td>
                               <td className="px-4 py-3 text-xs text-muted-foreground font-sans">
-                                {p.email}
+                                {p.mobile ? (
+                                  <p className="font-medium text-foreground tabular-nums">
+                                    <a href={`tel:${p.mobile}`} className="hover:text-primary hover:underline">
+                                      {p.mobile}
+                                    </a>
+                                  </p>
+                                ) : (
+                                  <p className="text-muted-foreground">No phone</p>
+                                )}
+                                {p.email && <p className="truncate">{p.email}</p>}
                               </td>
                               <td className="px-4 py-3 text-xs text-muted-foreground font-sans lg:table-cell hidden">
                                 {p.createdAt
@@ -672,7 +689,12 @@ export default function AdminEventDetails() {
                 .filter((u) => {
                   const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
                   const query = userSearchQuery.toLowerCase();
-                  return name.includes(query) || (u.email || "").toLowerCase().includes(query);
+                  return (
+                    name.includes(query) ||
+                    (u.email || "").toLowerCase().includes(query) ||
+                    (u.mobile || "").toLowerCase().includes(query) ||
+                    (u.usn || "").toLowerCase().includes(query)
+                  );
                 })
                 .map((u) => (
                   <button
@@ -686,7 +708,9 @@ export default function AdminEventDetails() {
                         <p className="text-xs font-heading font-semibold text-foreground truncate">
                           {u.firstName} {u.lastName}
                         </p>
-                        <p className="text-[11px] text-muted-foreground font-sans truncate">{u.email}</p>
+                        <p className="text-[11px] text-muted-foreground font-sans truncate">
+                          {u.email}{u.mobile ? ` · ${u.mobile}` : ""}{u.usn ? ` · ${u.usn}` : ""}
+                        </p>
                       </div>
                     </div>
                     <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0 ml-2" aria-hidden="true" />

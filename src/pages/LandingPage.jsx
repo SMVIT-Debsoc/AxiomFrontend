@@ -1,13 +1,14 @@
-import {useEffect, useRef, useState} from "react";
+import {lazy, Suspense, useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {ArrowUpRight} from "lucide-react";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import Sculpture from "../components/brand/Sculpture";
 import DebSocPromoCard from "../components/brand/DebSocPromoCard";
-import AdminAccessModal from "../components/brand/AdminAccessModal";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import {GoogleAuthButton} from "../auth/client.jsx";
 import {EVENT_CONFIG as E} from "../config/event";
+
+const AdminAccessModal = lazy(() => import("../components/brand/AdminAccessModal"));
 
 const STEPS = [
     {n: "01", title: "Continue with Google", body: "One tap. Your name, email and photo come across automatically.", short: "Name and email come across automatically."},
@@ -173,7 +174,11 @@ export default function LandingPage() {
                 </p>
             </footer>
 
-            <AdminAccessModal isOpen={adminModalOpen} onClose={() => setAdminModalOpen(false)} />
+            {adminModalOpen && (
+                <Suspense fallback={null}>
+                    <AdminAccessModal isOpen={adminModalOpen} onClose={() => setAdminModalOpen(false)} />
+                </Suspense>
+            )}
 
             {/* Sticky Google bar, phones only, once the hero button has scrolled away */}
             <div

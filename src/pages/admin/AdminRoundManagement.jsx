@@ -367,6 +367,8 @@ export default function AdminRoundManagement() {
             !searchTerm ||
             `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.mobile?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.usn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             user.college?.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [allParticipants, searchTerm]);
@@ -680,9 +682,21 @@ export default function AdminRoundManagement() {
                                                     <p className="text-xs text-muted-foreground font-sans">
                                                         {user.email}
                                                     </p>
+                                                    {user.mobile && (
+                                                        <p className="text-xs text-foreground font-medium tabular-nums mt-0.5">
+                                                            <a href={`tel:${user.mobile}`} className="hover:text-primary hover:underline">
+                                                                {user.mobile}
+                                                            </a>
+                                                        </p>
+                                                    )}
                                                 </td>
                                                 <td className="px-5 py-3.5 text-xs text-muted-foreground font-sans">
-                                                    {user.college || "N/A"}
+                                                    <p className="text-foreground">{user.college || "N/A"}</p>
+                                                    {(user.usn || user.gender) && (
+                                                        <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                                                            {[user.usn, user.gender].filter(Boolean).join(" · ")}
+                                                        </p>
+                                                    )}
                                                 </td>
                                                 <td className="px-5 py-3.5">
                                                     <div className="flex items-center gap-1.5">
@@ -745,8 +759,13 @@ export default function AdminRoundManagement() {
                                             <p className="text-xs text-muted-foreground font-sans truncate">
                                                 {user.email}
                                             </p>
+                                            {user.mobile && (
+                                                <p className="text-xs text-foreground font-medium tabular-nums truncate mt-0.5">
+                                                    <a href={`tel:${user.mobile}`} className="hover:underline">{user.mobile}</a>
+                                                </p>
+                                            )}
                                             <p className="text-xs text-muted-foreground font-sans mt-0.5 truncate">
-                                                {user.college || "N/A"}
+                                                {user.college || "N/A"}{user.usn ? ` · ${user.usn}` : ""}{user.gender ? ` · ${user.gender}` : ""}
                                             </p>
                                         </div>
                                         <span

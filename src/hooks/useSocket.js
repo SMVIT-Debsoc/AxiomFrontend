@@ -1,5 +1,6 @@
 import {useEffect, useCallback, useRef, useSyncExternalStore} from "react";
 import socketService, {SocketEvents} from "../services/socket";
+import {clearApiCache} from "../services/api";
 
 // Re-export SocketEvents for convenience
 export {SocketEvents};
@@ -129,8 +130,9 @@ export function useEventSocket(eventId, callbacks = {}) {
 
     const unsubscribers = [];
 
-    // Helper to call current callback safely
+    // Helper to invalidate stale cached GET responses and call current callback safely
     const callHandler = (handlerName, data) => {
+      clearApiCache();
       if (callbacksRef.current[handlerName]) {
         callbacksRef.current[handlerName](data);
       }
@@ -161,6 +163,13 @@ export function useEventSocket(eventId, callbacks = {}) {
     unsubscribers.push(
       subscribe(SocketEvents.ROUND_PAIRINGS_PUBLISHED, (data) =>
         callHandler("onPairingsPublished", data)
+      )
+    );
+
+    // Results published
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_RESULTS_PUBLISHED, (data) =>
+        callHandler("onResultsPublished", data)
       )
     );
 
@@ -243,8 +252,9 @@ export function useRoundSocket(roundId, callbacks = {}) {
 
     const unsubscribers = [];
 
-    // Helper to call current callback safely
+    // Helper to invalidate stale cached GET responses and call current callback safely
     const callHandler = (handlerName, data) => {
+      clearApiCache();
       if (callbacksRef.current[handlerName]) {
         callbacksRef.current[handlerName](data);
       }
@@ -275,6 +285,13 @@ export function useRoundSocket(roundId, callbacks = {}) {
     unsubscribers.push(
       subscribe(SocketEvents.ROUND_PAIRINGS_PUBLISHED, (data) =>
         callHandler("onPairingsPublished", data)
+      )
+    );
+
+    // Results published
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_RESULTS_PUBLISHED, (data) =>
+        callHandler("onResultsPublished", data)
       )
     );
 

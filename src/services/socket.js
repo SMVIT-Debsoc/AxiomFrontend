@@ -8,6 +8,8 @@ const configuredSocketUrl = import.meta.env.VITE_SOCKET_URL;
 const configuredApiUrl = import.meta.env.VITE_API_URL;
 const configuredTransports = import.meta.env.VITE_SOCKET_TRANSPORTS;
 
+const PRODUCTION_BACKEND_ORIGIN = "https://axiom26-aezg.onrender.com";
+
 function getSocketUrl() {
     if (configuredSocketUrl) {
         return configuredSocketUrl;
@@ -23,8 +25,9 @@ function getSocketUrl() {
         return `http://${window.location.hostname}:3000`;
     }
 
-    // In deployed frontend, use same-origin and rely on host rewrites/proxy for /socket.io.
-    return "";
+    // Connect directly to the Render backend in production because Vercel rewrites
+    // buffer/drop persistent WebSocket upgrade handshakes.
+    return PRODUCTION_BACKEND_ORIGIN;
 }
 
 const SOCKET_URL = getSocketUrl();
@@ -71,6 +74,7 @@ export const SocketEvents = {
     ROUND_STATUS_CHANGE: "round:status",
     ROUND_CHECKIN_WINDOW: "round:checkinWindow",
     ROUND_PAIRINGS_PUBLISHED: "round:pairingsPublished",
+    ROUND_RESULTS_PUBLISHED: "round:resultsPublished",
 
     // Debate events
     PAIRINGS_GENERATED: "pairings:generated",

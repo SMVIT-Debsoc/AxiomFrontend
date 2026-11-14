@@ -13,10 +13,12 @@ import {
   Shield,
   Swords,
   Timer,
+  Trophy,
+  RefreshCw,
 } from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
 import {RoundApi, CheckInApi, DebateApi, UserApi} from "../../services/api";
-import {socketService, SocketEvents} from "../../services/socket";
+import {useRoundSocket} from "../../hooks/useSocket";
 import {useToast} from "../../hooks/useToast"
 import {cn} from "../../lib/utils";
 import {UserAvatar} from "../../components/ui/UserAvatar";
@@ -46,52 +48,46 @@ export default function RoundDetails() {
       setLoading(true);
       const token = await getTokenRef.current();
 
-      // Fetch round details
-      const roundResponse = await RoundApi.get(roundId, token);
-      if (roundResponse.success && roundResponse.round) {
+      const [roundResponse, userResponse, checkInRes, debatesResponse] = await Promise.all([
+        RoundApi.get(roundId, token),
+        UserApi.getProfile(token).catch(() => ({success: false})),
+        CheckInApi.getMyStatus(roundId, token).catch(() => ({success: false})),
+        DebateApi.getMyDebates(token).catch(() => ({success: false, debates: []})),
+      ]);
+
+      if (roundResponse?.success && roundResponse.round) {
         setRound(roundResponse.round);
       }
 
-      // Fetch current user profile
-      const userResponse = await UserApi.getProfile(token);
-      if (userResponse.success) {
+      if (userResponse?.success) {
         setCurrentUser(userResponse.user);
       }
 
-      // Fetch check-in status
-      try {
-        const checkInRes = await CheckInApi.getMyStatus(roundId, token);
-        if (checkInRes.success) {
-          setCheckInStatus(checkInRes);
-        }
-      } catch {
-        // User might not have checked in yet
+      if (checkInRes?.success) {
+        setCheckInStatus(checkInRes);
       }
 
-      // Fetch my debate for this round
-      try {
-        const debatesResponse = await DebateApi.getMyDebates(token);
-        if (debatesResponse.success) {
-          const debates = debatesResponse.debates || [];
-          const myRoundDebate = debates.find((d) => d.roundId === roundId);
-          if (myRoundDebate) {
-            setMyDebate(myRoundDebate);
-          }
-        }
-      } catch {
-        // No debates yet
+      if (debatesResponse?.success) {
+        const debates = debatesResponse.debates || [];
+        const myRoundDebate = debates.find((d) => d.roundId === roundId);
+        setMyDebate(myRoundDebate || null);
       }
 
-      // Fetch all debates if pairings published
-      try {
-        if (roundResponse.round?.pairingsPublished) {
-          const allDebatesRes = await DebateApi.getByRound(roundId, token);
-          if (allDebatesRes.success) {
-            setAllDebates(allDebatesRes.debates || []);
+      if (roundResponse?.round?.pairingsPublished) {
+        if (Array.isArray(roundResponse.round.debates) && roundResponse.round.debates.length > 0) {
+          setAllDebates(roundResponse.round.debates);
+        } else {
+          try {
+            const allDebatesRes = await DebateApi.getByRound(roundId, token);
+            if (allDebatesRes.success) {
+              setAllDebates(allDebatesRes.debates || []);
+            }
+          } catch {
+            // debates not available yet
           }
         }
-      } catch {
-        // debates not available yet
+      } else {
+        setAllDebates([]);
       }
 
       setError(null);
@@ -106,70 +102,43 @@ export default function RoundDetails() {
   const currentUserId = currentUser?.id;
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
 
-    // Socket setup
-    socketService.joinRound(roundId);
-
-    const unsubscribeStatus = socketService.on(
-      SocketEvents.ROUND_STATUS_CHANGE,
-      (data) => {
-        // Update local round state immediately
-        setRound((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            ...data,
-          };
-        });
-
-        // If pairings were published or check-in closed, we might need a full refresh
-        if (data.pairingsPublished) {
-          fetchData();
-          toast.success("Round Updated", "Round status has changed.");
-        } else if (data.checkInEndTime) {
-          // Just updating the time is enough for the UI to disable the button
-          // But if we want to be safe, we can refetch
-        }
+  useRoundSocket(roundId, {
+    onRoundStatusChange: (data) => {
+      setRound((prev) => (prev ? {...prev, ...data} : prev));
+      if (data.pairingsPublished || data.status === "COMPLETED") {
+        fetchData();
+        toast.success("Round Updated", "Round status has changed.");
       }
-    );
-
-    const unsubscribePairings = socketService.on(
-      SocketEvents.ROUND_PAIRINGS_PUBLISHED,
-      (data) => {
-        if (data.published) {
-          toast.success("Draw Released!", "Pairings have been published.");
-        }
+    },
+    onPairingsPublished: (data) => {
+      if (data.published) {
+        toast.success("Draw Released!", "Pairings have been published.");
+      }
+      fetchData();
+    },
+    onResultsPublished: (data) => {
+      if (data.published) {
+        toast.success("Results Published!", "Round results are now visible.");
+      }
+      fetchData();
+    },
+    onDebateResult: () => {
+      fetchData();
+    },
+    onRoundUpdated: (data) => {
+      if (data.round) {
+        setRound((prev) => (prev ? {...prev, ...data.round} : data.round));
+      }
+      fetchData();
+    },
+    onCheckInUpdate: (data) => {
+      if (data.userId === currentUserId) {
         fetchData();
       }
-    );
-
-    const unsubscribeRoundUpdated = socketService.on(
-      SocketEvents.ROUND_UPDATED,
-      (data) => {
-        // Generic update for name/motion
-        setRound((prev) => ({...prev, ...data.round}));
-        toast.info("Round Updated", "Round details have been updated.");
-      }
-    );
-
-    const unsubscribeCheckIn = socketService.on(
-      SocketEvents.CHECKIN_UPDATE,
-      (data) => {
-        // If it's me, refresh to show "Checked In" status
-        if (data.userId === currentUserId) {
-          fetchData();
-        }
-      }
-    );
-
-    return () => {
-      socketService.leaveRound(roundId);
-      unsubscribeStatus();
-      unsubscribePairings();
-      unsubscribeCheckIn();
-      unsubscribeRoundUpdated();
-    };
-  }, [roundId, currentUserId, fetchData, toast]);
+    },
+  });
 
   const handleCheckIn = async () => {
     try {
@@ -584,13 +553,106 @@ export default function RoundDetails() {
             </div>
           )}
 
+          {/* Round Outcome Showcase */}
+          {myDebate && myDebate.status === "COMPLETED" && (() => {
+            const published = Boolean(round.resultsPublished || myDebate.resultsPublished);
+            const qualified = Boolean(myDebate.isPromoted);
+            const isDebater1 = myDebate.debater1Id === currentUser?.id;
+            const myScore = myDebate.myScore ?? (isDebater1 ? myDebate.debater1Score : myDebate.debater2Score);
+            const opponentScore = myDebate.opponentScore ?? (isDebater1 ? myDebate.debater2Score : myDebate.debater1Score);
+
+            return (
+              <Motion.div
+                initial={{opacity: 0, y: 10}}
+                animate={{opacity: 1, y: 0}}
+                transition={{duration: 0.3}}
+                className={cn(
+                  "border rounded-xl p-5 space-y-3",
+                  published && qualified
+                    ? "bg-emerald-500/[0.04] border-emerald-500/40"
+                    : published && !qualified
+                    ? "bg-destructive/[0.04] border-destructive/30"
+                    : "bg-amber-500/[0.04] border-amber-500/30"
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                    <h3 className="font-heading font-bold text-sm text-foreground">
+                      Round Outcome
+                    </h3>
+                  </div>
+                  {published ? (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider border",
+                        qualified
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : "bg-destructive/10 text-destructive border-destructive/20"
+                      )}
+                    >
+                      {qualified ? (
+                        <>
+                          <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                          QUALIFIED
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-3 h-3" aria-hidden="true" />
+                          ELIMINATED
+                        </>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
+                      AWAITING PUBLICATION
+                    </span>
+                  )}
+                </div>
+
+                {published ? (
+                  <>
+                    <p className="text-xs text-muted-foreground font-sans">
+                      {myDebate.winnerId
+                        ? myDebate.winnerId === currentUser?.id
+                          ? "Congratulations! You won this round ballot."
+                          : `${myDebate.winner?.firstName || "Your opponent"} ${myDebate.winner?.lastName || ""} won this ballot.`
+                        : "Official round results have been published."}
+                    </p>
+                    {(myScore != null || opponentScore != null) && (
+                      <div className="grid grid-cols-2 gap-2.5 rounded-lg bg-card border border-border/70 p-3 text-center">
+                        <div>
+                          <p className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground">Your Speaker Score</p>
+                          <p className="text-lg font-heading font-bold text-foreground tabular-nums">
+                            {myScore != null ? myScore : "—"}
+                          </p>
+                        </div>
+                        <div className="border-l border-border/60">
+                          <p className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground">Opponent Score</p>
+                          <p className="text-lg font-heading font-bold text-muted-foreground tabular-nums">
+                            {opponentScore != null ? opponentScore : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground font-sans">
+                    Your debate ballot has been recorded. Scores and qualification status will appear here live once the adjudication desk publishes results.
+                  </p>
+                )}
+              </Motion.div>
+            );
+          })()}
+
           {/* View Results Link */}
-          {round.status === "COMPLETED" && (
+          {(round.status === "COMPLETED" || round.resultsPublished || myDebate?.status === "COMPLETED") && (
             <Link
               to={`/dashboard/events/${eventId}/results`}
               className="block w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-xs text-center hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              View Results
+              View Full Results &amp; Standings
             </Link>
           )}
         </div>
@@ -636,6 +698,18 @@ export default function RoundDetails() {
                       <p className="font-heading font-semibold text-xs truncate w-full text-center text-foreground">
                         {debate.debater1?.firstName} {debate.debater1?.lastName}
                       </p>
+                      {round.resultsPublished && debate.winnerId && (
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                          {debate.debater1Score != null && (
+                            <span className="text-muted-foreground">{debate.debater1Score}</span>
+                          )}
+                          {debate.winnerId === debate.debater1Id && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
+                              WIN
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="text-muted-foreground font-heading font-bold text-xs">
                       VS
@@ -654,6 +728,18 @@ export default function RoundDetails() {
                       <p className="font-heading font-semibold text-xs truncate w-full text-center text-foreground">
                         {debate.debater2?.firstName} {debate.debater2?.lastName}
                       </p>
+                      {round.resultsPublished && debate.winnerId && (
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                          {debate.debater2Score != null && (
+                            <span className="text-muted-foreground">{debate.debater2Score}</span>
+                          )}
+                          {debate.winnerId === debate.debater2Id && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
+                              WIN
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-2.5 border-t border-border/50 text-xs text-muted-foreground font-sans">
