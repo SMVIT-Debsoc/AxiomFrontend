@@ -3,7 +3,6 @@ import {motion as Motion} from "framer-motion";
 import {
   Trophy,
   Calendar,
-  ArrowUpRight,
   CheckCircle2,
   Loader2,
   XCircle,
@@ -12,20 +11,20 @@ import {
   ArrowRight,
   Award,
   RefreshCw,
+  ExternalLink
 } from "lucide-react";
 import {useAuth, useUser} from "../../auth/client.jsx";
 import {UserApi, EventApi, DebateApi, CheckInApi, clearApiCache} from "../../services/api";
 import {Link} from "react-router-dom";
-import {useToast} from "../../hooks/useToast"
+import {useToast} from "../../hooks/useToast";
 import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
-import {useEventSocket, useSocket, SocketEvents} from "../../hooks/useSocket";
+import {useEventSocket, useSocket, SocketEvents, useLiveRefresh, invalidateRealtimeCache} from "../../hooks/useSocket";
 import Sculpture from "../../components/brand/Sculpture";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import EmptyState from "../../components/ui/EmptyState";
 import CountUp from "../../components/ui/CountUp";
 import NeoButton from "../../components/neo/NeoButton";
-import NeoProgressBar from "../../components/neo/NeoProgressBar";
-import JourneyCard from "../../components/dashboard/JourneyCard";
+import {cn} from "../../lib/utils";
 
 const WhatsAppGroupBanner = lazy(() =>
   import("../../components/dashboard/WhatsAppGroupPrompt").then((m) => ({
@@ -51,13 +50,14 @@ export default function DashboardHome() {
   const [checkInStatus, setCheckInStatus] = useState(null);
   const [currentRound, setCurrentRound] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [mobileTab, setMobileTab] = useState("now"); // "now" | "rounds" | "results"
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-  // Fetch data in parallel to minimize waterfall round trips
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async ({ silent = false } = {}) => {
     if (!authLoaded) return;
+    if (!silent) setLoading(true);
 
     try {
       const token = await getTokenRef.current();
@@ -82,7 +82,6 @@ export default function DashboardHome() {
       if (event) {
         setActiveEvent(event);
 
-        // Find active or latest round (Ongoing > Upcoming > Latest)
         const targetRound =
           event.rounds?.find((r) => r.status === "ONGOING") ||
           event.rounds?.find((r) => r.status === "UPCOMING") ||
@@ -114,13 +113,12 @@ export default function DashboardHome() {
 
       setNextDebate(scheduled);
       setLatestCompletedDebate(completed[0] || null);
-
       setError(null);
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      if (loading) setError(err.message);
+      if (!silent) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -129,126 +127,69 @@ export default function DashboardHome() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoaded]);
 
-  // Real-time updates
+  useLiveRefresh(() => fetchDashboardData({ silent: true }));
+
   useEventSocket(activeEvent?.id, {
     onRoundStatusChange: (data) => {
-      console.log("Round status changed, refreshing dashboard...", data);
       toast.info("Update", `Round status updated to ${data.status}`);
-      fetchDashboardData();
+      fetchDashboardData({ silent: true });
     },
     onPairingsPublished: (data) => {
-      console.log("Pairings published, refreshing dashboard...", data);
       if (data.published) {
         toast.success("Draw Released!", "Pairings have been published.");
       }
-      fetchDashboardData();
+      fetchDashboardData({ silent: true });
     },
-    onRoundUpdated: () => {
-      fetchDashboardData();
-    },
-    onDebateCreated: () => {
-      fetchDashboardData();
-    },
-    onDebateResult: () => {
-      fetchDashboardData();
-    },
+    onRoundUpdated: () => fetchDashboardData({ silent: true }),
+    onDebateCreated: () => fetchDashboardData({ silent: true }),
+    onDebateResult: () => fetchDashboardData({ silent: true }),
     onResultsPublished: (data) => {
       if (data?.published) {
-        toast.success("Results Published!", "Round results are now available on your dashboard.");
+        toast.success("Results Published!", "Round results are now available.");
       }
-      fetchDashboardData();
-    },
-    onEventUpdated: (data) => {
-      if (data?.event) {
-        setActiveEvent((prev) => (prev ? {...prev, ...data.event} : data.event));
-      } else {
-        fetchDashboardData();
-      }
+      fetchDashboardData({ silent: true });
     },
   });
 
-  const {subscribe} = useSocket();
-  useEffect(() => {
-    const unsub = subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, (data) => {
-      if (data?.event && (!activeEvent || data.event.id === activeEvent.id)) {
-        setActiveEvent((prev) => (prev ? {...prev, ...data.event} : data.event));
-      } else {
-        fetchDashboardData();
-      }
-    });
-    return () => {
-      if (unsub) unsub();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscribe, activeEvent?.id]);
+  useSocket(SocketEvents.EVENT_UPDATED_GLOBAL, () => {
+    invalidateRealtimeCache();
+    fetchDashboardData({ silent: true });
+  });
 
   if (loading) {
     return <DashboardHomeSkeleton />;
   }
 
-  // Use fetched data or fallback to account data
-  const displayName = userData?.firstName
-    ? `${userData.firstName} ${userData.lastName || ""}`.trim()
-    : authUser?.fullName || "User";
-  const college = userData?.college || "Complete your profile";
+  const displayName = userData
+    ? [userData.firstName, userData.lastName].filter(Boolean).join(" ") ||
+      userData.email
+    : authUser?.firstName || authUser?.emailAddresses?.[0]?.emailAddress || "Debater";
+  const college = userData?.college || "College not set";
 
-  const stats = [
-    {
-      label: "Debates",
-      value: userData?.stats?.totalDebates || 0,
-      color: "text-foreground",
-    },
-    {
-      label: "Qualified",
-      value: userData?.stats?.qualified || 0,
-      color: "text-emerald-600 dark:text-emerald-400",
-    },
-    {
-      label: "Qualify Rate",
-      value:
-        userData?.stats?.totalDebates > 0
-          ? `${Math.round(userData.stats.winRate)}%`
-          : "0%",
-      color: "text-primary",
-    },
-  ];
+  const totalDebates = userData?.stats?.totalDebates || 0;
+  const qualifiedCount = userData?.stats?.qualified || 0;
+  const winRate = totalDebates > 0 ? Math.round(userData?.stats?.winRate || 0) : 0;
+
+  const handleCheckIn = async () => {
+    if (!currentRound) return;
+    try {
+      setCheckingIn(true);
+      const token = await getToken();
+      const response = await CheckInApi.checkIn(currentRound.id, token);
+      if (response.success) {
+        setCheckInStatus(response.checkIn);
+        toast.success("Successfully checked in!");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to check in. Please try again.");
+    } finally {
+      setCheckingIn(false);
+    }
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div className="axiom-page-header axiom-rise">
-        <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
-          Overview
-        </span>
-        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1">
-          Debater Desk
-        </h1>
-        <p className="text-sm text-muted-foreground font-sans mt-0.5">
-          Live tournament schedule, pairings, and personal standings.
-        </p>
-      </div>
-
-      {/* Error Banner */}
-      {error && (
-        <div role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2.5 rounded-lg font-sans flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-baseline gap-x-3">
-            <p className="font-semibold text-sm">Failed to load dashboard data</p>
-            <p className="text-xs opacity-90">{error}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              clearApiCache();
-              setError(null);
-              fetchDashboardData();
-            }}
-            className="min-h-9 rounded-md bg-destructive/15 px-3 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/25"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
+    <div className="space-y-4 max-w-5xl mx-auto font-sans">
+      {/* WhatsApp First Login Modal & Persistent Alert */}
       <Suspense fallback={null}>
         <WhatsAppFirstLoginModal event={activeEvent} />
         <WhatsAppGroupBanner
@@ -257,456 +198,432 @@ export default function DashboardHome() {
         />
       </Suspense>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start">
-      <div className="space-y-4 min-w-0">
-      {/* Profile / Performance Overview Surface */}
-      <div className="bg-card border border-border p-6 rounded-xl relative overflow-hidden axiom-rise" style={{"--i": 1}}>
-        <div className="relative z-10">
-          <div className="flex items-center gap-4 mb-5">
-            <UserAvatar user={authUser} name={displayName} size="xl" className="axiom-avatar-pop" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-heading font-bold text-foreground truncate">{displayName}</h2>
-                <span className="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary rounded text-[10px] font-heading font-semibold uppercase tracking-wider shrink-0">
-                  Debater
-                </span>
-              </div>
-              <p className="text-muted-foreground font-sans text-xs mt-0.5 truncate">{college}</p>
-            </div>
+      {/* Error Banner */}
+      {error && (
+        <div role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2.5 rounded-xl font-sans flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-baseline gap-x-3 text-sm">
+            <span className="font-bold">Error loading telemetry:</span>
+            <span className="opacity-90">{error}</span>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              clearApiCache();
+              setError(null);
+              fetchDashboardData();
+            }}
+            className="min-h-9 px-3 rounded-lg bg-destructive/15 text-xs font-semibold hover:bg-destructive/25 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
-          <div className="grid grid-cols-3 gap-2 bg-muted/30 border border-border/60 rounded-lg p-3 text-center">
-            {stats.map((stat, index) => (
-              <div
-                key={stat.label}
-                className="border-r last:border-0 border-border/50 px-1 axiom-rise"
-                style={{"--i": index + 3}}
-              >
-                <div className={`text-xl font-heading font-bold ${stat.color}`}>
-                  <CountUp value={stat.value} />
-                </div>
-                <div className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground mt-0.5">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4">
-            <p className="mb-1.5 text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-              Win rate
-            </p>
-            <NeoProgressBar
-              label="Qualify rate"
-              value={userData?.stats?.totalDebates > 0 ? Math.round(userData.stats.winRate) : 0}
-            />
+      {/* Compact Debater Command Strip */}
+      <section className="bg-card border-2 border-border p-4 sm:p-5 rounded-2xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <UserAvatar user={authUser} name={displayName} size="lg" className="shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-heading font-bold text-foreground truncate">
+                {displayName}
+              </h1>
+              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 text-[10px] font-heading font-bold uppercase tracking-wider rounded shrink-0">
+                Debater
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{college}</p>
           </div>
         </div>
 
+        {/* Compact Stat Badges */}
+        <div className="grid grid-cols-3 gap-2 bg-muted/40 border border-border/70 rounded-xl p-2 sm:px-4 text-center shrink-0">
+          <div className="px-1 border-r border-border/50">
+            <div className="text-base sm:text-lg font-heading font-bold text-foreground">
+              <CountUp value={totalDebates} />
+            </div>
+            <div className="text-[9px] sm:text-[10px] font-heading uppercase tracking-wider text-muted-foreground">
+              Debates
+            </div>
+          </div>
+          <div className="px-1 border-r border-border/50">
+            <div className="text-base sm:text-lg font-heading font-bold text-emerald-600 dark:text-emerald-400">
+              <CountUp value={qualifiedCount} />
+            </div>
+            <div className="text-[9px] sm:text-[10px] font-heading uppercase tracking-wider text-muted-foreground">
+              Qualified
+            </div>
+          </div>
+          <div className="px-1">
+            <div className="text-base sm:text-lg font-heading font-bold text-primary">
+              {winRate}%
+            </div>
+            <div className="text-[9px] sm:text-[10px] font-heading uppercase tracking-wider text-muted-foreground">
+              Rate
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Segmented Control Bar (Mobile & Desktop View Switcher) */}
+      <div
+        role="tablist"
+        aria-label="Dashboard views"
+        className="grid grid-cols-3 p-1 rounded-xl bg-muted/60 border border-border text-xs font-semibold gap-1"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === "now"}
+          onClick={() => setMobileTab("now")}
+          className={cn(
+            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5",
+            mobileTab === "now"
+              ? "bg-card text-foreground font-bold shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Swords size={14} />
+          <span>Live Matchup</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === "rounds"}
+          onClick={() => setMobileTab("rounds")}
+          className={cn(
+            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5",
+            mobileTab === "rounds"
+              ? "bg-card text-foreground font-bold shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Calendar size={14} />
+          <span>Rounds {activeEvent?.rounds?.length ? `(${activeEvent.rounds.length})` : ""}</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobileTab === "results"}
+          onClick={() => setMobileTab("results")}
+          className={cn(
+            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5",
+            mobileTab === "results"
+              ? "bg-card text-foreground font-bold shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Trophy size={14} />
+          <span>Results</span>
+        </button>
       </div>
 
-      {/* Active Event Card */}
-      {activeEvent ? (
-        <Motion.div
-          initial={{y: 14, opacity: 0}}
-          animate={{y: 0, opacity: 1}}
-          transition={{duration: 0.3}}
-          className="bg-card border border-border hover:border-primary/40 hover:shadow-md transition-[border-color,box-shadow] p-6 rounded-xl relative"
-          whileHover={{y: -3}}
-          whileTap={{scale: 0.99}}
-        >
-          <Link
-            to={`/dashboard/events/${activeEvent.id}`}
-            className="block relative z-10 group"
-          >
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-1.5 text-xs font-heading font-semibold uppercase tracking-wider text-primary">
-                <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>
-                  {activeEvent.status === "ONGOING"
-                    ? "Active Tournament"
-                    : activeEvent.status}
+      {/* Tab: NOW (Default Live Command View) */}
+      {mobileTab === "now" && (
+        <div className="space-y-4">
+          {/* Active Tournament Headline */}
+          {activeEvent ? (
+            <div className="bg-card border-2 border-border p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                  {activeEvent.status === "ONGOING" ? "Active Tournament" : activeEvent.status}
                 </span>
+                <h2 className="text-lg sm:text-xl font-heading font-bold text-foreground">
+                  {activeEvent.name}
+                </h2>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
+              <div className="flex items-center gap-2">
+                <Link
+                  to={`/dashboard/events/${activeEvent.id}`}
+                  className="inline-flex min-h-10 items-center justify-center px-4 rounded-xl border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-colors"
+                >
+                  Tournament Hub
+                </Link>
+                {activeEvent.whatsappLink && (
+                  <a
+                    href={activeEvent.whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-10 items-center justify-center px-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 transition-colors gap-1.5"
+                  >
+                    <span>WhatsApp</span>
+                    <ExternalLink size={12} />
+                  </a>
+                )}
+              </div>
             </div>
-            <h2 className="text-xl md:text-2xl font-heading font-bold text-foreground mb-1 group-hover:text-primary transition-colors">
-              {activeEvent.name}
-            </h2>
-            <p className="text-muted-foreground font-sans text-sm mb-4 line-clamp-2">
-              {activeEvent.description || "Debate Competition"}
-            </p>
+          ) : (
+            <EmptyState
+              row
+              icon={Calendar}
+              title="No tournament active"
+              description="Browse upcoming debate tournaments and enrol."
+              action={<NeoButton to="/dashboard/events">Browse Events</NeoButton>}
+            />
+          )}
 
-            {currentRound && (
-              <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted/60 border border-border text-xs font-sans text-foreground">
-                <span className="font-medium">
-                  {currentRound.name || `Round ${currentRound.roundNumber}`}
-                </span>
-                <span className="mx-1.5 text-muted-foreground">·</span>
-                <span className="uppercase text-[10px] font-heading font-semibold text-primary">
+          {/* Current Round & Check-In Combined Card */}
+          {currentRound && (
+            <div className="bg-card border-2 border-border p-4 sm:p-5 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-base sm:text-lg font-heading font-bold text-foreground">
+                    {currentRound.name || `Round ${currentRound.roundNumber}`}
+                  </h3>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider border bg-muted text-muted-foreground border-border">
                   {currentRound.status}
                 </span>
               </div>
-            )}
-          </Link>
-        </Motion.div>
-      ) : (
-        <EmptyState
-          row
-          icon={Calendar}
-          title="The arena is quiet"
-          description="No tournament is running right now. Browse upcoming events and take your place."
-          action={
-            <NeoButton to="/dashboard/events">
-              Browse events <ArrowRight size={16} aria-hidden="true" />
-            </NeoButton>
-          }
-        />
-      )}
 
-      </div>
-
-      <div className="space-y-4 min-w-0">
-
-      {/* Check-In Status */}
-      {currentRound && (
-        <div className="space-y-2 axiom-rise" style={{"--i": 2}}>
-          <div className="flex items-center justify-between px-0.5">
-            <h3 className="font-heading font-bold text-base text-foreground">Check-In Status</h3>
-            <span className="text-xs text-muted-foreground font-sans">
-              {currentRound.name || `Round ${currentRound.roundNumber}`}
-            </span>
-          </div>
-          <div className="bg-card p-5 rounded-xl border border-border">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                    checkInStatus?.status === "PRESENT"
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                  }`}
-                >
-                  {checkInStatus?.status === "PRESENT" ? (
-                    <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
-                  ) : (
-                    <XCircle className="w-5 h-5" aria-hidden="true" />
-                  )}
-                </div>
-                <div>
-                  <p className="font-heading font-bold text-sm text-foreground">
-                    {checkInStatus?.status === "PRESENT"
-                      ? "Checked In"
-                      : "Not Checked In"}
-                  </p>
-                  {checkInStatus?.checkedInAt && (
-                    <p className="text-xs text-muted-foreground font-sans mt-0.5">
-                      {new Date(checkInStatus.checkedInAt).toLocaleTimeString(
-                        "en-IN",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          timeZone: "Asia/Kolkata",
-                        }
-                      )}
-                      {" IST"}
+              {/* Check-In Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/30 border border-border/70 p-3.5 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border",
+                      checkInStatus?.status === "PRESENT"
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                    )}
+                  >
+                    {checkInStatus?.status === "PRESENT" ? (
+                      <CheckCircle2 size={16} />
+                    ) : (
+                      <XCircle size={16} />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">
+                      {checkInStatus?.status === "PRESENT" ? "Checked In for Round" : "Check-in Required"}
                     </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {checkInStatus?.status === "PRESENT"
+                        ? "Your attendance is confirmed."
+                        : "Confirm attendance to be included in pairings."}
+                    </p>
+                  </div>
+                </div>
+
+                {checkInStatus?.status !== "PRESENT" ? (
+                  <button
+                    type="button"
+                    onClick={handleCheckIn}
+                    disabled={checkingIn}
+                    className="min-h-11 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+                  >
+                    {checkingIn ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Checking in...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={14} />
+                        <span>Check In Now</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    Presence Verified
+                  </span>
+                )}
+              </div>
+
+              {/* Matchup & Motion Panel */}
+              {nextDebate ? (
+                <div className="space-y-3 pt-1">
+                  <div className="p-3.5 rounded-xl border border-border bg-background/50 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-primary flex items-center gap-1.5">
+                        <Swords size={14} /> Assigned Matchup
+                      </span>
+                      <span className="font-mono text-muted-foreground">
+                        Room: <strong className="text-foreground">{nextDebate.room?.name || "TBD"}</strong>
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-foreground font-medium leading-relaxed">
+                      {nextDebate.round?.motion
+                        ? `Motion: ${nextDebate.round.motion}`
+                        : "Motion will be announced when round starts"}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/60 pt-2">
+                      <span>
+                        Side:{" "}
+                        <strong className="text-foreground">
+                          {nextDebate.debater1Id === userData?.id ? "Government (GOV)" : "Opposition (OPP)"}
+                        </strong>
+                      </span>
+                      {nextDebate.judgeName && (
+                        <span>
+                          Judge: <strong className="text-foreground">{nextDebate.judgeName}</strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <Link
+                    to={`/dashboard/events/${activeEvent.id}/rounds/${currentRound.id}`}
+                    className="min-h-11 w-full rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>View Round Draw &amp; Details</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              ) : currentRound.pairingsPublished ? (
+                <div className="text-center py-4 text-xs text-muted-foreground">
+                  Draw released. You do not have a scheduled debate in this round.
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20 text-xs text-muted-foreground">
+                  <Lock size={16} className="shrink-0 text-muted-foreground" />
+                  <span>Pairings are being drawn by the adjudication core. Check back soon.</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Latest Result Banner (Respecting Competition Boundaries) */}
+          {latestCompletedDebate && (() => {
+            const isDebater1 = latestCompletedDebate.debater1Id === userData?.id;
+            const opponent = isDebater1 ? latestCompletedDebate.debater2 : latestCompletedDebate.debater1;
+            const published = Boolean(
+              latestCompletedDebate.resultsPublished || latestCompletedDebate.round?.resultsPublished
+            );
+            const qualified = Boolean(latestCompletedDebate.isPromoted);
+            const resultEventId = latestCompletedDebate.round?.eventId || activeEvent?.id;
+
+            return (
+              <div className="bg-card border border-border p-4 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-heading font-bold text-foreground flex items-center gap-1.5">
+                    <Award size={14} className="text-primary" />
+                    Latest: {latestCompletedDebate.round?.name || "Previous Round"}
+                  </span>
+                  {published ? (
+                    <span
+                      className={cn(
+                        "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border",
+                        qualified
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                          : "bg-destructive/10 text-destructive border-destructive/20"
+                      )}
+                    >
+                      {qualified ? "QUALIFIED" : "ELIMINATED"}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center gap-1">
+                      <RefreshCw size={10} className="animate-spin" /> Awaiting Selection
+                    </span>
                   )}
                 </div>
-              </div>
-              <span
-                className={`px-2.5 py-0.5 rounded text-[10px] font-heading font-semibold uppercase tracking-wider shrink-0 border ${
-                  checkInStatus?.status === "PRESENT"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                }`}
-              >
-                {checkInStatus?.status === "PRESENT" ? "Present" : "Pending"}
-              </span>
-            </div>
 
-            {/* Check-In Button */}
-            {checkInStatus?.status !== "PRESENT" && (
-              <button
-                onClick={async () => {
-                  try {
-                    setCheckingIn(true);
-                    const token = await getToken();
-                    const response = await CheckInApi.checkIn(
-                      currentRound.id,
-                      token
-                    );
-                    if (response.success) {
-                      setCheckInStatus(response.checkIn);
-                      toast.success("Successfully checked in!");
-                    }
-                  } catch (err) {
-                    console.error("Check-in error:", err);
-                    toast.error(
-                      err.message || "Failed to check in. Please try again."
-                    );
-                  } finally {
-                    setCheckingIn(false);
-                  }
-                }}
-                disabled={checkingIn}
-                className="w-full mt-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {checkingIn ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                    Checking In...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
-                    Check In Now
-                  </>
+                <p className="text-xs text-muted-foreground">
+                  Debated vs <span className="font-semibold text-foreground">{opponent?.firstName} {opponent?.lastName}</span> ({isDebater1 ? "GOV" : "OPP"})
+                </p>
+
+                {resultEventId && (
+                  <Link
+                    to={`/dashboard/events/${resultEventId}/results`}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline pt-1"
+                  >
+                    <span>View Standings</span>
+                    <ArrowRight size={12} />
+                  </Link>
                 )}
-              </button>
-            )}
-          </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* Draw Status Section (when the draw is out and you have a debate, it is shown in "Your Next Debate" instead) */}
-      {currentRound && !(currentRound.pairingsPublished && nextDebate) && (
-        <div className="space-y-2 axiom-rise" style={{"--i": 3}}>
-          <div className="flex items-center justify-between px-0.5">
-            <h3 className="font-heading font-bold text-base text-foreground">Draw Status</h3>
-            <span className="text-xs text-muted-foreground font-sans">
-              {currentRound.name || `Round ${currentRound.roundNumber}`}
-            </span>
-          </div>
-
-          {currentRound.pairingsPublished ? (
-            <Motion.div
-              initial={{opacity: 0, y: 10}}
-              animate={{opacity: 1, y: 0}}
-              transition={{duration: 0.3}}
-              className="bg-card border border-border p-5 rounded-xl relative"
-            >
-              <div className="flex justify-between items-start mb-3">
+      {/* Tab: ROUNDS */}
+      {mobileTab === "rounds" && (
+        <div className="space-y-3">
+          {activeEvent?.rounds?.length ? (
+            activeEvent.rounds.map((r) => (
+              <div
+                key={r.id}
+                className="bg-card border-2 border-border p-4 rounded-xl flex items-center justify-between gap-3"
+              >
                 <div>
-                  <h4 className="font-heading font-bold text-base text-foreground mb-0.5 flex items-center gap-2">
-                    Draw Released
-                    <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] px-2 py-0.5 rounded font-heading font-semibold uppercase tracking-wider">
-                      Public
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-heading font-bold text-base text-foreground">
+                      {r.name || `Round ${r.roundNumber}`}
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-heading font-bold uppercase border bg-muted text-muted-foreground border-border">
+                      {r.status}
                     </span>
-                  </h4>
-                  <p className="text-muted-foreground font-sans text-xs">
-                    Pairings are now live. Check your assigned room and opponent.
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {r.pairingsPublished ? "Draw published" : "Draw pending"}
                   </p>
                 </div>
-                <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                  <Swords className="w-4 h-4" aria-hidden="true" />
-                </div>
-              </div>
 
-              <Link
-                to={`/dashboard/events/${activeEvent.id}/rounds/${currentRound.id}`}
-                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-primary/90 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span>View Draw</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
-              </Link>
-            </Motion.div>
+                <Link
+                  to={`/dashboard/events/${activeEvent.id}/rounds/${r.id}`}
+                  className="min-h-10 px-4 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  <span>Open</span>
+                  <ArrowRight size={12} />
+                </Link>
+              </div>
+            ))
           ) : (
-            <div className="bg-card border border-border p-5 rounded-xl">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h4 className="font-heading font-bold text-base text-foreground mb-0.5 flex items-center gap-2">
-                    Draw Not Released
-                    <span className="bg-muted text-muted-foreground border border-border text-[10px] px-2 py-0.5 rounded font-heading font-semibold uppercase tracking-wider">
-                      Pending
-                    </span>
-                  </h4>
-                  <p className="text-muted-foreground font-sans text-xs">
-                    The adjudication core has not released the pairings yet.
-                  </p>
-                </div>
-                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground shrink-0">
-                  <Lock className="w-4 h-4" aria-hidden="true" />
-                </div>
-              </div>
-
-              <button
-                disabled
-                className="w-full py-2.5 rounded-lg bg-muted text-muted-foreground font-medium text-xs border border-border/50 cursor-not-allowed opacity-80 flex items-center justify-center"
-              >
-                Wait for Announcement
-              </button>
+            <div className="p-8 text-center text-xs text-muted-foreground bg-card border border-border rounded-xl">
+              No rounds created yet for this tournament.
             </div>
           )}
         </div>
       )}
 
-      {/* Latest Round Result Showcase */}
-      {latestCompletedDebate && (() => {
-        const isDebater1 = latestCompletedDebate.debater1Id === userData?.id;
-        const opponent = isDebater1 ? latestCompletedDebate.debater2 : latestCompletedDebate.debater1;
-        const published = Boolean(latestCompletedDebate.resultsPublished || latestCompletedDebate.round?.resultsPublished);
-        const qualified = Boolean(latestCompletedDebate.isPromoted);
-        const resultEventId = latestCompletedDebate.round?.eventId || activeEvent?.id;
-
-        return (
-          <div className="space-y-2 axiom-rise" style={{"--i": 3}}>
-            <div className="flex items-center justify-between px-0.5">
-              <h3 className="font-heading font-bold text-base text-foreground">Latest Round Result</h3>
-              {resultEventId && (
-                <Link
-                  to={`/dashboard/events/${resultEventId}/results`}
-                  className="text-primary text-xs font-sans font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-                >
-                  Full Standings
-                </Link>
-              )}
+      {/* Tab: RESULTS */}
+      {mobileTab === "results" && (
+        <div className="space-y-4">
+          <div className="bg-card border-2 border-border p-5 rounded-2xl space-y-3">
+            <div className="flex items-center gap-2 text-primary font-bold text-sm">
+              <Trophy size={16} /> Tournament Results &amp; Standings
             </div>
-            <div
-              className={`bg-card border rounded-xl p-5 space-y-3.5 ${
-                published && qualified
-                  ? "border-emerald-500/40 bg-emerald-500/[0.03]"
-                  : published && !qualified
-                  ? "border-destructive/30 bg-destructive/[0.02]"
-                  : "border-amber-500/30 bg-amber-500/[0.03]"
-              }`}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Award className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
-                  <span className="font-heading font-bold text-sm text-foreground truncate">
-                    {latestCompletedDebate.round?.name || `Round ${latestCompletedDebate.round?.roundNumber || 1}`}
-                  </span>
-                </div>
-                {published ? (
-                  <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider border ${
-                      qualified
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                        : "bg-destructive/10 text-destructive border-destructive/20"
-                    }`}
-                  >
-                    {qualified ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-                        QUALIFIED
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-3 h-3" aria-hidden="true" />
-                        ELIMINATED
-                      </>
-                    )}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-heading font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
-                    AWAITING SELECTION
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <UserAvatar user={opponent} size="md" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-heading font-semibold text-foreground truncate">
-                    vs {opponent?.firstName || "Opponent"} {opponent?.lastName || ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-sans truncate">
-                    {opponent?.college || "Affiliation unlisted"}
-                  </p>
-                </div>
-                <span className="text-[10px] font-heading font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border shrink-0">
-                  {isDebater1 ? "GOV" : "OPP"}
-                </span>
-              </div>
-
-              {resultEventId && (
-                <Link
-                  to={`/dashboard/events/${resultEventId}/results`}
-                  className="group flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background/70 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span>View Round Breakdown &amp; Standings</span>
-                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                </Link>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Next Debate */}
-      <div className="space-y-2 axiom-rise" style={{"--i": 4}}>
-        <div className="flex items-center justify-between px-0.5">
-          <h3 className="font-heading font-bold text-base text-foreground">Your Next Debate</h3>
-          <Link
-            to="/dashboard/events"
-            className="text-primary text-xs font-sans font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-          >
-            View All
-          </Link>
-        </div>
-        {nextDebate ? (
-          <div className="bg-card border border-border p-5 rounded-xl">
-            <div className="flex justify-between items-start mb-3">
-              <span className="flex items-center gap-2 text-primary font-heading font-semibold text-xs uppercase tracking-wider">
-                {nextDebate.round?.name || "Upcoming Round"}
-                {nextDebate.round?.pairingsPublished && (
-                  <span className="bg-primary/10 text-primary border border-primary/20 text-[10px] px-2 py-0.5 rounded font-heading font-semibold tracking-wider">
-                    Draw released
-                  </span>
-                )}
-              </span>
-              <span className="text-muted-foreground text-xs font-sans">
-                Room: {nextDebate.room?.name || "TBD"}
-              </span>
-            </div>
-
-            <p className="font-medium text-foreground text-sm mb-4 leading-relaxed font-sans">
-              {nextDebate.round?.motion
-                ? `Motion: ${nextDebate.round.motion}`
-                : "Motion will be announced soon"}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Official promotion decisions, qualified debate finalists, and final ranks are published after round verification by the adjudication panel.
             </p>
+            {activeEvent ? (
+              <Link
+                to={`/dashboard/events/${activeEvent.id}/results`}
+                className="min-h-11 w-full rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
+              >
+                <span>View Event Results</span>
+                <ArrowRight size={14} />
+              </Link>
+            ) : (
+              <p className="text-xs text-muted-foreground italic">No active event</p>
+            )}
+          </div>
+        </div>
+      )}
 
-            <Link
-              to={`/dashboard/events/${nextDebate.round?.eventId || activeEvent?.id}/rounds/${nextDebate.round?.id}`}
-              className="group flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span>{nextDebate.round?.pairingsPublished ? "View draw, room & opponent" : "View details"}</span>
-              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      {/* Quick link banner (desktop & tablet, unobtrusive) */}
+      <aside className="hidden md:grid overflow-hidden rounded-xl bg-card border border-border p-4 axiom-rise" aria-label="Quick links">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-primary">AXIOM 4.0</p>
+            <p className="text-sm font-semibold text-foreground">Clarity under pressure · Parliamentary Debates</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link to="/dashboard/events" className="min-h-9 px-3.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors flex items-center">
+              All Tournaments
+            </Link>
+            <Link to="/dashboard/profile" className="min-h-9 px-3.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors flex items-center">
+              My Profile
             </Link>
           </div>
-        ) : (
-          <EmptyState
-            row
-            icon={Trophy}
-            title="No debate on the horizon"
-            description="Your next pairing appears here once the draw is released."
-          />
-        )}
-      </div>
-
-
-      <JourneyCard
-        steps={[
-          {title: "Complete your profile", hint: "Add your college and mobile number", done: Boolean(userData?.college && userData?.mobile), to: "/dashboard/profile"},
-          {title: "Pick a tournament", hint: "Browse events and enrol", done: Boolean(activeEvent), to: "/dashboard/events"},
-          {title: "Check in to your round", hint: currentRound ? "Check-in is open now" : "Opens when a round starts", done: checkInStatus?.status === "PRESENT", to: "/dashboard"},
-          {title: "Take the floor", hint: "Your first debate", done: (userData?.stats?.totalDebates || 0) > 0, to: "/dashboard/events"},
-        ]}
-      />
-      </div>
-      </div>
-
-      <aside className="axiom-rounds-banner grid overflow-hidden rounded-xl bg-primary axiom-rise" style={{"--i": 6}} aria-label="Quick links">
-        <div className="axiom-rounds-banner-copy">
-          <p className="axiom-eyebrow">Between rounds</p>
-          <p className="axiom-rounds-banner-title">Clarity under pressure.</p>
-          <div className="axiom-rounds-banner-actions">
-            <Link to="/dashboard/events" className="axiom-button axiom-press">Events</Link>
-            <Link to="/dashboard/profile" className="axiom-button axiom-button--outline axiom-press">Profile</Link>
-          </div>
         </div>
-        <Sculpture figure="ganesha" variant="detail" className="h-48 w-auto self-end mr-6 object-contain" />
       </aside>
     </div>
   );

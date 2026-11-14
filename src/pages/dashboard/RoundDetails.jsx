@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
 import {RoundApi, CheckInApi, DebateApi, UserApi} from "../../services/api";
-import {useRoundSocket} from "../../hooks/useSocket";
+import {useRoundSocket, useLiveRefresh} from "../../hooks/useSocket";
 import {useToast} from "../../hooks/useToast"
 import {cn} from "../../lib/utils";
 import {UserAvatar} from "../../components/ui/UserAvatar";
@@ -41,9 +41,9 @@ export default function RoundDetails() {
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async ({silent = false} = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await getTokenRef.current();
 
       const [roundResponse, userResponse, checkInRes, debatesResponse] = await Promise.all([
@@ -85,11 +85,14 @@ export default function RoundDetails() {
     fetchData();
   }, [fetchData]);
 
+  const softRefetch = useCallback(() => fetchData({silent: true}), [fetchData]);
+  useLiveRefresh(softRefetch, {enabled: Boolean(roundId)});
+
   useRoundSocket(roundId, {
     onRoundStatusChange: (data) => {
       setRound((prev) => (prev ? {...prev, ...data} : prev));
       if (data.pairingsPublished || data.status === "COMPLETED") {
-        fetchData();
+        softRefetch();
         toast.success("Round Updated", "Round status has changed.");
       }
     },
@@ -97,26 +100,26 @@ export default function RoundDetails() {
       if (data.published) {
         toast.success("Draw Released!", "Pairings have been published.");
       }
-      fetchData();
+      softRefetch();
     },
     onResultsPublished: (data) => {
       if (data.published) {
         toast.success("Results Published!", "Round results are now visible.");
       }
-      fetchData();
+      softRefetch();
     },
     onDebateResult: () => {
-      fetchData();
+      softRefetch();
     },
     onRoundUpdated: (data) => {
       if (data.round) {
         setRound((prev) => (prev ? {...prev, ...data.round} : data.round));
       }
-      fetchData();
+      softRefetch();
     },
     onCheckInUpdate: (data) => {
       if (data.userId === currentUserId) {
-        fetchData();
+        softRefetch();
       }
     },
   });

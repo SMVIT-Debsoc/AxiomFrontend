@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test tests/api.test.mjs tests/analytics.test.mjs tests/datetime.test.mjs tests/authRedirect.test.mjs tests/readiness.test.mjs",
+    "test": "node --test tests/api.test.mjs tests/analytics.test.mjs tests/datetime.test.mjs tests/authRedirect.test.mjs tests/readiness.test.mjs tests/socketRefresh.test.mjs tests/resolveWinner.test.mjs",
     "test:browser": "node tests/browser-audit.mjs",
     "dev:mock": "node tests/dev-mock-server.mjs",
     "test:readiness": "node --test tests/readiness.test.mjs"

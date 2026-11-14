@@ -18,7 +18,7 @@ import { useAuth } from "../../auth/client.jsx";
 import {EventApi, DebateApi, UserApi} from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { cn } from "../../lib/utils";
-import { useEventSocket } from "../../hooks/useSocket";
+import { useEventSocket, useLiveRefresh } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { EventDetailsSkeleton } from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
@@ -50,9 +50,9 @@ export default function EventDetails() {
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
   // Fetch data in parallel to minimize loading latency
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await getTokenRef.current();
 
       const [
@@ -104,12 +104,15 @@ export default function EventDetails() {
     fetchData();
   }, [fetchData]);
 
+  const softRefetch = useCallback(() => fetchData({ silent: true }), [fetchData]);
+  useLiveRefresh(softRefetch, { enabled: Boolean(id) });
+
   // Real-time updates via WebSocket
   useEventSocket(id, {
     onRoundCreated: (data) => {
       console.log("[Socket] Round created:", data);
       toast.info("New Round!", "A new round has been added to this event.");
-      fetchData();
+      softRefetch();
     },
     onRoundStatusChange: (data) => {
       console.log("[Socket] Round status changed:", data);
@@ -166,18 +169,18 @@ export default function EventDetails() {
       );
 
       toast.info("Result Submitted", "A debate result has been submitted.");
-      // Refresh data to ensure full consistency
-      fetchData();
+      // Refresh data silently to ensure full consistency
+      softRefetch();
     },
     onLeaderboardUpdate: () => {
       console.log("[Socket] Leaderboard updated");
-      fetchData();
+      softRefetch();
     },
     onResultsPublished: (data) => {
       if (data?.published) {
         toast.success("Results Published!", "Round results and standings are now visible.");
       }
-      fetchData();
+      softRefetch();
     },
     onEventUpdated: (data) => {
       console.log("[Socket] Event updated:", data);
@@ -185,7 +188,7 @@ export default function EventDetails() {
         setEvent((prev) => ({ ...prev, ...data.event }));
         toast.info("Event Updated", "Event details have been modified.");
       } else {
-        fetchData();
+        softRefetch();
       }
     },
     onEventDeleted: () => {

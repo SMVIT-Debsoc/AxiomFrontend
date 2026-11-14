@@ -17,7 +17,7 @@ import {
   StatsApi,
 } from "../../services/api";
 import {cn} from "../../lib/utils";
-import {useEventSocket} from "../../hooks/useSocket";
+import {useEventSocket, useLiveRefresh} from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {ResultsSkeleton} from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
@@ -37,9 +37,9 @@ export default function Results() {
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async ({silent = false} = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await getTokenRef.current();
 
       const [eventResponse, userResponse, debatesResponse, leaderboardResponse] = await Promise.all([
@@ -80,20 +80,15 @@ export default function Results() {
     fetchData();
   }, [fetchData]);
 
+  const softRefetch = useCallback(() => fetchData({silent: true}), [fetchData]);
+  useLiveRefresh(softRefetch, {enabled: Boolean(eventId)});
+
   // Real-time updates via WebSocket
   useEventSocket(eventId, {
-    onDebateResult: () => {
-      fetchData();
-    },
-    onResultsPublished: () => {
-      fetchData();
-    },
-    onLeaderboardUpdate: () => {
-      fetchData();
-    },
-    onRoundStatusChange: () => {
-      fetchData();
-    },
+    onDebateResult: softRefetch,
+    onResultsPublished: softRefetch,
+    onLeaderboardUpdate: softRefetch,
+    onRoundStatusChange: softRefetch,
   });
 
   // Filter debates for rounds of this event

@@ -18,7 +18,7 @@ import { useAuth } from "../../auth/client.jsx";
 import { Link } from "react-router-dom";
 import { AdminApi, EventApi } from "../../services/api";
 import {useToast} from "../../hooks/useToast"
-import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import { useSocket, SocketEvents, useLiveRefresh, invalidateRealtimeCache } from "../../hooks/useSocket";
 import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
 import EmptyState from "../../components/ui/EmptyState";
 
@@ -36,17 +36,17 @@ export default function AdminEvents() {
     getTokenRef.current = getToken;
   }, [getToken]);
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await getTokenRef.current();
       const response = await EventApi.list(token);
       setEvents(response.events || response.data || []);
     } catch (err) {
       console.error("Failed to fetch events", err);
-      toast.error("Error", "Failed to load events");
+      if (!silent) toast.error("Error", "Failed to load events");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [toast]);
 
@@ -54,22 +54,27 @@ export default function AdminEvents() {
     fetchEvents();
   }, [fetchEvents]);
 
+  useLiveRefresh(() => fetchEvents({ silent: true }));
+
   // Real-time updates
   const { subscribe } = useSocket();
   useEffect(() => {
     const unsubs = [
       subscribe(SocketEvents.EVENT_CREATED, (data) => {
-        fetchEvents();
+        invalidateRealtimeCache();
+        fetchEvents({ silent: true });
         toast.success(
           "New Event",
           `Event "${data.event?.name || "Tournament"}" has been created.`
         );
       }),
       subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, () => {
-        fetchEvents();
+        invalidateRealtimeCache();
+        fetchEvents({ silent: true });
       }),
       subscribe(SocketEvents.EVENT_DELETED_GLOBAL, () => {
-        fetchEvents();
+        invalidateRealtimeCache();
+        fetchEvents({ silent: true });
         toast.info("Event Deleted", "An event has been deleted.");
       }),
     ];
@@ -395,6 +400,7 @@ export default function AdminEvents() {
 function CreateEventModal({ onClose, onCreated }) {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -407,18 +413,25 @@ function CreateEventModal({ onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     try {
       const token = await getToken();
-      const response = await AdminApi.createEvent(serializeEventDates(formData), token);
+      const payload = serializeEventDates({
+        ...formData,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        whatsappLink: formData.whatsappLink.trim(),
+      });
+      const response = await AdminApi.createEvent(payload, token);
 
       if (response.success) {
         onCreated();
       } else {
-        alert(response.error || "Failed to create event");
+        setError(response.error || "Failed to create event");
       }
-    } catch {
-      alert("Failed to create event");
+    } catch (err) {
+      setError(err?.message || "Failed to create event");
     } finally {
       setLoading(false);
     }
@@ -446,6 +459,11 @@ function CreateEventModal({ onClose, onCreated }) {
       </div>
     
       <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        {error && (
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error}
+          </div>
+        )}
         <label ><span className="text-xs font-semibold mb-1 block text-foreground">Tournament Name</span><input type="text"
         required
         value={formData.name}
@@ -523,6 +541,7 @@ function CreateEventModal({ onClose, onCreated }) {
 function EditEventModal({ event, onClose, onUpdated }) {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     name: event.name || "",
     description: event.description || "",
@@ -540,16 +559,17 @@ function EditEventModal({ event, onClose, onUpdated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     try {
       const token = await getToken();
       const response = await AdminApi.updateEvent(event.id, serializeEventDates(formData, event), token);
       if (response.success) {
         onUpdated();
       } else {
-        alert(response.error || "Failed to update event");
+        setError(response.error || "Failed to update event");
       }
-    } catch {
-      alert("Error updating event");
+    } catch (err) {
+      setError(err?.message || "Error updating event");
     } finally {
       setLoading(false);
     }
@@ -577,6 +597,11 @@ function EditEventModal({ event, onClose, onUpdated }) {
       </div>
     
       <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        {error && (
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error}
+          </div>
+        )}
         <label ><span className="text-xs font-semibold mb-1 block text-foreground">Tournament Name</span><input type="text"
         required
         value={formData.name}

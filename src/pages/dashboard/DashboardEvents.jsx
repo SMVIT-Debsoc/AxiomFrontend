@@ -6,7 +6,7 @@ import {EventApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import {useSocket, SocketEvents} from "../../hooks/useSocket";
+import {useSocket, SocketEvents, useLiveRefresh, invalidateRealtimeCache} from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
 import NeoButton from "../../components/neo/NeoButton";
 import TournamentGuide from "../../components/dashboard/TournamentGuide";
@@ -40,19 +40,19 @@ export default function DashboardEvents() {
     fetchEvents();
   }, [fetchEvents]);
 
+  useLiveRefresh(fetchEvents);
+
   // Real-time updates
   const {subscribe} = useSocket();
   useEffect(() => {
+    const refresh = () => {
+      invalidateRealtimeCache();
+      fetchEvents();
+    };
     const unsubs = [
-      subscribe(SocketEvents.EVENT_CREATED, () => {
-        fetchEvents();
-      }),
-      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, () => {
-        fetchEvents();
-      }),
-      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, () => {
-        fetchEvents();
-      }),
+      subscribe(SocketEvents.EVENT_CREATED, refresh),
+      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, refresh),
+      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, refresh),
     ];
     return () => unsubs.forEach((u) => u && u());
   }, [subscribe, fetchEvents]);

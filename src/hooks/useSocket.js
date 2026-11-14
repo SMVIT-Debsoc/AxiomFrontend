@@ -5,6 +5,68 @@ import {clearApiCache} from "../services/api";
 // Re-export SocketEvents for convenience
 export {SocketEvents};
 
+const REALTIME_CACHE_PREFIXES = ["/events", "/rounds", "/debates", "/check-in", "/stats", "/admin"];
+
+export function invalidateRealtimeCache() {
+  REALTIME_CACHE_PREFIXES.forEach((prefix) => clearApiCache(prefix));
+}
+
+/**
+ * Keeps a view live even when WebSockets are disconnected or the browser tab was backgrounded:
+ * - Refreshes immediately on tab visibility return (`visible`)
+ * - Refreshes on socket reconnect after a disconnection
+ * - Polls every `intervalMs` ONLY when the socket is disconnected and tab is visible
+ */
+export function useLiveRefresh(refreshFn, {enabled = true, intervalMs = 25000} = {}) {
+  const refreshRef = useRef(refreshFn);
+  useEffect(() => {
+    refreshRef.current = refreshFn;
+  }, [refreshFn]);
+
+  useEffect(() => {
+    if (!enabled || typeof document === "undefined") return undefined;
+
+    let wasDisconnected = !socketService.isConnected();
+
+    const triggerRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      invalidateRealtimeCache();
+      refreshRef.current?.();
+    };
+
+    const unsubConnect = socketService.on(SocketEvents.CONNECTION, () => {
+      if (wasDisconnected) {
+        wasDisconnected = false;
+        triggerRefresh();
+      }
+    });
+
+    const unsubDisconnect = socketService.on(SocketEvents.DISCONNECT, () => {
+      wasDisconnected = true;
+    });
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        triggerRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    const timer = window.setInterval(() => {
+      if (!socketService.isConnected() && document.visibilityState === "visible") {
+        triggerRefresh();
+      }
+    }, intervalMs);
+
+    return () => {
+      unsubConnect();
+      unsubDisconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.clearInterval(timer);
+    };
+  }, [enabled, intervalMs]);
+}
+
 /**
  * Hook to manage socket connection and event subscriptions
  *
@@ -132,7 +194,7 @@ export function useEventSocket(eventId, callbacks = {}) {
 
     // Helper to invalidate stale cached GET responses and call current callback safely
     const callHandler = (handlerName, data) => {
-      clearApiCache();
+      invalidateRealtimeCache();
       if (callbacksRef.current[handlerName]) {
         callbacksRef.current[handlerName](data);
       }
@@ -254,7 +316,7 @@ export function useRoundSocket(roundId, callbacks = {}) {
 
     // Helper to invalidate stale cached GET responses and call current callback safely
     const callHandler = (handlerName, data) => {
-      clearApiCache();
+      invalidateRealtimeCache();
       if (callbacksRef.current[handlerName]) {
         callbacksRef.current[handlerName](data);
       }

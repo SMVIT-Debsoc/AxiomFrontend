@@ -24,7 +24,7 @@ import {UserAvatar} from "../../components/ui/UserAvatar";
 import { AdminApi, EventApi } from "../../services/api";
 import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import { useEventSocket } from "../../hooks/useSocket";
+import { useEventSocket, useLiveRefresh } from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminEventDetails() {
@@ -93,15 +93,24 @@ export default function AdminEventDetails() {
     fetchData();
   }, [fetchData]);
 
+  const softRefetchTimer = useRef(null);
+  const softRefetch = useCallback(() => {
+    clearTimeout(softRefetchTimer.current);
+    softRefetchTimer.current = setTimeout(() => fetchData(), 150);
+  }, [fetchData]);
+  useEffect(() => () => clearTimeout(softRefetchTimer.current), []);
+
+  useLiveRefresh(() => fetchData(), { enabled: Boolean(eventId) });
+
   // Real-time updates
   useEventSocket(eventId, {
-    onEventUpdated: () => fetchData(),
-    onRoundCreated: () => fetchData(),
-    onRoundUpdated: () => fetchData(),
-    onRoundDeleted: () => fetchData(),
-    onEventEnrollment: () => fetchData(),
-    onRoundStatusChange: () => fetchData(),
-    onPairingsPublished: () => fetchData(),
+    onEventUpdated: softRefetch,
+    onRoundCreated: softRefetch,
+    onRoundUpdated: softRefetch,
+    onRoundDeleted: softRefetch,
+    onEventEnrollment: softRefetch,
+    onRoundStatusChange: softRefetch,
+    onPairingsPublished: softRefetch,
   });
 
   const handleDeleteRound = async (id) => {

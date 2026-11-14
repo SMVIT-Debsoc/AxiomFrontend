@@ -44,9 +44,9 @@ function getSocketTransports() {
         }
     }
 
-    // Always allow both transports so the client can fall back to polling
-    // if websocket upgrade fails behind a proxy/CDN/load-balancer.
-    return ["polling", "websocket"];
+    // Try direct WebSocket first for lowest latency, with automatic fallback to
+    // HTTP long-polling if a proxy/CDN/firewall blocks upgrade handshakes.
+    return ["websocket", "polling"];
 }
 
 const SOCKET_TRANSPORTS = getSocketTransports();
@@ -121,6 +121,16 @@ class SocketService {
     }
 
     /**
+     * Re-run the handshake so the server sees the current identity (Google
+     * sign-in or admin secret key). Rooms are rejoined on the next "connect".
+     */
+    refreshAuth() {
+        if (!this.socket) return;
+        this.socket.disconnect();
+        this.socket.connect();
+    }
+
+    /**
      * Connect to the WebSocket server
      */
     connect() {
@@ -136,11 +146,12 @@ class SocketService {
 
         this.socket = io(SOCKET_URL, {
             transports: SOCKET_TRANSPORTS,
+            tryAllTransports: true,
             withCredentials: true,
             upgrade: true,
             reconnection: true,
             reconnectionAttempts: Infinity,
-            reconnectionDelay: 2000,
+            reconnectionDelay: 1500,
             reconnectionDelayMax: 10000,
             timeout: 20000,
             autoConnect: true,
@@ -164,11 +175,16 @@ class SocketService {
             },
         });
 
-        // Add a global listener to help close connections
-        if (typeof window !== "undefined") {
+        // Re-attach any existing listeners registered before a disconnect/reconnect
+        for (const [event, callbacks] of this.listeners.entries()) {
+            callbacks.forEach((cb) => this.socket.on(event, cb));
+        }
+
+        // Add a global listener once to help close connections
+        if (typeof window !== "undefined" && !this.beforeUnloadBound) {
+            this.beforeUnloadBound = true;
             window.addEventListener("beforeunload", () => {
                 if (this.socket) {
-                    console.log("[Socket] Closing connection before unload...");
                     this.socket.close();
                 }
             });

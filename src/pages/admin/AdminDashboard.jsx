@@ -4,7 +4,7 @@ import {Calendar, Users, Trophy, Activity, Plus, ArrowUpRight} from "lucide-reac
 import { useAuth } from "../../auth/client.jsx";
 import { Link } from "react-router-dom";
 import { AdminApi } from "../../services/api";
-import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import { useSocket, SocketEvents, useLiveRefresh, invalidateRealtimeCache } from "../../hooks/useSocket";
 import Sculpture from "../../components/brand/Sculpture";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import CountUp from "../../components/ui/CountUp";
@@ -44,16 +44,22 @@ export default function AdminDashboard() {
     fetchDashboard();
   }, [fetchDashboard]);
 
+  useLiveRefresh(fetchDashboard);
+
   // Real-time updates
   const { subscribe } = useSocket();
   useEffect(() => {
+    const refresh = () => {
+      invalidateRealtimeCache();
+      fetchDashboard();
+    };
     const unsubs = [
-      subscribe(SocketEvents.EVENT_CREATED, fetchDashboard),
-      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, fetchDashboard),
-      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, fetchDashboard),
-      subscribe(SocketEvents.USER_UPDATED, fetchDashboard),
-      subscribe(SocketEvents.USER_DELETED, fetchDashboard),
-      subscribe(SocketEvents.DEBATE_RESULT, fetchDashboard),
+      subscribe(SocketEvents.EVENT_CREATED, refresh),
+      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, refresh),
+      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, refresh),
+      subscribe(SocketEvents.USER_UPDATED, refresh),
+      subscribe(SocketEvents.USER_DELETED, refresh),
+      subscribe(SocketEvents.DEBATE_RESULT, refresh),
     ];
     return () => unsubs.forEach((u) => u && u());
   }, [subscribe, fetchDashboard]);

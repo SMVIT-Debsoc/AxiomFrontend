@@ -52,7 +52,8 @@ async function fixture(page, {
   resultsPublished = false,
   assigned = false,
   autoEnrollOnProfileComplete = false,
-  whatsappLink = null
+  whatsappLink = null,
+  createEventError = false
 } = {}) {
   const now = Date.now();
   const user = {
@@ -106,6 +107,8 @@ async function fixture(page, {
     isPromoted: true,
     resultsPublished
   };
+
+  round.debates = assigned ? [debate] : [];
 
   const state = {
     user,
@@ -181,6 +184,7 @@ async function fixture(page, {
         return reply({success: true, user: state.user, autoEnrollment});
       }
       if (path === '/events' && method === 'POST') {
+        if (createEventError) return reply({success: false, error: 'Invalid Admin Secret Key'}, 403);
         const data = req.postDataJSON();
         state.events.push({...data, id: 'e2', status: 'UPCOMING', rounds: []});
         return reply({success: true, event: state.events.at(-1)});
@@ -209,6 +213,16 @@ async function fixture(page, {
         if (checkInError) return reply({error: 'Check-in denied'}, 403);
         state.checkedIn = true;
         return reply({success: true});
+      }
+      if (path === '/debates/d1/result' && method === 'POST') {
+        const body = req.postDataJSON() || {};
+        Object.assign(state.debate, {
+          debater1Score: body.debater1Score,
+          debater2Score: body.debater2Score,
+          winnerId: body.winnerId,
+          status: 'COMPLETED'
+        });
+        return reply({success: true, debate: state.debate});
       }
       if (path === '/debates/my-debates' || path === '/debates/round/r1') return reply({success: true, debates: assigned ? [state.debate] : []});
       if (path === '/stats/leaderboard') return reply({success: true, leaderboard: []});
@@ -467,6 +481,29 @@ try {
     assert.equal(state.events.at(-1).startDate, '2026-10-12T04:30:00.000Z');
   });
 
+  await run('create event modal surfaces server error inline when POST /events fails', {signedIn: true, admin: true, createEventError: true}, async page => {
+    await page.goto(origin + '/admin/events');
+    await page.getByRole('button', {name: 'Create Event', exact: true}).click();
+    await page.getByLabel('Tournament Name').fill('Failing Tournament');
+    await page.getByLabel('Start Date (local time)').fill('2026-10-12T10:00');
+    await page.getByLabel('End Date (local time)').fill('2026-10-12T18:00');
+    await page.getByRole('button', {name: 'Create Event', exact: true}).last().click();
+    await visible(page, 'Invalid Admin Secret Key');
+  });
+
+  await run('live round refresh updates pairings without flashing a loading skeleton', {signedIn: true, published: false, assigned: true}, async (page, state) => {
+    await page.goto(origin + '/dashboard/events/e1/rounds/r1');
+    await visible(page, 'Audit Round');
+    assert.equal(await page.getByText('Audit Opponent', {exact: true}).count(), 0);
+    state.round.pairingsPublished = true;
+    await page.evaluate(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await visible(page, 'Audit Opponent');
+    await visible(page, 'Audit Hall');
+    assert.equal(await page.locator('.animate-pulse').count(), 0);
+  });
+
   await run('admin event edit persists across reload', {signedIn: true, admin: true}, async (page, state) => {
     await page.goto(origin + '/admin/events');
     await page.getByRole('button', {name: 'Edit tournament Audit Tournament', exact: true}).click();
@@ -487,6 +524,45 @@ try {
     await page.reload();
     await page.getByRole('button', {name: 'Create Event', exact: true}).waitFor();
     assert.equal(await page.getByText('Audit Tournament', {exact: true}).count(), 0);
+  });
+
+  await run('mobile dashboard command view switches between segmented tabs with no horizontal overflow', {signedIn: true, assigned: true}, async page => {
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto(origin + '/dashboard');
+    await page.getByRole('tab', {name: 'Live Matchup'}).waitFor({state: 'visible'});
+    await visible(page, 'Audit Tournament');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+
+    await page.getByRole('tab', {name: /Rounds/}).click();
+    await visible(page, 'Audit Round');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+
+    await page.getByRole('tab', {name: 'Results'}).click();
+    await visible(page, 'Tournament Results & Standings');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  });
+
+  await run('admin inline result entry automatically tags higher score as winner', {signedIn: true, admin: true, assigned: true, published: true}, async (page, state) => {
+    state.debate.status = 'SCHEDULED';
+    state.debate.winnerId = null;
+    state.debate.debater1Score = null;
+    state.debate.debater2Score = null;
+    await page.goto(origin + '/admin/rounds/r1');
+    await page.getByRole('button', {name: /Debates/}).click();
+    await page.getByRole('button', {name: 'Enter Result'}).first().click();
+    await page.getByRole('heading', {name: /Score Debate/}).waitFor({state: 'visible'});
+
+    const input1 = page.locator('#score-debater-1-d1');
+    const input2 = page.locator('#score-debater-2-d1');
+    await input1.fill('92');
+    await input2.fill('78');
+
+    await visible(page, 'Winner Auto-Selected');
+    await page.getByRole('button', {name: 'Save Result'}).click();
+    await page.getByRole('heading', {name: /Score Debate/}).waitFor({state: 'hidden'});
+    assert.equal(state.debate.debater1Score, 92);
+    assert.equal(state.debate.debater2Score, 78);
+    assert.equal(state.debate.winnerId, 'u1');
   });
 
   await run('sign-out returns to landing page', {signedIn: true}, async page => {

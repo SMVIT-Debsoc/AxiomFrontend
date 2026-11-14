@@ -47,6 +47,8 @@ export default function ApiAuthSync() {
 
         setApiAuthTokenProvider(tokenProvider);
         socketService.setAuthProvider(tokenProvider);
+        // A socket opened before sign-in / admin unlock has stale (anonymous) auth.
+        socketService.refreshAuth();
 
         return () => {
             setApiAuthTokenProvider(null);

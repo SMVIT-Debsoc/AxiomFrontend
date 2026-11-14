@@ -27,6 +27,7 @@ import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {useToast} from "../../hooks/useToast";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import {toLocalDateTime} from "../../lib/datetime";
+import InlineResultSheet from "../../components/admin/InlineResultSheet";
 
 export default function AdminRoundManagement() {
     const { id: roundId } = useParams();
@@ -52,6 +53,7 @@ export default function AdminRoundManagement() {
     const showAllocateModal = allocationRoundId === roundId;
     const [searchTerm, setSearchTerm] = useState("");
     const [processingId, setProcessingId] = useState(null);
+    const [scoringDebate, setScoringDebate] = useState(null);
     const debounceTimers = useRef({});
 
     // Store getToken in a ref so it never triggers re-renders or re-memos
@@ -172,6 +174,28 @@ export default function AdminRoundManagement() {
             }
         },
     });
+
+    const handleSaveResult = async ({ debateId, debater1Score, debater2Score, winnerId, nextDebate }) => {
+        const token = await getTokenRef.current();
+        const res = await AdminApi.submitResult(debateId, { debater1Score, debater2Score, winnerId }, token);
+        if (!res.success) {
+            throw new Error(res.error || "Failed to submit result");
+        }
+        setDebates((prev) => prev.map((d) => d.id === debateId ? {
+            ...d,
+            debater1Score,
+            debater2Score,
+            winnerId,
+            status: "COMPLETED"
+        } : d));
+        toast.success("Result Saved", "Ballot recorded with winner tag.");
+        if (nextDebate) {
+            setScoringDebate(nextDebate);
+        } else {
+            setScoringDebate(null);
+        }
+        debouncedFetch();
+    };
 
     const handleGeneratePairings = async (type) => {
         const confirmMessage =
@@ -929,7 +953,7 @@ export default function AdminRoundManagement() {
                                             </span>
                                         </div>
                                         <button
-                                            onClick={() => navigate(`/admin/results/${debate.id}`)}
+                                            onClick={() => setScoringDebate(debate)}
                                             className={cn(
                                                 "text-xs font-sans font-semibold transition-all px-3 py-1.5 rounded-lg flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                                                 debate.status === "COMPLETED"
@@ -1067,7 +1091,7 @@ export default function AdminRoundManagement() {
                                                     <td className="px-5 py-3.5 text-right">
                                                         <button
                                                             onClick={() =>
-                                                                navigate(`/admin/results/${debate.id}`)
+                                                                setScoringDebate(debate)
                                                             }
                                                             className="text-xs font-sans font-semibold text-primary hover:underline transition-colors"
                                                         >
@@ -1156,7 +1180,7 @@ export default function AdminRoundManagement() {
                                     </div>
 
                                     <button
-                                        onClick={() => navigate(`/admin/results/${debate.id}`)}
+                                        onClick={() => setScoringDebate(debate)}
                                         className="w-full py-2 rounded-lg text-xs font-sans font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                                     >
                                         {debate.status === "COMPLETED"
@@ -1167,6 +1191,15 @@ export default function AdminRoundManagement() {
                             ))}
                     </div>
                 </>
+            )}
+
+            {scoringDebate && (
+                <InlineResultSheet
+                    debate={scoringDebate}
+                    debates={debates}
+                    onSave={handleSaveResult}
+                    onClose={() => setScoringDebate(null)}
+                />
             )}
         </div>
     );

@@ -12,6 +12,7 @@ import { useAuth } from "../../auth/client.jsx";
 import { AdminApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
+import { resolveWinnerId } from "../../lib/scoring.js";
 
 export default function AdminResultSubmission() {
     const { id: debateId } = useParams();
@@ -21,6 +22,7 @@ export default function AdminResultSubmission() {
     const [debate, setDebate] = useState(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState(null);
 
     const [formData, setFormData] = useState({
         debater1Score: "",
@@ -35,16 +37,18 @@ export default function AdminResultSubmission() {
                 const response = await AdminApi.apiRequest(`/debates/${debateId}`, "GET", null, token);
                 if (response.success) {
                     setDebate(response.debate);
-                    if (response.debate.status === 'COMPLETED') {
-                        setFormData({
-                            debater1Score: response.debate.debater1Score?.toString() || "",
-                            debater2Score: response.debate.debater2Score?.toString() || "",
-                            winnerId: response.debate.winnerId || ""
-                        });
-                    }
+                    const s1 = response.debate.debater1Score?.toString() || "";
+                    const s2 = response.debate.debater2Score?.toString() || "";
+                    const w = response.debate.winnerId || "";
+                    setFormData({
+                        debater1Score: s1,
+                        debater2Score: s2,
+                        winnerId: resolveWinnerId(s1, s2, w, response.debate.debater1Id, response.debate.debater2Id)
+                    });
                 }
-            } catch (error) {
-                console.error("Failed to fetch debate:", error);
+            } catch (err) {
+                console.error("Failed to fetch debate:", err);
+                setError(err?.message || "Failed to load debate");
             } finally {
                 setLoading(false);
             }
@@ -52,14 +56,29 @@ export default function AdminResultSubmission() {
         fetchDebate();
     }, [debateId, getToken]);
 
+    const handleScoreChange = (field, val) => {
+        const newForm = { ...formData, [field]: val };
+        const autoWinner = resolveWinnerId(
+            field === "debater1Score" ? val : formData.debater1Score,
+            field === "debater2Score" ? val : formData.debater2Score,
+            formData.winnerId,
+            debate?.debater1Id,
+            debate?.debater2Id
+        );
+        newForm.winnerId = autoWinner;
+        setFormData(newForm);
+        setError(null);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.winnerId) {
-            alert("Please select a winner");
+            setError("Please select a winner (required if scores are tied)");
             return;
         }
 
         setSubmitting(true);
+        setError(null);
         try {
             const token = await getToken();
             const response = await AdminApi.submitResult(debateId, {
@@ -69,13 +88,12 @@ export default function AdminResultSubmission() {
             }, token);
 
             if (response.success) {
-                alert("Result submitted successfully!");
                 navigate(`/admin/rounds/${debate.roundId}`);
             } else {
-                alert(response.error || "Failed to submit result");
+                setError(response.error || "Failed to submit result");
             }
-        } catch {
-            alert("Error submitting result");
+        } catch (err) {
+            setError(err?.message || "Error submitting result");
         } finally {
             setSubmitting(false);
         }
@@ -130,6 +148,16 @@ export default function AdminResultSubmission() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                    <div
+                        role="alert"
+                        className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 text-sm flex items-start gap-2.5"
+                    >
+                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                        <span>{error}</span>
+                    </div>
+                )}
+
                 <div className="grid md:grid-cols-2 gap-8">
                     {/* Debater 1 */}
                     <div className={`p-6 md:p-8 rounded-2xl border transition-all ${
@@ -165,7 +193,7 @@ export default function AdminResultSubmission() {
                                     min="0"
                                     max="100"
                                     value={formData.debater1Score}
-                                    onChange={(e) => setFormData({ ...formData, debater1Score: e.target.value })}
+                                    onChange={(e) => handleScoreChange("debater1Score", e.target.value)}
                                     className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
                                     placeholder="85.5"
                                 />
@@ -219,7 +247,7 @@ export default function AdminResultSubmission() {
                                     min="0"
                                     max="100"
                                     value={formData.debater2Score}
-                                    onChange={(e) => setFormData({ ...formData, debater2Score: e.target.value })}
+                                    onChange={(e) => handleScoreChange("debater2Score", e.target.value)}
                                     className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
                                     placeholder="82.0"
                                 />
