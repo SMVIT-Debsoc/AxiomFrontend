@@ -209,3 +209,23 @@ Backend (`/home/rosso/Projects/Axiom26`):
   - `bun test tests/readiness.test.mjs`: PASS, 5/5 checks.
   - `npm run build`: PASS (Vite production build in 4.56s; existing >500 kB chunk advisory on `index-XnneG0Ef.js` noted).
   - `npm run test:browser`: PASS, 39/39 Playwright Chromium audit fixtures (`audit-artifacts/browser-results.json`).
+
+## Local Backend & Full Auth Flow Verification + DB SSL Fix (2026-11-14)
+
+- **Root cause diagnosed (`ACCOUNT SETUP IS UNAVAILABLE` / `Failed to fetch user details` on `/complete-profile`)**:
+  - `axiom4.online` rewrites `/api/*` via `vercel.json` to `https://axiom26-aezg.onrender.com/api/*`.
+  - Live `https://axiom26-aezg.onrender.com/health` reported `{"status":"degraded","database":"reconnecting","environment":"production"}` and `POST /api/users/check-email` returned `503`. When `/api/users/me` fails in `Axiom26/src/controllers/userController.ts`, the backend catches the DB error and returns `500 { success: false, error: "Failed to fetch user details" }`; `/auth-redirect` falls back to `/complete-profile`, where `OnboardingGuard.jsx` catches the `/api/users/me` failure and renders `"Account setup is unavailable"` / `"Failed to fetch user details"`.
+  - Two backend causes and a CI/deploy blocker were identified in `/Users/rossonerian/Projects/Axiom26`:
+    1. In `Axiom26/src/utils/prisma.ts`, `pg` (`ConnectionParameters`) overwrote `ssl: { rejectUnauthorized: false }` with `ssl: {}` (`verify-full`) whenever `DATABASE_URL` included `?sslmode=require`.
+    2. `Axiom26`'s `package-lock.json` was out of sync with `package.json` after the Clerk migration commit (`3f4fbf8`), causing `npm ci` to fail in GitHub Actions (`API CI and Render deploy`) and blocking Render's `buildCommand: npm ci && npm run build`; additionally, Render's `DATABASE_URL`/`DIRECT_URL` env vars must point to the active Neon PostgreSQL database.
+- **Backend fixes applied in `/Users/rossonerian/Projects/Axiom26`**:
+  - `src/utils/prisma.ts`: loaded `[".env.local", ".env"]`, detected Neon/Supabase/Render SSL URLs, and stripped `sslmode` / `channel_binding` query params when strict SSL is off so `ssl: { rejectUnauthorized: false }` is preserved in `pg.Pool`.
+  - `src/index.ts`, `src/middleware/auth.ts`, `src/utils/socket.ts`, `src/controllers/adminController.ts`: mounted `/health/live`, `/`, and `/health` before Clerk middleware, guarded `clerkMiddleware()` when Clerk keys are absent, supported local `NODE_ENV !== "production"` dev Bearer tokens (`fixture-auth-token`, `mock-token-*`) and default dev `ADMIN_SECRET_KEY`, and made `getCurrentUser` first-sign-in user creation idempotent in `src/controllers/userController.ts` (`upsert` + `P2002` fallback).
+  - `src/tests/autoEnrollUnit.test.ts`, `package.json`, `package-lock.json`: closed `pool.end()` cleanly in test teardown, added Node `--test` fallback in `npm test`, and resynced `package-lock.json` using npm `12.2.2`.
+- **Live local full-stack browser verification (`http://localhost:5173` + `http://localhost:3000` + Neon PostgreSQL)**:
+  - Seeded active `AXIOM 4.0` event + Round 1 in Neon DB (`3aa9c9ae-e8ee-4475-ab72-5653ff3caea6`).
+  - Verified full flow in Chromium (`browser` subagent `d37d58c4-ae53-40ce-a4d1-24f660f1d595`): `/` -> `Sign in` -> `/auth-redirect` -> `/complete-profile` (no error banner) -> submitted College `Sir MVIT`, Mobile `9876543210`, USN `1MV22CS001` -> `"You're in, Audit."` -> `/dashboard` showing `AXIOM 4.0` -> Landing `Sign in` while signed in redirects cleanly -> `Sign out` -> `Admin` modal (`Axiom@26`) -> `/admin` Live Desk (0 console errors, 0 page errors, 0 HTTP 4xx/5xx responses).
+  - Confirmed real Neon DB persistence for `User` and `Admin` records, then deleted the temporary `user_mock_participant` test user/admin rows.
+- **Verification results**:
+  - `Axiom26`: `npx prisma validate` PASS, `npm run build` PASS, `npm test` PASS (6/6), `REQUIRE_DATABASE=true bun ./dist/tests/autoEnrollUnit.test.js` PASS, `NODE_ENV=production` `checkDatabaseHealth()` against Neon `.env.local` PASS (`true`, `eventCount: 1`), `/Users/rossonerian/.bun/bin/npm ci --dry-run` PASS, and GitHub Actions CI run `43603834219` on `main` (`8625989`) PASS (`conclusion: "success"`).
+  - `AxiomFrontend`: `npm run lint` PASS, `npm test` 44/44 PASS, `npm run build` PASS (`3.32s`), `npm run test:browser` 39/39 PASS (`audit-artifacts/browser-results.json`).
