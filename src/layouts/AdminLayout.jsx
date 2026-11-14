@@ -54,7 +54,7 @@ function EventSwitcher({className}) {
                 onChange={(e) => setEventId(e.target.value)}
                 disabled={loading || events.length === 0}
                 aria-label="Switch event"
-                className="h-11 w-full rounded-xl border border-[#4A5646] bg-[#2F322A] px-3 text-[15px] font-semibold text-[#EAFBF5] disabled:opacity-70"
+                className="h-11 w-full truncate rounded-xl border border-[#4A5646] bg-[#2F322A] px-3 text-sm font-semibold text-[#EAFBF5] disabled:opacity-70 md:text-[15px]"
             >
                 {events.length === 0 && <option value="">{loading ? "Loading events…" : "No events yet"}</option>}
                 {events.map((e) => <option key={e.id} value={e.id} className="text-[#141510]">{e.name}</option>)}
@@ -129,7 +129,7 @@ function Shell() {
             <div className="flex min-w-0 flex-1 flex-col">
                 {/* Phone top bar */}
                 <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background px-3 py-2 md:hidden">
-                    <div className="min-w-0 flex-1 [&_span]:hidden [&_select]:h-10 [&_select]:border-border [&_select]:bg-card [&_select]:text-foreground"><EventSwitcher /></div>
+                    <div className="min-w-0 flex-1 [&_span]:hidden [&_select]:border-border [&_select]:bg-card [&_select]:text-foreground"><EventSwitcher /></div>
                     <div role="status" aria-label={socketConnected ? "Live sync on" : "Connecting"} className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold", socketConnected ? "bg-[#D4EDE1] text-[#1D1E18] dark:bg-[#3A3E34] dark:text-[#D4EDE1]" : "bg-destructive/10 text-destructive")}>
                         <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#1D1E18] dark:bg-[#B9F5D8] axiom-live-dot" : "bg-destructive animate-pulse")} />
                         {socketConnected ? "Live" : "…"}

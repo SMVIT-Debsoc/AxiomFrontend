@@ -53,7 +53,7 @@ export default function AdminAccessModal({isOpen, onClose}) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+                className="fixed inset-0 bg-black/75 transition-opacity"
                 onClick={onClose}
                 aria-hidden="true"
             />
@@ -69,16 +69,16 @@ export default function AdminAccessModal({isOpen, onClose}) {
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-[#BDD9CA] hover:bg-[#272922] hover:text-[#EAFBF5] transition"
+                    className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full text-[#BDD9CA] hover:bg-[#272922] hover:text-[#EAFBF5] transition"
                     aria-label="Close"
                 >
-                    <X size={18} />
+                    <X size={18} aria-hidden="true" />
                 </button>
 
                 <div className="flex flex-col gap-4">
                     {/* Header Icon */}
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#B9F5D8] text-[#141510]">
-                        <Shield size={24} strokeWidth={2.5} />
+                        <Shield size={24} strokeWidth={2.5} aria-hidden="true" />
                     </div>
 
                     <div>
@@ -98,7 +98,7 @@ export default function AdminAccessModal({isOpen, onClose}) {
                             </label>
                             <div className="relative">
                                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-[#BDD9CA]">
-                                    <KeyRound size={16} />
+                                    <KeyRound size={16} aria-hidden="true" />
                                 </div>
                                 <input
                                     id="admin-secret-key"
@@ -109,17 +109,18 @@ export default function AdminAccessModal({isOpen, onClose}) {
                                         setError("");
                                     }}
                                     placeholder="Enter secret key (e.g. Axiom@26)"
-                                    className="h-12 w-full rounded-xl border border-[#4A5646] bg-[#141510] pl-10 pr-10 text-sm font-mono text-[#EAFBF5] placeholder-[#6B8F71] focus:border-[#B9F5D8] focus:outline-none focus:ring-2 focus:ring-[#B9F5D8]/40"
+                                    autoComplete="off"
+                                    className="h-12 w-full rounded-xl border border-[#4A5646] bg-[#141510] pl-10 pr-12 text-xs sm:text-sm font-mono text-[#EAFBF5] placeholder-[#6B8F71] focus:border-[#B9F5D8] focus:outline-none focus:ring-2 focus:ring-[#B9F5D8]/40"
                                     autoFocus
                                     required
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowKey(!showKey)}
-                                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-[#BDD9CA] hover:text-[#EAFBF5]"
+                                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-[#BDD9CA] hover:text-[#EAFBF5]"
                                     aria-label={showKey ? "Hide secret key" : "Show secret key"}
                                 >
-                                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    {showKey ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                                 </button>
                             </div>
                         </div>
@@ -137,7 +138,7 @@ export default function AdminAccessModal({isOpen, onClose}) {
                         >
                             {busy ? (
                                 <>
-                                    <Loader2 className="animate-spin" size={16} />
+                                    <Loader2 className="animate-spin" size={16} aria-hidden="true" />
                                     <span>Connecting to Admin Console…</span>
                                 </>
                             ) : (

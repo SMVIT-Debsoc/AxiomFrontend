@@ -110,6 +110,38 @@ export const ROUTES = [
     return [200, {status: true, user: s.self ? sessionUser(s.self) : null}];
   }],
   ['GET', '/admin/me', (s) => (s.admin ? [200, {success: true, admin: {id: 'test-admin'}}] : [403, {error: 'Forbidden'}])],
+  ['POST', '/admin/onboard', (s, _p, body) => {
+    if (s.admin || body?.secretKey === 'Axiom@26') {
+      s.admin = true;
+      return [200, {success: true, admin: {id: 'test-admin'}}];
+    }
+    return [403, {error: 'Forbidden'}];
+  }],
+  ['GET', '/admin/dashboard', (s) => {
+    if (!s.admin) return [403, {error: 'Forbidden'}];
+    const events = s.events || (s.event ? [s.event] : []);
+    const rawDebates = s.debates || s.round?.debates || (s.debate ? [s.debate] : []);
+    const debates = rawDebates.filter((d) => d?.debater1 && d?.debater2).map((d) => ({
+      ...d,
+      round: d.round || {roundNumber: s.round?.roundNumber || 1},
+    }));
+    const completedDebates = debates.filter((d) => d.status === 'COMPLETED').length;
+    return [200, {
+      success: true,
+      data: {
+        overview: {
+          totalEvents: events.length,
+          activeEvents: events.filter((e) => e.status === 'ONGOING').length,
+          totalUsers: (s.users || []).length || 1,
+          completedDebates,
+          completionRate: debates.length ? Math.round((completedDebates / debates.length) * 100) : 0,
+          totalRooms: (s.rooms || []).length,
+        },
+        recentEvents: events,
+        recentDebates: debates,
+      },
+    }];
+  }],
   ['GET', '/users/me', (s) => [200, {success: true, user: s.self}]],
   ['PUT', '/users/profile', (s, _p, body) => {
     Object.assign(s.self, body);

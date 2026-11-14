@@ -331,7 +331,7 @@ export default function EventDetails() {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-4 md:gap-6 border-b border-border overflow-x-auto pb-px -mx-4 px-4 md:mx-0 md:px-0">
+      <div className="no-scrollbar flex items-center gap-4 md:gap-6 border-b border-border overflow-x-auto pb-px -mx-4 px-4 md:mx-0 md:px-0">
         {["overview", "rounds", "participants", "results"].map((tab) => (
           <button
             key={tab}

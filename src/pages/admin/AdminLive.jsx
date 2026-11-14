@@ -284,7 +284,7 @@ export default function AdminLive() {
                 </label>
             </div>
 
-            <div role="tablist" aria-label="Rounds" className="mb-4 flex gap-2 overflow-x-auto pb-1">
+            <div role="tablist" aria-label="Rounds" className="no-scrollbar mb-4 flex gap-2 overflow-x-auto pb-1">
                 {rounds.map((r) => (
                     <button key={r.id} type="button" role="tab" aria-selected={r.id === roundId} onClick={() => setRoundId(r.id)} className={cn("min-h-11 shrink-0 rounded-full border px-4 text-sm font-semibold", r.id === roundId ? "border-[#1D1E18] bg-[#1D1E18] text-[#EAFBF5] dark:border-[#B9F5D8] dark:bg-[#B9F5D8] dark:text-[#141510]" : "border-input bg-card text-foreground")}>
                         Round {r.roundNumber} · {roundWord(r.status)}
@@ -297,10 +297,10 @@ export default function AdminLive() {
                 {STEPS.map((s, i) => {
                     const isCurrent = i === step;
                     return (
-                        <li key={s.label}>
-                            <button type="button" onClick={() => setViewStep(i)} aria-current={i === currentStep ? "step" : undefined} className={cn("flex min-h-12 w-full flex-col items-start gap-0.5 rounded-xl border px-2 py-2 text-left md:px-3.5", isCurrent ? "border-2 border-[#1D1E18] bg-[#1D1E18] text-[#EAFBF5] dark:border-[#B9F5D8] dark:bg-[#3A3E34]" : i < currentStep ? "border-transparent bg-[#D4EDE1] text-[#141510] dark:bg-[#3A3E34] dark:text-[#D4EDE1]" : "border-border bg-card text-foreground")}>
+                        <li key={s.label} className="min-w-0">
+                            <button type="button" onClick={() => setViewStep(i)} aria-current={i === currentStep ? "step" : undefined} className={cn("flex min-h-12 w-full flex-col items-start gap-0.5 rounded-xl border px-1.5 py-2 text-left sm:px-2 md:px-3.5", isCurrent ? "border-2 border-[#1D1E18] bg-[#1D1E18] text-[#EAFBF5] dark:border-[#B9F5D8] dark:bg-[#3A3E34]" : i < currentStep ? "border-transparent bg-[#D4EDE1] text-[#141510] dark:bg-[#3A3E34] dark:text-[#D4EDE1]" : "border-border bg-card text-foreground")}>
                                 <span className="hidden text-[11px] font-bold uppercase tracking-[0.06em] opacity-80 md:block">0{i + 1} · {stepState(i)}</span>
-                                <span className="text-[12px] font-bold md:text-[15px]"><span className="md:hidden">{s.short}</span><span className="hidden md:inline">{s.label}</span></span>
+                                <span className="w-full truncate whitespace-nowrap text-[11px] font-bold sm:text-[12px] md:text-[15px]"><span className="md:hidden">{s.short}</span><span className="hidden md:inline">{s.label}</span></span>
                                 <span aria-hidden="true" className={cn("mt-1 h-1 w-full rounded-full md:hidden", i <= currentStep ? "bg-[#B9F5D8]" : "bg-border")} />
                             </button>
                         </li>
@@ -308,8 +308,8 @@ export default function AdminLive() {
                 })}
             </ol>
 
-            <div className="grid items-start gap-4 lg:grid-cols-[1fr_320px]">
-                <section aria-label="Step detail" className="ax-card order-2 p-4 md:p-6 lg:order-1">
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <section aria-label="Step detail" className="ax-card order-2 min-w-0 p-4 md:p-6 lg:order-1">
                     {step === 0 && <CheckInPanel present={present} total={total} absent={absent.filter((u) => match(fullName(u), u.college))} busy={busy} onMark={markPresent} onPreview={previewPairings} />}
                     {step === 1 && <PairingsPanel round={round} debates={debates.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))} onRegenerate={generatePairings} regenerating={busy === "generating"} hasDebates={hasDebates} />}
                     {step === 2 && <RoomsPanel debates={debates.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))} onAllocate={() => setShowAllocate(true)} hasDebates={hasDebates} noJudge={noJudge} roundId={roundId} />}
@@ -322,7 +322,7 @@ export default function AdminLive() {
                     {step === 4 && <ResultsPanel done={done.length} total={debates.length} pending={pending.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))} resultsPublished={resultsPublished} roundId={roundId} />}
                 </section>
 
-                <aside aria-label="Next action" className="order-1 flex flex-col gap-3 lg:order-2">
+                <aside aria-label="Next action" className="order-1 flex min-w-0 flex-col gap-3 lg:order-2">
                     <div className="rounded-[20px] bg-[#1D1E18] p-5 text-[#EAFBF5] dark:bg-[#3A3E34]">
                         <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#9FE3C2]">Do this next</p>
                         <h2 className="mt-1.5 font-heading text-2xl font-bold leading-tight text-[#EAFBF5]">{next.title}</h2>
@@ -389,7 +389,7 @@ function CheckInPanel({present, total, absent, busy, onMark, onPreview}) {
                     {absent.slice(0, 60).map((u) => (
                         <li key={u.id} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5">
                             <div className="min-w-0 flex-1"><p className="m-0 truncate font-semibold">{fullName(u)}</p><p className="m-0 truncate text-sm text-muted-foreground">{u.college || "No college"}</p></div>
-                            <button type="button" onClick={() => onMark(u.id)} disabled={busy === `checkin:${u.id}`} className="ax-ghost-btn !min-h-11">{busy === `checkin:${u.id}` ? "…" : "Mark present"}</button>
+                            <button type="button" onClick={() => onMark(u.id)} disabled={busy === `checkin:${u.id}`} className="ax-ghost-btn !min-h-11 shrink-0">{busy === `checkin:${u.id}` ? "…" : "Mark present"}</button>
                         </li>
                     ))}
                 </ul>
@@ -477,7 +477,7 @@ function ResultsPanel({done, total, pending, resultsPublished, roundId}) {
                         <li key={d.id} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5">
                             <span className="w-14 shrink-0 font-heading font-bold text-primary">{d.room?.name || "—"}</span>
                             <span className="min-w-0 flex-1 truncate text-[15px]">{fullName(d.debater1)} vs {fullName(d.debater2)}</span>
-                            <Link to={`/admin/results/${d.id}`} className="ax-ghost-btn !min-h-11">Enter result</Link>
+                            <Link to={`/admin/results/${d.id}`} className="ax-ghost-btn !min-h-11 shrink-0">Enter result</Link>
                         </li>
                     ))}
                 </ul>

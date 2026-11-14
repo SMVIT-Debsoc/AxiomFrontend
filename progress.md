@@ -174,3 +174,24 @@ Backend (`/home/rosso/Projects/Axiom26`):
   - Live Google Cloud Console OAuth Client must include `https://clerk.axiom4.online/v1/oauth_callback` under Authorized Redirect URIs (documented in `docs/google-oauth-setup.md`).
   - Live Clerk + Render + Neon end-to-end authentication and persistence on `https://www.axiom4.online` remain unverified until the external Render/Google Console updates are applied.
 - **Next recommended task**: Update `DATABASE_URL` and `DIRECT_URL` on Render (`axiom26-backend`), verify `https://axiom26-aezg.onrender.com/health` reports `"database":"connected"`, confirm GitHub Actions CI passes on `main`, and run live Google OAuth sign-in on `https://www.axiom4.online`.
+
+## UI Engineering Protocol & Mobile PROD Polish (2026-11-14)
+
+- **Completed work**:
+  - Created `DESIGN.md` at repository root documenting the authoritative AXIOM 4.0 surface/accent palette (`#1D1E18`, `#141510`, `#B9F5D8`, `#9FE3C2`, `#EAFBF5`, `#D4EDE1`, `#4A5646`, `#6B8F71`, `#B8D5C5`, `#a51818`, `#ff9c9c`), typography (`Bebas Neue`, `League Spartan`, `Inter`), responsive viewports (`1280×800`, `768×1024`, `390×844`), accessibility rules (`44×44px` minimum targets, `:focus-visible`, `prefers-reduced-motion`, decorative SVG `aria-hidden="true"`), and anti-slop guardrails.
+  - Polished `src/components/brand/AdminAccessModal.jsx` and `src/pages/LandingPage.jsx`: replaced modal backdrop `backdrop-blur-sm` with solid `bg-black/75`, enlarged close and password visibility controls to `44px+`, added `autoComplete="off"` on `#admin-secret-key`, set `text-xs sm:text-sm` for mobile placeholder legibility, added `aria-hidden="true"` on decorative icons, exposed the `Admin` trigger pill in the mobile landing header, and surfaced the mobile `"Make your case."` Google CTA button.
+  - Fixed mobile (`390×844`) responsive layout and CSS polish in `src/layouts/AdminLayout.jsx`, `src/pages/admin/AdminLive.jsx`, `src/pages/dashboard/EventDetails.jsx`, and `src/index.css`: single-line truncated `<select>` event switcher at `44px` height, equal-height `48px` single-line round-step pills (`Check-in`, `Pair`, `Rooms`, `Publish`, `Results`), `minmax(0, 1fr)` / `min-w-0` grid track constraints preventing card clipping on `/admin`, `.no-scrollbar` utility hiding thick horizontal scrollbar tracks on mobile tab bars, and solid `.neo-tabs` mobile bar background.
+  - Updated `tests/dev-mock-server.mjs` and `tests/profiles.mjs` so `npm run dev:mock` builds with `VITE_AUTH_MOCK=true`, injects `window.__FIXTURE_AUTH__` / `sessionStorage.__fixture_auth__` / `isAdminSession` safely, and handles `/admin/onboard` and `/admin/dashboard` with event/debate fallbacks.
+- **Files changed**: `DESIGN.md`, `src/components/brand/AdminAccessModal.jsx`, `src/pages/LandingPage.jsx`, `src/layouts/AdminLayout.jsx`, `src/pages/admin/AdminLive.jsx`, `src/pages/dashboard/EventDetails.jsx`, `src/index.css`, `tests/profiles.mjs`, `tests/dev-mock-server.mjs`, `progress.md`. (Preserved untracked `.agents/` directory unchanged.)
+- **Verification results** (after final code edit):
+  - `npm run lint`: PASS (exit 0).
+  - `npm test`: PASS, 43/43 tests across 5 files via Bun test runner.
+  - `bun test tests/readiness.test.mjs`: PASS, 5/5 checks.
+  - `npm run build`: PASS (Vite production build in 2.86s; existing >500 kB chunk advisory on `index-CEAaJbGg.js` noted).
+  - `npm run test:browser`: PASS, 38/38 Playwright Chromium audit fixtures (`audit-artifacts/browser-results.json`).
+  - `/Users/rossonerian/.bun/bin/npm ci --dry-run`: PASS (exit 0).
+  - Interactive browser visual audit (`browser` subagent `Model: "flash"` against `http://localhost:5175` mock server): PASS across Desktop (`1280×800`), Tablet (`768×1024`), and Mobile (`390×844`) with 0 console errors, 0 uncaught page errors, 0 failed network requests (`status >= 400`), and 0 horizontal overflow (`scrollWidth <= innerWidth`).
+- **Known external production blockers (unverified)**:
+  - Live `https://axiom26-aezg.onrender.com/health` checked at `2026-11-14T11:37:18.266Z` still returns `{"status":"degraded","database":"reconnecting","environment":"production"}` pending operator update of `DATABASE_URL` and `DIRECT_URL` on Render.
+  - Live Google Cloud Console OAuth Client requires `https://clerk.axiom4.online/v1/oauth_callback` under Authorized Redirect URIs (`docs/google-oauth-setup.md`).
+- **Next recommended task**: Execute the operator manual checklist on `https://www.axiom4.online` once Render `DATABASE_URL`/`DIRECT_URL` and Google Cloud Console OAuth redirect URI are active.

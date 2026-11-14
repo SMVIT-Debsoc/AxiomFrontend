@@ -21,7 +21,7 @@ const outDir = path.join(root, 'node_modules', '.dev-mock-dist');
 if (!process.env.MOCK_SKIP_BUILD) {
   const build = spawnSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--outDir', outDir, '--emptyOutDir'], {
     cwd: root, stdio: 'inherit',
-    env: {...process.env, VITE_API_URL: '/api', VITE_SOCKET_URL: origin, VITE_SOCKET_TRANSPORTS: 'polling', VITE_GOOGLE_AUTH_ENABLED: 'true'},
+    env: {...process.env, VITE_API_URL: '/api', VITE_SOCKET_URL: origin, VITE_SOCKET_TRANSPORTS: 'polling', VITE_GOOGLE_AUTH_ENABLED: 'true', VITE_AUTH_MOCK: 'true'},
   });
   if (build.status !== 0) process.exit(build.status || 1);
 }
@@ -85,7 +85,36 @@ http.createServer((req, res) => {
   }
   let file = path.join(outDir, decodeURIComponent(url.pathname));
   if (!file.startsWith(outDir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(outDir, 'index.html');
-  send(res, 200, MIME[path.extname(file)] || 'application/octet-stream', fs.readFileSync(file));
+  let body = fs.readFileSync(file);
+  if (file.endsWith('.html')) {
+    const self = store.self || null;
+    const signedIn = Boolean(store.signedIn);
+    const fixtureAuth = {
+      signedIn,
+      user: signedIn && self ? {
+        id: self.id || 'u1',
+        fullName: self.fullName || [self.firstName, self.lastName].filter(Boolean).join(' ') || 'Participant',
+        firstName: self.firstName || 'Participant',
+        lastName: self.lastName || '',
+        primaryEmailAddress: self.primaryEmailAddress || {emailAddress: self.email || 'participant@example.invalid'},
+        imageUrl: self.imageUrl ?? null,
+      } : null,
+      admin: Boolean(store.admin),
+    };
+    const isAdminSession = Boolean(signedIn && store.admin);
+    const serverSig = JSON.stringify({
+      signedIn,
+      id: self?.id || null,
+      college: self?.college || null,
+      usn: self?.usn || null,
+      admin: Boolean(store.admin),
+    });
+    const safeAuth = JSON.stringify(fixtureAuth).replace(/</g, '\\u003c');
+    const safeSig = JSON.stringify(serverSig).replace(/</g, '\\u003c');
+    const script = `<script>(function(){var next=${safeAuth},sig=${safeSig};window.__FIXTURE_AUTH__=next;try{if(sessionStorage.getItem('__fixture_server_sig__')!==sig||sessionStorage.getItem('__fixture_auth__')===null){sessionStorage.setItem('__fixture_auth__',JSON.stringify(next));sessionStorage.setItem('__fixture_server_sig__',sig);if(${isAdminSession}){sessionStorage.setItem('isAdminSession','true');}else{sessionStorage.removeItem('isAdminSession');}}else{window.__FIXTURE_AUTH__=JSON.parse(sessionStorage.getItem('__fixture_auth__'))||next;}}catch{}})();</script>`;
+    body = Buffer.from(body.toString('utf8').replace('</head>', `${script}</head>`));
+  }
+  send(res, 200, MIME[path.extname(file)] || 'application/octet-stream', body);
 }).listen(port, () => {
   console.log(`\nMock server (no real auth) on ${origin}\n`);
   for (const [key, [, target]] of Object.entries(SHORTCUTS)) console.log(`  ${origin}/__as/${key.padEnd(11)} -> ${target}`);

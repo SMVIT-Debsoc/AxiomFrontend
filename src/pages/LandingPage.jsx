@@ -65,10 +65,10 @@ export default function LandingPage() {
                     <button
                         type="button"
                         onClick={() => setAdminModalOpen(true)}
-                        className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-[#B9F5D8] hover:text-primary"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-[#B9F5D8] hover:text-primary sm:px-3"
                         aria-label="Admin Portal Access"
                     >
-                        <Shield size={13} className="text-amber-500 dark:text-amber-400" />
+                        <Shield size={13} aria-hidden="true" className="text-amber-500 dark:text-amber-400" />
                         <span>Admin</span>
                     </button>
                     <GoogleAuthButton variant="header" label="Sign in" />
@@ -161,13 +161,13 @@ export default function LandingPage() {
                         <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#9FE3C2] md:text-[13px]">The floor is yours</p>
                         <h2 id="cta-title" className="font-display text-[64px] font-normal leading-[0.88] text-[#EAFBF5] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>
                     </div>
-                    <div className="relative hidden md:flex"><GoogleAuthButton variant="onDark" /></div>
+                    <div className="relative flex w-full md:w-auto"><GoogleAuthButton variant="onDark" /></div>
                 </div>
             </section>
 
             <footer className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
                 <p className="m-0">{E.name} · {E.organiserLong} · {E.city}</p>
-                <p className="m-0">
+                <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1">
                     <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <button type="button" onClick={() => setAdminModalOpen(true)} className="underline hover:text-[#9FE3C2]">Admin Portal</button> · <a className="underline" href="#top">Back to top</a>
                 </p>
             </footer>
