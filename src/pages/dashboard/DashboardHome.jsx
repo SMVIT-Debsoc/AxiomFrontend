@@ -36,6 +36,11 @@ const WhatsAppFirstLoginModal = lazy(() =>
     default: m.WhatsAppFirstLoginModal,
   }))
 );
+const FirstLoginGuideStrip = lazy(() =>
+  import("../../components/dashboard/QuickStartGuide").then((m) => ({
+    default: m.FirstLoginGuideStrip,
+  }))
+);
 
 export default function DashboardHome() {
   const {getToken} = useAuth();
@@ -189,12 +194,17 @@ export default function DashboardHome() {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto font-sans">
-      {/* WhatsApp First Login Modal & Persistent Alert */}
+      {/* WhatsApp First Login Modal, Persistent Alert & First-Time Visual Guide */}
       <Suspense fallback={null}>
         <WhatsAppFirstLoginModal event={activeEvent} />
         <WhatsAppGroupBanner
           whatsappLink={activeEvent?.whatsappLink}
           eventName={activeEvent?.name}
+        />
+        <FirstLoginGuideStrip
+          onOpenFullGuide={() =>
+            window.dispatchEvent(new CustomEvent("axiom:open-visual-guide"))
+          }
         />
       </Suspense>
 

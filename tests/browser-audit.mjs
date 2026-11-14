@@ -542,6 +542,39 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   });
 
+  await run('first-time login shows visual navigation guide strip, advances steps, and persists dismissal across reload', {signedIn: true}, async page => {
+    await page.goto(origin + '/dashboard');
+    const guideRegion = page.getByRole('region', {name: 'First-time login visual guide'});
+    await guideRegion.waitFor({state: 'visible'});
+    await visible(guideRegion, 'No check-in, no mic.');
+
+    await guideRegion.getByRole('button', {name: 'Next Tip'}).click();
+    await visible(guideRegion, 'GOV opens. OPP claps back.');
+
+    await guideRegion.getByRole('button', {name: 'Got it'}).click();
+    assert.equal(await page.getByRole('region', {name: 'First-time login visual guide'}).count(), 0);
+
+    await page.reload();
+    await page.getByRole('tab', {name: 'Live Matchup'}).waitFor({state: 'visible'});
+    assert.equal(await page.getByRole('region', {name: 'First-time login visual guide'}).count(), 0);
+  });
+
+  await run('header Guide button opens interactive 4-step visual guide modal on mobile without overflow', {signedIn: true}, async page => {
+    await page.setViewportSize({width: 390, height: 844});
+    await page.goto(origin + '/dashboard');
+    await page.getByRole('button', {name: 'Open quick navigation guide'}).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.waitFor({state: 'visible'});
+    await visible(dialog, 'How to Navigate the Arena');
+    await visible(dialog, 'No check-in, no mic.');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+
+    await dialog.getByRole('tab', {name: /04/}).click();
+    await visible(dialog, 'Scores stay backstage. Qualification hits the stage.');
+    await dialog.getByRole('button', {name: /Got It, Let's Debate/}).click();
+    assert.equal(await page.getByRole('dialog').count(), 0);
+  });
+
   await run('admin inline result entry automatically tags higher score as winner', {signedIn: true, admin: true, assigned: true, published: true}, async (page, state) => {
     state.debate.status = 'SCHEDULED';
     state.debate.winnerId = null;

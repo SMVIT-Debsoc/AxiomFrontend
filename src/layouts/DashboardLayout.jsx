@@ -1,4 +1,6 @@
+import {lazy, Suspense, useEffect, useState} from "react";
 import {Outlet, Link, useLocation} from "react-router-dom";
+import {Compass} from "lucide-react";
 import {
     useUser,
     RedirectToSignIn,
@@ -10,6 +12,12 @@ import WorkspaceFooter from "../components/layout/WorkspaceFooter";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import LoadingIndicator from "../components/ui/LoadingIndicator";
 
+const VisualGuideModal = lazy(() =>
+    import("../components/dashboard/QuickStartGuide").then((m) => ({
+        default: m.VisualGuideModal,
+    }))
+);
+
 const sidebarItems = [
     {icon: "LayoutIcon", label: "Overview", path: "/dashboard"},
     {icon: "EventsIcon", label: "Events", path: "/dashboard/events"},
@@ -19,7 +27,14 @@ const sidebarItems = [
 export default function DashboardLayout() {
     const location = useLocation();
     const {isLoaded, isSignedIn} = useUser();
+    const [guideOpen, setGuideOpen] = useState(false);
     const isAdmin = typeof window !== "undefined" && sessionStorage.getItem("isAdminSession") === "true";
+
+    useEffect(() => {
+        const handleOpenGuide = () => setGuideOpen(true);
+        window.addEventListener("axiom:open-visual-guide", handleOpenGuide);
+        return () => window.removeEventListener("axiom:open-visual-guide", handleOpenGuide);
+    }, []);
 
     if (!isLoaded) {
         return <LoadingIndicator fullScreen label="Opening your debate workspace" />;
@@ -61,7 +76,17 @@ export default function DashboardLayout() {
                         </Link>
                     </div>
 
-                    <div className="flex items-center gap-3 ml-auto">
+                    <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+                        <button
+                            type="button"
+                            onClick={() => setGuideOpen(true)}
+                            aria-label="Open quick navigation guide"
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-heading font-bold text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                            <Compass size={15} className="text-primary shrink-0" aria-hidden="true" />
+                            <span>Guide</span>
+                        </button>
+
                         <ThemeToggle />
 
                         <AccountMenu />
@@ -80,6 +105,10 @@ export default function DashboardLayout() {
                 </main>
 
                 <MobileTabs items={navItems.slice(0, 5).map((item) => ({...item, label: item.label === "Admin Panel" ? "Admin" : item.label}))} />
+
+                <Suspense fallback={null}>
+                    <VisualGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+                </Suspense>
             </div>
         </div>
     );
