@@ -135,7 +135,17 @@ export default function AdminPeople() {
                         <label className="relative block w-full sm:w-64">
                             <span className="sr-only">Search debaters</span>
                             <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, college, ID" className="h-11 w-full rounded-xl border-[1.5px] border-input bg-card pl-9 pr-3 text-[15px]" />
+                            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, college, ID" className="h-11 w-full rounded-xl border-[1.5px] border-input bg-card pl-9 pr-9 text-[15px]" />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearch("")}
+                                    aria-label="Clear search"
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                                >
+                                    <X size={14} aria-hidden="true" />
+                                </button>
+                            )}
                         </label>
                         <div role="group" aria-label="Filter" className="flex gap-1.5">
                             {FILTERS.map(([key, label]) => (

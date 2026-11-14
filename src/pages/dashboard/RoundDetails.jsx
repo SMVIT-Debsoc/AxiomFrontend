@@ -37,8 +37,6 @@ export default function RoundDetails() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [clockNow, setClockNow] = useState(Date.now());
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("my-debate");
-  const [allDebates, setAllDebates] = useState([]);
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
@@ -71,23 +69,6 @@ export default function RoundDetails() {
         const debates = debatesResponse.debates || [];
         const myRoundDebate = debates.find((d) => d.roundId === roundId);
         setMyDebate(myRoundDebate || null);
-      }
-
-      if (roundResponse?.round?.pairingsPublished) {
-        if (Array.isArray(roundResponse.round.debates) && roundResponse.round.debates.length > 0) {
-          setAllDebates(roundResponse.round.debates);
-        } else {
-          try {
-            const allDebatesRes = await DebateApi.getByRound(roundId, token);
-            if (allDebatesRes.success) {
-              setAllDebates(allDebatesRes.debates || []);
-            }
-          } catch {
-            // debates not available yet
-          }
-        }
-      } else {
-        setAllDebates([]);
       }
 
       setError(null);
@@ -272,35 +253,8 @@ export default function RoundDetails() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center justify-center gap-6 border-b border-border">
-        <button
-          onClick={() => setActiveTab("my-debate")}
-          className={cn(
-            "pb-3 text-sm font-sans font-medium border-b-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
-            activeTab === "my-debate"
-              ? "border-primary text-primary font-semibold"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          My Debate
-        </button>
-        <button
-          onClick={() => setActiveTab("draws")}
-          className={cn(
-            "pb-3 text-sm font-sans font-medium border-b-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
-            activeTab === "draws"
-              ? "border-primary text-primary font-semibold"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Full Draw
-        </button>
-      </div>
-
-      {/* My Debate Tab */}
-      {activeTab === "my-debate" && (
-        <div className="space-y-4">
+      {/* My Debate Details */}
+      <div className="space-y-4">
           {/* Motion Display */}
           {round.motion && round.pairingsPublished && (
             <Motion.div
@@ -557,9 +511,6 @@ export default function RoundDetails() {
           {myDebate && myDebate.status === "COMPLETED" && (() => {
             const published = Boolean(round.resultsPublished || myDebate.resultsPublished);
             const qualified = Boolean(myDebate.isPromoted);
-            const isDebater1 = myDebate.debater1Id === currentUser?.id;
-            const myScore = myDebate.myScore ?? (isDebater1 ? myDebate.debater1Score : myDebate.debater2Score);
-            const opponentScore = myDebate.opponentScore ?? (isDebater1 ? myDebate.debater2Score : myDebate.debater1Score);
 
             return (
               <Motion.div
@@ -612,34 +563,14 @@ export default function RoundDetails() {
                 </div>
 
                 {published ? (
-                  <>
-                    <p className="text-xs text-muted-foreground font-sans">
-                      {myDebate.winnerId
-                        ? myDebate.winnerId === currentUser?.id
-                          ? "Congratulations! You won this round ballot."
-                          : `${myDebate.winner?.firstName || "Your opponent"} ${myDebate.winner?.lastName || ""} won this ballot.`
-                        : "Official round results have been published."}
-                    </p>
-                    {(myScore != null || opponentScore != null) && (
-                      <div className="grid grid-cols-2 gap-2.5 rounded-lg bg-card border border-border/70 p-3 text-center">
-                        <div>
-                          <p className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground">Your Speaker Score</p>
-                          <p className="text-lg font-heading font-bold text-foreground tabular-nums">
-                            {myScore != null ? myScore : "—"}
-                          </p>
-                        </div>
-                        <div className="border-l border-border/60">
-                          <p className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground">Opponent Score</p>
-                          <p className="text-lg font-heading font-bold text-muted-foreground tabular-nums">
-                            {opponentScore != null ? opponentScore : "—"}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  <p className="text-xs text-muted-foreground font-sans">
+                    {qualified
+                      ? "Congratulations! You have qualified for the next stage."
+                      : "Official round results have been published."}
+                  </p>
                 ) : (
                   <p className="text-xs text-muted-foreground font-sans">
-                    Your debate ballot has been recorded. Scores and qualification status will appear here live once the adjudication desk publishes results.
+                    Your debate ballot has been recorded. Qualification status will appear here live once the adjudication desk publishes results.
                   </p>
                 )}
               </Motion.div>
@@ -656,110 +587,6 @@ export default function RoundDetails() {
             </Link>
           )}
         </div>
-      )}
-
-      {/* Full Draw Tab */}
-      {activeTab === "draws" && (
-        <div className="space-y-3">
-          {!round.pairingsPublished ? (
-            <div className="text-center py-12 bg-card border border-border rounded-xl">
-              <Swords className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" aria-hidden="true" />
-              <h3 className="font-heading font-bold text-base mb-1 text-foreground">Draws Not Published</h3>
-              <p className="text-muted-foreground font-sans text-xs">
-                The pairings for this round have not been released yet.
-              </p>
-            </div>
-          ) : allDebates.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" aria-hidden="true" />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {allDebates.map((debate, index) => (
-                <Motion.div
-                  key={debate.id}
-                  initial={{opacity: 0, y: 10}}
-                  animate={{opacity: 1, y: 0}}
-                  transition={{duration: 0.2, delay: index * 0.03}}
-                  className="bg-card border border-border rounded-xl p-4"
-                >
-                  <div className="flex items-center justify-between gap-4 mb-3">
-                    <div className="w-[45%] flex flex-col items-center gap-1.5">
-                      <div className="relative">
-                        <UserAvatar
-                          user={debate.debater1}
-                          imageUrl={debate.debater1?.imageUrl}
-                          size="md"
-                        />
-                        <span className="absolute -bottom-1 -right-1 text-[9px] font-heading font-bold text-white bg-emerald-600 px-1.5 py-0.2 rounded-full shadow-sm z-10">
-                          GOV
-                        </span>
-                      </div>
-                      <p className="font-heading font-semibold text-xs truncate w-full text-center text-foreground">
-                        {debate.debater1?.firstName} {debate.debater1?.lastName}
-                      </p>
-                      {round.resultsPublished && debate.winnerId && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-mono">
-                          {debate.debater1Score != null && (
-                            <span className="text-muted-foreground">{debate.debater1Score}</span>
-                          )}
-                          {debate.winnerId === debate.debater1Id && (
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
-                              WIN
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-muted-foreground font-heading font-bold text-xs">
-                      VS
-                    </div>
-                    <div className="w-[45%] flex flex-col items-center gap-1.5">
-                      <div className="relative">
-                        <UserAvatar
-                          user={debate.debater2}
-                          imageUrl={debate.debater2?.imageUrl}
-                          size="md"
-                        />
-                        <span className="absolute -bottom-1 -right-1 text-[9px] font-heading font-bold text-white bg-[#1D1E18] dark:bg-[#2F5438] px-1.5 py-0.2 rounded-full shadow-sm z-10">
-                          OPP
-                        </span>
-                      </div>
-                      <p className="font-heading font-semibold text-xs truncate w-full text-center text-foreground">
-                        {debate.debater2?.firstName} {debate.debater2?.lastName}
-                      </p>
-                      {round.resultsPublished && debate.winnerId && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-mono">
-                          {debate.debater2Score != null && (
-                            <span className="text-muted-foreground">{debate.debater2Score}</span>
-                          )}
-                          {debate.winnerId === debate.debater2Id && (
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold">
-                              WIN
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-2.5 border-t border-border/50 text-xs text-muted-foreground font-sans">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>{debate.room ? debate.room.name : "No Room"}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Gavel className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>{debate.adjudicator
-                        ? `${debate.adjudicator.firstName} ${debate.adjudicator.lastName}`
-                        : "TBD"}</span>
-                    </div>
-                  </div>
-                </Motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

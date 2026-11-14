@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {MessageCircle, ArrowUpRight, X, Sparkles} from "lucide-react";
+import {MessageCircle, ArrowUpRight, X} from "lucide-react";
 import ModalSurface from "../ui/ModalSurface";
 
 function normalizeSafeUrl(raw) {
@@ -95,14 +95,14 @@ export function WhatsAppFirstLoginModal({event}) {
         <ModalSurface
             onDismiss={markSeen}
             aria-labelledby="whatsapp-community-modal-title"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
         >
             <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#4A5646] bg-[#1D1E18] p-6 text-[#EAFBF5] shadow-2xl sm:p-7">
                 <button
                     type="button"
                     onClick={markSeen}
                     aria-label="Close"
-                    className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full text-[#BDD9CA] transition hover:bg-[#2F322A] hover:text-[#EAFBF5]"
+                    className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full text-[#BDD9CA] transition hover:bg-[#2F322A] hover:text-[#EAFBF5]"
                 >
                     <X className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -113,8 +113,8 @@ export function WhatsAppFirstLoginModal({event}) {
                     </div>
 
                     <div>
-                        <p className="m-0 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[#9FE3C2]">
-                            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                        <p className="m-0 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-[#9FE3C2]">
+                            <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#B9F5D8]" />
                             <span>Official Community</span>
                         </p>
                         <h2

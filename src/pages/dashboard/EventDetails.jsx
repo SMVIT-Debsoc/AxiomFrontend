@@ -10,8 +10,6 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
-  Search as SearchIcon,
-  School,
   XCircle,
   MessageCircle,
   RefreshCw,
@@ -45,7 +43,6 @@ export default function EventDetails() {
 
   // New State for inline tabs
   const [participants, setParticipants] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [myDebates, setMyDebates] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -335,7 +332,7 @@ export default function EventDetails() {
 
       {/* Tabs Navigation */}
       <div className="no-scrollbar flex items-center gap-4 md:gap-6 border-b border-border overflow-x-auto pb-px -mx-4 px-4 md:mx-0 md:px-0">
-        {["overview", "rounds", "participants", "results"].map((tab) => (
+        {["overview", "rounds", "results"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -495,11 +492,25 @@ export default function EventDetails() {
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between">
+                    <div className="flex justify-between border-b border-border/40 pb-2">
                       <span className="text-muted-foreground">
                         Total Rounds
                       </span>
                       <span className="font-medium text-foreground">{rounds.length}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-border/40 pb-2">
+                      <span className="text-muted-foreground">
+                        Registered Debaters
+                      </span>
+                      <span className="font-medium text-foreground">{participants.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Your Status
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {isEnrolled ? "Enrolled" : "Not enrolled"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -591,88 +602,6 @@ export default function EventDetails() {
             </Motion.div>
           )}
 
-          {activeTab === "participants" && (
-            <Motion.div
-              key="participants"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-4"
-            >
-              {/* Search Bar */}
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                <input
-                  type="text"
-                  placeholder="Search by name or college..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-card border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm font-sans focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                />
-              </div>
-
-              {/* Participants List */}
-              <div className="space-y-2.5">
-                {participants.filter((p) => {
-                  const fullName = `${p.firstName || ""} ${p.lastName || ""
-                    }`.toLowerCase();
-                  const college = (p.college || "").toLowerCase();
-                  const query = searchQuery.toLowerCase();
-                  return fullName.includes(query) || college.includes(query);
-                }).length === 0 ? (
-                  <EmptyState
-                    compact
-                    icon={School}
-                    title={searchQuery ? "No match" : "No debaters yet"}
-                    description={searchQuery ? "No participants found matching your search." : "No participants registered yet."}
-                  />
-                ) : (
-                  participants
-                    .filter((p) => {
-                      const fullName = `${p.firstName || ""} ${p.lastName || ""
-                        }`.toLowerCase();
-                      const college = (p.college || "").toLowerCase();
-                      const query = searchQuery.toLowerCase();
-                      return (
-                        fullName.includes(query) || college.includes(query)
-                      );
-                    })
-                    .map((participant, index) => (
-                      <Motion.div
-                        key={participant.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.02 }}
-                        className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/40 transition-colors"
-                      >
-                        <div className="flex items-center gap-3.5">
-                          {/* Avatar */}
-                          <UserAvatar user={participant} size="md" />
-
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-heading font-semibold text-sm text-foreground truncate">
-                                {participant.firstName} {participant.lastName}
-                              </p>
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" aria-hidden="true" />
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-sans mt-0.5">
-                              <School className="w-3.5 h-3.5" aria-hidden="true" />
-                              <span className="truncate">
-                                {participant.college || "No college specified"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </Motion.div>
-                    ))
-                )}
-              </div>
-            </Motion.div>
-          )}
-
           {activeTab === "results" && (
             <Motion.div
               key="results"
@@ -718,16 +647,6 @@ export default function EventDetails() {
                           const published = Boolean(
                             debate.resultsPublished || round?.resultsPublished
                           );
-                          const myScore =
-                            debate.myScore ??
-                            (isDebater1
-                              ? debate.debater1Score
-                              : debate.debater2Score);
-                          const opponentScore =
-                            debate.opponentScore ??
-                            (isDebater1
-                              ? debate.debater2Score
-                              : debate.debater1Score);
 
                           return (
                             <Motion.div
@@ -742,7 +661,7 @@ export default function EventDetails() {
                                   : debate.status === "COMPLETED" && published && !debate.isPromoted
                                     ? "border-destructive/30 opacity-80"
                                     : debate.status === "COMPLETED" && !published
-                                      ? "border-amber-500/20 bg-amber-500/5 animate-pulse"
+                                      ? "border-amber-500/20 bg-amber-500/5"
                                       : "border-border"
                               )}
                             >
@@ -800,15 +719,6 @@ export default function EventDetails() {
                                   </p>
                                 </div>
                               </div>
-
-                              {published && (myScore != null || opponentScore != null) && (
-                                <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-xs font-sans">
-                                  <span className="text-muted-foreground">Speaker Score</span>
-                                  <span className="font-mono font-semibold text-foreground tabular-nums">
-                                    {myScore != null ? myScore : "—"} vs {opponentScore != null ? opponentScore : "—"}
-                                  </span>
-                                </div>
-                              )}
                             </Motion.div>
                           );
                         })

@@ -1,16 +1,23 @@
-# AXIOM 4.0 — Design System (`DESIGN.md`)
+# AXIOM 4.0 — Design System & Product Design Specification (`DESIGN.md`)
 
-This document defines the authoritative visual tokens, typography, surface hierarchy, responsive layout breakpoints, accessibility standards, and anti-slop guardrails for **AxiomFrontend**.
+This document defines the authoritative product direction, visual tokens, interaction state machine, motion discipline, accessibility baseline, and user taste rules for **AxiomFrontend**.
 
-## 1. Product Purpose & Aesthetic Direction
+## 1. Product Direction
 
-- **Product**: AXIOM 4.0 event registration, participant onboarding, dashboard, and Admin Portal console.
-- **Visual Direction**: Carbon-ink editorial minimalism anchored by high-contrast celadon/mint accents, crisp hairline borders, generous whitespace/darkspace, and uppercase condensed display headlines paired with restrained body typography.
+- **Product**: AXIOM 4.0 parliamentary debate tournament registration, participant desk, real-time draw & ballot tracker, and Organiser Console.
+- **Character**: `tactile, carbon-ink editorial, high-contrast utilitarian`
+- **World**: Competitive collegiate parliamentary debate adjudication & live tournament telemetry.
+- **Focal Moments**:
+  1. The landing page sculpture & Google registration poster (`/`).
+  2. The live round pairing, check-in, and ballot result showcase cards (`/dashboard`, `/dashboard/events/:id/rounds/:roundId`, `/dashboard/events/:id/results`).
+- **Signature Detail**: Uppercase `Bebas Neue` display numerals and headlines paired with crisp `1px` Dusty Olive (`#4A5646`) structural hairlines and Celadon Mint (`#B9F5D8`) status pills.
 - **Surface Philosophy**: Solid matte surfaces with clear tonal separation instead of translucent glassmorphism, decorative blurs, or generic multi-color SaaS gradients.
 
-## 2. Color Tokens (Authoritative)
+## 2. Token Architecture (Authoritative)
 
-Source of truth: `tailwind.config.js` and `src/index.css`.
+Source of truth: `tailwind.config.js`, `src/index.css`, and `src/neobrutalism.css`.
+
+### Color Tokens
 
 | Token / Role | Hex | Usage |
 | --- | --- | --- |
@@ -28,36 +35,46 @@ Source of truth: `tailwind.config.js` and `src/index.css`.
 | Crimson Alert (Error Surface) | `#a51818` | Error banners and destructive alert accents |
 | Soft Rose Alert (Error Text) | `#ff9c9c` | Accessible error messaging on dark surfaces |
 
-## 3. Typography
+### Typography
 
 | Role | Font Family | Usage |
 | --- | --- | --- |
-| Display / Hero | `Bebas Neue` | High-impact uppercase section titles, modal display headers, and event banners |
-| UI Headings / Brand | `League Spartan` | Section headings, card titles, and navigation labels |
-| Body / Forms / Mono Details | `Inter` (with monospace accents for keys/codes) | Paragraph text, form inputs, statuses, and metadata |
+| Display / Hero | `Bebas Neue` | High-impact uppercase section titles, modal display headers, step numerals, and event banners |
+| UI Headings / Brand | `League Spartan` | Section headings, card titles, buttons, and navigation labels |
+| Body / Forms / Mono Details | `Inter` (`tabular-nums` + monospace accents for USN/scores/keys) | Paragraph text, form inputs, statuses, scores, and metadata |
 
-## 4. Spacing, Borders & Elevation
+### Spacing, Borders & Elevation
 
+- **Spacing Base Unit**: Strict `4px` scale (`4, 8, 12, 16, 20, 24, 32, 40, 48, 64`).
 - **Border Radius**: `rounded-xl` (`12px`) for inputs/buttons; `rounded-2xl` (`16px`) for icon containers and callout cards; `rounded-3xl` (`24px`) for primary dialogs and hero panels; `rounded-full` for pill actions and close controls.
-- **Separation**: Prefer crisp `1px` structural borders (`#4A5646` on dark, semantic `border-border` on light) and tonal contrast over heavy drop shadows or blurred backdrops.
+- **Separation**: Crisp `1px` structural borders (`#4A5646` on dark, semantic `border-border` on light) and tonal contrast over heavy drop shadows or blurred backdrops.
 
-## 5. Responsive Layout & Breakpoints
+## 3. Interaction & Motion Rules
 
-Visual verification targets three primary viewport classes with zero unintended horizontal overflow:
-- **Desktop**: `1280×800`
-- **Tablet**: `768×1024`
-- **Mobile**: `390×844`
+- **Exhaustive 9-State Completeness**: Every interactive control, guard, and data view implements `[idle, hover, focus-visible, active/pressed, loading/pending, success, empty, disabled, error]` with explicit inline retry and escape routes (`Retry`, `Use a different account`, `Back to home`).
+- **Emil Kowalski Motion Standards**:
+  - Intentional micro-interaction transitions of `140ms–240ms` using `cubic-bezier(0.22, 1, 0.36, 1)`.
+  - Zero continuous infinite decorative loops (no pulsing CTA rings, no infinite spinning conic backgrounds, no floating/wiggling emblems, no pulsing full result cards).
+  - Zero transform jitter on high-frequency data table rows (`AdminPeople`, `AdminParticipants`, `AdminLive`).
+  - Non-essential motion automatically disabled via `@media (prefers-reduced-motion: reduce)` in `src/index.css` and `src/neobrutalism.css`.
 
-## 6. Accessibility & Interaction Standards
+## 4. Accessibility & Responsive Baseline
 
 - **Touch Targets**: Interactive controls (`button`, `[role='button']`) maintain at least `44×44px` hit areas (`min-height: 44px`, `h-11 w-11` for icon buttons).
-- **Focus Visibility**: All keyboard-focusable controls show high-contrast `:focus-visible` outlines (`#B9F5D8` focus rings on dark inputs/buttons).
-- **Decorative Icons**: Purely decorative Lucide/SVG icons carry `aria-hidden="true"` so screen readers announce control labels cleanly.
-- **Forms**: Sensitive key inputs disable unwanted autocomplete (`autoComplete="off"`) and associate explicit `<label>`/`id` pairs.
-- **Reduced Motion**: Transitions and animations respect `@media (prefers-reduced-motion: reduce)` (`src/index.css`).
+- **Focus Visibility**: High-contrast `:focus-visible` outlines (`#B9F5D8` focus rings on dark surfaces, `#141510` on light/mint).
+- **Forms & Validation**: All inputs use explicit `<label>`/`id` pairs, `aria-describedby` hints/errors, `aria-invalid`, and disable unwanted autocomplete on sensitive keys (`autoComplete="off"`).
+- **Decorative Icons**: Purely decorative Lucide/SVG icons carry `aria-hidden="true"`.
+- **Responsive Viewports**: Visual verification targets Desktop (`1280×800`), Tablet (`768×1024`), and Mobile (`390×844`) with zero horizontal overflow.
 
-## 7. Anti-Slop Guardrails
+## 5. Anti-Slop Guardrails & Lessons Learned (User Taste Rules)
 
-- No unnecessary `backdrop-blur-*` glassmorphism over dark overlays where solid dark scrims (`bg-black/75`) provide clearer legibility.
-- No unprompted multi-hue gradients or floating SaaS decorative pills.
-- Preserve clear visual parity across `/` (Landing + Admin Portal modal), `/complete-profile`, `/dashboard`, `/dashboard/events/:id`, and `/admin`.
+- **Anti-Slop Guardrails**:
+  - No `backdrop-blur-*` glassmorphism over dark overlays where solid dark scrims (`bg-black/80`) provide sharper contrast and performance.
+  - No multi-hue gradients, emoji substitutes in toast titles/headers, or generic SaaS pills.
+- **Lessons Learned & Established Conventions**:
+  - **Footer Admin Portal Entry**: Visible `"Admin Portal"` button placed at the end of the `/` landing page footer that opens the Admin Secret Key modal directly (no Google verification required for secret-key admin access).
+  - **Unmasked Organiser Data**: Admin pages (`AdminPeople`, `AdminParticipants`, `AdminLive`, `AdminEventDetails`, `AdminRoundManagement`) display unmasked participant phone numbers (`tel:` links), email, USN, and gender for tournament coordination.
+  - **WhatsApp Community Onboarding**: First-login modal (`WhatsAppFirstLoginModal`) and persistent dashboard banner (`WhatsAppGroupBanner`) connect debaters directly to the event's `whatsappLink`.
+  - **Multi-Account Google Sign-In**: Google OAuth invokes `oidcPrompt: "select_account"` and exposes a "Use a different Google account" switcher when a session already exists.
+  - **Performance Architecture**: Vendor chunk splitting, `React.lazy` heavy modal imports, and parallel `Promise.all` data loading keep initial load and navigation fast.
+  - **Competition Information Boundaries (Participant vs. Admin)**: Participant views expose only essential competition context (event schedule, check-in windows, WhatsApp group link, registered count, the participant's own assigned room, GOV/OPP side, motion, adjudicator, opponent name & college, and published `QUALIFIED` / `ELIMINATED` status). Exact speaker scores, opponent scores, full room-by-room draws of other debates, and searchable participant rosters are restricted to Admin views.

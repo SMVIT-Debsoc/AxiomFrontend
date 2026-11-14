@@ -374,12 +374,10 @@
   width: 9.5rem; height: 9.5rem; border-radius: 9999px; background: var(--axiom-green-primary);
   box-shadow: 0 0 0 .5rem hsl(var(--primary) / .2), 0 0 0 1.05rem hsl(var(--primary) / .09);
   overflow: hidden; margin-bottom: 1.1rem;
-  animation: axiom-float 5.5s ease-in-out infinite;
 }
 .axiom-empty-art::before {
   content: ""; position: absolute; inset: -35%;
   background: repeating-conic-gradient(from 0deg, rgb(255 255 255 / .3) 0 5deg, transparent 5deg 15deg);
-  animation: axiom-spin-slow 48s linear infinite;
 }
 .axiom-empty-art img {
   position: absolute; left: 50%; top: 13%; width: 62%; height: auto; max-width: none;
@@ -740,47 +738,23 @@
   .dark .ax-chip--warn { background: #2F3A2D; color: #E6F8F1; }
 }
 
-/* ---------- Google CTA: pulsing moss ring + light sheen so the main action is the first thing the eye lands on ---------- */
-@keyframes axiom-cta-ring {
-  0% { box-shadow: 0 0 0 0 rgb(185 245 216 / .75); }
-  70%, 100% { box-shadow: 0 0 0 18px rgb(185 245 216 / 0); }
-}
-@keyframes axiom-cta-sheen {
-  0%, 45% { background-position: 160% 0; }
-  100% { background-position: -60% 0; }
-}
+/* ---------- Google CTA: clean resting elevation and tactile press/hover feedback ---------- */
 [data-google-cta="hero"], [data-google-cta="bar"], [data-google-cta="onDark"] {
   position: relative;
-  transition: transform 180ms var(--axiom-ease, ease), box-shadow 180ms var(--axiom-ease, ease), background-color 180ms;
+  transition: transform 180ms var(--axiom-ease, cubic-bezier(.22, 1, .36, 1)), box-shadow 180ms var(--axiom-ease, cubic-bezier(.22, 1, .36, 1)), background-color 180ms;
 }
-[data-google-cta="hero"]::before, [data-google-cta="bar"]::before, [data-google-cta="onDark"]::before,
-[data-google-cta="hero"]::after, [data-google-cta="bar"]::after, [data-google-cta="onDark"]::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-}
-[data-google-cta="hero"]::before, [data-google-cta="bar"]::before, [data-google-cta="onDark"]::before {
-  animation: axiom-cta-ring 2.2s ease-out infinite;
-}
-[data-google-cta="hero"]::after, [data-google-cta="onDark"]::after {
-  background: linear-gradient(105deg, transparent 38%, rgb(185 245 216 / .38) 50%, transparent 62%);
-  background-size: 250% 100%; animation: axiom-cta-sheen 3.6s ease-in-out infinite;
-}
-[data-google-cta="bar"]::after {
-  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / .3) 50%, transparent 62%);
-  background-size: 250% 100%; animation: axiom-cta-sheen 3.6s ease-in-out infinite;
-}
-[data-google-cta="hero"]:hover:not(:disabled), [data-google-cta="bar"]:hover:not(:disabled), [data-google-cta="onDark"]:hover:not(:disabled) { transform: translateY(-3px) scale(1.015); }
+[data-google-cta="hero"]:hover:not(:disabled), [data-google-cta="bar"]:hover:not(:disabled), [data-google-cta="onDark"]:hover:not(:disabled) { transform: translateY(-2px); }
 [data-google-cta="hero"]:active:not(:disabled), [data-google-cta="bar"]:active:not(:disabled), [data-google-cta="onDark"]:active:not(:disabled) { transform: translateY(0) scale(.98); }
-[data-google-cta][aria-busy="true"]::before, [data-google-cta][aria-busy="true"]::after { animation: none; }
 
-/* ----- Avatars: alive but quiet. Decorative motion only; off for reduced-motion users. ----- */
+/* ----- Avatars: alive on interaction, quiet at rest. ----- */
 .axa { transition: transform 200ms cubic-bezier(.2, 0, 0, 1); cursor: pointer; }
 .axa:hover { transform: translateY(-2px) scale(1.07); }
 .axa:active { transform: scale(.94); }
 .axa-pop { transform-origin: 50% 70%; }
 .axa-ring { position: absolute; inset: 0; border-radius: 9999px; pointer-events: none; animation: axa-ring 640ms ease-out forwards; }
 .axa-svg { display: block; }
-.axa-body { transform-origin: 50% 85%; transform-box: view-box; animation: axa-breathe 4.8s ease-in-out infinite; }
-.axa-dot-body { transform-box: fill-box; transform-origin: center; animation: axa-blink 5.6s infinite; animation-delay: var(--axa-blink, 0s); }
+.axa-body { transform-origin: 50% 85%; transform-box: view-box; }
+.axa-dot-body { transform-box: fill-box; transform-origin: center; }
 .axa-pupil { transform: translate(calc(var(--axa-lx, 0) * .8px), calc(var(--axa-ly, 0) * .8px)); transition: transform 90ms linear; }
 .axa-glare { transform: translateX(calc(var(--axa-lx, 0) * 1.4px)); transition: transform 90ms linear; }
 .axa-shades { transition: transform 220ms cubic-bezier(.3, 1.4, .5, 1); }

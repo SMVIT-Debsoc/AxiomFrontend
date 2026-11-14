@@ -131,10 +131,10 @@ function ProfileSettings() {
       if (isOnboarding) {
         const event = profileResponse.autoEnrollment;
         if (event) {
-          toast.success("Profile Complete! 🎉", `You are registered for ${event.name}.`);
+          toast.success("Profile Complete", `You are registered for ${event.name}.`);
           navigate(`/dashboard/events/${encodeURIComponent(event.id)}`, {replace: true});
         } else {
-          toast.info("Profile Complete! 🎉", "Your profile is saved, but automatic event registration is unavailable right now. Browse events to check enrollment options.");
+          toast.info("Profile Complete", "Your profile is saved, but automatic event registration is unavailable right now. Browse events to check enrollment options.");
           navigate("/dashboard/events", {replace: true});
         }
       } else {

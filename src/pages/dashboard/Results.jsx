@@ -145,7 +145,7 @@ export default function Results() {
           </span>
           {myLeaderboardEntry && (
             <span className="text-xs font-mono font-semibold text-primary">
-              Rank #{myLeaderboardEntry.rank} · {myLeaderboardEntry.stats.totalScore} pts
+              Rank #{myLeaderboardEntry.rank}
             </span>
           )}
         </div>
@@ -212,8 +212,6 @@ export default function Results() {
               const isDebater1 = debate.debater1Id === currentUser?.id;
               const opponent = isDebater1 ? debate.debater2 : debate.debater1;
               const published = Boolean(debate.resultsPublished || round?.resultsPublished);
-              const myScore = debate.myScore ?? (isDebater1 ? debate.debater1Score : debate.debater2Score);
-              const opponentScore = debate.opponentScore ?? (isDebater1 ? debate.debater2Score : debate.debater1Score);
 
               return (
                 <Motion.div
@@ -287,23 +285,6 @@ export default function Results() {
                       </p>
                     </div>
                   </div>
-
-                  {published && (myScore != null || opponentScore != null || debate.winnerId) && (
-                    <div className="mt-3 pt-3 border-t border-border/60 flex flex-wrap items-center justify-between gap-2 text-xs font-sans">
-                      <span className="text-muted-foreground">
-                        {debate.winnerId
-                          ? debate.winnerId === currentUser?.id
-                            ? "Ballot won"
-                            : `Winner: ${debate.winner?.firstName || "Opponent"} ${debate.winner?.lastName || ""}`
-                          : "Published ballot"}
-                      </span>
-                      {(myScore != null || opponentScore != null) && (
-                        <span className="font-mono font-semibold text-foreground tabular-nums">
-                          Score: {myScore != null ? myScore : "—"} vs {opponentScore != null ? opponentScore : "—"}
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </Motion.div>
               );
             })
@@ -363,10 +344,7 @@ export default function Results() {
                       </div>
                       <div className="text-right shrink-0 font-mono text-xs tabular-nums">
                         <p className="font-bold text-foreground">
-                          {entry.stats?.wins || 0}W · {entry.stats?.totalScore ?? 0} pts
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Avg {entry.stats?.avgScore ?? 0}
+                          {entry.stats?.wins || 0}W
                         </p>
                       </div>
                     </div>

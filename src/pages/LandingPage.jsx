@@ -157,20 +157,19 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            <footer className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
+            <footer className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
                 <p className="m-0">
                     {E.name} · {E.organiserLong} · {E.city}
+                </p>
+                <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a> ·{' '}
                     <button
                         type="button"
                         onClick={() => setAdminModalOpen(true)}
-                        aria-label="Admin Portal"
-                        className="ml-1 inline-flex h-4 w-4 cursor-default items-center justify-center rounded text-[10px] leading-none text-muted-foreground/20 transition-opacity hover:text-muted-foreground/50 focus-visible:text-primary focus-visible:outline-none"
+                        className="inline-flex min-h-11 items-center underline font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
                     >
-                        ·
+                        Admin Portal
                     </button>
-                </p>
-                <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a>
                 </p>
             </footer>
 

@@ -14,7 +14,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import {useAuth, useUser} from "../../auth/client.jsx";
-import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
+import {UserApi, EventApi, DebateApi, CheckInApi, clearApiCache} from "../../services/api";
 import {Link} from "react-router-dom";
 import {useToast} from "../../hooks/useToast"
 import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
@@ -230,9 +230,22 @@ export default function DashboardHome() {
 
       {/* Error Banner */}
       {error && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2.5 rounded-lg font-sans flex flex-wrap items-baseline gap-x-3">
-          <p className="font-semibold text-sm">Failed to load dashboard data</p>
-          <p className="text-xs opacity-90">{error}</p>
+        <div role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2.5 rounded-lg font-sans flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <p className="font-semibold text-sm">Failed to load dashboard data</p>
+            <p className="text-xs opacity-90">{error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              clearApiCache();
+              setError(null);
+              fetchDashboardData();
+            }}
+            className="min-h-9 rounded-md bg-destructive/15 px-3 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/25"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -534,8 +547,6 @@ export default function DashboardHome() {
         const published = Boolean(latestCompletedDebate.resultsPublished || latestCompletedDebate.round?.resultsPublished);
         const qualified = Boolean(latestCompletedDebate.isPromoted);
         const resultEventId = latestCompletedDebate.round?.eventId || activeEvent?.id;
-        const myScore = latestCompletedDebate.myScore ?? (isDebater1 ? latestCompletedDebate.debater1Score : latestCompletedDebate.debater2Score);
-        const opponentScore = latestCompletedDebate.opponentScore ?? (isDebater1 ? latestCompletedDebate.debater2Score : latestCompletedDebate.debater1Score);
 
         return (
           <div className="space-y-2 axiom-rise" style={{"--i": 3}}>
@@ -608,23 +619,6 @@ export default function DashboardHome() {
                   {isDebater1 ? "GOV" : "OPP"}
                 </span>
               </div>
-
-              {published && (myScore != null || latestCompletedDebate.winnerId) && (
-                <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 border border-border/60 p-2.5 text-center">
-                  <div>
-                    <p className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground">Your Score</p>
-                    <p className="text-base font-heading font-bold text-foreground tabular-nums">
-                      {myScore != null ? myScore : "—"}
-                    </p>
-                  </div>
-                  <div className="border-l border-border/60">
-                    <p className="text-[10px] font-heading uppercase tracking-wider text-muted-foreground">Opponent Score</p>
-                    <p className="text-base font-heading font-bold text-muted-foreground tabular-nums">
-                      {opponentScore != null ? opponentScore : "—"}
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {resultEventId && (
                 <Link

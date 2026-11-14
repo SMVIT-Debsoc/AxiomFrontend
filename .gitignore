@@ -28,5 +28,6 @@ audit-artifacts/
 .vercel
 .env*
 .agent-team/
+.agents/
 .dev-mock-dist
 .neon

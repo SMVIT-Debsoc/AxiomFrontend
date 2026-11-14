@@ -148,8 +148,8 @@ export default function CompleteProfile() {
                 <p className="m-0 truncate text-base font-bold text-foreground">{fullName}</p>
                 <p className="m-0 truncate text-sm text-muted-foreground">{email}</p>
             </div>
-            <button type="button" onClick={() => setEditName((v) => !v)} aria-expanded={editName} className="px-1 text-sm font-semibold text-primary underline-offset-4 hover:underline lg:hidden">Edit</button>
-            <button type="button" onClick={() => signOut().catch(() => navigate("/", {replace: true}))} className="hidden px-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline lg:block">Not you?</button>
+            <button type="button" onClick={() => setEditName((v) => !v)} aria-expanded={editName} className="inline-flex min-h-11 items-center px-2.5 text-sm font-semibold text-primary underline-offset-4 hover:underline lg:hidden">Edit</button>
+            <button type="button" onClick={() => signOut().catch(() => navigate("/", {replace: true}))} className="hidden min-h-11 items-center px-2.5 text-sm font-semibold text-primary underline-offset-4 hover:underline lg:inline-flex">Not you?</button>
         </div>
     );
 
@@ -222,7 +222,7 @@ export default function CompleteProfile() {
 
                     <div className="flex flex-col gap-2">
                         <label htmlFor="cp-college" className="text-[15px] font-semibold">College</label>
-                        <input id="cp-college" name="college" className={inputBase} value={form.college} onChange={(e) => set("college", e.target.value)} onBlur={() => setTouched((t) => ({...t, college: true}))} autoComplete="organization" placeholder="Start typing your college" aria-invalid={touched.college && !collegeOk} />
+                        <input id="cp-college" name="college" className={inputBase} value={form.college} onChange={(e) => set("college", e.target.value)} onBlur={() => setTouched((t) => ({...t, college: true}))} autoComplete="organization" placeholder="Start typing your college" aria-describedby="cp-college-hint" aria-invalid={touched.college && !collegeOk} />
                         {COLLEGE_SUGGESTIONS.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                                 {COLLEGE_SUGGESTIONS.map((c) => (
@@ -230,6 +230,7 @@ export default function CompleteProfile() {
                                 ))}
                             </div>
                         )}
+                        <p id="cp-college-hint" className={`m-0 text-[13px] ${touched.college && !collegeOk ? "font-medium text-destructive" : "text-muted-foreground"}`}>{touched.college && !collegeOk ? "Enter your college or institution name." : "Used to match you fairly in initial rounds."}</p>
                     </div>
 
                     <div className="flex flex-col gap-2">
