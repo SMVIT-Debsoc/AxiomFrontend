@@ -24,6 +24,7 @@ import { useEventSocket } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { EventDetailsSkeleton } from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
+import { WhatsAppFirstLoginModal } from "../../components/dashboard/WhatsAppGroupPrompt";
 
 export default function EventDetails() {
   const { id } = useParams();
@@ -246,6 +247,7 @@ export default function EventDetails() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
+      <WhatsAppFirstLoginModal event={event} />
       {/* Header / Breadcrumb */}
       <div>
         <Link

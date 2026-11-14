@@ -119,6 +119,11 @@ export default function CompleteProfile() {
                 gender: form.gender,
             }, token);
             const u = response?.user || {};
+            try {
+                sessionStorage.setItem("axiom_show_whatsapp_popup", "true");
+            } catch {
+                // Ignore storage errors in restricted environments
+            }
             setDone({
                 event: response?.autoEnrollment || null,
                 // Only shown when the API actually returns a human-readable id.

@@ -110,6 +110,11 @@ class SocketService {
     socket = null;
     listeners = new Map();
     connectedRooms = new Set();
+    authProvider = null;
+
+    setAuthProvider(provider) {
+        this.authProvider = typeof provider === "function" ? provider : null;
+    }
 
     /**
      * Connect to the WebSocket server
@@ -137,6 +142,22 @@ class SocketService {
             autoConnect: true,
             forceNew: false,
             closeOnBeforeunload: true,
+            auth: async (cb) => {
+                const payload = {};
+                if (typeof window !== "undefined" && sessionStorage.getItem("isAdminSession") === "true") {
+                    const key = sessionStorage.getItem("adminSecretKey")?.trim();
+                    if (key) payload.adminSecretKey = key;
+                }
+                if (this.authProvider) {
+                    try {
+                        const token = await this.authProvider();
+                        if (token) payload.token = token;
+                    } catch {
+                        // Ignore auth token lookup failure for socket handshake
+                    }
+                }
+                cb(payload);
+            },
         });
 
         // Add a global listener to help close connections

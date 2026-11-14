@@ -208,12 +208,23 @@ export default function AdminEvents() {
                             <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
                           </div>
                           <div className="min-w-0">
-                            <Link
-                              to={`/admin/events/${event.id}`}
-                              className="font-heading font-semibold text-sm truncate text-foreground hover:text-primary transition-colors block"
-                            >
-                              {event.name}
-                            </Link>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                to={`/admin/events/${event.id}`}
+                                className="font-heading font-semibold text-sm truncate text-foreground hover:text-primary transition-colors block"
+                              >
+                                {event.name}
+                              </Link>
+                              {event.whatsappLink && (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                                  title={event.whatsappLink}
+                                >
+                                  <MessageCircle className="w-3 h-3" aria-hidden="true" />
+                                  <span>WhatsApp</span>
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground font-sans line-clamp-1">
                               {event.description || "No description provided"}
                             </p>
@@ -592,7 +603,6 @@ function EditEventModal({ event, onClose, onUpdated }) {
           }
           className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
           <label ><span className="text-xs font-semibold mb-1 block text-foreground">End Date (local time)</span><input type="datetime-local"
-          required
           value={formData.endDate}
           onChange={(e) =>
             setFormData({ ...formData, endDate: e.target.value })

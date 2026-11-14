@@ -25,12 +25,13 @@ test('GoogleAuthButton constructs correct callback URL and error states', async 
     assert.match(clientCode, /VITE_CLERK_PUBLISHABLE_KEY/, 'Must respect publishable key env');
 });
 
-test('Sign-in triggers redirect to /auth-redirect when session already exists', async () => {
+test('Sign-in triggers redirect to /auth-redirect when session already exists and AdminAccessModal unlocks via secret key only', async () => {
     const clientCode = await readFile(new URL('../src/auth/client.jsx', import.meta.url), 'utf8');
     const modalCode = await readFile(new URL('../src/components/brand/AdminAccessModal.jsx', import.meta.url), 'utf8');
     assert.match(clientCode, /export function isSessionExistsError/, 'Must export isSessionExistsError helper');
     assert.match(clientCode, /if \(isSignedIn\)\s*{\s*window\.location\.assign\("\/auth-redirect"\)/s, 'GoogleAuthButton must redirect active session');
     assert.match(clientCode, /if \(isSessionExistsError\(failure\)\)\s*{\s*window\.location\.assign\("\/auth-redirect"\)/s, 'GoogleAuthButton must recover from session_exists error');
-    assert.match(modalCode, /if \(isSignedIn\)\s*{\s*window\.location\.assign\("\/auth-redirect"\)/s, 'AdminAccessModal must redirect active session');
-    assert.match(modalCode, /if \(isSessionExistsError\(failure\)\)\s*{\s*window\.location\.assign\("\/auth-redirect"\)/s, 'AdminAccessModal must recover from session_exists error');
+    assert.doesNotMatch(modalCode, /authenticateWithRedirect/, 'AdminAccessModal must NOT trigger Google OAuth login');
+    assert.match(modalCode, /VITE_ADMIN_SECRET_KEY|ADMIN_SECRET_KEY/, 'AdminAccessModal must validate configured secret key');
+    assert.match(modalCode, /navigate\("\/admin"\)/, 'AdminAccessModal must navigate directly to /admin');
 });

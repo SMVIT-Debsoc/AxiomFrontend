@@ -51,7 +51,8 @@ async function fixture(page, {
   published = false,
   resultsPublished = false,
   assigned = false,
-  autoEnrollOnProfileComplete = false
+  autoEnrollOnProfileComplete = false,
+  whatsappLink = null
 } = {}) {
   const now = Date.now();
   const user = {
@@ -83,6 +84,7 @@ async function fixture(page, {
     status: 'ONGOING',
     startDate: new Date(now).toISOString(),
     endDate: new Date(now + 86400000).toISOString(),
+    whatsappLink,
     rounds: [round],
     _count: {participants: 0, rounds: 1}
   };
@@ -151,13 +153,23 @@ async function fixture(page, {
       const method = req.method();
       state.requests.push({path, method, body: req.postData()});
       const reply = (data, status = 200) => route.fulfill({status, contentType: 'application/json', body: JSON.stringify(data)});
+      const headerAdminKey = req.headers()['x-admin-secret-key'];
+      const isSecretKeyAdmin = headerAdminKey === 'fixture-admin-key';
 
-      if (path === '/admin/me') return reply(admin ? {success: true, admin: {id: 'a1'}} : {error: 'Forbidden'}, admin ? 200 : 403);
+      if (path === '/admin/validate-key' && method === 'POST') {
+        const body = req.postDataJSON() || {};
+        if (body.secretKey === 'fixture-admin-key') return reply({success: true, valid: true});
+        return reply({success: false, valid: false, error: 'Invalid Admin Secret Key'}, 403);
+      }
+      if (path === '/admin/me') return reply((admin || isSecretKeyAdmin) ? {success: true, admin: {id: 'a1'}} : {error: 'Forbidden'}, (admin || isSecretKeyAdmin) ? 200 : 403);
       if (path === '/admin/onboard' && method === 'POST') {
         const body = req.postDataJSON() || {};
         if (body.secretKey) return reply({success: true, admin: {id: 'a1'}});
         return reply({success: false, error: 'Invalid secret key'}, 400);
       }
+      if (path === '/rounds/event/e1') return reply({success: true, rounds: [state.round]});
+      if (path === '/rooms') return reply({success: true, rooms: []});
+      if (path === '/admin/rounds/r1/performers') return reply({success: true, performers: [], resultsPublished});
       if (path === '/users/me') {
         if (profileError) return reply({success: false, error: 'Failed to fetch user details'}, 500);
         return reply({success: true, user: state.user});
@@ -284,6 +296,34 @@ try {
     });
     await page.goto(origin + '/auth-redirect');
     await page.waitForURL('**/admin');
+  });
+
+  await run('secret key alone unlocks /admin without Google sign-in', {signedIn: false, admin: false}, async page => {
+    await page.goto(origin + '/');
+    await page.getByRole('button', {name: 'Admin Portal', exact: true}).click();
+    await page.getByRole('dialog').waitFor({state: 'visible'});
+    await page.getByLabel('Admin Secret Key', {exact: true}).fill('wrong-key');
+    await page.getByRole('button', {name: 'Enter Admin Console', exact: true}).click();
+    await visible(page, 'Invalid Admin Secret Key');
+    await page.getByLabel('Admin Secret Key', {exact: true}).fill('fixture-admin-key');
+    await page.getByRole('button', {name: 'Enter Admin Console', exact: true}).click();
+    await page.waitForURL('**/admin');
+    await visible(page, 'Exit Admin');
+  });
+
+  await run('admin-connected whatsapp link displays first-login modal and main dashboard banner', {
+    signedIn: true,
+    whatsappLink: 'https://chat.whatsapp.com/AuditGroup123'
+  }, async page => {
+    await page.goto(origin + '/dashboard');
+    await page.getByRole('dialog').waitFor({state: 'visible'});
+    const modalJoin = page.getByRole('dialog').getByRole('link', {name: /Join WhatsApp Community/});
+    assert.equal(await modalJoin.getAttribute('href'), 'https://chat.whatsapp.com/AuditGroup123');
+    await page.getByRole('button', {name: /Continue to Dashboard/}).click();
+    assert.equal(await page.getByRole('dialog').count(), 0);
+    const bannerJoin = page.getByRole('region', {name: 'Official WhatsApp Community'}).getByRole('link', {name: /Join Official WhatsApp Group/});
+    await bannerJoin.waitFor({state: 'visible'});
+    assert.equal(await bannerJoin.getAttribute('href'), 'https://chat.whatsapp.com/AuditGroup123');
   });
 
   await run('clicking Sign in on landing page when session already exists redirects to workspace', {signedIn: true}, async page => {

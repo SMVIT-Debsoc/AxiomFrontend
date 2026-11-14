@@ -913,7 +913,6 @@ function EditEventModal({ event, onClose, onUpdated }) {
           }
           className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
           <label ><span className="text-xs font-semibold mb-1 block text-foreground">End Date (local time)</span><input type="datetime-local"
-          required
           value={formData.endDate}
           onChange={(e) =>
             setFormData({ ...formData, endDate: e.target.value })

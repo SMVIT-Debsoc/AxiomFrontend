@@ -1,14 +1,14 @@
 import {useState, useEffect} from "react";
 import {Shield, KeyRound, X, Loader2, Eye, EyeOff} from "lucide-react";
-import {useAuth, useSignIn, isSessionExistsError} from "../../auth/client.jsx";
+import {useNavigate} from "react-router-dom";
+import {AdminApi, clearApiCache} from "../../services/api";
 
 export default function AdminAccessModal({isOpen, onClose}) {
     const [secretKey, setSecretKey] = useState("");
     const [showKey, setShowKey] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
-    const {isSignedIn, isLoaded: authLoaded} = useAuth();
-    const {signIn, isLoaded} = useSignIn();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!isOpen) return;
@@ -21,7 +21,7 @@ export default function AdminAccessModal({isOpen, onClose}) {
 
     if (!isOpen) return null;
 
-    const handleAdminSignIn = async (e) => {
+    const handleAdminUnlock = async (e) => {
         e.preventDefault();
         const trimmedKey = secretKey.trim();
         if (!trimmedKey) {
@@ -29,37 +29,43 @@ export default function AdminAccessModal({isOpen, onClose}) {
             return;
         }
 
-        if (!isLoaded || !authLoaded) return;
         setBusy(true);
         setError("");
 
         try {
-            // Flag this as an admin authentication flow
-            sessionStorage.setItem("adminAuthFlow", "true");
+            const envSecretKey = (
+                import.meta.env.VITE_ADMIN_SECRET_KEY ||
+                import.meta.env.ADMIN_SECRET_KEY ||
+                ""
+            ).trim();
+
+            if (envSecretKey) {
+                if (trimmedKey !== envSecretKey) {
+                    setError("Invalid Admin Secret Key. Access denied.");
+                    setBusy(false);
+                    return;
+                }
+            } else {
+                const res = await AdminApi.validateKey(trimmedKey);
+                if (!res?.valid) {
+                    setError("Invalid Admin Secret Key. Access denied.");
+                    setBusy(false);
+                    return;
+                }
+            }
+
+            sessionStorage.setItem("isAdminSession", "true");
             sessionStorage.setItem("adminSecretKey", trimmedKey);
+            sessionStorage.removeItem("adminAuthFlow");
+            clearApiCache();
+            window.dispatchEvent(new Event("axiom-admin-session-changed"));
 
-            if (isSignedIn) {
-                window.location.assign("/auth-redirect");
-                return;
-            }
-
-            if (!signIn) {
-                setBusy(false);
-                return;
-            }
-
-            await signIn.authenticateWithRedirect({
-                strategy: "oauth_google",
-                redirectUrl: "/sso-callback",
-                redirectUrlComplete: "/auth-redirect",
-            });
+            setBusy(false);
+            onClose();
+            navigate("/admin");
         } catch (failure) {
-            if (isSessionExistsError(failure)) {
-                window.location.assign("/auth-redirect");
-                return;
-            }
-            console.error("Admin sign-in failed:", failure);
-            setError(failure.errors?.[0]?.message || failure.message || "Failed to start Google sign-in.");
+            console.error("Admin key verification failed:", failure);
+            setError(failure.message || "Invalid Admin Secret Key. Access denied.");
             setBusy(false);
         }
     };
@@ -102,11 +108,11 @@ export default function AdminAccessModal({isOpen, onClose}) {
                             Admin Portal Access
                         </h2>
                         <p className="m-0 mt-2 text-sm leading-relaxed text-[#BDD9CA]">
-                            Restricted to adjudicators and tab directors. Enter your Admin Secret Key to sign in to the tournament console.
+                            Restricted to tournament organisers. Enter the Admin Secret Key to open the organiser console directly.
                         </p>
                     </div>
 
-                    <form onSubmit={handleAdminSignIn} className="mt-2 flex flex-col gap-4">
+                    <form onSubmit={handleAdminUnlock} className="mt-2 flex flex-col gap-4">
                         <div className="flex flex-col gap-1.5">
                             <label htmlFor="admin-secret-key" className="text-xs font-bold uppercase tracking-[0.06em] text-[#BDD9CA]">
                                 Admin Secret Key
@@ -123,7 +129,7 @@ export default function AdminAccessModal({isOpen, onClose}) {
                                         setSecretKey(e.target.value);
                                         setError("");
                                     }}
-                                    placeholder="Enter secret key (e.g. Axiom@26)"
+                                    placeholder="Enter admin secret key"
                                     autoComplete="off"
                                     className="h-12 w-full rounded-xl border border-[#4A5646] bg-[#141510] pl-10 pr-12 text-xs sm:text-sm font-mono text-[#EAFBF5] placeholder-[#6B8F71] focus:border-[#B9F5D8] focus:outline-none focus:ring-2 focus:ring-[#B9F5D8]/40"
                                     autoFocus
@@ -148,16 +154,16 @@ export default function AdminAccessModal({isOpen, onClose}) {
 
                         <button
                             type="submit"
-                            disabled={busy || !isLoaded}
+                            disabled={busy}
                             className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#B9F5D8] text-sm font-bold text-[#141510] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {busy ? (
                                 <>
                                     <Loader2 className="animate-spin" size={16} aria-hidden="true" />
-                                    <span>Connecting to Admin Console…</span>
+                                    <span>Verifying Secret Key…</span>
                                 </>
                             ) : (
-                                <span>Sign in with Google as Admin</span>
+                                <span>Enter Admin Console</span>
                             )}
                         </button>
                     </form>

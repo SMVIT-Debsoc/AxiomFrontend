@@ -64,6 +64,14 @@ export async function apiRequest(
         "Content-Type": "application/json",
     };
 
+    const adminSecretKey =
+        isBrowser && sessionStorage.getItem("isAdminSession") === "true"
+            ? sessionStorage.getItem("adminSecretKey")?.trim() || null
+            : null;
+    if (adminSecretKey) {
+        headers["X-Admin-Secret-Key"] = adminSecretKey;
+    }
+
     let resolvedToken = token;
     if (!resolvedToken && authTokenProvider) {
         try {
@@ -73,7 +81,9 @@ export async function apiRequest(
         }
     }
 
-    if (resolvedToken) {
+    if (resolvedToken && !resolvedToken.startsWith("admin-secret:")) {
+        headers["Authorization"] = `Bearer ${resolvedToken}`;
+    } else if (!adminSecretKey && resolvedToken) {
         headers["Authorization"] = `Bearer ${resolvedToken}`;
     }
     void requireAuth;
@@ -89,7 +99,7 @@ export async function apiRequest(
     }
 
     const isGet = method.toUpperCase() === "GET";
-    const cacheKey = `${endpoint}::${resolvedToken ? "auth" : "anon"}`;
+    const cacheKey = `${endpoint}::${resolvedToken ? "auth" : adminSecretKey ? "admin" : "anon"}`;
 
     if (isBrowser && isGet && !options.skipCache) {
         const cached = apiCache.get(cacheKey);

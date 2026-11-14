@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
-import {ArrowUpRight, Shield} from "lucide-react";
+import {ArrowUpRight} from "lucide-react";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import Sculpture from "../components/brand/Sculpture";
 import DebSocPromoCard from "../components/brand/DebSocPromoCard";
@@ -62,15 +62,6 @@ export default function LandingPage() {
                         <ArrowUpRight size={13} aria-hidden="true" />
                     </a>
                     <ThemeToggle />
-                    <button
-                        type="button"
-                        onClick={() => setAdminModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-[#B9F5D8] hover:text-primary sm:px-3"
-                        aria-label="Admin Portal Access"
-                    >
-                        <Shield size={13} aria-hidden="true" className="text-amber-500 dark:text-amber-400" />
-                        <span>Admin</span>
-                    </button>
                     <GoogleAuthButton variant="header" label="Sign in" />
                 </nav>
             </header>
@@ -166,9 +157,19 @@ export default function LandingPage() {
             </section>
 
             <footer className="mx-auto flex max-w-[1280px] flex-wrap justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
-                <p className="m-0">{E.name} · {E.organiserLong} · {E.city}</p>
+                <p className="m-0">
+                    {E.name} · {E.organiserLong} · {E.city}
+                    <button
+                        type="button"
+                        onClick={() => setAdminModalOpen(true)}
+                        aria-label="Admin Portal"
+                        className="ml-1 inline-flex h-4 w-4 cursor-default items-center justify-center rounded text-[10px] leading-none text-muted-foreground/20 transition-opacity hover:text-muted-foreground/50 focus-visible:text-primary focus-visible:outline-none"
+                    >
+                        ·
+                    </button>
+                </p>
                 <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <button type="button" onClick={() => setAdminModalOpen(true)} className="underline hover:text-[#9FE3C2]">Admin Portal</button> · <a className="underline" href="#top">Back to top</a>
+                    <a className="underline font-medium text-foreground hover:text-[#9FE3C2]" href="https://www.smvitdebsoc.com" target="_blank" rel="noopener noreferrer">SMVIT DebSoc ↗</a> · Sculpture: <a className="underline" href="https://www.clevelandart.org/art/1971.117" target="_blank" rel="noreferrer">Cleveland Museum of Art, CC0</a> · <Link className="underline" to="/about">About</Link> · <a className="underline" href="#top">Back to top</a>
                 </p>
             </footer>
 

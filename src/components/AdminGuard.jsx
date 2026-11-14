@@ -12,12 +12,36 @@ export function AdminGuard({children}) {
     const [isAdmin, setIsAdmin] = useState(false);
     const [error, setError] = useState(null);
 
+    const hasSecretAdminSession =
+        typeof window !== "undefined" &&
+        sessionStorage.getItem("isAdminSession") === "true" &&
+        Boolean(sessionStorage.getItem("adminSecretKey")?.trim());
+
     useEffect(() => {
         const verifyAdmin = async () => {
-            if (!isLoaded) return;
+            if (!hasSecretAdminSession && !isLoaded) return;
 
-            if (!user) {
+            if (!hasSecretAdminSession && !user) {
                 navigate("/");
+                return;
+            }
+
+            const envSecretKey = (
+                import.meta.env.VITE_ADMIN_SECRET_KEY ||
+                import.meta.env.ADMIN_SECRET_KEY ||
+                ""
+            ).trim();
+            const storedKey =
+                typeof window !== "undefined"
+                    ? (sessionStorage.getItem("adminSecretKey") || "").trim()
+                    : "";
+
+            if (hasSecretAdminSession && envSecretKey && storedKey !== envSecretKey) {
+                sessionStorage.removeItem("isAdminSession");
+                sessionStorage.removeItem("adminSecretKey");
+                window.dispatchEvent(new Event("axiom-admin-session-changed"));
+                setError("Invalid Admin Secret Key");
+                setChecking(false);
                 return;
             }
 
@@ -30,7 +54,12 @@ export function AdminGuard({children}) {
                 }
             } catch (err) {
                 console.error("Admin verification failed:", err);
-                setError(err.status === 403 || /forbidden/i.test(err.message || "")
+                if (hasSecretAdminSession) {
+                    sessionStorage.removeItem("isAdminSession");
+                    sessionStorage.removeItem("adminSecretKey");
+                    window.dispatchEvent(new Event("axiom-admin-session-changed"));
+                }
+                setError(err.status === 401 || err.status === 403 || /forbidden|unauthorized|invalid/i.test(err.message || "")
                     ? "You do not have admin access"
                     : "Admin verification failed. Please try again.");
             } finally {
@@ -39,9 +68,9 @@ export function AdminGuard({children}) {
         };
 
         verifyAdmin();
-    }, [isLoaded, user, navigate]);
+    }, [isLoaded, user, navigate, hasSecretAdminSession]);
 
-    if (!isLoaded || checking) {
+    if ((!hasSecretAdminSession && !isLoaded) || checking) {
         return <LoadingIndicator fullScreen label="Verifying admin access" />;
     }
 

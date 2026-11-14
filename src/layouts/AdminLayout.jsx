@@ -1,7 +1,8 @@
 import {useEffect, useState} from "react";
-import {Link, NavLink, Outlet, useLocation} from "react-router-dom";
-import {Activity, ChartColumn, ClipboardList, DoorOpen, Flag, LayoutDashboard, Medal, Ellipsis, Settings, Users, X} from "lucide-react";
-import {UserButton, useUser} from "../auth/client.jsx";
+import {Link, NavLink, Outlet, useLocation, useNavigate} from "react-router-dom";
+import {Activity, ChartColumn, ClipboardList, DoorOpen, Flag, LayoutDashboard, LogOut, Medal, Ellipsis, Settings, Users, X} from "lucide-react";
+import {UserButton, useAuth, useUser} from "../auth/client.jsx";
+import {clearApiCache} from "../services/api";
 import {useSocketStatus} from "../hooks/useSocket";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import ThemeToggle from "../components/ui/ThemeToggle";
@@ -66,8 +67,14 @@ function EventSwitcher({className}) {
 function Shell() {
     const [moreOpen, setMoreOpen] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
     const {user, isLoaded} = useUser();
+    const {signOut} = useAuth();
     const socketConnected = useSocketStatus();
+    const hasSecretAdminSession =
+        typeof window !== "undefined" &&
+        sessionStorage.getItem("isAdminSession") === "true" &&
+        Boolean(sessionStorage.getItem("adminSecretKey")?.trim());
 
     useEffect(() => {
         const desktop = window.matchMedia("(min-width: 768px)");
@@ -76,7 +83,19 @@ function Shell() {
         return () => desktop.removeEventListener("change", close);
     }, []);
 
-    if (!isLoaded) return <LoadingIndicator fullScreen label="Loading admin workspace" />;
+    if (!isLoaded && !hasSecretAdminSession) return <LoadingIndicator fullScreen label="Loading admin workspace" />;
+
+    const handleAdminSignOut = async () => {
+        sessionStorage.removeItem("isAdminSession");
+        sessionStorage.removeItem("adminSecretKey");
+        sessionStorage.removeItem("adminAuthFlow");
+        clearApiCache();
+        window.dispatchEvent(new Event("axiom-admin-session-changed"));
+        if (user) {
+            await signOut().catch(() => {});
+        }
+        navigate("/", {replace: true});
+    };
 
     const linkBase = "flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 text-[15px] font-medium transition-colors";
     const tabs = [
@@ -114,14 +133,27 @@ function Shell() {
                 <div className="mt-auto flex flex-col gap-3 border-t border-[#4A5646] pt-4">
                     <div className="flex items-center gap-2.5 px-1">
                         <div className="min-w-0 flex-1">
-                            <p className="m-0 truncate text-sm font-semibold">{user?.fullName || "Organiser"}</p>
-                            <p className="m-0 text-xs text-[#AAD2BA]">Organiser</p>
+                            <p className="m-0 truncate text-sm font-semibold">{user?.fullName || "Tournament Organiser"}</p>
+                            <p className="m-0 text-xs text-[#AAD2BA]">{user ? "Organiser" : "Secret Key Session"}</p>
                         </div>
                         <ThemeToggle />
                     </div>
                     <div className="flex items-center justify-between gap-2 px-1 text-sm">
-                        <Link to="/dashboard" className="font-semibold text-[#EAFBF5] underline underline-offset-4">Participant view</Link>
-                        <div className="text-[#EAFBF5] [&_button]:text-[#EAFBF5] [&_span]:text-[#EAFBF5]"><UserButton /></div>
+                        {user ? (
+                            <>
+                                <Link to="/dashboard" className="font-semibold text-[#EAFBF5] underline underline-offset-4">Participant view</Link>
+                                <div className="text-[#EAFBF5] [&_button]:text-[#EAFBF5] [&_span]:text-[#EAFBF5]"><UserButton /></div>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleAdminSignOut}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#4A5646] bg-[#2F322A] px-3 py-1.5 text-xs font-semibold text-[#EAFBF5] transition hover:bg-[#4A5646]"
+                            >
+                                <LogOut size={14} aria-hidden="true" />
+                                <span>Exit Admin</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -171,9 +203,24 @@ function Shell() {
                                 {moreItems.map((item) => (
                                     <li key={item.path}><Link to={item.path} onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-semibold hover:bg-muted"><item.icon size={18} aria-hidden="true" />{item.label}</Link></li>
                                 ))}
-                                <li><Link to="/dashboard" onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-semibold hover:bg-muted"><LayoutDashboard size={18} aria-hidden="true" />Participant view</Link></li>
+                                {user && (
+                                    <li><Link to="/dashboard" onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-semibold hover:bg-muted"><LayoutDashboard size={18} aria-hidden="true" />Participant view</Link></li>
+                                )}
                             </ul>
-                            <div className="mt-3 border-t border-border pt-3 text-sm"><UserButton /></div>
+                            <div className="mt-3 border-t border-border pt-3 text-sm">
+                                {user ? (
+                                    <UserButton />
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handleAdminSignOut}
+                                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-4 text-sm font-semibold text-foreground hover:bg-muted"
+                                    >
+                                        <LogOut size={16} aria-hidden="true" />
+                                        <span>Exit Admin</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </ModalSurface>
                 )}

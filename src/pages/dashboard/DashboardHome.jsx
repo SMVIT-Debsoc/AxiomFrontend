@@ -16,7 +16,7 @@ import {UserApi, EventApi, DebateApi, CheckInApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {useToast} from "../../hooks/useToast"
 import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
-import {useEventSocket} from "../../hooks/useSocket";
+import {useEventSocket, useSocket, SocketEvents} from "../../hooks/useSocket";
 import Sculpture from "../../components/brand/Sculpture";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import EmptyState from "../../components/ui/EmptyState";
@@ -24,6 +24,7 @@ import CountUp from "../../components/ui/CountUp";
 import NeoButton from "../../components/neo/NeoButton";
 import NeoProgressBar from "../../components/neo/NeoProgressBar";
 import JourneyCard from "../../components/dashboard/JourneyCard";
+import {WhatsAppGroupBanner, WhatsAppFirstLoginModal} from "../../components/dashboard/WhatsAppGroupPrompt";
 
 export default function DashboardHome() {
   const {getToken} = useAuth();
@@ -146,7 +147,29 @@ export default function DashboardHome() {
     onDebateCreated: () => {
       fetchDashboardData();
     },
+    onEventUpdated: (data) => {
+      if (data?.event) {
+        setActiveEvent((prev) => (prev ? {...prev, ...data.event} : data.event));
+      } else {
+        fetchDashboardData();
+      }
+    },
   });
+
+  const {subscribe} = useSocket();
+  useEffect(() => {
+    const unsub = subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, (data) => {
+      if (data?.event && (!activeEvent || data.event.id === activeEvent.id)) {
+        setActiveEvent((prev) => (prev ? {...prev, ...data.event} : data.event));
+      } else {
+        fetchDashboardData();
+      }
+    });
+    return () => {
+      if (unsub) unsub();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribe, activeEvent?.id]);
 
   if (loading) {
     return <DashboardHomeSkeleton />;
@@ -201,6 +224,12 @@ export default function DashboardHome() {
           <p className="text-xs opacity-90">{error}</p>
         </div>
       )}
+
+      <WhatsAppFirstLoginModal event={activeEvent} />
+      <WhatsAppGroupBanner
+        whatsappLink={activeEvent?.whatsappLink}
+        eventName={activeEvent?.name}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start">
       <div className="space-y-4 min-w-0">
