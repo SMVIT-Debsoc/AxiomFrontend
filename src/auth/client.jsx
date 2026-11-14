@@ -77,6 +77,11 @@ function MockAuthProvider({ children }) {
 
     const signIn = {
       authenticateWithRedirect: async ({ redirectUrlComplete }) => {
+        if (signedIn) {
+          const err = new Error("Session already exists");
+          err.errors = [{ code: "session_exists", message: "You're already signed in." }];
+          throw err;
+        }
         const nextUser = state.user || defaultUser;
         const next = { signedIn: true, user: nextUser };
         if (typeof window !== "undefined") {
@@ -269,9 +274,29 @@ const GOOGLE_VARIANTS = {
   },
 };
 
+export function isSessionExistsError(failure) {
+  const errors = Array.isArray(failure?.errors) ? failure.errors : [];
+  if (
+    errors.some((err) => {
+      const code = String(err?.code || "").toLowerCase();
+      const msg = `${err?.message || ""} ${err?.longMessage || ""}`;
+      return (
+        code === "session_exists" ||
+        code === "already_signed_in" ||
+        code === "identifier_already_signed_in" ||
+        /session.*already.*exists|already.*signed.*in|single.*session/i.test(msg)
+      );
+    })
+  ) {
+    return true;
+  }
+  return /session.*already.*exists|already.*signed.*in/i.test(String(failure?.message || ""));
+}
+
 export function GoogleAuthButton({variant = "default", label = "Register with Google", busyLabel = "Connecting to Google…"}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const {isSignedIn, isLoaded: authLoaded} = useAuth();
   const {signIn, isLoaded} = useSignIn();
   const v = GOOGLE_VARIANTS[variant] || GOOGLE_VARIANTS.default;
 
@@ -284,7 +309,19 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
   }
 
   const signInWithGoogle = async () => {
-    if (!isLoaded || !signIn) return;
+    try {
+      sessionStorage.removeItem("adminAuthFlow");
+      sessionStorage.removeItem("adminSecretKey");
+    } catch {
+      // Ignore sessionStorage errors in restricted environments
+    }
+
+    if (isSignedIn) {
+      window.location.assign("/auth-redirect");
+      return;
+    }
+
+    if (!isLoaded || !authLoaded || !signIn) return;
     setBusy(true);
     setError("");
 
@@ -295,6 +332,10 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
         redirectUrlComplete: "/auth-redirect",
       });
     } catch (failure) {
+      if (isSessionExistsError(failure)) {
+        window.location.assign("/auth-redirect");
+        return;
+      }
       console.error("Clerk Google OAuth initiation failed:", failure);
       setError(failure.errors?.[0]?.message || failure.message || "Google sign-in could not start.");
       setBusy(false);
@@ -307,7 +348,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
         type="button"
         className={v.button}
         onClick={signInWithGoogle}
-        disabled={busy || !isLoaded}
+        disabled={busy || (!isLoaded && !isSignedIn)}
         aria-busy={busy}
         data-google-cta={variant}
       >

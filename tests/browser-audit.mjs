@@ -286,6 +286,13 @@ try {
     await page.waitForURL('**/admin');
   });
 
+  await run('clicking Sign in on landing page when session already exists redirects to workspace', {signedIn: true}, async page => {
+    await page.goto(origin + '/');
+    await page.getByRole('button', {name: 'Sign in', exact: true}).click();
+    await page.waitForURL('**/dashboard');
+    assert.equal(await page.getByRole('alert').count(), 0);
+  });
+
   await run('incomplete profile directs participant to /complete-profile', {signedIn: true, complete: false}, async page => {
     await page.goto(origin + '/auth-redirect');
     await page.waitForURL('**/complete-profile');

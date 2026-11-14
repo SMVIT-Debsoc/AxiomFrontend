@@ -195,3 +195,17 @@ Backend (`/home/rosso/Projects/Axiom26`):
   - Live `https://axiom26-aezg.onrender.com/health` checked at `2026-11-14T11:37:18.266Z` still returns `{"status":"degraded","database":"reconnecting","environment":"production"}` pending operator update of `DATABASE_URL` and `DIRECT_URL` on Render.
   - Live Google Cloud Console OAuth Client requires `https://clerk.axiom4.online/v1/oauth_callback` under Authorized Redirect URIs (`docs/google-oauth-setup.md`).
 - **Next recommended task**: Execute the operator manual checklist on `https://www.axiom4.online` once Render `DATABASE_URL`/`DIRECT_URL` and Google Cloud Console OAuth redirect URI are active.
+
+## Session Already Exists Fix on Landing Sign-In (2026-11-14)
+
+- **Completed work**:
+  - Updated `MockAuthProvider` (`signIn.authenticateWithRedirect`) in `src/auth/client.jsx` to mirror Clerk's `session_exists` error when `signedIn` is already `true`.
+  - Exported `isSessionExistsError(failure)` in `src/auth/client.jsx` and updated `GoogleAuthButton` (`src/auth/client.jsx`) and `AdminAccessModal` (`src/components/brand/AdminAccessModal.jsx`) to check `useAuth().isSignedIn` before calling `signIn.authenticateWithRedirect`, clear stale admin flags on participant sign-in, and fall back cleanly to `window.location.assign("/auth-redirect")` when Clerk throws `session_exists` / already-signed-in errors.
+  - Added regression assertions in `tests/authRedirect.test.mjs` and an E2E Playwright fixture test in `tests/browser-audit.mjs` verifying clicking `Sign in` on `/` while `signedIn: true` navigates directly to `/dashboard` with zero error alerts.
+- **Files changed**: `src/auth/client.jsx`, `src/components/brand/AdminAccessModal.jsx`, `tests/authRedirect.test.mjs`, `tests/browser-audit.mjs`, `progress.md`.
+- **Verification results** (after final code edit):
+  - `npm run lint`: PASS (exit 0).
+  - `npm test`: PASS, 44/44 tests across 5 files via Bun test runner.
+  - `bun test tests/readiness.test.mjs`: PASS, 5/5 checks.
+  - `npm run build`: PASS (Vite production build in 4.56s; existing >500 kB chunk advisory on `index-XnneG0Ef.js` noted).
+  - `npm run test:browser`: PASS, 39/39 Playwright Chromium audit fixtures (`audit-artifacts/browser-results.json`).

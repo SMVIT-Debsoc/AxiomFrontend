@@ -1,12 +1,13 @@
 import {useState, useEffect} from "react";
 import {Shield, KeyRound, X, Loader2, Eye, EyeOff} from "lucide-react";
-import {useSignIn} from "../../auth/client.jsx";
+import {useAuth, useSignIn, isSessionExistsError} from "../../auth/client.jsx";
 
 export default function AdminAccessModal({isOpen, onClose}) {
     const [secretKey, setSecretKey] = useState("");
     const [showKey, setShowKey] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const {isSignedIn, isLoaded: authLoaded} = useAuth();
     const {signIn, isLoaded} = useSignIn();
 
     useEffect(() => {
@@ -28,7 +29,7 @@ export default function AdminAccessModal({isOpen, onClose}) {
             return;
         }
 
-        if (!isLoaded || !signIn) return;
+        if (!isLoaded || !authLoaded) return;
         setBusy(true);
         setError("");
 
@@ -37,12 +38,26 @@ export default function AdminAccessModal({isOpen, onClose}) {
             sessionStorage.setItem("adminAuthFlow", "true");
             sessionStorage.setItem("adminSecretKey", trimmedKey);
 
+            if (isSignedIn) {
+                window.location.assign("/auth-redirect");
+                return;
+            }
+
+            if (!signIn) {
+                setBusy(false);
+                return;
+            }
+
             await signIn.authenticateWithRedirect({
                 strategy: "oauth_google",
                 redirectUrl: "/sso-callback",
                 redirectUrlComplete: "/auth-redirect",
             });
         } catch (failure) {
+            if (isSessionExistsError(failure)) {
+                window.location.assign("/auth-redirect");
+                return;
+            }
             console.error("Admin sign-in failed:", failure);
             setError(failure.errors?.[0]?.message || failure.message || "Failed to start Google sign-in.");
             setBusy(false);
