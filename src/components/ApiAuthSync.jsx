@@ -1,5 +1,5 @@
 import {useEffect} from "react";
-import {useAuth, useUser} from "@clerk/clerk-react";
+import {useAuth, useUser} from "../auth/client.jsx";
 import {setApiAuthTokenProvider} from "../services/api";
 import {socketService} from "../services/socket";
 

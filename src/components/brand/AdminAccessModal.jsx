@@ -1,6 +1,6 @@
 import {useState, useEffect} from "react";
 import {Shield, KeyRound, X, Loader2, Eye, EyeOff} from "lucide-react";
-import {useSignIn} from "@clerk/clerk-react";
+import {useSignIn} from "../../auth/client.jsx";
 
 export default function AdminAccessModal({isOpen, onClose}) {
     const [secretKey, setSecretKey] = useState("");

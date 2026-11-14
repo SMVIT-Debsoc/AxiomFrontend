@@ -153,3 +153,24 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - The API GitHub `origin/main` is at `dd0cdee`; commit `3be6324` explicitly adds `https://axiom40.vercel.app` to Better Auth `trustedOrigins` and uses `RENDER_EXTERNAL_URL` as a base-URL fallback. This checkout is behind by four commits, and the live Render deploy SHA cannot be verified through public health/auth endpoints. Render’s `autoDeployTrigger` is off, so verify the deployed SHA is at least `3be6324` (prefer current `dd0cdee`).
 - The remaining live fault is on the Google social sign-in handler: Render logs for the failed request are needed to distinguish stale deployed auth config from missing/mismatched Google OAuth credentials or another provider initialization error. Do not change frontend routing or secrets based only on the UI’s generic “Invalid origin” label. No secrets were read or modified.
 - Follow-up live check: Render `/health/live` and `/api/auth/get-session` return 200; a malformed email sign-in reaches Better Auth and returns its expected 400 validation body, which demonstrates that the canonical Vercel origin is accepted on the live auth server. A well-formed Google `sign-in/social` request still returns HTTP 500 with an empty response both directly on Render and through Vercel. Current outcome: routing/origin are functioning; Google provider startup/configuration remains broken. Render logs are required to identify the exact provider-side cause and confirm its deployed commit.
+
+## Clerk Browser Audit & CI Lockfile Verification (2026-11-14)
+
+- **Completed work**:
+  - Added isolated `VITE_AUTH_MOCK === "true"` fixture provider support in `src/auth/client.jsx` (including persistent `sessionStorage` fixture auth across sign-out redirects and mock `user.update`) while keeping real `@clerk/clerk-react` active whenever `VITE_AUTH_MOCK` is unset.
+  - Unified `@clerk/clerk-react` imports through `src/auth/client.jsx` in `src/components/brand/AdminAccessModal.jsx` and `src/components/ApiAuthSync.jsx`.
+  - Updated `tests/browser-audit.mjs` to test the active Clerk single-entry landing page (`/`), anonymous route guards, legacy auth route redirects (`/login-select`, `/sign-in`, `/sign-up`, etc.), separated `Admin Portal` secret-key modal, `CompleteProfile` onboarding and auto-enrollment flow, `/complete-profile` API failure recovery card ("Account setup is unavailable" / "Failed to fetch user details" / `Retry`), event enrollment, round check-in/pairings/results, admin CRUD, `AccountMenu` sign-out, unknown-route recovery, and mobile overflow.
+  - Synchronized `package-lock.json` using official npm (`12.2.2`) so `npm ci` validates cleanly without missing lockfile entries.
+- **Files changed**: `src/auth/client.jsx`, `src/components/brand/AdminAccessModal.jsx`, `src/components/ApiAuthSync.jsx`, `tests/browser-audit.mjs`, `package-lock.json`, `progress.md`. (Preserved untracked `.agents/` directory unchanged.)
+- **Verification results** (after final code edit):
+  - `npm run lint`: PASS (exit 0).
+  - `npm test`: PASS, 43/43 tests across 5 files (`tests/readiness.test.mjs`, `tests/analytics.test.mjs`, `tests/authRedirect.test.mjs`, `tests/api.test.mjs`, `tests/datetime.test.mjs`) via Bun test runner.
+  - `bun test tests/readiness.test.mjs`: PASS, 5/5 checks. (Note: `npm run test:readiness` directly fails locally because `/opt/homebrew/bin/node` wraps `bun run`, which rejects `node:test` outside `bun test`; real Node 22 runs in CI.)
+  - `npm run build`: PASS (Vite production build in 2.69s; existing >500 kB chunk advisory on `index-BiLAOq1O.js` remains).
+  - `npm run test:browser`: PASS, 38/38 isolated Playwright Chromium fixtures (`audit-artifacts/browser-results.json`). Note: browser tests use `VITE_AUTH_MOCK=true` and mocked `/api/*` + `/socket.io/*` responses; they do not verify live Clerk/Google OAuth or live PostgreSQL writes.
+  - `/Users/rossonerian/.bun/bin/npm ci --dry-run`: PASS (exit 0).
+- **Known issues & external blockers (unverified for live production)**:
+  - Live Render backend (`https://axiom26-aezg.onrender.com/health`) returns `{"status":"degraded","database":"reconnecting"}` until the operator updates `DATABASE_URL` and `DIRECT_URL` in Render Dashboard with the Neon PostgreSQL connection strings.
+  - Live Google Cloud Console OAuth Client must include `https://clerk.axiom4.online/v1/oauth_callback` under Authorized Redirect URIs (documented in `docs/google-oauth-setup.md`).
+  - Live Clerk + Render + Neon end-to-end authentication and persistence on `https://www.axiom4.online` remain unverified until the external Render/Google Console updates are applied.
+- **Next recommended task**: Update `DATABASE_URL` and `DIRECT_URL` on Render (`axiom26-backend`), verify `https://axiom26-aezg.onrender.com/health` reports `"database":"connected"`, confirm GitHub Actions CI passes on `main`, and run live Google OAuth sign-in on `https://www.axiom4.online`.

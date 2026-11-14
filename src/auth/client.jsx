@@ -1,26 +1,207 @@
 /* eslint-disable react-refresh/only-export-components */
-import {useState} from "react";
+import {createContext, useContext, useState, useEffect, useMemo} from "react";
+import {Navigate} from "react-router-dom";
 import {
   ClerkProvider,
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-  useAuth,
-  useUser,
-  useSignIn,
-  RedirectToSignIn,
-  AuthenticateWithRedirectCallback
+  SignedIn as ClerkSignedIn,
+  SignedOut as ClerkSignedOut,
+  SignInButton as ClerkSignInButton,
+  UserButton as ClerkUserButton,
+  useAuth as useClerkAuth,
+  useUser as useClerkUser,
+  useSignIn as useClerkSignIn,
+  RedirectToSignIn as ClerkRedirectToSignIn,
+  AuthenticateWithRedirectCallback as ClerkAuthenticateWithRedirectCallback
 } from "@clerk/clerk-react";
 
 export const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
-export const googleAuthEnabled = Boolean(clerkPublishableKey);
+const isMockAuth = import.meta.env.VITE_AUTH_MOCK === "true";
+export const googleAuthEnabled = Boolean(clerkPublishableKey) || isMockAuth;
+
+const MockAuthContext = createContext(null);
+
+function getFixtureState() {
+  if (typeof window === "undefined") return { signedIn: false, user: null };
+  try {
+    const stored = sessionStorage.getItem("__fixture_auth__");
+    if (stored) return JSON.parse(stored);
+  } catch {
+    // Ignore sessionStorage read errors in restricted environments
+  }
+  if (window.__FIXTURE_AUTH__) return window.__FIXTURE_AUTH__;
+  return { signedIn: false, user: null };
+}
+
+function MockAuthProvider({ children }) {
+  const [state, setState] = useState(getFixtureState);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setState(getFixtureState());
+    };
+    window.addEventListener("__fixture_auth_update__", handleUpdate);
+    return () => window.removeEventListener("__fixture_auth_update__", handleUpdate);
+  }, []);
+
+  const value = useMemo(() => {
+    const signedIn = Boolean(state.signedIn);
+    const defaultUser = {
+      id: "fixture-user",
+      fullName: "Audit Participant",
+      firstName: "Audit",
+      lastName: "Participant",
+      primaryEmailAddress: { emailAddress: "audit@example.invalid" },
+      imageUrl: null,
+    };
+    const baseUser = state.user || defaultUser;
+    const user = signedIn
+      ? {
+          ...baseUser,
+          update: typeof baseUser.update === "function" ? baseUser.update : async () => baseUser,
+        }
+      : null;
+
+    const signOut = async () => {
+      const next = { signedIn: false, user: null };
+      if (typeof window !== "undefined") {
+        window.__FIXTURE_AUTH__ = next;
+        try {
+          sessionStorage.setItem("__fixture_auth__", JSON.stringify(next));
+        } catch {
+          // Ignore sessionStorage write errors in restricted environments
+        }
+      }
+      setState(next);
+      window.location.href = "/";
+    };
+
+    const signIn = {
+      authenticateWithRedirect: async ({ redirectUrlComplete }) => {
+        const nextUser = state.user || defaultUser;
+        const next = { signedIn: true, user: nextUser };
+        if (typeof window !== "undefined") {
+          window.__FIXTURE_AUTH__ = next;
+          try {
+            sessionStorage.setItem("__fixture_auth__", JSON.stringify(next));
+          } catch {
+            // Ignore sessionStorage write errors in restricted environments
+          }
+          window.location.href = redirectUrlComplete || "/auth-redirect";
+        }
+      },
+    };
+
+    return {
+      isLoaded: true,
+      isSignedIn: signedIn,
+      userId: user?.id || null,
+      sessionId: signedIn ? "fixture-session" : null,
+      user,
+      getToken: async () => (signedIn ? "fixture-auth-token" : null),
+      signOut,
+      signIn,
+    };
+  }, [state]);
+
+  return <MockAuthContext.Provider value={value}>{children}</MockAuthContext.Provider>;
+}
+
+function useMockAuth() {
+  const ctx = useContext(MockAuthContext);
+  return {
+    isLoaded: ctx?.isLoaded ?? true,
+    isSignedIn: ctx?.isSignedIn ?? false,
+    userId: ctx?.userId ?? null,
+    sessionId: ctx?.sessionId ?? null,
+    getToken: ctx?.getToken ?? (async () => null),
+    signOut: ctx?.signOut ?? (async () => {}),
+  };
+}
+
+function useMockUser() {
+  const ctx = useContext(MockAuthContext);
+  return {
+    isLoaded: ctx?.isLoaded ?? true,
+    isSignedIn: ctx?.isSignedIn ?? false,
+    user: ctx?.user ?? null,
+  };
+}
+
+function useMockSignIn() {
+  const ctx = useContext(MockAuthContext);
+  return {
+    isLoaded: ctx?.isLoaded ?? true,
+    signIn: ctx?.signIn,
+  };
+}
+
+function MockSignedIn({ children }) {
+  const { isSignedIn } = useMockAuth();
+  return isSignedIn ? children : null;
+}
+
+function MockSignedOut({ children }) {
+  const { isSignedIn } = useMockAuth();
+  return !isSignedIn ? children : null;
+}
+
+function MockUserButton() {
+  const { signOut } = useMockAuth();
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={signOut}
+        className="rounded-full bg-card px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+      >
+        Sign out
+      </button>
+    </div>
+  );
+}
+
+function MockSignInButton({ children, ...props }) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        window.__FIXTURE_AUTH__ = { signedIn: true };
+        window.location.href = "/auth-redirect";
+      }}
+      {...props}
+    >
+      {children || "Sign in"}
+    </button>
+  );
+}
+
+function MockRedirectToSignIn() {
+  return <Navigate to="/" replace />;
+}
+
+function MockAuthenticateWithRedirectCallback(props) {
+  return <Navigate to={props.signInForceRedirectUrl || "/auth-redirect"} replace />;
+}
+
+export const useAuth = isMockAuth ? useMockAuth : useClerkAuth;
+export const useUser = isMockAuth ? useMockUser : useClerkUser;
+export const useSignIn = isMockAuth ? useMockSignIn : useClerkSignIn;
+export const SignedIn = isMockAuth ? MockSignedIn : ClerkSignedIn;
+export const SignedOut = isMockAuth ? MockSignedOut : ClerkSignedOut;
+export const SignInButton = isMockAuth ? MockSignInButton : ClerkSignInButton;
+export const UserButton = isMockAuth ? MockUserButton : ClerkUserButton;
+export const RedirectToSignIn = isMockAuth ? MockRedirectToSignIn : ClerkRedirectToSignIn;
+export const AuthenticateWithRedirectCallback = isMockAuth ? MockAuthenticateWithRedirectCallback : ClerkAuthenticateWithRedirectCallback;
 
 /**
  * AuthProvider wraps the application with ClerkProvider.
  * If VITE_CLERK_PUBLISHABLE_KEY is not set, it renders a friendly setup guide.
  */
 export function AuthProvider({children}) {
+  if (isMockAuth) {
+    return <MockAuthProvider>{children}</MockAuthProvider>;
+  }
+
   if (!clerkPublishableKey) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1D1E18] text-[#EAFBF5] p-6">
@@ -49,17 +230,6 @@ export function AuthProvider({children}) {
     </ClerkProvider>
   );
 }
-
-export {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-  useAuth,
-  useUser,
-  RedirectToSignIn,
-  AuthenticateWithRedirectCallback
-};
 
 const GOOGLE_VARIANTS = {
   // Large hero button on the dark-green panel, moss ring
@@ -105,7 +275,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
   const {signIn, isLoaded} = useSignIn();
   const v = GOOGLE_VARIANTS[variant] || GOOGLE_VARIANTS.default;
 
-  if (!clerkPublishableKey) {
+  if (!clerkPublishableKey && !isMockAuth) {
     return (
       <p role="alert" className="rounded-xl border border-[#AAD2BA] bg-[#E6F8F1] px-4 py-3 text-sm font-medium text-[#3F5E45]">
         Sign-in is unavailable right now. Please set VITE_CLERK_PUBLISHABLE_KEY in .env.
