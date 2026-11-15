@@ -1,12 +1,10 @@
-import {useEffect, useState} from "react";
 import {Link, NavLink, Outlet, useLocation, useNavigate} from "react-router-dom";
-import {Activity, ChartColumn, ClipboardList, DoorOpen, Flag, LayoutDashboard, LogOut, Medal, Ellipsis, Settings, Users, X} from "lucide-react";
+import {Activity, Flag, LogOut, Settings, Trophy, Users} from "lucide-react";
 import {UserButton, useAuth, useUser} from "../auth/client.jsx";
 import {clearApiCache} from "../services/api";
 import {useSocketStatus} from "../hooks/useSocket";
 import Axiom40Logo from "../components/brand/Axiom40Logo";
 import ThemeToggle from "../components/ui/ThemeToggle";
-import ModalSurface from "../components/ui/ModalSurface";
 import LoadingIndicator from "../components/ui/LoadingIndicator";
 import AdminEventProvider from "../contexts/AdminEventProvider";
 import {useAdminEvent} from "../contexts/adminEvent";
@@ -14,31 +12,15 @@ import {cn} from "../lib/utils";
 
 const GROUPS = [
     {
-        title: "Run the event",
+        title: "Organiser Desk",
         items: [
-            {label: "Live round", path: "/admin", icon: Activity, end: true},
-            {label: "People", path: "/admin/people", icon: Users},
-            {label: "Rooms", path: "/admin/rooms", icon: DoorOpen},
-        ],
-    },
-    {
-        title: "Outcomes",
-        items: [
-            {label: "Ballots & results", path: "/admin/results", icon: ClipboardList},
-            {label: "Standings", path: "/admin/leaderboard", icon: Medal},
-        ],
-    },
-    {
-        title: "Setup",
-        items: [
-            {label: "Event & rounds", path: "/admin/events", icon: Flag, also: ["/admin/rounds"]},
-            {label: "Overview", path: "/admin/overview", icon: ChartColumn},
-            {label: "Settings", path: "/admin/settings", icon: Settings},
+            {label: "Live Round", path: "/admin", icon: Activity, end: true},
+            {label: "Events & Rooms", path: "/admin/events", icon: Flag, also: ["/admin/rounds", "/admin/rooms"]},
+            {label: "Participants", path: "/admin/people", icon: Users, also: ["/admin/participants", "/admin/overview"]},
+            {label: "Results & Standings", path: "/admin/results", icon: Trophy, also: ["/admin/leaderboard"]},
         ],
     },
 ];
-
-const ALL_ITEMS = GROUPS.flatMap((g) => g.items);
 
 function isActive(item, pathname) {
     if (item.end) return pathname === item.path;
@@ -65,7 +47,6 @@ function EventSwitcher({className}) {
 }
 
 function Shell() {
-    const [moreOpen, setMoreOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
     const {user, isLoaded} = useUser();
@@ -75,13 +56,6 @@ function Shell() {
         typeof window !== "undefined" &&
         sessionStorage.getItem("isAdminSession") === "true" &&
         Boolean(sessionStorage.getItem("adminSecretKey")?.trim());
-
-    useEffect(() => {
-        const desktop = window.matchMedia("(min-width: 768px)");
-        const close = (event) => { if (event.matches) setMoreOpen(false); };
-        desktop.addEventListener("change", close);
-        return () => desktop.removeEventListener("change", close);
-    }, []);
 
     if (!isLoaded && !hasSecretAdminSession) return <LoadingIndicator fullScreen label="Loading admin workspace" />;
 
@@ -98,13 +72,14 @@ function Shell() {
     };
 
     const linkBase = "flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 text-[15px] font-medium transition-colors";
+    const [liveItem, eventsItem, peopleItem, resultsItem] = GROUPS[0].items;
     const tabs = [
-        {label: "Live", path: "/admin", icon: Activity, active: location.pathname === "/admin"},
-        {label: "People", path: "/admin/people", icon: Users, active: location.pathname.startsWith("/admin/people") || location.pathname.startsWith("/admin/participants")},
-        {label: "Standings", path: "/admin/leaderboard", icon: Medal, active: location.pathname.startsWith("/admin/leaderboard")},
+        {label: "Live", path: "/admin", icon: Activity, active: isActive(liveItem, location.pathname)},
+        {label: "Events", path: "/admin/events", icon: Flag, active: isActive(eventsItem, location.pathname)},
+        {label: "People", path: "/admin/people", icon: Users, active: isActive(peopleItem, location.pathname)},
+        {label: "Results", path: "/admin/results", icon: Trophy, active: isActive(resultsItem, location.pathname)},
     ];
-    const moreActive = !tabs.some((t) => t.active);
-    const moreItems = ALL_ITEMS.filter((i) => !["/admin", "/admin/people", "/admin/leaderboard"].includes(i.path));
+    const settingsActive = location.pathname === "/admin/settings" || location.pathname.startsWith("/admin/settings/");
 
     return (
         <div className="axiom-workspace flex min-h-svh bg-background text-foreground">
@@ -131,11 +106,25 @@ function Shell() {
                     </div>
                 ))}
                 <div className="mt-auto flex flex-col gap-3 border-t border-[#4A5646] pt-4">
-                    <div className="flex items-center gap-2.5 px-1">
+                    <div className="flex items-center gap-2 px-1">
                         <div className="min-w-0 flex-1">
                             <p className="m-0 truncate text-sm font-semibold">{user?.fullName || "Tournament Organiser"}</p>
                             <p className="m-0 text-xs text-[#AAD2BA]">{user ? "Organiser" : "Secret Key Session"}</p>
                         </div>
+                        <Link
+                            to="/admin/settings"
+                            aria-label="Admin settings"
+                            title="Settings"
+                            aria-current={settingsActive ? "page" : undefined}
+                            className={cn(
+                                "grid h-11 w-11 shrink-0 place-items-center rounded-xl border transition-colors",
+                                settingsActive
+                                    ? "border-[#B9F5D8] bg-[#B9F5D8] text-[#141510]"
+                                    : "border-[#4A5646] bg-[#2F322A] text-[#EAFBF5] hover:bg-[#4A5646]"
+                            )}
+                        >
+                            <Settings size={17} aria-hidden="true" />
+                        </Link>
                         <ThemeToggle />
                     </div>
                     <div className="flex items-center justify-between gap-2 px-1 text-sm">
@@ -148,7 +137,7 @@ function Shell() {
                             <button
                                 type="button"
                                 onClick={handleAdminSignOut}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-[#4A5646] bg-[#2F322A] px-3 py-1.5 text-xs font-semibold text-[#EAFBF5] transition hover:bg-[#4A5646]"
+                                className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[#4A5646] bg-[#2F322A] px-3 py-1.5 text-xs font-semibold text-[#EAFBF5] transition hover:bg-[#4A5646]"
                             >
                                 <LogOut size={14} aria-hidden="true" />
                                 <span>Exit Admin</span>
@@ -160,18 +149,43 @@ function Shell() {
 
             <div className="flex min-w-0 flex-1 flex-col">
                 {/* Phone top bar */}
-                <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background px-3 py-2 md:hidden">
+                <header className="sticky top-0 z-30 flex items-center gap-1.5 border-b border-border bg-background px-3 py-2 md:hidden">
                     <div className="min-w-0 flex-1 [&_span]:hidden [&_select]:border-border [&_select]:bg-card [&_select]:text-foreground"><EventSwitcher /></div>
-                    <div role="status" aria-label={socketConnected ? "Live sync on" : "Connecting"} className={cn("flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold", socketConnected ? "bg-[#D4EDE1] text-[#1D1E18] dark:bg-[#3A3E34] dark:text-[#D4EDE1]" : "bg-destructive/10 text-destructive")}>
-                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#1D1E18] dark:bg-[#B9F5D8] axiom-live-dot" : "bg-destructive animate-pulse")} />
+                    <div role="status" aria-label={socketConnected ? "Live sync on" : "Connecting"} className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold", socketConnected ? "ax-signal-win bg-[#D4EDE1] text-[#1D1E18] dark:bg-[#3A3E34] dark:text-[#D4EDE1]" : "ax-signal-loss bg-rose-500/15 text-rose-700 dark:text-rose-300")}>
+                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#1D1E18] dark:bg-[#B9F5D8] axiom-live-dot" : "bg-rose-500 animate-pulse")} />
                         {socketConnected ? "Live" : "…"}
                     </div>
+                    <Link
+                        to="/admin/settings"
+                        aria-label="Admin settings"
+                        title="Settings"
+                        aria-current={settingsActive ? "page" : undefined}
+                        className={cn(
+                            "grid h-11 w-11 shrink-0 place-items-center rounded-xl border transition-colors",
+                            settingsActive
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-card text-foreground hover:bg-muted"
+                        )}
+                    >
+                        <Settings size={17} aria-hidden="true" />
+                    </Link>
                     <ThemeToggle />
+                    {!user && (
+                        <button
+                            type="button"
+                            onClick={handleAdminSignOut}
+                            aria-label="Exit Admin"
+                            title="Exit Admin"
+                            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-foreground hover:bg-muted"
+                        >
+                            <LogOut size={17} aria-hidden="true" />
+                        </button>
+                    )}
                 </header>
 
                 <div className="hidden items-center justify-end px-8 pt-4 md:flex">
-                    <div role="status" className={cn("flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold", socketConnected ? "bg-[#D4EDE1] text-[#1D1E18] dark:bg-[#3A3E34] dark:text-[#D4EDE1]" : "bg-destructive/10 text-destructive")}>
-                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#1D1E18] dark:bg-[#B9F5D8] axiom-live-dot" : "bg-destructive animate-pulse")} />
+                    <div role="status" className={cn("flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold", socketConnected ? "ax-signal-win bg-[#D4EDE1] text-[#1D1E18] dark:bg-[#3A3E34] dark:text-[#D4EDE1]" : "ax-signal-loss bg-rose-500/15 text-rose-700 dark:text-rose-300")}>
+                        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", socketConnected ? "bg-[#1D1E18] dark:bg-[#B9F5D8] axiom-live-dot" : "bg-rose-500 animate-pulse")} />
                         {socketConnected ? "Live sync on" : "Connecting…"}
                     </div>
                 </div>
@@ -180,50 +194,15 @@ function Shell() {
                     <div key={location.pathname} className="axiom-page-body"><Outlet /></div>
                 </main>
 
-                {/* Phone bottom tab bar */}
+                {/* Phone bottom tab bar — 4 unified destinations */}
                 <nav aria-label="Organiser" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t border-[#4A5646] bg-[#1D1E18] pb-[env(safe-area-inset-bottom)] text-[#EAFBF5] md:hidden dark:bg-[#161710]">
                     {tabs.map((t) => (
-                        <Link key={t.path} to={t.path} aria-current={t.active ? "page" : undefined} className={cn("flex flex-col items-center justify-center gap-0.5 text-xs font-semibold", t.active ? "text-[#EAFBF5]" : "text-[#BDD9CA]")}>
-                            <span className={cn("grid h-7 w-12 place-items-center rounded-full", t.active && "bg-[#4A5646]")}><t.icon size={18} aria-hidden="true" /></span>{t.label}
+                        <Link key={t.path} to={t.path} aria-current={t.active ? "page" : undefined} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-semibold", t.active ? "text-[#EAFBF5]" : "text-[#BDD9CA]")}>
+                            <span className={cn("grid h-7 w-12 place-items-center rounded-full", t.active && "bg-[#4A5646]")}><t.icon size={18} aria-hidden="true" /></span>
+                            <span className="truncate max-w-full px-1">{t.label}</span>
                         </Link>
                     ))}
-                    <button type="button" onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-current={moreActive ? "page" : undefined} className={cn("flex flex-col items-center justify-center gap-0.5 text-xs font-semibold", moreActive ? "text-[#EAFBF5]" : "text-[#BDD9CA]")}>
-                        <span className={cn("grid h-7 w-12 place-items-center rounded-full", moreActive && "bg-[#4A5646]")}><Ellipsis size={18} aria-hidden="true" /></span>More
-                    </button>
                 </nav>
-
-                {moreOpen && (
-                    <ModalSurface onDismiss={() => setMoreOpen(false)} aria-label="More organiser links" className="flex flex-col justify-end">
-                        <div className="rounded-t-3xl bg-background p-4 pb-8 text-foreground shadow-2xl">
-                            <div className="mb-2 flex items-center justify-between">
-                                <h2 className="font-heading text-xl font-bold">More</h2>
-                                <button type="button" onClick={() => setMoreOpen(false)} aria-label="Close" className="grid h-11 w-11 place-items-center rounded-full"><X size={20} aria-hidden="true" /></button>
-                            </div>
-                            <ul className="m-0 grid list-none gap-1 p-0">
-                                {moreItems.map((item) => (
-                                    <li key={item.path}><Link to={item.path} onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-semibold hover:bg-muted"><item.icon size={18} aria-hidden="true" />{item.label}</Link></li>
-                                ))}
-                                {user && (
-                                    <li><Link to="/dashboard" onClick={() => setMoreOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-base font-semibold hover:bg-muted"><LayoutDashboard size={18} aria-hidden="true" />Participant view</Link></li>
-                                )}
-                            </ul>
-                            <div className="mt-3 border-t border-border pt-3 text-sm">
-                                {user ? (
-                                    <UserButton />
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={handleAdminSignOut}
-                                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-muted/50 px-4 text-sm font-semibold text-foreground hover:bg-muted"
-                                    >
-                                        <LogOut size={16} aria-hidden="true" />
-                                        <span>Exit Admin</span>
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </ModalSurface>
-                )}
             </div>
         </div>
     );

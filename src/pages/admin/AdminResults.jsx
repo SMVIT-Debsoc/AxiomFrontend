@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { lazy, Suspense, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion as Motion } from "framer-motion";
 import {
     Trophy,
@@ -7,15 +7,29 @@ import {
     ChevronRight,
     Calendar,
     ArrowLeft,
+    ClipboardList,
+    Medal,
 } from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
+import { cn } from "../../lib/utils";
 import { useAuth } from "../../auth/client.jsx";
 import { AdminApi, EventApi, RoundApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
 
+const AdminLeaderboard = lazy(() => import("./AdminLeaderboard"));
+
 export default function AdminResults() {
     const { getToken } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get("tab") === "leaderboard" ? "leaderboard" : "results";
+
+    const setActiveTab = (tab) => {
+        const next = new URLSearchParams(searchParams);
+        if (tab === "results") next.delete("tab");
+        else next.set("tab", tab);
+        setSearchParams(next, { replace: true });
+    };
 
     // Navigation State
     const [viewMode, setViewMode] = useState("events"); // 'events' | 'rounds' | 'results'
@@ -140,9 +154,9 @@ export default function AdminResults() {
                         </div>
                         <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider font-sans border ${
                             event.status === 'ONGOING'
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                ? 'ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35'
                                 : event.status === 'COMPLETED'
-                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                                ? 'ax-signal-info bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 border-indigo-500/35'
                                 : 'bg-muted text-muted-foreground border-border'
                         }`}>
                             {event.status}
@@ -191,9 +205,9 @@ export default function AdminResults() {
                         <div className="flex items-center gap-3 shrink-0">
                             <span className={`text-[10px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
                                 round.status === 'COMPLETED'
-                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                    ? 'ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35'
                                     : round.status === 'ONGOING'
-                                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                                    ? 'ax-signal-info bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 border-indigo-500/35'
                                     : 'bg-muted text-muted-foreground border-border'
                             }`}>
                                 {round.status}
@@ -232,11 +246,11 @@ export default function AdminResults() {
                                     <tr key={debate.id} className="hover:bg-muted/20 transition-colors">
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2.5 text-sm font-sans font-medium text-foreground">
-                                                <span className={debate.winnerId === debate.debater1Id ? "text-emerald-500 font-bold" : ""}>
+                                                <span className={debate.winnerId === debate.debater1Id ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
                                                     {debate.debater1.firstName} {debate.debater1.lastName}
                                                 </span>
                                                 <span className="text-muted-foreground text-xs font-normal">vs</span>
-                                                <span className={debate.winnerId === debate.debater2Id ? "text-emerald-500 font-bold" : ""}>
+                                                <span className={debate.winnerId === debate.debater2Id ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
                                                     {debate.debater2.firstName} {debate.debater2.lastName}
                                                 </span>
                                             </div>
@@ -244,21 +258,21 @@ export default function AdminResults() {
                                         <td className="px-5 py-3.5 text-center">
                                             {debate.status === 'COMPLETED' ? (
                                                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-muted/50 border border-border/70 text-xs font-mono">
-                                                    <span className={debate.winnerId === debate.debater1Id ? "text-emerald-500 font-bold" : ""}>
+                                                    <span className={debate.winnerId === debate.debater1Id ? "text-emerald-600 dark:text-emerald-300 font-bold" : ""}>
                                                         {debate.debater1Score}
                                                     </span>
                                                     <span className="text-muted-foreground">-</span>
-                                                    <span className={debate.winnerId === debate.debater2Id ? "text-emerald-500 font-bold" : ""}>
+                                                    <span className={debate.winnerId === debate.debater2Id ? "text-emerald-600 dark:text-emerald-300 font-bold" : ""}>
                                                         {debate.debater2Score}
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <span className="text-[10px] text-muted-foreground font-sans italic">Pending</span>
+                                                <span className="ax-signal-warn inline-flex px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 text-[10px] font-sans font-semibold">Pending</span>
                                             )}
                                         </td>
                                         <td className="px-5 py-3.5">
                                             {debate.winnerId ? (
-                                                <div className="flex items-center gap-1.5 text-xs font-heading font-bold text-emerald-500">
+                                                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border border-emerald-500/35 text-xs font-heading font-bold">
                                                     <Trophy className="w-3.5 h-3.5" aria-hidden="true" />
                                                     <span>{debate.winnerId === debate.debater1Id ? debate.debater1.firstName : debate.debater2.firstName}</span>
                                                 </div>
@@ -266,8 +280,9 @@ export default function AdminResults() {
                                         </td>
                                         <td className="px-5 py-3.5 text-right">
                                             <button
+                                                type="button"
                                                 onClick={() => navigate(`/admin/results/${debate.id}`)}
-                                                className="text-xs font-sans font-semibold text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1.5 py-0.5"
+                                                className="min-h-11 px-3 py-2 text-xs font-sans font-semibold text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                                             >
                                                 {debate.status === 'COMPLETED' ? "Edit Result" : "Enter Result"}
                                             </button>
@@ -293,8 +308,8 @@ export default function AdminResults() {
                                 </span>
                                 <span className={`text-[9px] font-sans font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
                                     debate.status === 'COMPLETED'
-                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                        ? 'ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35'
+                                        : 'ax-signal-warn bg-orange-500/15 text-orange-800 dark:text-orange-200 border-orange-500/40'
                                 }`}>
                                     {debate.status}
                                 </span>
@@ -302,7 +317,7 @@ export default function AdminResults() {
 
                             <div className="flex justify-between items-center font-sans">
                                 <div className="flex-1 text-center">
-                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater1Id ? "text-emerald-500 font-bold" : "text-foreground"}`}>
+                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater1Id ? "text-emerald-600 dark:text-emerald-300 font-bold" : "text-foreground"}`}>
                                         {debate.debater1.firstName}
                                     </p>
                                     {debate.status === 'COMPLETED' && (
@@ -311,7 +326,7 @@ export default function AdminResults() {
                                 </div>
                                 <div className="px-3 text-[10px] text-muted-foreground font-bold italic">VS</div>
                                 <div className="flex-1 text-center">
-                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater2Id ? "text-emerald-500 font-bold" : "text-foreground"}`}>
+                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater2Id ? "text-emerald-600 dark:text-emerald-300 font-bold" : "text-foreground"}`}>
                                         {debate.debater2.firstName}
                                     </p>
                                     {debate.status === 'COMPLETED' && (
@@ -321,8 +336,9 @@ export default function AdminResults() {
                             </div>
 
                             <button
+                                type="button"
                                 onClick={() => navigate(`/admin/results/${debate.id}`)}
-                                className="w-full py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-sans font-semibold transition-colors"
+                                className="w-full min-h-11 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-sans font-semibold transition-colors"
                             >
                                 {debate.status === 'COMPLETED' ? "Edit Result" : "Enter Result"}
                             </button>
@@ -338,10 +354,11 @@ export default function AdminResults() {
             {/* Header */}
             <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
                 <div className="flex items-center gap-3">
-                    {viewMode !== "events" && (
+                    {activeTab === "results" && viewMode !== "events" && (
                         <button
+                            type="button"
                             onClick={handleBack}
-                            className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Navigate back"
                         >
                             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
@@ -349,12 +366,14 @@ export default function AdminResults() {
                     )}
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
+                            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-600 dark:text-emerald-400">
                                 AXIOM 4.0
                             </span>
                             <span className="text-muted-foreground/60">•</span>
                             <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
-                                {viewMode === "events"
+                                {activeTab === "leaderboard"
+                                    ? "Standings & Metrics"
+                                    : viewMode === "events"
                                     ? "Tournaments"
                                     : viewMode === "rounds"
                                     ? selectedEvent?.name
@@ -362,14 +381,18 @@ export default function AdminResults() {
                             </span>
                         </div>
                         <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
-                            {viewMode === "events"
-                                ? "Results Command"
+                            {activeTab === "leaderboard"
+                                ? "Standings Leaderboard"
+                                : viewMode === "events"
+                                ? "Results & Standings"
                                 : viewMode === "rounds"
                                 ? `${selectedEvent?.name} Rounds`
                                 : `${selectedRound?.name} Matchup Results`}
                         </h1>
                         <p className="text-xs md:text-sm text-muted-foreground font-sans mt-0.5">
-                            {viewMode === "events"
+                            {activeTab === "leaderboard"
+                                ? "Cumulative debater rankings, qualify rates, and speaker scores"
+                                : viewMode === "events"
                                 ? "Browse tournaments to inspect debater scores and final adjudications"
                                 : viewMode === "rounds"
                                 ? "Select a round to view debate scoring details"
@@ -379,29 +402,71 @@ export default function AdminResults() {
                 </div>
             </div>
 
-            {/* Search Input */}
-            <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                <input
-                    type="text"
-                    placeholder={`Search ${viewMode}...`}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    aria-label={`Search ${viewMode}`}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
-                />
+            {/* Unified Sub-tabs: Ballots & Results | Standings Leaderboard */}
+            <div className="inline-flex items-center gap-1 bg-muted/60 border border-border/80 p-1 rounded-xl" role="tablist" aria-label="Results and standings views">
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === "results"}
+                    onClick={() => setActiveTab("results")}
+                    className={cn(
+                        "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        activeTab === "results"
+                            ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
+                            : "text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    <ClipboardList className="w-4 h-4" aria-hidden="true" />
+                    <span>Ballots &amp; Results</span>
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === "leaderboard"}
+                    onClick={() => setActiveTab("leaderboard")}
+                    className={cn(
+                        "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        activeTab === "leaderboard"
+                            ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
+                            : "text-muted-foreground hover:text-foreground"
+                    )}
+                >
+                    <Medal className="w-4 h-4" aria-hidden="true" />
+                    <span>Standings Leaderboard</span>
+                </button>
             </div>
 
-            {/* Dynamic Content */}
-            {loading ? (
-                <div className="flex items-center justify-center min-h-[40vh]">
-                    <LoadingIndicator label="Loading tournament results" />
-                </div>
+            {activeTab === "leaderboard" ? (
+                <Suspense fallback={<div className="flex items-center justify-center min-h-[40vh]"><LoadingIndicator label="Loading standings leaderboard" /></div>}>
+                    <AdminLeaderboard embedded />
+                </Suspense>
             ) : (
                 <>
-                    {viewMode === "events" && renderEvents()}
-                    {viewMode === "rounds" && renderRounds()}
-                    {viewMode === "results" && renderResults()}
+                    {/* Search Input */}
+                    <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                        <input
+                            type="text"
+                            placeholder={`Search ${viewMode}...`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            aria-label={`Search ${viewMode}`}
+                            className="w-full min-h-11 pl-9 pr-4 py-2 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
+                        />
+                    </div>
+
+                    {/* Dynamic Content */}
+                    {loading ? (
+                        <div className="flex items-center justify-center min-h-[40vh]">
+                            <LoadingIndicator label="Loading tournament results" />
+                        </div>
+                    ) : (
+                        <>
+                            {viewMode === "events" && renderEvents()}
+                            {viewMode === "rounds" && renderRounds()}
+                            {viewMode === "results" && renderResults()}
+                        </>
+                    )}
                 </>
             )}
         </div>

@@ -12,6 +12,32 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL
 const apiCache = new Map();
 const CACHE_TTL_MS = 20000; // 20s client cache for fast tab switching
 
+const MUTATION_CACHE_TARGETS = {
+    "check-in": ["check-in", "rounds"],
+    pairing: ["pairing", "rounds", "debates", "events"],
+    debates: ["debates", "rounds", "stats", "leaderboard", "events", "/users/me"],
+    rounds: ["rounds", "events", "debates", "check-in", "stats", "leaderboard"],
+    events: ["events", "rounds"],
+    admin: ["admin", "rounds", "debates", "events", "stats", "leaderboard", "/users/me"],
+};
+
+function invalidateMutationCache(endpoint) {
+    const cleanPath = (endpoint || "").split("?")[0];
+    const resource = cleanPath.split("/")[1] || null;
+    if (!resource) {
+        clearApiCache(null);
+        return;
+    }
+
+    const targets = new Set([resource]);
+    for (const [key, prefixes] of Object.entries(MUTATION_CACHE_TARGETS)) {
+        if (cleanPath.includes(`/${key}`)) {
+            prefixes.forEach((p) => targets.add(p));
+        }
+    }
+    targets.forEach((prefix) => clearApiCache(prefix));
+}
+
 export function clearApiCache(prefix = null) {
     if (!prefix) {
         apiCache.clear();
@@ -64,8 +90,9 @@ export async function apiRequest(
         "Content-Type": "application/json",
     };
 
+    const hasSessionStorage = typeof sessionStorage !== "undefined";
     const adminSecretKey =
-        isBrowser && sessionStorage.getItem("isAdminSession") === "true"
+        isBrowser && hasSessionStorage && sessionStorage.getItem("isAdminSession") === "true"
             ? sessionStorage.getItem("adminSecretKey")?.trim() || null
             : null;
     if (adminSecretKey) {
@@ -101,10 +128,14 @@ export async function apiRequest(
     const isGet = method.toUpperCase() === "GET";
     const cacheKey = `${endpoint}::${resolvedToken ? "auth" : adminSecretKey ? "admin" : "anon"}`;
 
-    if (isBrowser && isGet && !options.skipCache) {
-        const cached = apiCache.get(cacheKey);
-        if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-            return JSON.parse(JSON.stringify(cached.data));
+    if (isBrowser && isGet) {
+        if (options.skipCache) {
+            apiCache.delete(cacheKey);
+        } else {
+            const cached = apiCache.get(cacheKey);
+            if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+                return JSON.parse(JSON.stringify(cached.data));
+            }
         }
     }
 
@@ -180,8 +211,8 @@ export async function apiRequest(
         if (isGet) {
             apiCache.set(cacheKey, {data, timestamp: Date.now()});
         } else {
-            // Invalidate cache for mutations
-            clearApiCache(endpoint.split("/")[1] || null);
+            // Invalidate related caches for mutations
+            invalidateMutationCache(endpoint);
         }
 
         return data;
@@ -194,17 +225,18 @@ export async function apiRequest(
 // User Endpoints
 export const UserApi = {
     checkEmail: (email) => apiRequest("/users/check-email", "POST", {email}, null, {requireAuth: false}),
-    getProfile: (token) => apiRequest("/users/me", "GET", null, token),
+    getProfile: (token, options = {}) => apiRequest("/users/me", "GET", null, token, options),
     updateProfile: (data, token) =>
         apiRequest("/users/profile", "PUT", data, token),
-    getStats: (token) => apiRequest("/stats/my-stats", "GET", null, token),
-    getById: (id, token) => apiRequest(`/users/${id}`, "GET", null, token),
-    list: (token, limit = 500, offset = 0) =>
+    getStats: (token, options = {}) => apiRequest("/stats/my-stats", "GET", null, token, options),
+    getById: (id, token, options = {}) => apiRequest(`/users/${id}`, "GET", null, token, options),
+    list: (token, limit = 500, offset = 0, options = {}) =>
         apiRequest(
             `/users?limit=${limit}&offset=${offset}`,
             "GET",
             null,
             token,
+            options,
         ),
     deleteParticipant: (id, token) =>
         apiRequest(`/users/${id}`, "DELETE", null, token),
@@ -212,59 +244,60 @@ export const UserApi = {
 
 // Event Endpoints
 export const EventApi = {
-    list: (token, status = null) =>
+    list: (token, status = null, options = {}) =>
         apiRequest(
             `/events${status ? `?status=${status}` : ""}`,
             "GET",
             null,
             token,
+            options,
         ),
-    get: (id, token) => apiRequest(`/events/${id}`, "GET", null, token),
-    getById: (id, token) => apiRequest(`/events/${id}`, "GET", null, token),
-    getParticipants: (eventId, token) =>
-        apiRequest(`/events/${eventId}/participants`, "GET", null, token),
+    get: (id, token, options = {}) => apiRequest(`/events/${id}`, "GET", null, token, options),
+    getById: (id, token, options = {}) => apiRequest(`/events/${id}`, "GET", null, token, options),
+    getParticipants: (eventId, token, options = {}) =>
+        apiRequest(`/events/${eventId}/participants`, "GET", null, token, options),
     enroll: (id, token) =>
         apiRequest(`/events/${id}/enroll`, "POST", null, token),
-    getEnrollmentStatus: (id, token) =>
-        apiRequest(`/events/${id}/enrollment-status`, "GET", null, token),
+    getEnrollmentStatus: (id, token, options = {}) =>
+        apiRequest(`/events/${id}/enrollment-status`, "GET", null, token, options),
     enrollUserManual: (eventId, userId, token) =>
         apiRequest(`/events/${eventId}/enroll-manual`, "POST", {userId}, token),
 };
 
 // Round Endpoints
 export const RoundApi = {
-    listByEvent: (eventId, token) =>
-        apiRequest(`/rounds/event/${eventId}`, "GET", null, token),
-    get: (id, token) => apiRequest(`/rounds/${id}`, "GET", null, token),
-    getById: (id, token) => apiRequest(`/rounds/${id}`, "GET", null, token),
+    listByEvent: (eventId, token, options = {}) =>
+        apiRequest(`/rounds/event/${eventId}`, "GET", null, token, options),
+    get: (id, token, options = {}) => apiRequest(`/rounds/${id}`, "GET", null, token, options),
+    getById: (id, token, options = {}) => apiRequest(`/rounds/${id}`, "GET", null, token, options),
 };
 
 // Check-In Endpoints
 export const CheckInApi = {
     checkIn: (roundId, token) =>
         apiRequest("/check-in", "POST", {roundId}, token),
-    getMyStatus: (roundId, token) =>
-        apiRequest(`/check-in/round/${roundId}/me`, "GET", null, token),
+    getMyStatus: (roundId, token, options = {}) =>
+        apiRequest(`/check-in/round/${roundId}/me`, "GET", null, token, options),
 };
 
 // Debate Endpoints
 export const DebateApi = {
-    getMyDebates: (token) =>
-        apiRequest("/debates/my-debates", "GET", null, token),
-    getByRound: (roundId, token) =>
-        apiRequest(`/debates/round/${roundId}`, "GET", null, token),
-    getById: (id, token) => apiRequest(`/debates/${id}`, "GET", null, token),
+    getMyDebates: (token, options = {}) =>
+        apiRequest("/debates/my-debates", "GET", null, token, options),
+    getByRound: (roundId, token, options = {}) =>
+        apiRequest(`/debates/round/${roundId}`, "GET", null, token, options),
+    getById: (id, token, options = {}) => apiRequest(`/debates/${id}`, "GET", null, token, options),
 };
 
 // Stats Endpoints
 export const StatsApi = {
-    getMyStats: (token) => apiRequest("/stats/my-stats", "GET", null, token),
-    getUserStats: (userId, token) =>
-        apiRequest(`/stats/user/${userId}`, "GET", null, token),
-    getLeaderboard: (token, eventId = null, limit = 50) => {
+    getMyStats: (token, options = {}) => apiRequest("/stats/my-stats", "GET", null, token, options),
+    getUserStats: (userId, token, options = {}) =>
+        apiRequest(`/stats/user/${userId}`, "GET", null, token, options),
+    getLeaderboard: (token, eventId = null, limit = 50, options = {}) => {
         let url = `/stats/leaderboard?limit=${limit}`;
         if (eventId) url += `&eventId=${eventId}`;
-        return apiRequest(url, "GET", null, token);
+        return apiRequest(url, "GET", null, token, options);
     },
 };
 

@@ -1,5 +1,5 @@
 import ModalSurface from "../../components/ui/ModalSurface";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { motion as Motion } from "framer-motion";
 import {
   Calendar,
@@ -10,26 +10,39 @@ import {
   Eye,
   MessageCircle,
   RotateCcw,
+  Flag,
+  DoorOpen,
   X,
 } from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../auth/client.jsx";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AdminApi, EventApi } from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { useSocket, SocketEvents, useLiveRefresh, invalidateRealtimeCache } from "../../hooks/useSocket";
 import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
 import EmptyState from "../../components/ui/EmptyState";
 
+const AdminRooms = lazy(() => import("./AdminRooms"));
+
 export default function AdminEvents() {
   const { getToken } = useAuth();
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "rooms" ? "rooms" : "events";
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+
+  const setActiveTab = (tab) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "events") next.delete("tab");
+    else next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  };
 
   const getTokenRef = useRef(getToken);
   useEffect(() => {
@@ -99,14 +112,14 @@ export default function AdminEvents() {
         setEvents(events.filter((e) => e.id !== id));
         toast.success("Deleted", "Event deleted successfully");
       } else {
-        alert(response.error || "Failed to delete event");
+        toast.error("Delete failed", response.error || "Failed to delete event");
       }
     } catch {
-      alert("Error deleting event");
+      toast.error("Error deleting event");
     }
   };
 
-  if (loading) {
+  if (loading && activeTab === "events") {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingIndicator label="Loading tournament events" />
@@ -120,58 +133,104 @@ export default function AdminEvents() {
       <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
         <div className="max-w-full">
           <div className="flex items-center gap-2 mb-1">
-            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
+            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-600 dark:text-emerald-400">
               AXIOM 4.0
             </span>
             <span className="text-muted-foreground/60">•</span>
             <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
-              Tournaments
+              {activeTab === "rooms" ? "Venues & Halls" : "Tournaments"}
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground break-words">
-            Events Management
+            {activeTab === "rooms" ? "Venue Rooms" : "Events Management"}
           </h1>
           <p className="text-sm md:text-base text-muted-foreground mt-0.5 max-w-xl font-sans">
-            Oversee parliamentary tournaments, round sequencing, and participant enrollment
+            {activeTab === "rooms"
+              ? "Manage debating halls, capacities, and active adjudicators"
+              : "Oversee parliamentary tournaments, round sequencing, and participant enrollment"}
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            onClick={() => fetchEvents()}
-            disabled={loading}
-            className="p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            title="Refresh Data"
-            aria-label="Refresh events list"
-          >
-            <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
-          </button>
-          <button
-            onClick={() => {
-              setEditingEvent(null);
-              setShowCreateModal(true);
-            }}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-sans font-medium text-sm hover:bg-primary/90 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            <span>Create Event</span>
-          </button>
-        </div>
+        {activeTab === "events" && (
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => fetchEvents()}
+              disabled={loading}
+              className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title="Refresh Data"
+              aria-label="Refresh events list"
+            >
+              <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingEvent(null);
+                setShowCreateModal(true);
+              }}
+              className="min-h-11 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-sans font-medium text-sm hover:bg-primary/90 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              <span>Create Event</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Search Filter */}
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-        <input
-          type="text"
-          placeholder="Search tournaments by name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          aria-label="Search tournaments"
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
-        />
+      {/* Unified Sub-tabs: Events | Venue Rooms */}
+      <div className="inline-flex items-center gap-1 bg-muted/60 border border-border/80 p-1 rounded-xl" role="tablist" aria-label="Events and rooms sections">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "events"}
+          onClick={() => setActiveTab("events")}
+          className={cn(
+            "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            activeTab === "events"
+              ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Flag className="w-4 h-4" aria-hidden="true" />
+          <span>Events</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "rooms"}
+          onClick={() => setActiveTab("rooms")}
+          className={cn(
+            "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            activeTab === "rooms"
+              ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <DoorOpen className="w-4 h-4" aria-hidden="true" />
+          <span>Venue Rooms</span>
+        </button>
       </div>
 
-      {/* Events List */}
+      {activeTab === "rooms" ? (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-[40vh]"><LoadingIndicator label="Loading venue rooms" /></div>}>
+          <AdminRooms embedded />
+        </Suspense>
+      ) : (
+        <>
+          {/* Search Filter */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="Search tournaments by name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search tournaments"
+              className="w-full min-h-11 pl-9 pr-4 py-2 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
+            />
+          </div>
+
+          {/* Events List */}
       {filteredEvents.length === 0 ? (
         <EmptyState
           title={searchQuery ? "Nothing matched" : "No tournaments yet"}
@@ -222,7 +281,7 @@ export default function AdminEvents() {
                               </Link>
                               {event.whatsappLink && (
                                 <span
-                                  className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                                  className="ax-signal-win inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-200"
                                   title={event.whatsappLink}
                                 >
                                   <MessageCircle className="w-3 h-3" aria-hidden="true" />
@@ -250,9 +309,9 @@ export default function AdminEvents() {
                         <span
                           className={`text-[10px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
                             event.status === "ONGOING"
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                              ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35"
                               : event.status === "UPCOMING"
-                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                              ? "ax-signal-info bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 border-indigo-500/35"
                               : "bg-muted text-muted-foreground border-border"
                           }`}
                         >
@@ -263,14 +322,15 @@ export default function AdminEvents() {
                         <div className="flex items-center justify-end gap-1">
                           <Link
                             to={`/admin/events/${event.id}`}
-                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title="View Tournament"
                             aria-label={`View tournament ${event.name}`}
                           >
                             <Eye className="w-4 h-4" aria-hidden="true" />
                           </Link>
                           <button
-                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            type="button"
+                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title="Edit Tournament"
                             aria-label={`Edit tournament ${event.name}`}
                             onClick={() => setEditingEvent(event)}
@@ -278,8 +338,9 @@ export default function AdminEvents() {
                             <Edit className="w-4 h-4" aria-hidden="true" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDeleteEvent(event.id)}
-                            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-rose-500/15 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title="Delete Tournament"
                             aria-label={`Delete tournament ${event.name}`}
                           >
@@ -321,9 +382,9 @@ export default function AdminEvents() {
                   <span
                     className={`text-[9px] font-sans font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
                       event.status === "ONGOING"
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                        ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35"
                         : event.status === "UPCOMING"
-                        ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                        ? "ax-signal-info bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 border-indigo-500/35"
                         : "bg-muted text-muted-foreground border-border"
                     }`}
                   >
@@ -344,21 +405,23 @@ export default function AdminEvents() {
                   <div className="flex items-center gap-1">
                     <Link
                       to={`/admin/events/${event.id}`}
-                      className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="View tournament details"
                     >
                       <Eye className="w-4 h-4" aria-hidden="true" />
                     </Link>
                     <button
-                      className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      type="button"
+                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => setEditingEvent(event)}
                       aria-label="Edit tournament"
                     >
                       <Edit className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDeleteEvent(event.id)}
-                      className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-rose-500/15 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                       aria-label="Delete tournament"
                     >
                       <Trash2 className="w-4 h-4" aria-hidden="true" />
@@ -368,6 +431,8 @@ export default function AdminEvents() {
               </Motion.div>
             ))}
           </div>
+        </>
+      )}
         </>
       )}
 

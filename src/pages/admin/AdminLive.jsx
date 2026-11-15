@@ -1,16 +1,18 @@
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {Link, useNavigate} from "react-router-dom";
-import {Loader2, Search, X, Edit3, Check, Trophy, Plus, ChevronDown} from "lucide-react";
+import {Link} from "react-router-dom";
+import {Loader2, Search, X, Edit3, Trophy, Plus, Clock, ShieldCheck, DoorOpen} from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
-import {AdminApi, EventApi} from "../../services/api";
-import {useRoundSocket, useLiveRefresh} from "../../hooks/useSocket";
+import {AdminApi} from "../../services/api";
+import {useRoundSocket, useEventSocket, useSocket, SocketEvents, useLiveRefresh} from "../../hooks/useSocket";
 import {useToast} from "../../hooks/useToast";
 import {useAdminEvent} from "../../contexts/adminEvent";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import InlineResultSheet from "../../components/admin/InlineResultSheet";
-import {cn} from "../../lib/utils";
+import {cn, formatTimeIST, toISTDateTimeLocal, toISTISOString} from "../../lib/utils";
 
 const AllocateRoomsModal = lazy(() => import("./AdminRoundManagement").then((m) => ({default: m.AllocateRoomsModal})));
+const PairingPreviewModal = lazy(() => import("./AdminRoundManagement").then((m) => ({default: m.PairingPreviewModal})));
+const toISTDateTimeString = toISTDateTimeLocal;
 
 const STEPS = [
     {label: "Check-in", short: "Check-in"},
@@ -26,7 +28,6 @@ const judgeOf = (d) => d.judgeName || (d.adjudicator ? fullName(d.adjudicator) :
 
 export default function AdminLive() {
     const {getToken} = useAuth();
-    const navigate = useNavigate();
     const toast = useToast();
     const {events, event, eventId, setEventId, loading: eventsLoading} = useAdminEvent();
 
@@ -37,11 +38,17 @@ export default function AdminLive() {
     const [debates, setDebates] = useState([]);
     const [rooms, setRooms] = useState([]);
     const [users, setUsers] = useState([]);
+    const [performers, setPerformers] = useState([]);
     const [resultsPublished, setResultsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [busy, setBusy] = useState(""); // generating | allocating | publishing | results | checkin:<id>
+    const [busy, setBusy] = useState(""); // generating | allocating | publishing | results | preview | window | status
+    const [pendingCheckIns, setPendingCheckIns] = useState(() => new Set());
+    const [promotingIds, setPromotingIds] = useState(() => new Set());
+    const [savingJudgeId, setSavingJudgeId] = useState(null);
     const [showAllocate, setShowAllocate] = useState(false);
     const [showQuickRound, setShowQuickRound] = useState(false);
+    const [showQuickRoom, setShowQuickRoom] = useState(false);
+    const [previewData, setPreviewData] = useState(null);
     const [scoringDebate, setScoringDebate] = useState(null);
     const [viewStep, setViewStep] = useState(null);
     const [search, setSearch] = useState("");
@@ -49,15 +56,36 @@ export default function AdminLive() {
     useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
     const activeRound = useRef(roundId);
     useEffect(() => { activeRound.current = roundId; }, [roundId]);
+    const fetchGenRef = useRef(0);
 
     // Rounds of the selected event
+    const refreshRoundsList = useCallback(async (selectPreferred = false) => {
+        if (!eventId) return;
+        try {
+            const token = await getTokenRef.current();
+            const res = await AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, {skipCache: true});
+            const list = (res.success ? res.rounds || [] : []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
+            setRounds(list);
+            if (selectPreferred || (activeRound.current && !list.some((r) => r.id === activeRound.current))) {
+                const live = list.find((r) => String(r.status).toUpperCase() === "ONGOING")
+                    || list.find((r) => String(r.status).toUpperCase() !== "COMPLETED")
+                    || list[list.length - 1];
+                setRoundId(live?.id || null);
+                if (!live) setLoading(false);
+            }
+        } catch {
+            toast.error("Error", "Failed to load rounds");
+            setLoading(false);
+        }
+    }, [eventId, toast]);
+
     useEffect(() => {
         if (!eventId) return undefined;
         let cancelled = false;
         (async () => {
             try {
                 const token = await getTokenRef.current();
-                const res = await AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token);
+                const res = await AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, {skipCache: true});
                 if (cancelled) return;
                 const list = (res.success ? res.rounds || [] : []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
                 setRounds(list);
@@ -76,28 +104,33 @@ export default function AdminLive() {
     const fetchRound = useCallback(async (background = false) => {
         if (!roundId) return;
         const id = roundId;
+        const gen = ++fetchGenRef.current;
         if (!background) setLoading(true);
         try {
             const token = await getTokenRef.current();
-            const res = await AdminApi.apiRequest(`/rounds/${id}`, "GET", null, token);
-            if (activeRound.current !== id || !res.success) return;
+            const opts = {skipCache: true};
+            const res = await AdminApi.apiRequest(`/rounds/${id}`, "GET", null, token, opts);
+            if (gen !== fetchGenRef.current || activeRound.current !== id || !res.success) return;
             const r = res.round;
             const [roomsRes, partsRes, perfRes] = await Promise.all([
-                AdminApi.apiRequest("/rooms", "GET", null, token),
-                EventApi.getParticipants(r.eventId, token),
-                AdminApi.getRoundPerformers(id, token).catch(() => null),
+                AdminApi.apiRequest("/rooms", "GET", null, token, opts),
+                AdminApi.apiRequest(`/events/${r.eventId}/participants`, "GET", null, token, opts),
+                AdminApi.apiRequest(`/admin/rounds/${id}/performers`, "GET", null, token, opts).catch(() => null),
             ]);
-            if (activeRound.current !== id) return;
+            if (gen !== fetchGenRef.current || activeRound.current !== id) return;
             setRound(r);
             setCheckIns(r.checkIns || []);
             setDebates(r.debates || []);
             setRooms(roomsRes.success ? roomsRes.rooms || [] : []);
             setUsers(partsRes.success ? partsRes.participants || [] : []);
+            setPerformers(perfRes?.success ? perfRes.performers || [] : []);
             setResultsPublished(Boolean(perfRes?.resultsPublished));
         } catch {
-            toast.error("Error", "Failed to load round data");
+            if (gen === fetchGenRef.current && !background) {
+                toast.error("Error", "Failed to load round data");
+            }
         } finally {
-            if (activeRound.current === id) setLoading(false);
+            if (gen === fetchGenRef.current && activeRound.current === id) setLoading(false);
         }
     }, [roundId, toast]);
 
@@ -106,25 +139,113 @@ export default function AdminLive() {
     const refetchTimer = useRef(null);
     const softRefetch = useCallback(() => {
         clearTimeout(refetchTimer.current);
-        refetchTimer.current = setTimeout(() => fetchRound(true), 300);
+        refetchTimer.current = setTimeout(() => fetchRound(true), 60);
     }, [fetchRound]);
     useEffect(() => () => clearTimeout(refetchTimer.current), []);
 
     useLiveRefresh(() => fetchRound(true));
 
+    const handleRealtimeCheckIn = useCallback((data) => {
+        const targetUserId = data?.userId || data?.user?.id;
+        if (!targetUserId) {
+            softRefetch();
+            return;
+        }
+        setCheckIns((prev) => {
+            const exists = prev.some((c) => c.userId === targetUserId);
+            if (exists) {
+                return prev.map((c) =>
+                    c.userId === targetUserId
+                        ? {...c, status: data.status, ...(data.user ? {user: data.user} : {})}
+                        : c
+                );
+            }
+            if (data.user) {
+                return [...prev, {userId: targetUserId, status: data.status, user: data.user}];
+            }
+            softRefetch();
+            return [...prev, {userId: targetUserId, status: data.status}];
+        });
+        if (data.user) {
+            setUsers((prev) => (prev.some((u) => u.id === targetUserId) ? prev : [...prev, data.user]));
+        }
+    }, [softRefetch]);
+
+    const handleRealtimeWindow = useCallback((data) => {
+        if (data && data.roundId && data.roundId !== roundId) return;
+        setRound((prev) => prev ? {
+            ...prev,
+            checkInStartTime: data?.checkInStartTime !== undefined ? data.checkInStartTime : prev.checkInStartTime,
+            checkInEndTime: data?.checkInEndTime !== undefined ? data.checkInEndTime : prev.checkInEndTime,
+        } : prev);
+        softRefetch();
+    }, [roundId, softRefetch]);
+
     useRoundSocket(roundId, {
-        onCheckInUpdate: (data) => setCheckIns((prev) => prev.some((c) => c.userId === data.userId)
-            ? prev.map((c) => c.userId === data.userId ? {...c, status: data.status} : c)
-            : (softRefetch(), prev)),
-        onPairingsGenerated: (data) => (data.debates ? setDebates(data.debates) : softRefetch()),
+        onCheckInUpdate: handleRealtimeCheckIn,
+        onPairingsGenerated: (data) => (data?.debates ? setDebates(data.debates) : softRefetch()),
         onRoomsAllocated: softRefetch,
-        onDebateResult: (data) => setDebates((prev) => prev.map((d) => d.id === data.debateId
-            ? {...d, winnerId: data.winnerId, debater1Score: data.debater1Score, debater2Score: data.debater2Score, status: "COMPLETED"} : d)),
-        onRoundStatusChange: (data) => setRound((prev) => (prev ? {...prev, ...data} : prev)),
+        onDebateResult: (data) => {
+            setDebates((prev) => prev.map((d) => d.id === data.debateId
+                ? {...d, winnerId: data.winnerId, debater1Score: data.debater1Score, debater2Score: data.debater2Score, status: "COMPLETED"} : d));
+            softRefetch();
+        },
+        onRoundStatusChange: (data) => {
+            setRound((prev) => (prev ? {...prev, ...data} : prev));
+            setRounds((prev) => prev.map((r) => (r.id === (data?.roundId || roundId) ? {...r, status: data?.status ?? r.status} : r)));
+        },
         onPairingsPublished: (data) => setRound((prev) => (prev ? {...prev, pairingsPublished: data.published} : prev)),
         onResultsPublished: (data) => setResultsPublished(Boolean(data.published)),
-        onRoundUpdated: (data) => { if (data.round) setRound((prev) => ({...prev, ...data.round})); },
+        onRoundUpdated: (data) => { if (data?.round) setRound((prev) => ({...prev, ...data.round})); },
+        onRoundDeleted: () => refreshRoundsList(true),
     });
+
+    useEventSocket(eventId, {
+        onCheckInCount: (data) => {
+            if (!data?.roundId || data.roundId === roundId) softRefetch();
+        },
+        onRoundCheckInWindow: handleRealtimeWindow,
+        onRoundCreated: (data) => {
+            if (data?.round) {
+                setRounds((prev) => (
+                    prev.some((r) => r.id === data.round.id)
+                        ? prev.map((r) => (r.id === data.round.id ? {...r, ...data.round} : r))
+                        : [...prev, data.round].sort((a, b) => a.roundNumber - b.roundNumber)
+                ));
+            } else {
+                refreshRoundsList(false);
+            }
+        },
+        onRoundDeleted: (data) => {
+            const deletedId = data?.roundId || data?.id;
+            if (deletedId) {
+                setRounds((prev) => prev.filter((r) => r.id !== deletedId));
+            }
+            if (!deletedId || deletedId === roundId) {
+                refreshRoundsList(true);
+            }
+        },
+        onEventEnrollment: (data) => {
+            if (data?.user?.id) {
+                setUsers((prev) => (prev.some((u) => u.id === data.user.id) ? prev : [...prev, data.user]));
+            }
+            softRefetch();
+        },
+        onRoundStatusChange: (data) => {
+            if (data?.roundId === roundId) {
+                setRound((prev) => (prev ? {...prev, status: data.status} : prev));
+            }
+            if (data?.roundId) {
+                setRounds((prev) => prev.map((r) => (r.id === data.roundId ? {...r, status: data.status} : r)));
+            }
+        },
+    });
+
+    const {subscribe: subscribeLive} = useSocket({eventId, roundId});
+    useEffect(() => {
+        if (!eventId && !roundId) return undefined;
+        return subscribeLive(SocketEvents.ROUND_CHECKIN_WINDOW, handleRealtimeWindow);
+    }, [subscribeLive, eventId, roundId, handleRealtimeWindow]);
 
     // ----- derived round state -----
     const people = useMemo(() => {
@@ -133,6 +254,7 @@ export default function AdminLive() {
         return merged;
     }, [users, checkIns]);
     const presentIds = useMemo(() => new Set(checkIns.filter((c) => c.status === "PRESENT").map((c) => c.userId)), [checkIns]);
+    const checkedInUsers = useMemo(() => people.filter((u) => presentIds.has(u.id)), [people, presentIds]);
     const absent = useMemo(() => people.filter((u) => !presentIds.has(u.id)), [people, presentIds]);
     const present = presentIds.size;
     const total = people.length;
@@ -152,27 +274,168 @@ export default function AdminLive() {
     const match = (...parts) => !q || parts.join(" ").toLowerCase().includes(q);
 
     // ----- actions (same endpoints and rules as AdminRoundManagement) -----
-    const markPresent = async (userId) => {
-        setBusy(`checkin:${userId}`);
+    const toggleCheckIn = async (userId, nextStatus = "PRESENT") => {
+        if (pendingCheckIns.has(userId)) return;
+        setPendingCheckIns((prev) => new Set(prev).add(userId));
+
+        let rollback = null;
+        setCheckIns((prev) => {
+            rollback = prev;
+            const exists = prev.some((c) => c.userId === userId);
+            if (exists) {
+                return prev.map((c) => (c.userId === userId ? {...c, status: nextStatus} : c));
+            }
+            const userObj = people.find((u) => u.id === userId);
+            return [...prev, {userId, status: nextStatus, ...(userObj ? {user: userObj} : {})}];
+        });
+
         try {
             const token = await getToken();
-            const res = await AdminApi.apiRequest(`/check-in/round/${roundId}/user/${userId}`, "PUT", {status: "PRESENT"}, token);
+            const res = await AdminApi.apiRequest(`/check-in/round/${roundId}/user/${userId}`, "PUT", {status: nextStatus}, token);
+            if (activeRound.current !== roundId) return;
             if (res.success) {
-                setCheckIns((prev) => prev.some((c) => c.userId === userId)
-                    ? prev.map((c) => c.userId === userId ? {...c, status: "PRESENT"} : c)
-                    : [...prev, {userId, status: "PRESENT"}]);
+                toast.success("Check-in updated", nextStatus === "PRESENT" ? "Marked present." : "Marked absent.");
+                softRefetch();
+            } else {
+                if (rollback) setCheckIns(rollback);
+                toast.error("Check-in failed", res.error || "Failed to update check-in status");
             }
-        } catch { toast.error("Error", "Failed to update check-in status"); } finally { setBusy(""); }
+        } catch (err) {
+            if (rollback) setCheckIns(rollback);
+            toast.error("Error", err?.message || "Failed to update check-in status");
+        } finally {
+            setPendingCheckIns((prev) => {
+                const next = new Set(prev);
+                next.delete(userId);
+                return next;
+            });
+        }
+    };
+
+    const updateCheckInWindow = async ({checkInStartTime, checkInEndTime}) => {
+        setBusy("window");
+        try {
+            const token = await getToken();
+            const res = await AdminApi.updateRound(roundId, {checkInStartTime, checkInEndTime}, token);
+            if (res.success) {
+                setRound((prev) => (prev ? {...prev, checkInStartTime, checkInEndTime, ...(res.round || {})} : prev));
+                toast.success("Check-in window updated", "Timing saved in IST.");
+                softRefetch();
+                return true;
+            }
+            toast.error("Update failed", res.error || "Could not update check-in window");
+            return false;
+        } catch (err) {
+            toast.error("Error", err?.message || "Could not update check-in window");
+            return false;
+        } finally {
+            setBusy("");
+        }
+    };
+
+    const updateRoundStatus = async (status) => {
+        if (!round || round.status === status || busy === "status") return;
+        setBusy("status");
+        try {
+            const token = await getToken();
+            const res = await AdminApi.updateRound(roundId, {status}, token);
+            if (res.success) {
+                setRound((prev) => (prev ? {...prev, status} : prev));
+                setRounds((prev) => prev.map((r) => (r.id === roundId ? {...r, status} : r)));
+                toast.success("Round status updated", `Round marked ${status}.`);
+            } else {
+                toast.error("Update failed", res.error || "Could not update round status");
+            }
+        } catch (err) {
+            toast.error("Error", err?.message || "Could not update round status");
+        } finally {
+            setBusy("");
+        }
+    };
+
+    const assignJudge = async (debateId, judgeName) => {
+        setSavingJudgeId(debateId);
+        try {
+            const token = await getToken();
+            const res = await AdminApi.apiRequest(`/debates/${debateId}`, "PUT", {judgeName}, token);
+            if (res.success) {
+                setDebates((prev) => prev.map((d) => (d.id === debateId ? {...d, judgeName, adjudicator: null, adjudicatorId: null} : d)));
+                toast.success("Judge assigned", judgeName ? `Assigned ${judgeName}.` : "Cleared judge.");
+                softRefetch();
+            } else {
+                toast.error("Assignment failed", res.error || "Could not assign judge");
+            }
+        } catch (err) {
+            toast.error("Error", err?.message || "Could not assign judge");
+        } finally {
+            setSavingJudgeId(null);
+        }
+    };
+
+    const togglePromotePerformer = async (userId) => {
+        if (promotingIds.has(userId)) return;
+        const nextSelected = new Set(performers.filter((p) => p.isPromoted).map((p) => p.userId));
+        if (nextSelected.has(userId)) nextSelected.delete(userId);
+        else nextSelected.add(userId);
+
+        setPromotingIds((prev) => new Set(prev).add(userId));
+        const previousPerformers = performers;
+        setPerformers((prev) => prev.map((p) => (p.userId === userId ? {...p, isPromoted: nextSelected.has(userId)} : p)));
+        try {
+            const token = await getToken();
+            const res = await AdminApi.promoteDebaters(roundId, Array.from(nextSelected), token);
+            if (res.success) {
+                toast.success("Promotion updated", nextSelected.has(userId) ? "Debater promoted." : "Promotion removed.");
+                softRefetch();
+            } else {
+                setPerformers(previousPerformers);
+                toast.error("Promotion failed", res.error || "Could not update promotion");
+            }
+        } catch (err) {
+            setPerformers(previousPerformers);
+            toast.error("Error", err?.message || "Could not update promotion");
+        } finally {
+            setPromotingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(userId);
+                return next;
+            });
+        }
+    };
+
+    const promoteAllWinners = async () => {
+        const winnerIds = performers.filter((p) => p.won || p.isPromoted).map((p) => p.userId);
+        if (winnerIds.length === 0) return;
+        setBusy("promoting");
+        const previousPerformers = performers;
+        const winnerSet = new Set(winnerIds);
+        setPerformers((prev) => prev.map((p) => ({...p, isPromoted: winnerSet.has(p.userId)})));
+        try {
+            const token = await getToken();
+            const res = await AdminApi.promoteDebaters(roundId, winnerIds, token);
+            if (res.success) {
+                toast.success("Winners promoted", `Promoted ${winnerIds.length} qualifying debaters.`);
+                softRefetch();
+            } else {
+                setPerformers(previousPerformers);
+                toast.error("Promotion failed", res.error || "Could not promote winners");
+            }
+        } catch (err) {
+            setPerformers(previousPerformers);
+            toast.error("Error", err?.message || "Could not promote winners");
+        } finally {
+            setBusy("");
+        }
     };
 
     const previewPairings = async () => {
         setBusy("preview");
         try {
             const token = await getToken();
-            const res = await AdminApi.previewPairings(roundId, token);
-            if (res.success) toast.info("Pairing preview", `${res.data?.pairings?.length ?? res.pairings?.length ?? res.data?.count ?? "Some"} debates would be created.`);
+            const res = await AdminApi.apiRequest(`/pairing/${roundId}/preview`, "GET", null, token, {skipCache: true});
+            if (res.success) setPreviewData(res);
             else toast.error("Preview failed", res.error || "Could not preview pairings");
-        } catch { toast.error("Error", "Could not preview pairings"); } finally { setBusy(""); }
+        } catch (err) { toast.error("Error", err?.message || "Could not preview pairings"); } finally { setBusy(""); }
     };
 
     const generatePairings = async () => {
@@ -305,8 +568,17 @@ export default function AdminLive() {
         };
         return {
             title: resultsPublished ? "Promote debaters" : "Publish results",
-            body: resultsPublished ? "Results are public. Review the top performers and promote them to the next round." : "All ballots are in. Make results public, then promote.",
-            cta: resultsPublished ? "Review & promote" : "Publish results", run: resultsPublished ? () => navigate(`/admin/rounds/${roundId}/promotion`) : publishResults, working: busy === "results",
+            body: resultsPublished ? "Results are public. Toggle qualifiers inline below and advance to the next round." : "All ballots are in. Make results public, then promote.",
+            cta: resultsPublished ? "Review & promote" : "Publish results",
+            run: resultsPublished
+                ? () => {
+                    setViewStep(4);
+                    window.setTimeout(() => {
+                        document.getElementById("inline-promotion-panel")?.scrollIntoView({behavior: "smooth", block: "start"});
+                    }, 50);
+                }
+                : publishResults,
+            working: busy === "results",
         };
     })();
 
@@ -337,23 +609,23 @@ export default function AdminLive() {
 
     const stepState = (i) => (i < currentStep ? "Done" : i === currentStep ? "Now" : "Next");
     const sideNote = [
-        withRoom < debates.length && hasDebates ? {text: `${debates.length - withRoom} debate${debates.length - withRoom === 1 ? "" : "s"} without a room`, to: `/admin/rounds/${roundId}`, cta: "allocate"} : null,
-        allRooms && noJudge ? {text: `${noJudge} debate${noJudge === 1 ? "" : "s"} without a judge`, to: `/admin/rounds/${roundId}`, cta: "assign"} : null,
+        withRoom < debates.length && hasDebates ? {text: `${debates.length - withRoom} debate${debates.length - withRoom === 1 ? "" : "s"} without a room`, step: 2, cta: "allocate"} : null,
+        allRooms && noJudge ? {text: `${noJudge} debate${noJudge === 1 ? "" : "s"} without a judge`, step: 2, cta: "assign"} : null,
     ].filter(Boolean);
 
     return (
         <div className="mx-auto max-w-[1180px] font-sans space-y-4">
-            {/* Header: Event Switcher + Round Title */}
+            {/* Header: Event Switcher + Round Title + Quick Status */}
             <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border/80 pb-4">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
+                <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-muted-foreground">Tournament</span>
                         {events?.length > 1 && (
                             <select
                                 aria-label="Select tournament"
                                 value={eventId || ""}
                                 onChange={(e) => setEventId(e.target.value)}
-                                className="h-7 px-2 rounded-md border border-border bg-card text-xs font-semibold text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                className="h-9 px-2.5 rounded-md border border-border bg-card text-xs font-semibold text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                             >
                                 {events.map((ev) => (
                                     <option key={ev.id} value={ev.id}>
@@ -366,9 +638,37 @@ export default function AdminLive() {
                             <span className="text-xs font-bold text-foreground">{event.name}</span>
                         )}
                     </div>
-                    <h1 className="font-display text-[38px] md:text-[50px] font-normal leading-tight text-primary">
+                    <h1 className="font-display text-[34px] md:text-[46px] font-normal leading-tight text-primary">
                         {round.name || `Round ${round.roundNumber}`} — {roundWord(round.status)}
                     </h1>
+                    {/* Inline Round Status quick pill selector */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1" role="group" aria-label="Round status">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">Status:</span>
+                        {["UPCOMING", "ONGOING", "COMPLETED"].map((statusOption) => {
+                            const active = String(round.status).toUpperCase() === statusOption;
+                            return (
+                                <button
+                                    key={statusOption}
+                                    type="button"
+                                    disabled={busy === "status"}
+                                    aria-pressed={active}
+                                    onClick={() => updateRoundStatus(statusOption)}
+                                    className={cn(
+                                        "min-h-9 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border transition-all",
+                                        active
+                                            ? statusOption === "ONGOING"
+                                                ? "ax-signal-win border-emerald-500/50 bg-emerald-500/20 text-emerald-800 dark:text-emerald-100"
+                                                : statusOption === "COMPLETED"
+                                                ? "ax-signal-info border-indigo-500/45 bg-indigo-500/15 text-indigo-800 dark:text-indigo-100"
+                                                : "ax-signal-warn border-orange-500/45 bg-orange-500/20 text-orange-800 dark:text-orange-100"
+                                            : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    )}
+                                >
+                                    {statusOption}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <label className="relative block w-full sm:w-72">
@@ -460,6 +760,9 @@ export default function AdminLive() {
                 })}
             </ol>
 
+            {/* Inline Check-In Window Strip (always visible & interactive at top of Live Round) */}
+            <CheckInWindowStrip round={round} busy={busy} onUpdateWindow={updateCheckInWindow} />
+
             {/* Main Operational Surface + Next Action Sidebar */}
             <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <section aria-label="Step detail" className="ax-card order-2 min-w-0 p-4 md:p-6 lg:order-1">
@@ -468,8 +771,10 @@ export default function AdminLive() {
                             present={present}
                             total={total}
                             absent={absent.filter((u) => match(fullName(u), u.college, u.mobile, u.usn, u.email))}
+                            checkedInUsers={checkedInUsers.filter((u) => match(fullName(u), u.college, u.mobile, u.usn, u.email))}
                             busy={busy}
-                            onMark={markPresent}
+                            pendingCheckIns={pendingCheckIns}
+                            onToggleCheckIn={toggleCheckIn}
                             onPreview={previewPairings}
                         />
                     )}
@@ -479,6 +784,8 @@ export default function AdminLive() {
                             debates={debates.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))}
                             onRegenerate={generatePairings}
                             onSaveMotion={saveMotion}
+                            onPreview={previewPairings}
+                            previewing={busy === "preview"}
                             regenerating={busy === "generating"}
                             hasDebates={hasDebates}
                         />
@@ -487,9 +794,11 @@ export default function AdminLive() {
                         <RoomsPanel
                             debates={debates.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))}
                             onAllocate={() => setShowAllocate(true)}
+                            onAssignJudge={assignJudge}
+                            savingJudgeId={savingJudgeId}
+                            onOpenQuickRoom={() => setShowQuickRoom(true)}
                             hasDebates={hasDebates}
                             noJudge={noJudge}
-                            roundId={roundId}
                         />
                     )}
                     {step === 3 && (
@@ -511,6 +820,11 @@ export default function AdminLive() {
                             total={debates.length}
                             pending={pending.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))}
                             completed={done.filter((d) => match(fullName(d.debater1), fullName(d.debater2), d.room?.name))}
+                            performers={performers}
+                            promotingIds={promotingIds}
+                            promotingAll={busy === "promoting"}
+                            onTogglePromote={togglePromotePerformer}
+                            onPromoteWinners={promoteAllWinners}
                             resultsPublished={resultsPublished}
                             roundId={roundId}
                             onScoreDebate={(d) => setScoringDebate(d)}
@@ -542,9 +856,13 @@ export default function AdminLive() {
                             {sideNote.map((n) => (
                                 <p key={n.text} className="m-0 text-foreground">
                                     {n.text} ·{" "}
-                                    <Link className="font-semibold text-primary underline underline-offset-2" to={n.to}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setViewStep(n.step)}
+                                        className="font-semibold text-primary underline underline-offset-2"
+                                    >
                                         {n.cta}
-                                    </Link>
+                                    </button>
                                 </p>
                             ))}
                         </div>
@@ -579,6 +897,34 @@ export default function AdminLive() {
                         loading={busy === "allocating"}
                     />
                 </Suspense>
+            )}
+
+            {/* Pairing preview modal */}
+            {previewData && (
+                <Suspense fallback={null}>
+                    <PairingPreviewModal
+                        preview={previewData}
+                        roundNumber={round.roundNumber}
+                        onClose={() => setPreviewData(null)}
+                        generating={busy === "generating"}
+                        onGenerate={() => {
+                            setPreviewData(null);
+                            generatePairings();
+                        }}
+                    />
+                </Suspense>
+            )}
+
+            {/* Inline quick room creator modal */}
+            {showQuickRoom && (
+                <QuickRoomModal
+                    onClose={() => setShowQuickRoom(false)}
+                    onCreated={(newRoom) => {
+                        setShowQuickRoom(false);
+                        if (newRoom) setRooms((prev) => [...prev, newRoom]);
+                        softRefetch();
+                    }}
+                />
             )}
 
             {/* Inline fast ballot scoring sheet with auto-winner */}
@@ -625,7 +971,200 @@ function Stat({label, value, of}) {
     );
 }
 
-function CheckInPanel({present, total, absent, busy, onMark, onPreview}) {
+function CheckInWindowStrip({round, busy, onUpdateWindow}) {
+    const [nowMs, setNowMs] = useState(() => Date.now());
+    const [editing, setEditing] = useState(false);
+    const [startVal, setStartVal] = useState("");
+    const [endVal, setEndVal] = useState("");
+    const [err, setErr] = useState("");
+
+    useEffect(() => {
+        const timer = setInterval(() => setNowMs(Date.now()), 15000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const hasWindow = Boolean(round?.checkInStartTime && round?.checkInEndTime);
+    const startMs = hasWindow ? new Date(round.checkInStartTime).getTime() : NaN;
+    const endMs = hasWindow ? new Date(round.checkInEndTime).getTime() : NaN;
+    const isValid = hasWindow && Number.isFinite(startMs) && Number.isFinite(endMs);
+
+    const status = !isValid
+        ? "NOT_CONFIGURED"
+        : nowMs < startMs
+        ? "UPCOMING"
+        : nowMs <= endMs
+        ? "OPEN"
+        : "CLOSED";
+
+    const statusMeta = {
+        OPEN: {
+            label: "OPEN",
+            cls: "ax-signal-win border-emerald-500/45 bg-emerald-500/20 text-emerald-800 dark:text-emerald-100 shadow-[0_0_12px_rgba(16,185,129,0.22)]",
+        },
+        CLOSED: {
+            label: "CLOSED",
+            cls: "ax-signal-loss border-rose-500/45 bg-rose-500/20 text-rose-700 dark:text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.2)]",
+        },
+        UPCOMING: {
+            label: "UPCOMING",
+            cls: "ax-signal-warn border-orange-500/45 bg-orange-500/18 text-orange-800 dark:text-orange-200",
+        },
+        NOT_CONFIGURED: {
+            label: "NOT CONFIGURED",
+            cls: "ax-signal-loss border-rose-500/50 bg-rose-500/20 text-rose-700 dark:text-rose-200",
+        },
+    }[status];
+
+    const openEditor = () => {
+        setStartVal(toISTDateTimeString(round?.checkInStartTime || new Date()));
+        setEndVal(toISTDateTimeString(round?.checkInEndTime || new Date(Date.now() + 20 * 60000)));
+        setErr("");
+        setEditing((v) => !v);
+    };
+
+    const handleSaveCustom = async (e) => {
+        e.preventDefault();
+        setErr("");
+        const startIso = toISTISOString(startVal);
+        const endIso = toISTISOString(endVal);
+        if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
+            setErr("Closing time must be after opening time.");
+            return;
+        }
+        const ok = await onUpdateWindow({checkInStartTime: startIso, checkInEndTime: endIso});
+        if (ok) setEditing(false);
+    };
+
+    const windowBusy = busy === "window";
+
+    return (
+        <div
+            className={cn(
+                "rounded-xl border p-3.5 space-y-3",
+                status === "NOT_CONFIGURED"
+                    ? "ax-signal-loss border-rose-500/40 bg-rose-500/10"
+                    : status === "OPEN"
+                    ? "border-emerald-500/35 bg-emerald-500/5"
+                    : "border-border bg-muted/30"
+            )}
+        >
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <Clock size={15} className="text-primary shrink-0" aria-hidden="true" />
+                    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border", statusMeta.cls)}>
+                        {statusMeta.label}
+                    </span>
+                    {isValid ? (
+                        <span className="text-xs font-semibold text-foreground">
+                            Opens: <span className="font-mono">{formatTimeIST(round.checkInStartTime)} IST</span>
+                            {" · "}
+                            Closes: <span className="font-mono">{formatTimeIST(round.checkInEndTime)} IST</span>
+                        </span>
+                    ) : (
+                        <span className="text-xs font-semibold text-rose-700 dark:text-rose-200">
+                            Check-in window is not configured — open a 20m window so debaters can check in.
+                        </span>
+                    )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                        type="button"
+                        disabled={windowBusy}
+                        onClick={() =>
+                            onUpdateWindow({
+                                checkInStartTime: new Date().toISOString(),
+                                checkInEndTime: new Date(Date.now() + 20 * 60000).toISOString(),
+                            })
+                        }
+                        className="min-h-11 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                        Open 20m Now
+                    </button>
+                    <button
+                        type="button"
+                        disabled={windowBusy}
+                        onClick={() => {
+                            const baseEnd = isValid ? Math.max(Date.now(), endMs) : Date.now();
+                            onUpdateWindow({
+                                checkInStartTime: isValid ? round.checkInStartTime : new Date().toISOString(),
+                                checkInEndTime: new Date(baseEnd + 10 * 60000).toISOString(),
+                            });
+                        }}
+                        className="min-h-11 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs font-semibold hover:bg-muted disabled:opacity-50 transition-colors"
+                    >
+                        +10m Extend
+                    </button>
+                    {status === "OPEN" && (
+                        <button
+                            type="button"
+                            disabled={windowBusy}
+                            onClick={() =>
+                                onUpdateWindow({
+                                    checkInStartTime: isValid ? round.checkInStartTime : new Date(Date.now() - 60000).toISOString(),
+                                    checkInEndTime: new Date(Date.now() - 1000).toISOString(),
+                                })
+                            }
+                            className="min-h-11 px-3 py-1.5 rounded-lg ax-signal-loss border border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-200 text-xs font-semibold hover:bg-rose-500/25 disabled:opacity-50 transition-colors"
+                        >
+                            Close Now
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={openEditor}
+                        aria-expanded={editing}
+                        className="min-h-11 px-3 py-1.5 rounded-lg border border-border bg-card text-foreground text-xs font-semibold hover:bg-muted transition-colors"
+                    >
+                        {editing ? "Cancel" : "Edit Times"}
+                    </button>
+                </div>
+            </div>
+
+            {editing && (
+                <form onSubmit={handleSaveCustom} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2.5 items-end pt-2 border-t border-border/60">
+                    {err && (
+                        <p className="sm:col-span-3 m-0 text-xs font-semibold text-rose-600 dark:text-rose-300" role="alert">
+                            {err}
+                        </p>
+                    )}
+                    <label className="text-xs">
+                        <span className="block font-semibold text-foreground mb-1">Opens (IST)</span>
+                        <input
+                            type="datetime-local"
+                            required
+                            value={startVal}
+                            onChange={(e) => setStartVal(e.target.value)}
+                            className="w-full min-h-11 px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs"
+                        />
+                    </label>
+                    <label className="text-xs">
+                        <span className="block font-semibold text-foreground mb-1">Closes (IST)</span>
+                        <input
+                            type="datetime-local"
+                            required
+                            value={endVal}
+                            onChange={(e) => setEndVal(e.target.value)}
+                            className="w-full min-h-11 px-2.5 py-1.5 rounded-lg border border-border bg-background text-xs"
+                        />
+                    </label>
+                    <button
+                        type="submit"
+                        disabled={windowBusy}
+                        className="min-h-11 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 disabled:opacity-50"
+                    >
+                        {windowBusy ? "Saving…" : "Save Window"}
+                    </button>
+                </form>
+            )}
+        </div>
+    );
+}
+
+function CheckInPanel({present, total, absent, checkedInUsers, busy, pendingCheckIns, onToggleCheckIn, onPreview}) {
+    const [tab, setTab] = useState("absent"); // "absent" | "present"
+    const visibleList = tab === "absent" ? absent : checkedInUsers;
+
     return (
         <div className="flex flex-col gap-4">
             <div className="grid grid-cols-3 gap-2.5">
@@ -633,43 +1172,102 @@ function CheckInPanel({present, total, absent, busy, onMark, onPreview}) {
                 <Stat label="Not checked in" value={Math.max(total - present, 0)} />
                 <Stat label="Registered" value={total} />
             </div>
+
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
-                <h2 className="font-heading text-lg font-bold">Still to check in ({absent.length})</h2>
-                <button type="button" onClick={onPreview} disabled={busy === "preview"} className="ax-ghost-btn !text-xs">
+                <div className="inline-flex items-center gap-1 rounded-xl bg-muted/60 border border-border p-1" role="tablist" aria-label="Check-in lists">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === "absent"}
+                        onClick={() => setTab("absent")}
+                        className={cn(
+                            "min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors",
+                            tab === "absent" ? "bg-card text-foreground shadow-xs border border-border/70" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Still to check in ({absent.length})
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === "present"}
+                        onClick={() => setTab("present")}
+                        className={cn(
+                            "min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors",
+                            tab === "present" ? "bg-card text-foreground shadow-xs border border-border/70" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Checked in ({checkedInUsers.length})
+                    </button>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onPreview}
+                    disabled={busy === "preview"}
+                    className="ax-ghost-btn min-h-11 !text-xs"
+                >
                     {busy === "preview" ? "Previewing…" : "Preview pairings"}
                 </button>
             </div>
-            {absent.length === 0 ? (
-                <p className="m-0 text-muted-foreground text-sm">Everyone is checked in. Ready to pair.</p>
+
+            {visibleList.length === 0 ? (
+                <p className="m-0 text-muted-foreground text-sm py-4 text-center">
+                    {tab === "absent"
+                        ? "Everyone matching this filter is checked in. Ready to pair."
+                        : "No participants checked in yet."}
+                </p>
             ) : (
                 <ul className="m-0 flex list-none flex-col gap-2 p-0 max-h-[460px] overflow-y-auto">
-                    {absent.slice(0, 60).map((u) => (
-                        <li key={u.id} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5 bg-card/60">
-                            <div className="min-w-0 flex-1">
-                                <p className="m-0 truncate font-semibold text-sm">{fullName(u)}</p>
-                                <p className="m-0 truncate text-xs text-muted-foreground">{u.college || "No college"}{u.usn ? ` · ${u.usn}` : ""}</p>
-                                <p className="m-0 truncate text-xs text-muted-foreground tabular-nums">
-                                    {u.mobile ? <a href={`tel:${u.mobile}`} className="font-medium text-foreground hover:underline">{u.mobile}</a> : "No phone"}
-                                    {u.email ? ` · ${u.email}` : ""}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => onMark(u.id)}
-                                disabled={busy === `checkin:${u.id}`}
-                                className="ax-ghost-btn !min-h-10 !text-xs shrink-0"
+                    {visibleList.map((u) => {
+                        const isPending = pendingCheckIns.has(u.id);
+                        const isPresentTab = tab === "present";
+                        return (
+                            <li
+                                key={u.id}
+                                className={cn(
+                                    "flex items-center gap-3 rounded-xl border px-3 py-2.5 bg-card/60",
+                                    isPresentTab ? "border-emerald-500/35" : "border-border"
+                                )}
                             >
-                                {busy === `checkin:${u.id}` ? "…" : "Mark present"}
-                            </button>
-                        </li>
-                    ))}
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <p className="m-0 truncate font-semibold text-sm">{fullName(u)}</p>
+                                        {isPresentTab && (
+                                            <span className="ax-signal-win inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200">
+                                                Present
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="m-0 truncate text-xs text-muted-foreground">{u.college || "No college"}{u.usn ? ` · ${u.usn}` : ""}</p>
+                                    <p className="m-0 truncate text-xs text-muted-foreground tabular-nums">
+                                        {u.mobile ? <a href={`tel:${u.mobile}`} className="font-medium text-foreground hover:underline">{u.mobile}</a> : "No phone"}
+                                        {u.email ? ` · ${u.email}` : ""}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => onToggleCheckIn(u.id, isPresentTab ? "ABSENT" : "PRESENT")}
+                                    disabled={isPending}
+                                    className={cn(
+                                        "min-h-11 px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0 border transition-colors disabled:opacity-50",
+                                        isPresentTab
+                                            ? "ax-signal-loss border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-200 hover:bg-rose-500/20"
+                                            : "border-border bg-card text-foreground hover:bg-muted"
+                                    )}
+                                >
+                                    {isPending ? "Saving…" : isPresentTab ? "Mark absent" : "Mark present"}
+                                </button>
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </div>
     );
 }
 
-function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating, hasDebates}) {
+function PairingsPanel({round, debates, onRegenerate, onSaveMotion, onPreview, previewing, regenerating, hasDebates}) {
     const [editingMotion, setEditingMotion] = useState(false);
     const [motionDraft, setMotionDraft] = useState(round.motion || "");
 
@@ -686,7 +1284,7 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating
                                 setMotionDraft(round.motion || "");
                                 setEditingMotion(true);
                             }}
-                            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+                            className="min-h-11 px-2 text-xs text-primary font-semibold hover:underline flex items-center gap-1"
                         >
                             <Edit3 size={12} />
                             {round.motion ? "Edit Motion" : "Set Motion"}
@@ -707,7 +1305,7 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating
                             <button
                                 type="button"
                                 onClick={() => setEditingMotion(false)}
-                                className="px-3 py-1.5 rounded-lg border text-xs font-semibold"
+                                className="min-h-11 px-3 py-1.5 rounded-lg border text-xs font-semibold"
                             >
                                 Cancel
                             </button>
@@ -717,7 +1315,7 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating
                                     await onSaveMotion(motionDraft.trim());
                                     setEditingMotion(false);
                                 }}
-                                className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold"
+                                className="min-h-11 px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold"
                             >
                                 Save Motion
                             </button>
@@ -734,11 +1332,16 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating
                 <h2 className="font-heading text-lg font-bold">
                     {round.roundNumber === 1 ? "Draft pairings" : "Draft pairings · power-matched"} ({debates.length})
                 </h2>
-                {hasDebates && (
-                    <button type="button" onClick={onRegenerate} disabled={regenerating} className="ax-ghost-btn !text-xs">
-                        {regenerating ? "Regenerating…" : "Regenerate pairings"}
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={onPreview} disabled={previewing} className="ax-ghost-btn min-h-11 !text-xs">
+                        {previewing ? "Previewing…" : "Preview pairings"}
                     </button>
-                )}
+                    {hasDebates && (
+                        <button type="button" onClick={onRegenerate} disabled={regenerating} className="ax-ghost-btn min-h-11 !text-xs">
+                            {regenerating ? "Regenerating…" : "Regenerate pairings"}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {!hasDebates ? (
@@ -749,8 +1352,8 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating
                         <thead>
                             <tr className="text-xs uppercase tracking-[0.06em] text-muted-foreground border-b border-border">
                                 <th scope="col" className="py-2 pr-3">#</th>
-                                <th scope="col" className="py-2 pr-3">Proposition</th>
-                                <th scope="col" className="py-2 pr-3">Opposition</th>
+                                <th scope="col" className="py-2 pr-3">Proposition (GOV)</th>
+                                <th scope="col" className="py-2 pr-3">Opposition (OPP)</th>
                                 <th scope="col" className="py-2">Room</th>
                             </tr>
                         </thead>
@@ -758,9 +1361,25 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating
                             {debates.slice(0, 100).map((d, i) => (
                                 <tr key={d.id} className="border-b border-border/40 hover:bg-muted/30">
                                     <td className="py-2.5 pr-3 text-muted-foreground">{i + 1}</td>
-                                    <td className="py-2.5 pr-3 font-semibold text-foreground">{fullName(d.debater1)}</td>
-                                    <td className="py-2.5 pr-3 font-semibold text-foreground">{fullName(d.debater2)}</td>
-                                    <td className="py-2.5">{d.room?.name || <span className="ax-chip ax-chip--warn">None</span>}</td>
+                                    <td className="py-2.5 pr-3 font-semibold text-foreground">
+                                        <span className="ax-chip ax-chip--gov mr-1.5 inline-block text-[10px] font-bold">
+                                            GOV
+                                        </span>
+                                        {fullName(d.debater1)}
+                                    </td>
+                                    <td className="py-2.5 pr-3 font-semibold text-foreground">
+                                        <span className="ax-chip ax-chip--opp mr-1.5 inline-block text-[10px] font-bold">
+                                            OPP
+                                        </span>
+                                        {fullName(d.debater2)}
+                                    </td>
+                                    <td className="py-2.5">
+                                        {d.room?.name || (
+                                            <span className="ax-signal-warn inline-block px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 text-[11px] font-semibold">
+                                                Unallocated
+                                            </span>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -771,37 +1390,93 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, regenerating
     );
 }
 
-function RoomsPanel({debates, onAllocate, hasDebates, noJudge, roundId}) {
+function RoomsPanel({debates, onAllocate, onAssignJudge, savingJudgeId, onOpenQuickRoom, hasDebates, noJudge}) {
+    const [judgeDrafts, setJudgeDrafts] = useState({});
+
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-heading text-lg font-bold">Rooms &amp; Venues</h2>
-                {hasDebates && (
-                    <button type="button" onClick={onAllocate} className="ax-ghost-btn !text-xs">
-                        Allocate rooms
+                <div>
+                    <h2 className="font-heading text-lg font-bold">Rooms &amp; Adjudicators</h2>
+                    {noJudge > 0 && (
+                        <p className="m-0 text-xs text-orange-700 dark:text-orange-300 font-medium">
+                            {noJudge} debate{noJudge === 1 ? "" : "s"} still need an adjudicator assigned.
+                        </p>
+                    )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={onOpenQuickRoom}
+                        className="ax-ghost-btn min-h-11 inline-flex items-center gap-1.5 !text-xs"
+                    >
+                        <DoorOpen size={14} aria-hidden="true" />
+                        <span>+ Add Room</span>
                     </button>
-                )}
+                    {hasDebates && (
+                        <button type="button" onClick={onAllocate} className="ax-ghost-btn min-h-11 !text-xs">
+                            Allocate rooms
+                        </button>
+                    )}
+                </div>
             </div>
             {!hasDebates ? (
                 <p className="m-0 text-muted-foreground text-sm">Generate pairings first.</p>
             ) : (
-                <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3 max-h-[460px] overflow-y-auto">
-                    {debates.slice(0, 100).map((d) => (
-                        <div key={d.id} className="rounded-xl border border-border p-3.5 bg-card/60">
-                            <p className="m-0 font-heading text-base font-bold text-primary">{d.room?.name || "Unallocated"}</p>
-                            <p className="m-0 mt-0.5 text-xs font-semibold truncate">{fullName(d.debater1)} vs {fullName(d.debater2)}</p>
-                            <p className="m-0 mt-1 text-xs text-muted-foreground truncate">Judge: {judgeOf(d) || "Unassigned"}</p>
-                        </div>
-                    ))}
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 max-h-[500px] overflow-y-auto">
+                    {debates.slice(0, 100).map((d) => {
+                        const currentJudge = judgeOf(d);
+                        const draft = judgeDrafts[d.id] !== undefined ? judgeDrafts[d.id] : currentJudge;
+                        const isDirty = draft.trim() !== currentJudge.trim();
+                        const isSaving = savingJudgeId === d.id;
+
+                        return (
+                            <div key={d.id} className="rounded-xl border border-border p-3.5 bg-card/60 flex flex-col gap-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="m-0 font-heading text-base font-bold text-primary truncate">
+                                        {d.room?.name || "Unallocated"}
+                                    </p>
+                                    {!d.room && (
+                                        <span className="ax-signal-warn px-1.5 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 text-[10px] font-bold">
+                                            TBD
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="m-0 text-xs font-semibold truncate text-foreground">
+                                    {fullName(d.debater1)} vs {fullName(d.debater2)}
+                                </p>
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        onAssignJudge(d.id, draft.trim());
+                                    }}
+                                    className="flex items-center gap-1.5 pt-1 border-t border-border/50"
+                                >
+                                    <input
+                                        type="text"
+                                        aria-label={`Judge for ${fullName(d.debater1)} vs ${fullName(d.debater2)}`}
+                                        value={draft}
+                                        onChange={(e) => setJudgeDrafts((prev) => ({...prev, [d.id]: e.target.value}))}
+                                        placeholder="Assign judge name..."
+                                        className="min-w-0 flex-1 min-h-11 px-2.5 py-1.5 rounded-lg border border-input bg-background text-xs outline-none focus:border-primary"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={isSaving || (!isDirty && Boolean(currentJudge))}
+                                        className={cn(
+                                            "min-h-11 px-3 rounded-lg text-xs font-bold shrink-0 transition-colors disabled:opacity-45",
+                                            isDirty
+                                                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                                : "border border-border bg-muted/40 text-foreground"
+                                        )}
+                                    >
+                                        {isSaving ? "…" : "Save"}
+                                    </button>
+                                </form>
+                            </div>
+                        );
+                    })}
                 </div>
-            )}
-            {noJudge > 0 && (
-                <p className="m-0 text-xs text-muted-foreground">
-                    {noJudge} debate{noJudge === 1 ? "" : "s"} have no judge yet.{" "}
-                    <Link className="font-semibold text-primary underline" to={`/admin/rounds/${roundId}`}>
-                        Assign in round tools
-                    </Link>.
-                </p>
             )}
         </div>
     );
@@ -818,15 +1493,15 @@ function PublishPanel({checks, published, onSaveMotion, currentMotion}) {
             </h2>
 
             {!currentMotion && (
-                <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs space-y-2">
-                    <p className="font-bold text-amber-700 dark:text-amber-300">Motion not set for this round.</p>
+                <div className="ax-signal-warn p-3.5 rounded-xl border border-orange-500/40 bg-orange-500/15 text-xs space-y-2">
+                    <p className="font-bold text-orange-800 dark:text-orange-200">Motion not set for this round.</p>
                     {editingMotion ? (
                         <div className="space-y-2">
                             <input
                                 value={motionDraft}
                                 onChange={(e) => setMotionDraft(e.target.value)}
                                 placeholder="Enter round motion"
-                                className="w-full p-2 text-xs rounded border border-border bg-card"
+                                className="w-full min-h-11 p-2 text-xs rounded border border-border bg-card"
                             />
                             <div className="flex gap-2">
                                 <button
@@ -835,14 +1510,14 @@ function PublishPanel({checks, published, onSaveMotion, currentMotion}) {
                                         await onSaveMotion(motionDraft.trim());
                                         setEditingMotion(false);
                                     }}
-                                    className="px-3 py-1 bg-primary text-primary-foreground font-bold rounded text-xs"
+                                    className="min-h-11 px-3 py-1 bg-primary text-primary-foreground font-bold rounded text-xs"
                                 >
                                     Save
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setEditingMotion(false)}
-                                    className="px-2 py-1 text-xs"
+                                    className="min-h-11 px-3 py-1 text-xs"
                                 >
                                     Cancel
                                 </button>
@@ -855,7 +1530,7 @@ function PublishPanel({checks, published, onSaveMotion, currentMotion}) {
                                 setMotionDraft(currentMotion || "");
                                 setEditingMotion(true);
                             }}
-                            className="font-bold text-primary underline"
+                            className="min-h-11 font-bold text-primary underline"
                         >
                             Set motion now →
                         </button>
@@ -870,8 +1545,8 @@ function PublishPanel({checks, published, onSaveMotion, currentMotion}) {
                         className={cn(
                             "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold border",
                             c.ok
-                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-                                : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                                ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35"
+                                : "ax-signal-warn bg-orange-500/15 text-orange-800 dark:text-orange-200 border-orange-500/40"
                         )}
                     >
                         <span className="grid h-5 w-5 place-items-center rounded-full bg-black/10 text-xs font-bold shrink-0">
@@ -888,8 +1563,33 @@ function PublishPanel({checks, published, onSaveMotion, currentMotion}) {
     );
 }
 
-function ResultsPanel({done, total, pending, completed, resultsPublished, roundId, onScoreDebate, onPublishResults, busy}) {
+function ResultsPanel({
+    done,
+    total,
+    pending,
+    completed,
+    performers,
+    promotingIds,
+    promotingAll,
+    onTogglePromote,
+    onPromoteWinners,
+    resultsPublished,
+    roundId,
+    onScoreDebate,
+    onPublishResults,
+    busy,
+}) {
     const pct = total ? Math.round((done / total) * 100) : 0;
+    const promotedCount = performers.filter((p) => p.isPromoted).length;
+    const sortedPerformers = useMemo(
+        () =>
+            [...performers].sort((a, b) => {
+                if (Boolean(a.won) !== Boolean(b.won)) return a.won ? -1 : 1;
+                return (b.score || 0) - (a.score || 0);
+            }),
+        [performers]
+    );
+
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-baseline justify-between">
@@ -930,7 +1630,7 @@ function ResultsPanel({done, total, pending, completed, resultsPublished, roundI
                                 <button
                                     type="button"
                                     onClick={() => onScoreDebate(d)}
-                                    className="ax-ghost-btn !min-h-10 !text-xs shrink-0 font-bold"
+                                    className="ax-ghost-btn min-h-11 !text-xs shrink-0 font-bold"
                                 >
                                     Score ballot →
                                 </button>
@@ -953,14 +1653,18 @@ function ResultsPanel({done, total, pending, completed, resultsPublished, roundI
                             return (
                                 <li key={d.id} className="flex items-center justify-between gap-3 text-xs p-2 rounded-lg bg-muted/20 border border-border/40">
                                     <div className="min-w-0 flex-1 truncate">
-                                        <span className={w1 ? "font-bold text-emerald-600" : ""}>{fullName(d.debater1)} ({d.debater1Score})</span>
+                                        <span className={w1 ? "ax-chip--win px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
+                                            {fullName(d.debater1)} ({d.debater1Score})
+                                        </span>
                                         {" vs "}
-                                        <span className={w2 ? "font-bold text-emerald-600" : ""}>{fullName(d.debater2)} ({d.debater2Score})</span>
+                                        <span className={w2 ? "ax-chip--win px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
+                                            {fullName(d.debater2)} ({d.debater2Score})
+                                        </span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => onScoreDebate(d)}
-                                        className="text-primary hover:underline font-semibold shrink-0"
+                                        className="min-h-11 px-2.5 text-primary hover:underline font-semibold shrink-0"
                                     >
                                         Edit
                                     </button>
@@ -971,35 +1675,178 @@ function ResultsPanel({done, total, pending, completed, resultsPublished, roundI
                 </div>
             )}
 
-            {/* All ballots done actions */}
+            {/* Publish Results Banner */}
             {pending.length === 0 && total > 0 && (
-                <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 space-y-3">
-                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+                <div className="ax-signal-win p-4 rounded-xl border border-emerald-500/35 bg-emerald-500/15 space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-200 font-bold text-sm">
                         <Trophy size={16} /> All {total} ballots scored and verified!
                     </div>
                     <p className="text-xs text-muted-foreground">
                         {resultsPublished
-                            ? "Results are public. Review qualified debaters and promote to the next round."
-                            : "Make results visible to participants or review promotion list."}
+                            ? "Results are public. Promote qualifiers below for the next round."
+                            : "Publish results for participants and select qualifying debaters below."}
                     </p>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                         <button
                             type="button"
                             onClick={onPublishResults}
                             disabled={busy}
-                            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs"
+                            className="min-h-11 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs"
                         >
                             {resultsPublished ? "Hide Results" : "Publish Results"}
                         </button>
                         <Link
                             to={`/admin/rounds/${roundId}/promotion`}
-                            className="px-4 py-2 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted"
+                            className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted"
                         >
-                            Review &amp; Promote →
+                            Full promotion view →
                         </Link>
                     </div>
                 </div>
             )}
+
+            {/* Inline Qualifiers & Promotion Panel */}
+            {sortedPerformers.length > 0 && (
+                <div id="inline-promotion-panel" className="space-y-3 border-t border-border/60 pt-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h3 className="font-heading text-base font-bold text-foreground flex items-center gap-2">
+                                <ShieldCheck size={16} className="text-primary" aria-hidden="true" />
+                                <span>Qualifiers &amp; Promotion ({promotedCount}/{sortedPerformers.length})</span>
+                            </h3>
+                            <p className="text-xs text-muted-foreground m-0">
+                                Toggle qualifiers directly without leaving Live Round.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            disabled={promotingAll}
+                            onClick={onPromoteWinners}
+                            className="min-h-11 px-3.5 py-2 rounded-lg border border-emerald-500/40 bg-emerald-500/15 text-emerald-800 dark:text-emerald-100 text-xs font-bold hover:bg-emerald-500/25 disabled:opacity-50"
+                        >
+                            {promotingAll ? "Promoting…" : "Promote All Winners"}
+                        </button>
+                    </div>
+                    <ul className="m-0 flex list-none flex-col gap-1.5 p-0 max-h-[280px] overflow-y-auto">
+                        {sortedPerformers.map((p) => {
+                            const saving = promotingIds.has(p.userId);
+                            return (
+                                <li
+                                    key={p.userId}
+                                    className="flex items-center justify-between gap-2.5 rounded-xl border border-border/70 px-3 py-2 bg-card/60 text-xs"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            <span className="font-semibold text-foreground truncate">{fullName(p)}</span>
+                                            <span
+                                                className={cn(
+                                                    "px-1.5 py-0.5 rounded border text-[10px] font-bold uppercase",
+                                                    p.won
+                                                        ? "ax-chip--win border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200"
+                                                        : "ax-chip--loss border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-200"
+                                                )}
+                                            >
+                                                {p.won ? "Win" : "Loss"}
+                                            </span>
+                                            <span className="font-mono font-bold text-muted-foreground">
+                                                {p.score ?? 0} pts
+                                            </span>
+                                        </div>
+                                        <p className="m-0 text-[11px] text-muted-foreground truncate">{p.college || p.email || ""}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        disabled={saving}
+                                        onClick={() => onTogglePromote(p.userId)}
+                                        className={cn(
+                                            "min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold border shrink-0 transition-colors disabled:opacity-50",
+                                            p.isPromoted
+                                                ? "ax-signal-win border-emerald-500/45 bg-emerald-500/20 text-emerald-800 dark:text-emerald-100"
+                                                : "border-border bg-muted/40 text-foreground hover:bg-muted"
+                                        )}
+                                    >
+                                        {saving ? "…" : p.isPromoted ? "Promoted ✓" : "Promote"}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function QuickRoomModal({onClose, onCreated}) {
+    const {getToken} = useAuth();
+    const toast = useToast();
+    const [name, setName] = useState("");
+    const [capacity, setCapacity] = useState(2);
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        setSubmitting(true);
+        try {
+            const token = await getToken();
+            const res = await AdminApi.createRoom({name: name.trim(), capacity: Number(capacity) || 2}, token);
+            if (res.success) {
+                toast.success("Room created", `${name.trim()} is ready for allocation.`);
+                onCreated(res.room);
+            } else {
+                toast.error("Failed", res.error || "Could not create room");
+            }
+        } catch (err) {
+            toast.error("Error", err?.message || "Could not create room");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+            <div className="bg-card border-2 border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 font-sans">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                    <h3 className="font-heading font-bold text-lg text-foreground">Quick Add Room</h3>
+                    <button type="button" onClick={onClose} className="min-h-11 min-w-11 grid place-items-center text-muted-foreground hover:text-foreground" aria-label="Close">
+                        <X size={18} />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-3 text-xs">
+                    <label className="block">
+                        <span className="font-semibold block mb-1 text-foreground">Room Name</span>
+                        <input
+                            type="text"
+                            required
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Hall B, Lecture Room 204"
+                            className="w-full min-h-11 px-3 rounded-lg border border-input bg-background text-foreground font-medium"
+                        />
+                    </label>
+                    <label className="block">
+                        <span className="font-semibold block mb-1 text-foreground">Capacity</span>
+                        <input
+                            type="number"
+                            required
+                            min="2"
+                            value={capacity}
+                            onChange={(e) => setCapacity(parseInt(e.target.value, 10) || 2)}
+                            className="w-full min-h-11 px-3 rounded-lg border border-input bg-background text-foreground font-mono"
+                        />
+                    </label>
+                    <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                        <button type="button" onClick={onClose} className="min-h-11 px-4 rounded-lg border font-semibold">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={submitting} className="min-h-11 px-4 rounded-lg bg-primary text-primary-foreground font-bold flex items-center gap-1.5">
+                            {submitting && <Loader2 size={14} className="animate-spin" />}
+                            Add Room
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 }
@@ -1009,20 +1856,38 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
     const [roundNumber, setRoundNumber] = useState(defaultRoundNumber);
     const [name, setName] = useState(`Round ${defaultRoundNumber}`);
     const [motion, setMotion] = useState("");
+    const [checkInStartTime, setCheckInStartTime] = useState(() => toISTDateTimeString(new Date()));
+    const [checkInEndTime, setCheckInEndTime] = useState(() => toISTDateTimeString(new Date(Date.now() + 20 * 60000)));
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
+    const applyPreset = (mins) => {
+        const parsedStart = checkInStartTime ? new Date(`${checkInStartTime}:00+05:30`).getTime() : Date.now();
+        const baseMs = Number.isFinite(parsedStart) ? parsedStart : Date.now();
+        if (!checkInStartTime) setCheckInStartTime(toISTDateTimeString(new Date(baseMs)));
+        setCheckInEndTime(toISTDateTimeString(new Date(baseMs + mins * 60000)));
+        setError(null);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitting(true);
         setError(null);
+        const startIso = toISTISOString(checkInStartTime);
+        const endIso = toISTISOString(checkInEndTime);
+        if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
+            setError("Check-in end time must be after check-in start time.");
+            return;
+        }
+        setSubmitting(true);
         try {
             const token = await getToken();
             const res = await AdminApi.createRound({
                 eventId,
                 roundNumber: Number(roundNumber),
                 name: name.trim() || `Round ${roundNumber}`,
-                motion: motion.trim() || null
+                motion: motion.trim() || null,
+                checkInStartTime: startIso,
+                checkInEndTime: endIso,
             }, token);
 
             if (res.success && res.round) {
@@ -1039,16 +1904,16 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-            <div className="bg-card border-2 border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 font-sans">
+            <div className="bg-card border-2 border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 font-sans max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                     <h3 className="font-heading font-bold text-lg text-foreground">Add New Round</h3>
-                    <button type="button" onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground">
+                    <button type="button" onClick={onClose} className="min-h-11 min-w-11 grid place-items-center text-muted-foreground hover:text-foreground" aria-label="Close">
                         <X size={18} />
                     </button>
                 </div>
 
                 {error && (
-                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 text-xs">
+                    <div className="ax-signal-loss p-3 rounded-lg bg-rose-500/15 border border-rose-500/40 text-rose-700 dark:text-rose-200 text-xs font-medium" role="alert">
                         {error}
                     </div>
                 )}
@@ -1064,7 +1929,7 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
                                 setRoundNumber(e.target.value);
                                 if (!name || name.startsWith("Round ")) setName(`Round ${e.target.value}`);
                             }}
-                            className="w-full h-10 px-3 rounded-lg border border-input bg-background font-mono text-foreground font-bold"
+                            className="w-full min-h-11 px-3 rounded-lg border border-input bg-background font-mono text-foreground font-bold"
                             required
                         />
                     </div>
@@ -1076,8 +1941,45 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g. Preliminary Round 2"
-                            className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground font-medium"
+                            className="w-full min-h-11 px-3 rounded-lg border border-input bg-background text-foreground font-medium"
                         />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label className="block">
+                            <span className="font-semibold block mb-1 text-foreground">Check-in Start (IST)</span>
+                            <input
+                                type="datetime-local"
+                                required
+                                value={checkInStartTime}
+                                onChange={(e) => setCheckInStartTime(e.target.value)}
+                                className="w-full min-h-11 px-2.5 rounded-lg border border-input bg-background text-foreground text-xs"
+                            />
+                        </label>
+                        <label className="block">
+                            <span className="font-semibold block mb-1 text-foreground">Check-in End (IST)</span>
+                            <input
+                                type="datetime-local"
+                                required
+                                value={checkInEndTime}
+                                onChange={(e) => setCheckInEndTime(e.target.value)}
+                                className="w-full min-h-11 px-2.5 rounded-lg border border-input bg-background text-foreground text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-muted-foreground font-medium">Window duration:</span>
+                        {[15, 20, 30].map((mins) => (
+                            <button
+                                key={mins}
+                                type="button"
+                                onClick={() => applyPreset(mins)}
+                                className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground font-semibold transition-colors"
+                            >
+                                {mins}m
+                            </button>
+                        ))}
                     </div>
 
                     <div>
@@ -1095,14 +1997,14 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 rounded-lg border text-foreground font-semibold"
+                            className="min-h-11 px-4 py-2 rounded-lg border text-foreground font-semibold"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold flex items-center gap-1.5"
+                            className="min-h-11 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold flex items-center gap-1.5"
                         >
                             {submitting && <Loader2 size={14} className="animate-spin" />}
                             Create Round

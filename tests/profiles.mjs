@@ -23,6 +23,14 @@ export const PROFILES = {
     autoEnrollOnComplete: true,
     self: {id: 'u-self', firstName: 'Asha', lastName: 'Rao', email: `asha.test@${TEST_EMAIL_DOMAIN}`, college: '', mobile: '', usn: '', gender: ''},
   },
+  // Profile complete, enrolled, and eliminated in Round 1 (published results -> Game Over view).
+  eliminatedParticipant: {
+    signedIn: true,
+    admin: false,
+    enrolled: true,
+    eliminated: true,
+    self: {id: 'u-self', firstName: 'Test', lastName: 'Participant', email: `participant.test@${TEST_EMAIL_DOMAIN}`, college: 'Test College', mobile: '+919900000009', usn: 'TST22CS099', gender: ''},
+  },
   // Profile complete and enrolled in the test event.
   completeParticipant: {
     signedIn: true,
@@ -167,13 +175,158 @@ export const ROUTES = [
     return [200, {success: true, round: {...round, checkIns: s.checkIns, debates: s.debates}}];
   }],
   ['GET', '/rooms', (s) => [200, {success: true, rooms: s.rooms}]],
-  ['GET', '/admin/rounds/:id/performers', () => [200, {success: true, resultsPublished: false, performers: []}]],
-  ['PUT', '/check-in/round/:id/user/:uid', () => [200, {success: true}]],
-  ['GET', '/check-in/round/:id/me', () => [200, {success: true, isCheckedIn: false, checkIn: null}]],
-  ['GET', '/debates/my-debates', (s) => [200, {success: true, debates: s.debates.filter((d) => s.self && (d.debater1Id === s.self.id || d.debater2Id === s.self.id)).map((d) => ({...d, round: s.event.rounds.find((r) => r.id === d.roundId)}))}]],
+  ['GET', '/admin/rounds/:id/performers', (s, p) => {
+    const round = s.event.rounds.find((r) => r.id === p.id);
+    const participants = s.roster.filter((u) => u.id !== 'u-rohan');
+    const performers = participants.map((u, idx) => ({
+      userId: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      college: u.college,
+      email: u.email,
+      score: 78 - idx * 4,
+      won: idx === 0,
+      isPromoted: Boolean(s.checkIns.find((c) => c.roundId === p.id && c.userId === u.id)?.isPromoted || idx === 0),
+    }));
+    return [200, {success: true, resultsPublished: Boolean(round?.resultsPublished), performers}];
+  }],
+  ['POST', '/admin/rounds/:id/promote', (s, p, body) => {
+    const ids = new Set(body?.userIds || []);
+    s.roster.forEach((u) => {
+      const existing = s.checkIns.find((c) => c.roundId === p.id && c.userId === u.id);
+      if (existing) existing.isPromoted = ids.has(u.id);
+      else if (ids.has(u.id)) s.checkIns.push({id: `ci-${Date.now()}-${u.id}`, roundId: p.id, userId: u.id, status: 'PRESENT', isPromoted: true, user: u});
+    });
+    return [200, {success: true}];
+  }],
+  ['POST', '/admin/rounds/:id/publish', (s, p, body) => {
+    const round = s.event.rounds.find((r) => r.id === p.id);
+    if (round) round.resultsPublished = Boolean(body?.published);
+    return [200, {success: true}];
+  }],
+  ['POST', '/rounds', (s, _p, body) => {
+    const now = Date.now();
+    const round = {
+      id: `r${s.event.rounds.length + 1}`,
+      eventId: body?.eventId || s.event.id,
+      roundNumber: Number(body?.roundNumber || s.event.rounds.length + 1),
+      name: body?.name || `Round ${s.event.rounds.length + 1}`,
+      motion: body?.motion || null,
+      status: 'UPCOMING',
+      pairingsPublished: false,
+      resultsPublished: false,
+      checkInStartTime: body?.checkInStartTime || new Date(now).toISOString(),
+      checkInEndTime: body?.checkInEndTime || new Date(now + 20 * 60000).toISOString(),
+    };
+    s.event.rounds.push(round);
+    return [201, {success: true, round}];
+  }],
+  ['PUT', '/rounds/:id', (s, p, body) => {
+    const round = s.event.rounds.find((r) => r.id === p.id);
+    if (!round) return [404, {error: 'Round not found'}];
+    Object.assign(round, body);
+    return [200, {success: true, round}];
+  }],
+  ['POST', '/check-in/round/:id', (s, p) => {
+    if (!s.self) return [401, {error: 'Unauthorized'}];
+    if (s.eliminated) return [403, {success: false, error: 'You have been eliminated from this tournament (Loss in previous round).'}];
+    const existing = s.checkIns.find((c) => c.roundId === p.id && c.userId === s.self.id);
+    const entry = existing || {id: `ci-${Date.now()}`, roundId: p.id, userId: s.self.id, status: 'PRESENT', user: s.self};
+    entry.status = 'PRESENT';
+    if (!existing) s.checkIns.push(entry);
+    return [200, {success: true, checkIn: entry}];
+  }],
+  ['PUT', '/check-in/round/:id/user/:uid', (s, p, body) => {
+    const status = body?.status || 'PRESENT';
+    const userObj = [s.self, ...s.roster].filter(Boolean).find((u) => u.id === p.uid) || {id: p.uid, firstName: 'Debater', lastName: ''};
+    const existing = s.checkIns.find((c) => c.roundId === p.id && c.userId === p.uid);
+    if (existing) existing.status = status;
+    else s.checkIns.push({id: `ci-${Date.now()}-${p.uid}`, roundId: p.id, userId: p.uid, status, user: userObj});
+    return [200, {success: true, checkIn: existing || {roundId: p.id, userId: p.uid, status}}];
+  }],
+  ['GET', '/check-in/round/:id/me', (s, p) => {
+    const checkIn = s.self ? s.checkIns.find((c) => c.roundId === p.id && c.userId === s.self.id) || null : null;
+    return [200, {
+      success: true,
+      isCheckedIn: checkIn?.status === 'PRESENT',
+      checkIn,
+      isEliminated: Boolean(s.eliminated),
+      eliminationReason: s.eliminated ? 'LOSS_PREVIOUS_ROUND' : null,
+      eliminatedRoundNumber: s.eliminated ? 1 : null,
+    }];
+  }],
+  ['GET', '/pairing/:id/preview', (s, p) => {
+    const round = s.event.rounds.find((r) => r.id === p.id);
+    const present = s.checkIns.filter((c) => c.roundId === p.id && c.status === 'PRESENT').map((c) => c.user).filter(Boolean);
+    const proposedPairings = [];
+    for (let i = 0; i < present.length; i += 2) {
+      const gov = present[i];
+      const opp = present[i + 1] || {id: 'swing', firstName: 'Swing', lastName: 'Member', college: 'DebSoc Reserve'};
+      proposedPairings.push({pairingNumber: proposedPairings.length + 1, gov, opp, usesSwing: !present[i + 1]});
+    }
+    return [200, {
+      success: true,
+      roundType: round?.roundNumber === 1 ? 'Random Draw' : 'Power Matching (High vs High)',
+      data: {
+        presentUsers: present.length,
+        eligibleUsers: present.length,
+        eliminatedUsers: 0,
+        possiblePairings: Math.floor(present.length / 2),
+        unpaired: present.length % 2,
+        needsSwing: present.length % 2 === 1,
+        users: present,
+        proposedPairings,
+        eliminatedList: [],
+      },
+    }];
+  }],
+  ['POST', '/pairing/:id/allocate-rooms', (s, p, body) => {
+    const roomIds = Array.isArray(body?.roomIds) && body.roomIds.length ? body.roomIds : s.rooms.map((r) => r.id);
+    const selectedRooms = s.rooms.filter((r) => roomIds.includes(r.id));
+    const roundDebates = s.debates.filter((d) => d.roundId === p.id);
+    roundDebates.forEach((d, idx) => {
+      d.room = selectedRooms[idx % Math.max(selectedRooms.length, 1)] || s.rooms[0];
+      d.roomId = d.room?.id;
+    });
+    return [200, {success: true, data: {debatesAllocated: roundDebates.length, debates: roundDebates}}];
+  }],
+  ['GET', '/debates/my-debates', (s) => {
+    if (s.eliminated && s.self) {
+      return [200, {
+        success: true,
+        debates: [
+          {
+            id: 'd-elim',
+            roundId: 'r1',
+            eventId: 'e1',
+            debater1Id: s.self.id,
+            debater2Id: 'u-asha',
+            debater1: s.self,
+            debater2: s.roster[0],
+            room: s.rooms[0],
+            status: 'COMPLETED',
+            winnerId: 'u-asha',
+            didWin: false,
+            isPromoted: false,
+            resultsPublished: true,
+            round: {...s.event.rounds[0], status: 'COMPLETED', resultsPublished: true},
+          },
+        ],
+      }];
+    }
+    return [200, {success: true, debates: s.debates.filter((d) => s.self && (d.debater1Id === s.self.id || d.debater2Id === s.self.id)).map((d) => ({...d, round: s.event.rounds.find((r) => r.id === d.roundId)}))}];
+  }],
   ['GET', '/debates/round/:id', (s) => [200, {success: true, debates: s.debates}]],
-  ['GET', '/stats/my-stats', () => [200, {success: true, stats: {totalDebates: 0, wins: 0, losses: 0}}]],
-  ['GET', '/stats/leaderboard', () => [200, {success: true, leaderboard: []}]],
+  ['GET', '/stats/my-stats', (s) => [200, {success: true, stats: {totalDebates: s.eliminated ? 1 : 0, wins: 0, losses: s.eliminated ? 1 : 0, winRate: 0, qualified: 0}}]],
+  ['GET', '/stats/leaderboard', (s) => [200, {
+    success: true,
+    data: {
+      leaderboard: [
+        {rank: 1, user: s.roster[0], stats: {wins: 1, totalScore: 78, avgScore: 78, totalDebates: 1}},
+        {rank: 2, user: s.roster[2], stats: {wins: 1, totalScore: 74, avgScore: 74, totalDebates: 1}},
+      ],
+    },
+  }]],
   ['GET', '/stats/event/:id', () => [200, {success: true, stats: []}]],
 ];
 
@@ -213,6 +366,7 @@ export async function installProfile(page, profileName, overrides = {}) {
     admin: profile.admin,
     signedIn: profile.signedIn,
     enrolled: profile.enrolled,
+    eliminated: Boolean(profile.eliminated),
     autoEnrollOnComplete: Boolean(profile.autoEnrollOnComplete),
     self: profile.self ? {...profile.self} : null,
     roster: data.roster,

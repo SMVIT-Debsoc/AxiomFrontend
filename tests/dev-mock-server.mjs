@@ -28,6 +28,7 @@ if (!process.env.MOCK_SKIP_BUILD) {
 
 const SHORTCUTS = {
   participant: ['completeParticipant', '/dashboard'],
+  eliminated: ['eliminatedParticipant', '/dashboard'],
   new: ['newParticipant', '/complete-profile'],
   admin: ['admin', '/admin'],
   nonadmin: ['nonAdminTriesAdmin', '/admin'],
@@ -40,6 +41,7 @@ function load(name) {
   const data = buildData();
   store = {
     name, admin: base.admin, signedIn: base.signedIn, enrolled: base.enrolled,
+    eliminated: Boolean(base.eliminated),
     autoEnrollOnComplete: Boolean(base.autoEnrollOnComplete),
     self: base.self ? {...base.self} : null,
     roster: data.roster, event: data.event, rounds: data.rounds, rooms: data.rooms,

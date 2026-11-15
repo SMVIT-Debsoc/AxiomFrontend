@@ -17,12 +17,15 @@ import {
     RotateCcw,
     ShieldCheck,
     CheckCircle2,
+    Check,
+    Eye,
+    AlertTriangle,
     X,
 } from "lucide-react";
 import { useAuth } from "../../auth/client.jsx";
 import { cn } from "../../lib/utils";
-import { AdminApi, EventApi } from "../../services/api";
-import { useRoundSocket } from "../../hooks/useSocket";
+import { AdminApi } from "../../services/api";
+import { useRoundSocket, useSocket, SocketEvents } from "../../hooks/useSocket";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {useToast} from "../../hooks/useToast";
 import { UserAvatar } from "../../components/ui/UserAvatar";
@@ -47,12 +50,14 @@ export default function AdminRoundManagement() {
         publishing: false,
         generating: false,
         allocating: false,
+        previewing: false,
     });
     const [activeTab, setActiveTab] = useState("checkins");
     const [allocationRoundId, setAllocationRoundId] = useState(null);
     const showAllocateModal = allocationRoundId === roundId;
+    const [previewData, setPreviewData] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [processingId, setProcessingId] = useState(null);
+    const [processingIds, setProcessingIds] = useState(() => new Set());
     const [scoringDebate, setScoringDebate] = useState(null);
     const debounceTimers = useRef({});
 
@@ -75,13 +80,14 @@ export default function AdminRoundManagement() {
         try {
             const token = await getTokenRef.current();
             if (generation !== fetchGeneration.current) return;
-            const roundRes = await AdminApi.apiRequest(`/rounds/${roundId}`, "GET", null, token);
+            const opts = { skipCache: true };
+            const roundRes = await AdminApi.apiRequest(`/rounds/${roundId}`, "GET", null, token, opts);
             if (generation !== fetchGeneration.current) return;
             if (roundRes.success) {
                 const fetchedRound = roundRes.round;
                 const [roomsRes, participantsRes] = await Promise.all([
-                    AdminApi.apiRequest("/rooms", "GET", null, token),
-                    EventApi.getParticipants(fetchedRound.eventId, token),
+                    AdminApi.apiRequest("/rooms", "GET", null, token, opts),
+                    AdminApi.apiRequest(`/events/${fetchedRound.eventId}/participants`, "GET", null, token, opts),
                 ]);
                 if (generation !== fetchGeneration.current) return;
                 setRound(fetchedRound);
@@ -116,21 +122,31 @@ export default function AdminRoundManagement() {
         if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
         fetchTimeoutRef.current = setTimeout(() => {
             fetchRoundData(true);
-        }, 300);
+        }, 60);
     }, [fetchRoundData]);
 
     // Real-time updates via WebSocket
     useRoundSocket(roundId, {
         onCheckInUpdate: (data) => {
+            const targetUserId = data?.userId || data?.user?.id;
+            if (!targetUserId) {
+                debouncedFetch();
+                return;
+            }
             setCheckIns((prev) => {
-                const existing = prev.find((ci) => ci.userId === data.userId);
+                const existing = prev.find((ci) => ci.userId === targetUserId);
                 if (existing) {
                     return prev.map((ci) =>
-                        ci.userId === data.userId ? { ...ci, status: data.status } : ci
+                        ci.userId === targetUserId
+                            ? { ...ci, status: data.status, ...(data.user ? { user: data.user } : {}) }
+                            : ci
                     );
                 }
+                if (data.user) {
+                    return [...prev, { userId: targetUserId, status: data.status, user: data.user }];
+                }
                 debouncedFetch();
-                return prev;
+                return [...prev, { userId: targetUserId, status: data.status }];
             });
         },
         onPairingsGenerated: (data) => {
@@ -174,6 +190,24 @@ export default function AdminRoundManagement() {
             }
         },
     });
+
+    const { subscribe: subscribeRound } = useSocket({ roundId, eventId: round?.eventId });
+    useEffect(() => {
+        if (!roundId) return undefined;
+        return subscribeRound(SocketEvents.ROUND_CHECKIN_WINDOW, (data) => {
+            if (!data || (data.roundId && data.roundId !== roundId)) return;
+            setRound((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        checkInStartTime: data.checkInStartTime ?? prev.checkInStartTime,
+                        checkInEndTime: data.checkInEndTime ?? prev.checkInEndTime,
+                    }
+                    : prev
+            );
+            debouncedFetch();
+        });
+    }, [subscribeRound, roundId, debouncedFetch]);
 
     const handleSaveResult = async ({ debateId, debater1Score, debater2Score, winnerId, nextDebate }) => {
         const token = await getTokenRef.current();
@@ -275,10 +309,47 @@ export default function AdminRoundManagement() {
         }
     };
 
+    const handlePreviewPairings = async () => {
+        setActionLoading((prev) => ({ ...prev, previewing: true }));
+        try {
+            const token = await getToken();
+            const response = await AdminApi.apiRequest(
+                `/pairing/${roundId}/preview`,
+                "GET",
+                null,
+                token,
+                { skipCache: true }
+            );
+            if (activeRoundId.current !== roundId) return;
+            if (response.success) {
+                setPreviewData(response);
+            } else {
+                toast.error("Preview Failed", response.error || "Failed to preview pairings");
+            }
+        } catch (err) {
+            toast.error("Error", err?.message || "Failed to preview pairings");
+        } finally {
+            setActionLoading((prev) => ({ ...prev, previewing: false }));
+        }
+    };
+
     const handleManualCheckIn = async (userId, currentStatus) => {
-        if (processingId) return;
-        setProcessingId(userId);
+        if (processingIds.has(userId)) return;
         const newStatus = currentStatus === "PRESENT" ? "ABSENT" : "PRESENT";
+        setProcessingIds((prev) => new Set(prev).add(userId));
+
+        let rollbackSnapshot = null;
+        setCheckIns((prev) => {
+            rollbackSnapshot = prev;
+            const exists = prev.find((ci) => ci.userId === userId);
+            if (exists) {
+                return prev.map((ci) =>
+                    ci.userId === userId ? { ...ci, status: newStatus } : ci
+                );
+            }
+            return [...prev, { userId, status: newStatus }];
+        });
+
         try {
             const token = await getToken();
             const response = await AdminApi.apiRequest(
@@ -289,22 +360,21 @@ export default function AdminRoundManagement() {
             );
             if (activeRoundId.current !== roundId) return;
             if (response.success) {
-                setCheckIns((prev) => {
-                    const exists = prev.find((ci) => ci.userId === userId);
-                    if (exists) {
-                        return prev.map((ci) =>
-                            ci.userId === userId ? { ...ci, status: newStatus } : ci
-                        );
-                    } else {
-                        return [...prev, { userId, status: newStatus }];
-                    }
-                });
-                toast.success("Check-in Updated", `User marked as ${newStatus}`);
+                toast.success("Check-in Updated", `Participant marked as ${newStatus}`);
+                debouncedFetch();
+            } else {
+                if (rollbackSnapshot) setCheckIns(rollbackSnapshot);
+                toast.error("Update Failed", response.error || "Failed to update check-in status");
             }
-        } catch {
-            toast.error("Error", "Failed to update check-in status");
+        } catch (err) {
+            if (rollbackSnapshot) setCheckIns(rollbackSnapshot);
+            toast.error("Error", err?.message || "Failed to update check-in status");
         } finally {
-            setProcessingId(null);
+            setProcessingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(userId);
+                return next;
+            });
         }
     };
 
@@ -447,13 +517,27 @@ export default function AdminRoundManagement() {
                     >
                         <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
                     </button>
+                    <button
+                        type="button"
+                        onClick={handlePreviewPairings}
+                        disabled={loading || actionLoading.previewing}
+                        className="min-h-11 flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg border border-border/70 bg-card hover:bg-muted text-foreground font-sans font-medium text-xs transition-colors disabled:opacity-50 w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        {actionLoading.previewing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                            <Eye className="w-4 h-4" aria-hidden="true" />
+                        )}
+                        <span>Preview Pairings</span>
+                    </button>
                     {debates.length > 0 && (
                         <button
+                            type="button"
                             onClick={handleTogglePublish}
                             disabled={loading || actionLoading.publishing}
-                            className={`flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg font-sans font-medium text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${round.pairingsPublished
-                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                    : "bg-amber-500 text-primary-foreground hover:bg-amber-600 shadow-sm"
+                            className={`min-h-11 flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg font-sans font-medium text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${round.pairingsPublished
+                                    ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border border-emerald-500/35"
+                                    : "bg-orange-600 text-white hover:bg-orange-700 shadow-sm"
                                 }`}
                         >
                             {actionLoading.publishing ? (
@@ -467,13 +551,14 @@ export default function AdminRoundManagement() {
 
                     {debates.length === 0 ? (
                         <button
+                            type="button"
                             onClick={() =>
                                 handleGeneratePairings(
                                     round.roundNumber === 1 ? "round1" : "power-match"
                                 )
                             }
                             disabled={loading || actionLoading.generating}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-h-11 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             {actionLoading.generating ? (
                                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -487,9 +572,10 @@ export default function AdminRoundManagement() {
                     ) : (
                         <>
                             <button
+                                type="button"
                                 onClick={() => setAllocationRoundId(roundId)}
                                 disabled={loading || actionLoading.allocating}
-                                className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="min-h-11 flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 {actionLoading.allocating ? (
                                     <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -499,20 +585,22 @@ export default function AdminRoundManagement() {
                                 <span>Allocate Rooms</span>
                             </button>
                             <button
+                                type="button"
                                 onClick={() => navigate(`/admin/rounds/${roundId}/promotion`)}
-                                className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg bg-card text-foreground border border-border font-sans font-medium text-xs hover:bg-muted transition-colors w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="min-h-11 flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-card text-foreground border border-border font-sans font-medium text-xs hover:bg-muted transition-colors w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 <ShieldCheck className="w-4 h-4" aria-hidden="true" />
-                                <span>Review & Promote</span>
+                                <span>Review &amp; Promote</span>
                             </button>
                             <button
+                                type="button"
                                 onClick={() =>
                                     handleGeneratePairings(
                                         round.roundNumber === 1 ? "round1" : "power-match"
                                     )
                                 }
                                 disabled={loading || actionLoading.generating}
-                                className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 font-sans font-medium text-xs hover:bg-destructive/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="min-h-11 flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg ax-signal-loss bg-rose-500/15 text-rose-700 dark:text-rose-200 border border-rose-500/35 font-sans font-medium text-xs hover:bg-rose-500/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 {actionLoading.generating ? (
                                     <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
@@ -533,6 +621,21 @@ export default function AdminRoundManagement() {
                     totalDebates={debates.length}
                     rooms={rooms}
                     loading={loading}
+                />
+            )}
+
+            {previewData && (
+                <PairingPreviewModal
+                    preview={previewData}
+                    roundNumber={round.roundNumber}
+                    onClose={() => setPreviewData(null)}
+                    generating={actionLoading.generating}
+                    onGenerate={async () => {
+                        setPreviewData(null);
+                        await handleGeneratePairings(
+                            round.roundNumber === 1 ? "round1" : "power-match"
+                        );
+                    }}
                 />
             )}
 
@@ -565,10 +668,9 @@ export default function AdminRoundManagement() {
                                 Starts
                             </p>
                             <p className="text-xs font-medium text-foreground">
-                                {new Date(round.checkInStartTime).toLocaleString("en-IN", {
-                                    timeZone: "Asia/Kolkata",
-                                })}{" "}
-                                IST
+                                {round.checkInStartTime
+                                    ? `${new Date(round.checkInStartTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`
+                                    : "Not configured"}
                             </p>
                         </div>
                         <div>
@@ -576,27 +678,32 @@ export default function AdminRoundManagement() {
                                 Ends
                             </p>
                             <p className="text-xs font-medium text-foreground">
-                                {new Date(round.checkInEndTime).toLocaleString("en-IN", {
-                                    timeZone: "Asia/Kolkata",
-                                })}{" "}
-                                IST
+                                {round.checkInEndTime
+                                    ? `${new Date(round.checkInEndTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`
+                                    : "Not configured"}
                             </p>
                         </div>
                         <div className="pt-1">
-                            <span
-                                className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${new Date() > new Date(round.checkInEndTime)
-                                        ? "bg-destructive/10 text-destructive border-destructive/20"
+                            {!round.checkInStartTime || !round.checkInEndTime ? (
+                                <span className="ax-signal-loss text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-200">
+                                    Not Configured
+                                </span>
+                            ) : (
+                                <span
+                                    className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${new Date() > new Date(round.checkInEndTime)
+                                            ? "ax-signal-loss bg-rose-500/15 text-rose-700 dark:text-rose-200 border-rose-500/40"
+                                            : new Date() < new Date(round.checkInStartTime)
+                                                ? "ax-signal-warn bg-orange-500/15 text-orange-800 dark:text-orange-200 border-orange-500/40"
+                                                : "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/40"
+                                        }`}
+                                >
+                                    {new Date() > new Date(round.checkInEndTime)
+                                        ? "Window Closed"
                                         : new Date() < new Date(round.checkInStartTime)
-                                            ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                                            : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                                    }`}
-                            >
-                                {new Date() > new Date(round.checkInEndTime)
-                                    ? "Window Closed"
-                                    : new Date() < new Date(round.checkInStartTime)
-                                        ? "Window Not Open"
-                                        : "Window Open"}
-                            </span>
+                                            ? "Window Not Open"
+                                            : "Window Open"}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -726,8 +833,8 @@ export default function AdminRoundManagement() {
                                                     <div className="flex items-center gap-1.5">
                                                         <span
                                                             className={`text-[10px] font-sans uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${status === "PRESENT"
-                                                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                                                    : "bg-destructive/10 text-destructive border-destructive/20"
+                                                                    ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35"
+                                                                    : "ax-signal-loss bg-rose-500/15 text-rose-700 dark:text-rose-200 border-rose-500/35"
                                                                 }`}
                                                         >
                                                             {status}
@@ -741,13 +848,14 @@ export default function AdminRoundManagement() {
                                                 </td>
                                                 <td className="px-5 py-3.5 text-right">
                                                     <button
+                                                        type="button"
                                                         onClick={() =>
                                                             handleManualCheckIn(user.id, status)
                                                         }
-                                                        disabled={processingId === user.id}
-                                                        className="text-xs font-sans font-semibold text-primary hover:underline transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                                        disabled={processingIds.has(user.id)}
+                                                        className="min-h-11 px-3 py-2 rounded-lg text-xs font-sans font-semibold text-primary hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-wait"
                                                     >
-                                                        {processingId === user.id && (
+                                                        {processingIds.has(user.id) && (
                                                             <Loader2 className="w-3 h-3 animate-spin inline mr-1" />
                                                         )}
                                                         Mark {status === "PRESENT" ? "Absent" : "Present"}
@@ -794,8 +902,8 @@ export default function AdminRoundManagement() {
                                         </div>
                                         <span
                                             className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${status === "PRESENT"
-                                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                                    : "bg-destructive/10 text-destructive border-destructive/20"
+                                                    ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35"
+                                                    : "ax-signal-loss bg-rose-500/15 text-rose-700 dark:text-rose-200 border-rose-500/35"
                                                 }`}
                                         >
                                             {status}
@@ -803,11 +911,12 @@ export default function AdminRoundManagement() {
                                     </div>
 
                                     <button
+                                        type="button"
                                         onClick={() => handleManualCheckIn(user.id, status)}
-                                        disabled={processingId === user.id}
-                                        className="w-full py-2 rounded-lg text-xs font-sans font-medium bg-secondary hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-1.5"
+                                        disabled={processingIds.has(user.id)}
+                                        className="w-full min-h-11 py-2 rounded-lg text-xs font-sans font-medium bg-secondary hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center justify-center gap-1.5"
                                     >
-                                        {processingId === user.id && (
+                                        {processingIds.has(user.id) && (
                                             <Loader2 className="w-3 h-3 animate-spin" />
                                         )}
                                         <span>Mark {status === "PRESENT" ? "Absent" : "Present"}</span>
@@ -855,24 +964,24 @@ export default function AdminRoundManagement() {
                                             Matchup #{debate.id.substring(0, 4)}
                                         </span>
                                         {debate.status === "COMPLETED" ? (
-                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider font-sans">
+                                            <div className="ax-signal-win flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border border-emerald-500/35 text-[10px] font-bold uppercase tracking-wider font-sans">
                                                 <CheckCircle2 className="w-3 h-3" />
                                                 <span>Submitted</span>
                                             </div>
                                         ) : debate.room ? (
-                                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-sans font-medium">
+                                            <div className="ax-signal-info flex items-center gap-1.5 px-2 py-0.5 rounded border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 text-xs font-sans font-medium">
                                                 <MapPin className="w-3 h-3" />
                                                 <span>{debate.room.name}</span>
                                             </div>
                                         ) : (
-                                            <span className="text-[11px] text-amber-500 font-sans font-medium">
+                                            <span className="ax-signal-warn text-[11px] px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 font-sans font-medium">
                                                 Room Unallocated
                                             </span>
                                         )}
                                     </div>
 
                                     {debate.startTime && (
-                                        <div className="flex items-center justify-center gap-1.5 mb-3 text-[10px] font-bold text-blue-500 uppercase tracking-widest bg-blue-500/10 py-1 rounded-md font-sans">
+                                        <div className="ax-signal-info flex items-center justify-center gap-1.5 mb-3 text-[10px] font-bold uppercase tracking-widest border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 py-1 rounded-md font-sans">
                                             <Clock className="w-3 h-3" />
                                             <span>
                                                 {new Date(debate.startTime).toLocaleTimeString([], {
@@ -890,7 +999,7 @@ export default function AdminRoundManagement() {
 
                                     <div className="flex items-center justify-between gap-3 mb-4">
                                         <div className="flex-1 text-center min-w-0">
-                                            <span className="inline-block mb-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/15 text-blue-500 uppercase tracking-widest font-sans">
+                                            <span className="ax-chip ax-chip--gov inline-block mb-1.5 text-[9px] font-bold uppercase tracking-widest font-sans">
                                                 GOV
                                             </span>
                                             <div className="mx-auto mb-1 flex justify-center">
@@ -908,7 +1017,7 @@ export default function AdminRoundManagement() {
                                             VS
                                         </div>
                                         <div className="flex-1 text-center min-w-0">
-                                            <span className="inline-block mb-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 uppercase tracking-widest font-sans">
+                                            <span className="ax-chip ax-chip--opp inline-block mb-1.5 text-[9px] font-bold uppercase tracking-widest font-sans">
                                                 OPP
                                             </span>
                                             <div className="mx-auto mb-1 flex justify-center">
@@ -1205,6 +1314,235 @@ export default function AdminRoundManagement() {
     );
 }
 
+export function PairingPreviewModal({
+    preview,
+    roundNumber,
+    onClose,
+    onGenerate,
+    generating = false,
+}) {
+    const payload = preview?.data || preview || {};
+    const roundType =
+        preview?.roundType ||
+        payload.roundType ||
+        (roundNumber === 1 ? "Random Draw" : "Power Matching (High vs High)");
+    const usersList = Array.isArray(payload.users) ? payload.users : [];
+    const eliminatedUsers = usersList.filter((u) => u.eliminated);
+    const eligibleUsers = usersList.filter((u) => !u.eliminated);
+
+    const presentCount = payload.presentUsers ?? usersList.length;
+    const eligibleCount = payload.eligibleUsers ?? eligibleUsers.length;
+    const eliminatedCount = payload.eliminatedUsers ?? eliminatedUsers.length;
+
+    const proposedPairs = (() => {
+        if (Array.isArray(payload.proposedPairings) && payload.proposedPairings.length > 0) {
+            return payload.proposedPairings.map((pair, idx) => ({
+                index: idx + 1,
+                gov: pair.debater1 || pair.gov,
+                opp: pair.debater2 || pair.opp,
+                isSwing: Boolean(pair.isSwing || pair.debater2?.isSwing || pair.opp?.isSwing),
+            }));
+        }
+        const pairs = [];
+        for (let i = 0; i < eligibleUsers.length; i += 2) {
+            const gov = eligibleUsers[i];
+            const opp = eligibleUsers[i + 1];
+            if (opp) {
+                pairs.push({ index: Math.floor(i / 2) + 1, gov, opp, isSwing: false });
+            } else if (eligibleUsers.length >= 2) {
+                pairs.push({
+                    index: Math.floor(i / 2) + 1,
+                    gov,
+                    opp: { firstName: "Swing", lastName: "Member", college: "Auto-assigned Bye / Swing", isSwing: true },
+                    isSwing: true,
+                });
+            }
+        }
+        return pairs;
+    })();
+
+    const debatesToCreate =
+        payload.possiblePairings ?? proposedPairs.filter((p) => !p.isSwing).length;
+    const needsSwing = Boolean(
+        payload.needsSwing ??
+            payload.unpaired ??
+            (eligibleCount >= 2 && eligibleCount % 2 === 1)
+    );
+    const insufficientEntrants = eligibleCount < 2;
+
+    const labelOf = (u) => {
+        if (!u) return "TBD";
+        const full = `${u.firstName || ""} ${u.lastName || ""}`.trim();
+        return full || u.email || "Unknown";
+    };
+
+    return (
+        <ModalSurface
+            onDismiss={onClose}
+            aria-label="Pairing Preview"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+        >
+            <Motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="bg-card border border-border/80 rounded-xl p-5 md:p-6 w-full max-w-2xl shadow-xl my-6 max-h-[90vh] flex flex-col"
+            >
+                <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3.5">
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h2 className="text-lg font-heading font-bold text-foreground">
+                                Pairing Preview · Round {roundNumber}
+                            </h2>
+                            <span className="ax-signal-info inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200">
+                                {roundType}
+                            </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-sans">
+                            Dry-run bracket computed from checked-in debaters before locking debates.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Close preview"
+                    >
+                        <X className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                </div>
+
+                {/* Vivid Stat Pills */}
+                <div className="flex flex-wrap gap-2 py-3 border-b border-border/60">
+                    <span className="ax-signal-info inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 text-xs font-semibold tabular-nums">
+                        Present: {presentCount}
+                    </span>
+                    <span className="ax-signal-info inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 text-xs font-semibold tabular-nums">
+                        Eligible: {eligibleCount}
+                    </span>
+                    <span
+                        className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold tabular-nums",
+                            eliminatedCount > 0
+                                ? "ax-signal-loss border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-200"
+                                : "border-border bg-muted/40 text-muted-foreground"
+                        )}
+                    >
+                        Eliminated Excluded: {eliminatedCount}
+                    </span>
+                    <span className="ax-signal-win inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 text-xs font-semibold tabular-nums">
+                        Debates to Create: {debatesToCreate}
+                    </span>
+                    {needsSwing && (
+                        <span className="ax-signal-warn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 text-xs font-semibold">
+                            Swing Needed
+                        </span>
+                    )}
+                </div>
+
+                {insufficientEntrants && (
+                    <div className="ax-signal-loss mt-3 flex items-center gap-2.5 rounded-lg border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs font-medium text-rose-700 dark:text-rose-200">
+                        <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                        <span>Need at least 2 present eligible debaters to generate pairings.</span>
+                    </div>
+                )}
+
+                <div className="flex-1 overflow-y-auto py-3 space-y-2.5 pr-1">
+                    {proposedPairs.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-lg">
+                            No matchups can be formed with {eligibleCount} eligible debater{eligibleCount === 1 ? "" : "s"}.
+                        </div>
+                    ) : (
+                        proposedPairs.map((pair) => (
+                            <div
+                                key={pair.index}
+                                className={cn(
+                                    "rounded-xl border p-3 flex flex-col sm:flex-row sm:items-center gap-2.5 text-xs",
+                                    pair.isSwing
+                                        ? "ax-signal-warn border-orange-500/40 bg-orange-500/10"
+                                        : "border-border/70 bg-muted/20"
+                                )}
+                            >
+                                <span className="font-mono font-bold text-muted-foreground w-8 shrink-0">
+                                    #{pair.index}
+                                </span>
+                                <div className="flex-1 min-w-0 flex items-center gap-2">
+                                    <span className="ax-chip ax-chip--gov shrink-0 text-[10px] font-bold">
+                                        GOV
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-foreground truncate">{labelOf(pair.gov)}</p>
+                                        <p className="text-[11px] text-muted-foreground truncate">
+                                            {pair.gov?.college || "—"}
+                                            {typeof pair.gov?.avgScore === "number" ? ` · Avg ${pair.gov.avgScore.toFixed(1)}` : ""}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="text-[11px] font-bold text-muted-foreground/70 shrink-0 px-1">vs</span>
+                                <div className="flex-1 min-w-0 flex items-center gap-2">
+                                    <span className={cn(
+                                        "shrink-0 text-[10px] font-bold ax-chip",
+                                        pair.isSwing
+                                            ? "ax-chip--warn"
+                                            : "ax-chip--opp"
+                                    )}>
+                                        {pair.isSwing ? "SWING" : "OPP"}
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-foreground truncate">{labelOf(pair.opp)}</p>
+                                        <p className="text-[11px] text-muted-foreground truncate">
+                                            {pair.opp?.college || "—"}
+                                            {typeof pair.opp?.avgScore === "number" ? ` · Avg ${pair.opp.avgScore.toFixed(1)}` : ""}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+
+                    {eliminatedUsers.length > 0 && (
+                        <div className="ax-signal-loss rounded-lg border border-rose-500/35 bg-rose-500/10 p-3 text-xs">
+                            <p className="font-semibold text-rose-700 dark:text-rose-200 mb-1.5">
+                                Eliminated Debaters Excluded ({eliminatedUsers.length})
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {eliminatedUsers.map((u) => (
+                                    <span
+                                        key={u.id || u.email}
+                                        className="px-2 py-0.5 rounded bg-rose-500/15 text-rose-700 dark:text-rose-200 border border-rose-500/30 text-[11px]"
+                                    >
+                                        {labelOf(u)}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3.5 border-t border-border/60">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="min-h-11 px-4 py-2 rounded-lg border border-border/70 hover:bg-muted text-foreground text-xs font-medium transition-colors"
+                    >
+                        Close
+                    </button>
+                    {onGenerate && (
+                        <button
+                            type="button"
+                            onClick={onGenerate}
+                            disabled={insufficientEntrants || generating}
+                            className="min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            {generating && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
+                            <span>Generate Pairings Now</span>
+                        </button>
+                    )}
+                </div>
+            </Motion.div>
+        </ModalSurface>
+    );
+}
+
 export function AllocateRoomsModal({
     onClose,
     onConfirm,
@@ -1219,17 +1557,18 @@ export function AllocateRoomsModal({
     const [localSubmitting, setLocalSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         startTime: toLocalDateTime(Date.now()),
-        speakingTime: 5,
-        bufferTime: 4,
-        gap: 1,
+        speakingTime: 7,
+        bufferTime: 11,
+        gap: 5,
     });
 
-
+    const speaking = Number(formData.speakingTime);
+    const minBufferNeeded = Math.max(0, 25 - speaking * 2);
+    const effectiveBuffer = Math.max(Number(formData.bufferTime), minBufferNeeded);
+    const debateDuration = Math.max(25, speaking * 2 + effectiveBuffer);
+    const totalInterval = debateDuration + Number(formData.gap);
     const activeRoomsCount = selectedRoomIds.length || 1;
     const debatesPerRoom = Math.ceil(totalDebates / activeRoomsCount) || 0;
-    const debateDuration =
-        Number(formData.speakingTime) * 2 + Number(formData.bufferTime);
-    const totalInterval = debateDuration + Number(formData.gap);
     const totalTimeNeeded = debatesPerRoom * totalInterval;
 
     const toggleRoom = (id) => {
@@ -1250,6 +1589,9 @@ export function AllocateRoomsModal({
         try {
             await onConfirm({
                 ...formData,
+                speakingTime: speaking,
+                bufferTime: effectiveBuffer,
+                gap: Number(formData.gap),
                 roomIds: selectedRoomIds,
                 startTime: new Date(formData.startTime).toISOString(),
             });
@@ -1289,8 +1631,9 @@ export function AllocateRoomsModal({
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label="Close dialog"
                     >
                         <X className="w-5 h-5" aria-hidden="true" />
@@ -1321,7 +1664,7 @@ export function AllocateRoomsModal({
                                                 startTime: e.target.value,
                                             })
                                         }
-                                        className="w-full pl-9 pr-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"
+                                        className="w-full min-h-11 pl-9 pr-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"
                                     />
                                 </div>
                             </div>
@@ -1334,46 +1677,55 @@ export function AllocateRoomsModal({
                                     <div className="flex items-center gap-3">
                                         <input
                                             id="allocation-speaking"
-                                            aria-valuetext={`${formData.speakingTime} minutes per debater`}
+                                            aria-valuetext={`${speaking} minutes per debater`}
                                             type="range"
                                             min="1"
                                             max="15"
-                                            value={formData.speakingTime}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    speakingTime: e.target.value,
-                                                })
-                                            }
+                                            value={speaking}
+                                            onChange={(e) => {
+                                                const nextSpeaking = Number(e.target.value);
+                                                const nextMinBuffer = Math.max(0, 25 - nextSpeaking * 2);
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    speakingTime: nextSpeaking,
+                                                    bufferTime: Math.max(Number(prev.bufferTime), nextMinBuffer),
+                                                }));
+                                            }}
                                             className="flex-1 accent-primary"
                                         />
-                                        <span className="w-10 text-center font-bold text-xs text-primary bg-primary/10 py-1 rounded">
-                                            {formData.speakingTime}m
+                                        <span className="w-11 text-center font-bold text-xs text-primary bg-primary/10 py-1 rounded font-mono">
+                                            {speaking}m
                                         </span>
                                     </div>
                                 </div>
                                 <div>
-                                    <label htmlFor="allocation-buffer" className="text-[11px] font-semibold text-muted-foreground mb-1 block">
-                                        Buffer & Transition
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label htmlFor="allocation-buffer" className="text-[11px] font-semibold text-muted-foreground">
+                                            Prep, POIs &amp; Adjudication Buffer
+                                        </label>
+                                        <span className="ax-signal-info inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200">
+                                            25m minimum enforced
+                                        </span>
+                                    </div>
                                     <div className="flex items-center gap-3">
                                         <input
                                             id="allocation-buffer"
-                                            aria-valuetext={`${formData.bufferTime} minutes`}
+                                            aria-valuetext={`${effectiveBuffer} minutes`}
                                             type="range"
                                             min="0"
-                                            max="10"
-                                            value={formData.bufferTime}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    bufferTime: e.target.value,
-                                                })
-                                            }
-                                            className="flex-1 accent-blue-500"
+                                            max="25"
+                                            value={effectiveBuffer}
+                                            onChange={(e) => {
+                                                const val = Math.max(minBufferNeeded, Number(e.target.value));
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    bufferTime: val,
+                                                }));
+                                            }}
+                                            className="flex-1 accent-indigo-600"
                                         />
-                                        <span className="w-10 text-center font-bold text-xs text-primary bg-primary/10 py-1 rounded">
-                                            {formData.bufferTime}m
+                                        <span className="w-11 text-center font-bold text-xs text-primary bg-primary/10 py-1 rounded font-mono">
+                                            {effectiveBuffer}m
                                         </span>
                                     </div>
                                 </div>
@@ -1392,12 +1744,12 @@ export function AllocateRoomsModal({
                                             onChange={(e) =>
                                                 setFormData({
                                                     ...formData,
-                                                    gap: e.target.value,
+                                                    gap: Number(e.target.value),
                                                 })
                                             }
-                                            className="flex-1 accent-amber-500"
+                                            className="flex-1 accent-orange-500"
                                         />
-                                        <span className="w-10 text-center font-bold text-xs text-primary bg-primary/10 py-1 rounded">
+                                        <span className="w-11 text-center font-bold text-xs text-primary bg-primary/10 py-1 rounded font-mono">
                                             {formData.gap}m
                                         </span>
                                     </div>
@@ -1409,6 +1761,9 @@ export function AllocateRoomsModal({
                             <h4 className="text-[10px] font-heading font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                                 Schedule Summary
                             </h4>
+                            <p className="text-xs font-medium text-foreground pb-1.5 border-b border-border/60">
+                                2 × {speaking}m speeches + {effectiveBuffer}m buffer = <span className="font-bold text-primary">{debateDuration}m</span> debate · +{formData.gap}m changeover
+                            </p>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Debates per Room</span>
                                 <span className="font-semibold text-foreground">
@@ -1433,30 +1788,50 @@ export function AllocateRoomsModal({
                     {/* Right Column: Room Selection & Preview */}
                     <div className="space-y-5 flex flex-col">
                         <div>
-                            <h3 className="text-xs font-semibold text-foreground mb-2 block">
-                                Select Available Rooms ({selectedRoomIds.length}/{rooms.length})
-                            </h3>
-                            <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1">
-                                {rooms.map((room) => (
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <h3 className="text-xs font-semibold text-foreground">
+                                    Select Available Rooms ({selectedRoomIds.length}/{rooms.length})
+                                </h3>
+                                <div className="flex items-center gap-1.5">
                                     <button
-                                        key={room.id}
                                         type="button"
-                                        aria-pressed={selectedRoomIds.includes(room.id)}
-                                        onClick={() => toggleRoom(room.id)}
-                                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all text-left flex items-center gap-1.5 ${selectedRoomIds.includes(room.id)
-                                                ? "bg-primary/10 border-primary text-primary"
-                                                : "bg-muted/30 border-border text-muted-foreground"
-                                            }`}
+                                        onClick={() => setSelectedRoomIds(rooms.map((r) => r.id))}
+                                        className="min-h-11 px-2.5 py-1 rounded-md border border-border/70 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors"
                                     >
-                                        <div
-                                            className={`w-1.5 h-1.5 rounded-full ${selectedRoomIds.includes(room.id)
-                                                    ? "bg-primary"
-                                                    : "bg-muted-foreground/30"
-                                                }`}
-                                        />
-                                        <span className="truncate">{room.name}</span>
+                                        Select All
                                     </button>
-                                ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedRoomIds([])}
+                                        className="min-h-11 px-2.5 py-1 rounded-md border border-border/70 text-[11px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                                {rooms.map((room) => {
+                                    const selected = selectedRoomIds.includes(room.id);
+                                    return (
+                                        <button
+                                            key={room.id}
+                                            type="button"
+                                            aria-pressed={selected}
+                                            onClick={() => toggleRoom(room.id)}
+                                            className={cn(
+                                                "min-h-11 px-3 py-2 rounded-lg text-xs border-2 transition-all text-left flex items-center justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                                selected
+                                                    ? "ax-room-selected ax-signal-win font-bold shadow-sm"
+                                                    : "border-dashed border-border bg-muted/20 text-muted-foreground font-medium hover:bg-muted/40 hover:text-foreground"
+                                            )}
+                                        >
+                                            <span className="truncate">{room.name}</span>
+                                            {selected && (
+                                                <Check className="w-4 h-4 shrink-0 text-emerald-700 dark:text-emerald-200" aria-hidden="true" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -1506,14 +1881,14 @@ export function AllocateRoomsModal({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted font-medium transition-all text-xs"
+                                className="flex-1 min-h-11 py-2 rounded-lg border border-border/70 hover:bg-muted font-medium transition-all text-xs"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading || localSubmitting}
-                                className="flex-[2] py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-xs shadow-sm"
+                                className="flex-[2] min-h-11 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-xs shadow-sm"
                             >
                                 {loading || localSubmitting ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />

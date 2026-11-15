@@ -207,6 +207,13 @@ export function useEventSocket(eventId, callbacks = {}) {
       )
     );
 
+    // Check-in window updates
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_CHECKIN_WINDOW, (data) =>
+        callHandler("onRoundCheckInWindow", data)
+      )
+    );
+
     // Round created
     unsubscribers.push(
       subscribe(SocketEvents.ROUND_CREATED, (data) =>
@@ -281,6 +288,27 @@ export function useEventSocket(eventId, callbacks = {}) {
       )
     );
 
+    // Round updated
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_UPDATED, (data) =>
+        callHandler("onRoundUpdated", data)
+      )
+    );
+
+    // Round deleted
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_DELETED, (data) =>
+        callHandler("onRoundDeleted", data)
+      )
+    );
+
+    // Debate created
+    unsubscribers.push(
+      subscribe(SocketEvents.DEBATE_CREATED, (data) =>
+        callHandler("onDebateCreated", data)
+      )
+    );
+
     // Event deleted
     unsubscribers.push(
       subscribe(SocketEvents.EVENT_DELETED, (data) =>
@@ -326,6 +354,20 @@ export function useRoundSocket(roundId, callbacks = {}) {
     unsubscribers.push(
       subscribe(SocketEvents.CHECKIN_UPDATE, (data) =>
         callHandler("onCheckInUpdate", data)
+      )
+    );
+
+    // Check-in count updates
+    unsubscribers.push(
+      subscribe(SocketEvents.CHECKIN_COUNT, (data) =>
+        callHandler("onCheckInCount", data)
+      )
+    );
+
+    // Check-in window updates
+    unsubscribers.push(
+      subscribe(SocketEvents.ROUND_CHECKIN_WINDOW, (data) =>
+        callHandler("onRoundCheckInWindow", data)
       )
     );
 

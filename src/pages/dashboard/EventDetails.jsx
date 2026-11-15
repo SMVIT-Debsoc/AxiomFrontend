@@ -12,7 +12,6 @@ import {
   ChevronRight,
   XCircle,
   MessageCircle,
-  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "../../auth/client.jsx";
 import {EventApi, DebateApi, UserApi} from "../../services/api";
@@ -54,6 +53,7 @@ export default function EventDetails() {
     try {
       if (!silent) setLoading(true);
       const token = await getTokenRef.current();
+      const reqOptions = silent ? { skipCache: true } : {};
 
       const [
         eventResponse,
@@ -62,11 +62,11 @@ export default function EventDetails() {
         userResponse,
         myDebatesResponse,
       ] = await Promise.all([
-        EventApi.get(id, token),
-        EventApi.getEnrollmentStatus(id, token).catch(() => ({success: false})),
-        EventApi.getParticipants(id, token).catch(() => ({success: false, participants: []})),
-        UserApi.getProfile(token).catch(() => ({success: false})),
-        DebateApi.getMyDebates(token).catch(() => ({success: false, debates: []})),
+        EventApi.get(id, token, reqOptions),
+        EventApi.getEnrollmentStatus(id, token, reqOptions).catch(() => ({success: false})),
+        EventApi.getParticipants(id, token, reqOptions).catch(() => ({success: false, participants: []})),
+        UserApi.getProfile(token, reqOptions).catch(() => ({success: false})),
+        DebateApi.getMyDebates(token, reqOptions).catch(() => ({success: false, debates: []})),
       ]);
 
       if (eventResponse?.success && eventResponse.event) {
@@ -135,6 +135,23 @@ export default function EventDetails() {
         `Round status has been updated to ${data.status}`
       );
     },
+    onRoundCheckInWindow: (data) => {
+      if (data?.roundId) {
+        setRounds((prev) =>
+          prev.map((r) =>
+            r.id === data.roundId
+              ? {
+                  ...r,
+                  checkInStartTime: data.checkInStartTime,
+                  checkInEndTime: data.checkInEndTime,
+                }
+              : r
+          )
+        );
+      }
+      toast.info("Check-in Window Updated", "Round check-in hours were updated.");
+      softRefetch();
+    },
     onPairingsPublished: (data) => {
       console.log("[Socket] Pairings published:", data);
       setRounds((prev) =>
@@ -152,24 +169,15 @@ export default function EventDetails() {
     onDebateResult: (data) => {
       console.log("[Socket] Debate result:", data);
 
-      // Optimistic update for immediate UI feedback
+      // Update status optimistically without storing unreleased scores or winner IDs
       setMyDebates((prev) =>
-        prev.map((d) => {
-          if (d.id === data.debateId) {
-            return {
-              ...d,
-              status: "COMPLETED",
-              winnerId: data.winnerId,
-              debater1Score: data.debater1Score,
-              debater2Score: data.debater2Score,
-            };
-          }
-          return d;
-        })
+        prev.map((d) =>
+          d.id === data.debateId ? { ...d, status: "COMPLETED" } : d
+        )
       );
 
       toast.info("Result Submitted", "A debate result has been submitted.");
-      // Refresh data silently to ensure full consistency
+      // Refresh sanitized data silently
       softRefetch();
     },
     onLeaderboardUpdate: () => {
@@ -420,9 +428,12 @@ export default function EventDetails() {
                                 (d) => d.roundId === round.id
                               );
                               if (debate?.status === "COMPLETED") {
-                                if (!debate.resultsPublished) {
+                                const published = Boolean(
+                                  debate.resultsPublished || round.resultsPublished
+                                );
+                                if (!published) {
                                   return (
-                                    <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 whitespace-nowrap">
+                                    <span className="ax-chip ax-chip--warn font-heading uppercase whitespace-nowrap">
                                       PENDING
                                     </span>
                                   );
@@ -430,10 +441,10 @@ export default function EventDetails() {
                                 return (
                                   <span
                                     className={cn(
-                                      "text-[10px] font-heading font-semibold px-2 py-0.5 rounded border whitespace-nowrap",
+                                      "ax-chip font-heading uppercase whitespace-nowrap",
                                       debate.isPromoted
-                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                        : "bg-destructive/10 text-destructive border-destructive/20"
+                                        ? "ax-chip--win"
+                                        : "ax-chip--loss"
                                     )}
                                   >
                                     {debate.isPromoted ? "QUALIFIED" : "ELIMINATED"}
@@ -644,6 +655,7 @@ export default function EventDetails() {
                           );
                           const isDebater1 =
                             debate.debater1Id === currentUser?.id;
+                          const side = isDebater1 ? "GOV" : "OPP";
                           const opponent = isDebater1
                             ? debate.debater2
                             : debate.debater1;
@@ -658,32 +670,37 @@ export default function EventDetails() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: index * 0.03 }}
                               className={cn(
-                                "bg-card border rounded-xl p-4 transition-colors",
+                                "rounded-xl p-4 transition-colors",
                                 debate.status === "COMPLETED" && published && debate.isPromoted
-                                  ? "border-emerald-500/30"
+                                  ? "ax-signal-win"
                                   : debate.status === "COMPLETED" && published && !debate.isPromoted
-                                    ? "border-destructive/30 opacity-80"
+                                    ? "ax-signal-loss"
                                     : debate.status === "COMPLETED" && !published
-                                      ? "border-amber-500/20 bg-amber-500/5"
-                                      : "border-border"
+                                      ? "ax-signal-warn"
+                                      : "bg-card border border-border"
                               )}
                             >
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-heading font-semibold text-foreground">
+                                  <span className="text-xs font-heading font-semibold">
                                     {round?.name || `Round ${round?.roundNumber || "?"}`}
                                   </span>
-                                  <span className="text-[10px] font-heading uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                                    {isDebater1 ? "GOV" : "OPP"}
+                                  <span
+                                    className={cn(
+                                      "ax-chip font-mono uppercase",
+                                      side === "GOV" ? "ax-chip--gov" : "ax-chip--opp"
+                                    )}
+                                  >
+                                    {side}
                                   </span>
                                 </div>
                                 {debate.status === "COMPLETED" && published ? (
                                   <div
                                     className={cn(
-                                      "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-heading font-semibold border uppercase tracking-wider",
+                                      "ax-chip font-mono uppercase",
                                       debate.isPromoted
-                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                        : "bg-destructive/10 text-destructive border-destructive/20"
+                                        ? "ax-chip--win"
+                                        : "ax-chip--loss"
                                     )}
                                   >
                                     {debate.isPromoted ? (
@@ -699,12 +716,12 @@ export default function EventDetails() {
                                     )}
                                   </div>
                                 ) : debate.status === "COMPLETED" && !published ? (
-                                  <div className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-heading font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-wider">
-                                    <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
+                                  <div className="ax-chip ax-chip--warn font-mono uppercase">
+                                    <Clock className="w-3 h-3" aria-hidden="true" />
                                     AWAITING SELECTION
                                   </div>
                                 ) : (
-                                  <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-heading font-semibold uppercase tracking-wider border border-border">
+                                  <span className="ax-chip ax-chip--idle font-mono uppercase">
                                     {debate.status}
                                   </span>
                                 )}

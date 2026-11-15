@@ -1,14 +1,16 @@
 import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect } from "react";
 import { motion as Motion } from "framer-motion";
-import {MapPin, Plus, Search, Trash2, Edit, Users, X} from "lucide-react";
+import { MapPin, Plus, Search, Trash2, Edit, Users, X } from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "../../auth/client.jsx";
 import { AdminApi } from "../../services/api";
+import { useToast } from "../../hooks/useToast";
 import EmptyState from "../../components/ui/EmptyState";
 
-export default function AdminRooms() {
+export default function AdminRooms({ embedded = false } = {}) {
     const { getToken } = useAuth();
+    const toast = useToast();
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -25,8 +27,8 @@ export default function AdminRooms() {
         try {
             const token = await getToken();
             const results = await Promise.allSettled([
-                AdminApi.apiRequest("/rooms", "GET", null, token),
-                AdminApi.apiRequest("/users", "GET", null, token)
+                AdminApi.apiRequest("/rooms", "GET", null, token, { skipCache: true }),
+                AdminApi.apiRequest("/users", "GET", null, token, { skipCache: true })
             ]);
 
             const [roomsRes, usersRes] = results;
@@ -55,10 +57,13 @@ export default function AdminRooms() {
             const token = await getToken();
             const response = await AdminApi.apiRequest(`/rooms/${id}`, "DELETE", null, token);
             if (response.success) {
-                setRooms(rooms.filter(r => r.id !== id));
+                setRooms((prev) => prev.filter((r) => r.id !== id));
+                toast.success("Room deleted");
+            } else {
+                toast.error(response.error || "Failed to delete room");
             }
-        } catch {
-            alert("Failed to delete room");
+        } catch (err) {
+            toast.error(err?.message || "Failed to delete room");
         }
     };
 
@@ -67,12 +72,13 @@ export default function AdminRooms() {
             const token = await getToken();
             const response = await AdminApi.apiRequest(`/debates/${debateId}`, "PUT", { judgeName }, token);
             if (response.success) {
+                toast.success("Adjudicator updated");
                 fetchRooms();
             } else {
-                alert(response.error || "Failed to assign judge");
+                toast.error(response.error || "Failed to assign judge");
             }
-        } catch {
-            alert("Error assigning judge");
+        } catch (err) {
+            toast.error(err?.message || "Error assigning judge");
         }
     };
 
@@ -86,116 +92,145 @@ export default function AdminRooms() {
 
     return (
         <div className="space-y-6">
-            <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
-                            AXIOM 4.0
-                        </span>
-                        <span className="text-muted-foreground/60">•</span>
-                        <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
-                            Venues
-                        </span>
-                    </div>
-                    <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
-                        Room Management
-                    </h1>
-                    <p className="text-sm md:text-base text-muted-foreground mt-0.5 font-sans">
+            {embedded ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+                    <p className="text-sm text-muted-foreground font-sans">
                         Configure competition venues, hall capacities, and active adjudicator allocations
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-semibold border ax-signal-info">
+                            {rooms.length} {rooms.length === 1 ? "room" : "rooms"}
+                        </span>
                     </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowCreateModal(true)}
+                        className="inline-flex items-center justify-center gap-2 min-h-11 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                    >
+                        <Plus className="w-4 h-4" aria-hidden="true" />
+                        <span>Add Room</span>
+                    </button>
                 </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    <Plus className="w-4 h-4" aria-hidden="true" />
-                    <span>Add Room</span>
-                </button>
-            </div>
+            ) : (
+                <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-600 dark:text-emerald-400">
+                                AXIOM 4.0
+                            </span>
+                            <span className="text-muted-foreground/60">•</span>
+                            <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
+                                Venues
+                            </span>
+                        </div>
+                        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
+                            Room Management
+                        </h1>
+                        <p className="text-sm md:text-base text-muted-foreground mt-0.5 font-sans">
+                            Configure competition venues, hall capacities, and active adjudicator allocations
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowCreateModal(true)}
+                        className="inline-flex items-center justify-center gap-2 min-h-11 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <Plus className="w-4 h-4" aria-hidden="true" />
+                        <span>Add Room</span>
+                    </button>
+                </div>
+            )}
 
             <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                <input
-                    type="text"
-                    placeholder="Search rooms by name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    aria-label="Search rooms"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
-                />
-            </div>
+                    <input
+                        type="text"
+                        placeholder="Search rooms by name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        aria-label="Search rooms"
+                        className="w-full min-h-11 pl-9 pr-4 py-2 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
+                    />
+                </div>
 
-            {filteredRooms.length === 0 ? (
-                <EmptyState
-                  title={searchQuery ? "No room matched" : "No rooms yet"}
-                  description={searchQuery ? "No rooms matched your search." : "Add rooms to start allocating debate matchups."}
-                  action={
-                    <button onClick={() => setShowCreateModal(true)} className="axiom-button axiom-button--green axiom-press axiom-sheen">
-                      <Plus size={16} aria-hidden="true" />
-                      <span>Add first room</span>
-                    </button>
-                  }
-                />
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                    {filteredRooms.map((room, index) => (
-                        <Motion.div
-                            key={room.id}
-                            initial={{ opacity: 0, y: 15 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.04 }}
-                            className="bg-card/70 border border-border/70 rounded-xl p-5 group hover:border-primary/40 transition-all backdrop-blur-sm flex flex-col justify-between"
-                        >
-                            <div>
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                                        <MapPin className="w-4 h-4 text-primary" aria-hidden="true" />
-                                    </div>
-                                    <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => setEditingRoom(room)}
-                                            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                            aria-label={`Edit ${room.name}`}
-                                            title="Edit Room"
-                                        >
-                                            <Edit className="w-4 h-4" aria-hidden="true" />
-                                        </button>
+                {filteredRooms.length === 0 ? (
+                    <EmptyState
+                      title={searchQuery ? "No room matched" : "No rooms yet"}
+                      description={searchQuery ? "No rooms matched your search." : "Add rooms to start allocating debate matchups."}
+                      action={
+                        <button type="button" onClick={() => setShowCreateModal(true)} className="axiom-button axiom-button--green axiom-press axiom-sheen min-h-11">
+                          <Plus size={16} aria-hidden="true" />
+                          <span>Add first room</span>
+                        </button>
+                      }
+                    />
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                        {filteredRooms.map((room, index) => (
+                            <Motion.div
+                                key={room.id}
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.04 }}
+                                className="bg-card/70 border border-border/70 rounded-xl p-5 group hover:border-primary/40 transition-all backdrop-blur-sm flex flex-col justify-between"
+                            >
+                                <div>
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <MapPin className="w-4 h-4 text-primary" aria-hidden="true" />
+                                            </div>
+                                            {room.debates?.[0] && (
+                                                <span className="ax-signal-win inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200">
+                                                    In Use
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingRoom(room)}
+                                                className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                aria-label={`Edit ${room.name}`}
+                                                title="Edit Room"
+                                            >
+                                                <Edit className="w-4 h-4" aria-hidden="true" />
+                                            </button>
 
-                                        <button
-                                            onClick={() => handleDelete(room.id)}
-                                            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                            aria-label={`Delete ${room.name}`}
-                                            title="Delete Room"
-                                        >
-                                            <Trash2 className="w-4 h-4" aria-hidden="true" />
-                                        </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDelete(room.id)}
+                                                className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-rose-500/15 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                aria-label={`Delete ${room.name}`}
+                                                title="Delete Room"
+                                            >
+                                                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                                <h3 className="text-base font-heading font-bold text-foreground mb-1">{room.name}</h3>
-                                <div className="space-y-3 font-sans">
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                        <Users className="w-3.5 h-3.5" aria-hidden="true" />
-                                        <span>Capacity: {room.capacity} participants</span>
-                                    </div>
+                                    <h3 className="text-base font-heading font-bold text-foreground mb-1">{room.name}</h3>
+                                    <div className="space-y-3 font-sans">
+                                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                            <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                                            <span>Capacity: {room.capacity} participants</span>
+                                        </div>
 
-                                    <div className="pt-2.5 border-t border-border/60">
-                                        <label htmlFor={`room-judge-${room.id}`} className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-1 block">
-                                            Active Adjudicator
-                                        </label>
-                                        {room.debates?.[0] ? (
-                                            <input
-                                                id={`room-judge-${room.id}`}
-                                                type="text"
-                                                defaultValue={room.debates[0].judgeName || (room.debates[0].adjudicator ? `${room.debates[0].adjudicator.firstName} ${room.debates[0].adjudicator.lastName}` : "")}
-                                                onBlur={(e) => handleAssignJudge(room.debates[0].id, e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.currentTarget.blur();
-                                                    }
-                                                }}
-                                                className="w-full text-xs bg-background border border-border/70 rounded-md px-2.5 py-1.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-muted-foreground/50"
-                                                placeholder="Enter judge name"
-                                            />
+                                        <div className="pt-2.5 border-t border-border/60">
+                                            <label htmlFor={`room-judge-${room.id}`} className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-1 block">
+                                                Active Adjudicator
+                                            </label>
+                                            {room.debates?.[0] ? (
+                                                <input
+                                                    id={`room-judge-${room.id}`}
+                                                    type="text"
+                                                    defaultValue={room.debates[0].judgeName || (room.debates[0].adjudicator ? `${room.debates[0].adjudicator.firstName} ${room.debates[0].adjudicator.lastName}` : "")}
+                                                    onBlur={(e) => handleAssignJudge(room.debates[0].id, e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.currentTarget.blur();
+                                                        }
+                                                    }}
+                                                    className="w-full min-h-11 text-xs bg-background border border-border/70 rounded-md px-2.5 py-2 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-muted-foreground/50"
+                                                    placeholder="Enter judge name"
+                                                />
                                         ) : (
                                             <p className="text-xs text-muted-foreground italic">No active debate assigned</p>
                                         )}
@@ -233,6 +268,7 @@ export default function AdminRooms() {
 
 function CreateRoomModal({ onClose, onCreated }) {
     const { getToken } = useAuth();
+    const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
@@ -247,12 +283,13 @@ function CreateRoomModal({ onClose, onCreated }) {
             const token = await getToken();
             const response = await AdminApi.createRoom(formData, token);
             if (response.success) {
+                toast.success("Room created");
                 onCreated();
             } else {
-                alert(response.error || "Failed to create room");
+                toast.error(response.error || "Failed to create room");
             }
-        } catch {
-            alert("Error creating room");
+        } catch (err) {
+            toast.error(err?.message || "Error creating room");
         } finally {
             setLoading(false);
         }
@@ -271,8 +308,9 @@ function CreateRoomModal({ onClose, onCreated }) {
                 <div className="flex items-center justify-between mb-4 border-b border-border/60 pb-3">
                     <h2 className="text-lg font-heading font-bold text-foreground">Add New Room</h2>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label="Close dialog"
                     >
                         <X className="w-4 h-4" aria-hidden="true" />
@@ -283,26 +321,26 @@ function CreateRoomModal({ onClose, onCreated }) {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     placeholder="Hall A, Room 204, etc." /></label>
                     <label ><span className="text-xs font-semibold mb-1 block text-foreground">Capacity</span><input type="number"
                     required
                     min="2"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 2 })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+                    className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
                     <div className="flex gap-2.5 pt-3 border-t border-border/60">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
+                            className="flex-1 min-h-11 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
+                            className="flex-1 min-h-11 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
                         >
                             {loading ? "Creating..." : "Create Room"}
                         </button>
@@ -315,6 +353,7 @@ function CreateRoomModal({ onClose, onCreated }) {
 
 function EditRoomModal({ room, onClose, onUpdated }) {
     const { getToken } = useAuth();
+    const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: room.name || "",
@@ -329,12 +368,13 @@ function EditRoomModal({ room, onClose, onUpdated }) {
             const token = await getToken();
             const response = await AdminApi.apiRequest(`/rooms/${room.id}`, "PUT", formData, token);
             if (response.success) {
+                toast.success("Room updated");
                 onUpdated();
             } else {
-                alert(response.error || "Failed to update room");
+                toast.error(response.error || "Failed to update room");
             }
-        } catch {
-            alert("Error updating room");
+        } catch (err) {
+            toast.error(err?.message || "Error updating room");
         } finally {
             setLoading(false);
         }
@@ -353,8 +393,9 @@ function EditRoomModal({ room, onClose, onUpdated }) {
                 <div className="flex items-center justify-between mb-4 border-b border-border/60 pb-3">
                     <h2 className="text-lg font-heading font-bold text-foreground">Edit Room</h2>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label="Close dialog"
                     >
                         <X className="w-4 h-4" aria-hidden="true" />
@@ -365,25 +406,25 @@ function EditRoomModal({ room, onClose, onUpdated }) {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+                    className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
                     <label ><span className="text-xs font-semibold mb-1 block text-foreground">Capacity</span><input type="number"
                     required
                     min="2"
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 2 })}
-                    className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+                    className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
                     <div className="flex gap-2.5 pt-3 border-t border-border/60">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
+                            className="flex-1 min-h-11 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
+                            className="flex-1 min-h-11 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
                         >
                             {loading ? "Updating..." : "Save Changes"}
                         </button>

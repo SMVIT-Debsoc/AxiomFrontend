@@ -12,7 +12,7 @@ import { useSocket, SocketEvents } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { LeaderboardSkeleton } from "../../components/ui/Skeleton";
 
-export default function AdminLeaderboard() {
+export default function AdminLeaderboard({ embedded = false } = {}) {
   const { getToken } = useAuth();
   const [filter, setFilter] = useState("all-time");
   const [leaderboard, setLeaderboard] = useState([]);
@@ -126,82 +126,98 @@ export default function AdminLeaderboard() {
 
   if (loading && !leaderboard.length) {
     return (
-      <div className="space-y-8">
-        <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
-          <div>
-            <span className="axiom-eyebrow text-emerald-600 dark:text-emerald-400">Standings & Metrics</span>
-            <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground flex items-center gap-3">
-              <Trophy className="w-8 h-8 text-amber-500" /> Leaderboard
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Top performing speakers across all events
-            </p>
+      <div className="space-y-6">
+        {!embedded && (
+          <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
+            <div>
+              <span className="axiom-eyebrow text-emerald-600 dark:text-emerald-400">Standings & Metrics</span>
+              <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground flex items-center gap-3">
+                <Trophy className="w-8 h-8 text-orange-500" aria-hidden="true" /> Leaderboard
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Top performing speakers across all events
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => fetchLeaderboard()}
+                disabled={loading}
+                className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                title="Refresh Data"
+                aria-label="Refresh Data"
+              >
+                <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
+              </button>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => fetchLeaderboard()}
-              disabled={loading}
-              className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              title="Refresh Data"
-              aria-label="Refresh Data"
-            >
-              <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
-            </button>
-          </div>
-        </div>
+        )}
         <LeaderboardSkeleton />
       </div>
     );
   }
 
+  const controls = (
+    <div className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onClick={() => fetchLeaderboard()}
+        disabled={loading}
+        className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        title="Refresh Data"
+        aria-label="Refresh Data"
+      >
+        <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
+      </button>
+
+      <div className="flex items-center gap-1 bg-muted/60 border border-border p-1 rounded-xl">
+        {["All Time", "Current Event"].map((period) => (
+          <button
+            key={period}
+            type="button"
+            onClick={() => setFilter(period.toLowerCase().replace(" ", "-"))}
+            disabled={period === "Current Event" && !activeEvent}
+            className={cn(
+              "min-h-11 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-45",
+              filter === period.toLowerCase().replace(" ", "-")
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-card"
+            )}
+          >
+            {period}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
-      <div className="axiom-page-header flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-6 border-b border-border">
-        <div>
-          <span className="axiom-eyebrow text-emerald-600 dark:text-emerald-400">Standings & Metrics</span>
-          <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground flex items-center gap-3">
-            <Trophy className="w-8 h-8 text-amber-500" /> Leaderboard
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+    <div className="space-y-6">
+      {embedded ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
             {filter === "current-event" && activeEvent
               ? `Top performing debaters in ${activeEvent.name}`
               : "Top performing debaters across all tournaments."}
           </p>
+          {controls}
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => fetchLeaderboard()}
-            disabled={loading}
-            className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            title="Refresh Data"
-            aria-label="Refresh Data"
-          >
-            <RotateCcw className={cn("w-5 h-5", loading && "animate-spin")} />
-          </button>
-
-          <div className="flex items-center gap-1 bg-muted/60 border border-border p-1 rounded-xl">
-            {["All Time", "Current Event"].map((period) => (
-              <button
-                key={period}
-                type="button"
-                onClick={() => setFilter(period.toLowerCase().replace(" ", "-"))}
-                disabled={period === "Current Event" && !activeEvent}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  filter === period.toLowerCase().replace(" ", "-")
-                    ? "bg-primary text-primary-foreground shadow-sm font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-card"
-                )}
-              >
-                {period}
-              </button>
-            ))}
+      ) : (
+        <div className="axiom-page-header flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-6 border-b border-border">
+          <div>
+            <span className="axiom-eyebrow text-emerald-600 dark:text-emerald-400">Standings & Metrics</span>
+            <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground flex items-center gap-3">
+              <Trophy className="w-8 h-8 text-orange-500" aria-hidden="true" /> Leaderboard
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {filter === "current-event" && activeEvent
+                ? `Top performing debaters in ${activeEvent.name}`
+                : "Top performing debaters across all tournaments."}
+            </p>
           </div>
+          {controls}
         </div>
-      </div>
+      )}
 
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-none">
         <div className="p-4 border-b border-border bg-card flex items-center gap-4">
@@ -212,7 +228,7 @@ export default function AdminLeaderboard() {
               aria-label="Search debater by name or college"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-muted/30 border border-border rounded-lg focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-foreground"
+              className="w-full min-h-11 pl-9 pr-4 py-2 bg-muted/30 border border-border rounded-lg focus:bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-foreground"
             />
           </div>
         </div>
@@ -245,8 +261,8 @@ export default function AdminLeaderboard() {
                   >
                     <td className="px-6 py-4">
                       <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
-                        rank <= 3 ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20" : "text-muted-foreground font-mono"
+                        "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border",
+                        rank <= 3 ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/35" : "border-transparent text-muted-foreground font-mono"
                       )}>
                         #{rank}
                       </div>

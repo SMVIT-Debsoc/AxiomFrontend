@@ -46,24 +46,30 @@ export default function AdminEventDetails() {
   const [userSearchQuery, setUserSearchQuery] = useState("");
 
   const getTokenRef = useRef(getToken);
+  const fetchGenRef = useRef(0);
   useEffect(() => {
     getTokenRef.current = getToken;
   }, [getToken]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isBackground = false) => {
+    const gen = ++fetchGenRef.current;
     try {
       const token = await getTokenRef.current();
+      const opts = isBackground ? { skipCache: true } : { skipCache: true };
       const results = await Promise.allSettled([
-        EventApi.getById(eventId, token),
-        AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token),
-        AdminApi.apiRequest(`/stats/event/${eventId}`, "GET", null, token),
-        EventApi.getParticipants(eventId, token),
+        AdminApi.apiRequest(`/events/${eventId}`, "GET", null, token, opts),
+        AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, opts),
+        AdminApi.apiRequest(`/stats/event/${eventId}`, "GET", null, token, opts),
+        AdminApi.apiRequest(`/events/${eventId}/participants`, "GET", null, token, opts),
       ]);
 
+      if (gen !== fetchGenRef.current) return;
       const [eventRes, roundsRes, statsRes, participantsRes] = results;
 
       if (eventRes.status === "fulfilled" && eventRes.value.success) {
         setEvent(eventRes.value.event);
+      } else if (eventRes.status === "fulfilled") {
+        console.error("Event fetch failed:", eventRes.value);
       } else {
         console.error("Event fetch failed:", eventRes);
       }
@@ -85,7 +91,9 @@ export default function AdminEventDetails() {
     } catch (error) {
       console.error("Failed to fetch event data:", error);
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current && !isBackground) {
+        setLoading(false);
+      }
     }
   }, [eventId]); // stable - getToken via ref
 
@@ -96,11 +104,11 @@ export default function AdminEventDetails() {
   const softRefetchTimer = useRef(null);
   const softRefetch = useCallback(() => {
     clearTimeout(softRefetchTimer.current);
-    softRefetchTimer.current = setTimeout(() => fetchData(), 150);
+    softRefetchTimer.current = setTimeout(() => fetchData(true), 60);
   }, [fetchData]);
   useEffect(() => () => clearTimeout(softRefetchTimer.current), []);
 
-  useLiveRefresh(() => fetchData(), { enabled: Boolean(eventId) });
+  useLiveRefresh(() => fetchData(true), { enabled: Boolean(eventId) });
 
   // Real-time updates
   useEventSocket(eventId, {
@@ -111,6 +119,8 @@ export default function AdminEventDetails() {
     onEventEnrollment: softRefetch,
     onRoundStatusChange: softRefetch,
     onPairingsPublished: softRefetch,
+    onCheckInCount: softRefetch,
+    onRoundCheckInWindow: softRefetch,
   });
 
   const handleDeleteRound = async (id) => {
@@ -741,7 +751,7 @@ export default function AdminEventDetails() {
 function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
-
+  const [error, setError] = useState("");
 
   const toISTDateTimeString = (date) => {
     return date
@@ -756,40 +766,60 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
       .replace(" ", "T");
   };
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     eventId,
     roundNumber,
     name: `Preliminary Round ${roundNumber}`,
     motion: "",
     checkInStartTime: toISTDateTimeString(new Date()),
-    checkInEndTime: toISTDateTimeString(new Date(Date.now() + 3600000)),
+    checkInEndTime: toISTDateTimeString(new Date(Date.now() + 20 * 60000)),
     status: "UPCOMING",
-  });
+  }));
+
+  const applyDurationPreset = (minutes) => {
+    const startMs = formData.checkInStartTime
+      ? new Date(formData.checkInStartTime + ":00+05:30").getTime()
+      : Date.now();
+    const baseMs = Number.isFinite(startMs) ? startMs : Date.now();
+    setFormData((prev) => ({
+      ...prev,
+      checkInStartTime: prev.checkInStartTime || toISTDateTimeString(new Date(baseMs)),
+      checkInEndTime: toISTDateTimeString(new Date(baseMs + minutes * 60000)),
+    }));
+    setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    const toISTISOString = (dateTimeLocal) => {
+      if (!dateTimeLocal) return null;
+      return new Date(dateTimeLocal + ":00+05:30").toISOString();
+    };
+    const startIso = toISTISOString(formData.checkInStartTime);
+    const endIso = toISTISOString(formData.checkInEndTime);
+    if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
+      setError("Check-in end time must be after check-in start time.");
+      return;
+    }
+
     setLoading(true);
     try {
       const token = await getToken();
-      const toISTISOString = (dateTimeLocal) => {
-        if (!dateTimeLocal) return null;
-        return new Date(dateTimeLocal + ":00+05:30").toISOString();
-      };
-
       const submitData = {
         ...formData,
-        checkInStartTime: toISTISOString(formData.checkInStartTime),
-        checkInEndTime: toISTISOString(formData.checkInEndTime),
+        checkInStartTime: startIso,
+        checkInEndTime: endIso,
       };
 
       const response = await AdminApi.createRound(submitData, token);
       if (response.success) {
         onCreated();
       } else {
-        alert(response.error || "Failed to create round");
+        setError(response.error || "Failed to create round");
       }
-    } catch {
-      alert("Error creating round");
+    } catch (err) {
+      setError(err?.message || "Error creating round");
     } finally {
       setLoading(false);
     }
@@ -805,11 +835,12 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
       <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
         <div>
           <h2 className="text-lg font-heading font-bold text-foreground">Create Round {roundNumber}</h2>
-          <p className="text-xs text-muted-foreground font-sans">Set check-in timeline and debate motion</p>
+          <p className="text-xs text-muted-foreground font-sans">Set check-in timeline (20m default IST) and debate motion</p>
         </div>
         <button
+          type="button"
           onClick={onClose}
-          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" aria-hidden="true" />
@@ -817,12 +848,17 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
       </div>
     
       <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        {error && (
+          <div className="ax-signal-loss rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-700 dark:text-rose-200 font-medium" role="alert">
+            {error}
+          </div>
+        )}
         <div className="grid md:grid-cols-2 gap-3">
           <label className="md:col-span-2"><span className="text-xs font-semibold mb-1 block text-foreground">Round Name</span><input type="text"
           required
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
           <label className="md:col-span-2"><span className="text-xs font-semibold mb-1 block text-foreground">
             Debate Motion (Optional)
           </span><textarea value={formData.motion}
@@ -836,27 +872,40 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
           onChange={(e) =>
             setFormData({ ...formData, checkInStartTime: e.target.value })
           }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
           <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in End (IST)</span><input type="datetime-local"
           required
           value={formData.checkInEndTime}
           onChange={(e) =>
             setFormData({ ...formData, checkInEndTime: e.target.value })
           }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Window length:</span>
+            {[15, 20, 30].map((mins) => (
+              <button
+                key={mins}
+                type="button"
+                onClick={() => applyDurationPreset(mins)}
+                className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium text-foreground transition-colors"
+              >
+                {mins}m
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex gap-2.5 pt-4 border-t border-border/60">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
+            className="flex-1 min-h-11 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
+            className="flex-1 min-h-11 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
           >
             {loading ? "Creating..." : "Create Round"}
           </button>
@@ -998,11 +1047,12 @@ function EditEventModal({ event, onClose, onUpdated }) {
 function EditRoundModal({ round, onClose, onUpdated }) {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
-
+  const [error, setError] = useState("");
 
   const toISTDateTimeString = (utcDate) => {
     if (!utcDate) return "";
     const date = new Date(utcDate);
+    if (Number.isNaN(date.getTime())) return "";
     return date
       .toLocaleString("sv-SE", {
         timeZone: "Asia/Kolkata",
@@ -1024,30 +1074,47 @@ function EditRoundModal({ round, onClose, onUpdated }) {
     pairingsPublished: round.pairingsPublished || false,
   });
 
+  const applyWindowPreset = (minutes) => {
+    const now = new Date();
+    setFormData((prev) => ({
+      ...prev,
+      checkInStartTime: toISTDateTimeString(now),
+      checkInEndTime: toISTDateTimeString(new Date(now.getTime() + minutes * 60000)),
+    }));
+    setError("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    const toISTISOString = (dateTimeLocal) => {
+      if (!dateTimeLocal) return null;
+      return new Date(dateTimeLocal + ":00+05:30").toISOString();
+    };
+    const startIso = toISTISOString(formData.checkInStartTime);
+    const endIso = toISTISOString(formData.checkInEndTime);
+    if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
+      setError("Check-in end time must be after check-in start time.");
+      return;
+    }
+
     setLoading(true);
     try {
       const token = await getToken();
-      const toISTISOString = (dateTimeLocal) => {
-        if (!dateTimeLocal) return null;
-        return new Date(dateTimeLocal + ":00+05:30").toISOString();
-      };
-
       const submitData = {
         ...formData,
-        checkInStartTime: toISTISOString(formData.checkInStartTime),
-        checkInEndTime: toISTISOString(formData.checkInEndTime),
+        checkInStartTime: startIso,
+        checkInEndTime: endIso,
       };
 
       const response = await AdminApi.updateRound(round.id, submitData, token);
       if (response.success) {
         onUpdated();
       } else {
-        alert(response.error || "Failed to update round");
+        setError(response.error || "Failed to update round");
       }
-    } catch {
-      alert("Error updating round");
+    } catch (err) {
+      setError(err?.message || "Error updating round");
     } finally {
       setLoading(false);
     }
@@ -1066,8 +1133,9 @@ function EditRoundModal({ round, onClose, onUpdated }) {
           <p className="text-xs text-muted-foreground font-sans">Update schedule, motion, and draw visibility</p>
         </div>
         <button
+          type="button"
           onClick={onClose}
-          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" aria-hidden="true" />
@@ -1075,11 +1143,16 @@ function EditRoundModal({ round, onClose, onUpdated }) {
       </div>
     
       <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+        {error && (
+          <div className="ax-signal-loss rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-700 dark:text-rose-200 font-medium" role="alert">
+            {error}
+          </div>
+        )}
         <label ><span className="text-xs font-semibold mb-1 block text-foreground">Round Name</span><input type="text"
         required
         value={formData.name}
         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
+        className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
     
         <label ><span className="text-xs font-semibold mb-1 block text-foreground">Debate Motion</span><textarea value={formData.motion}
         onChange={(e) => setFormData({ ...formData, motion: e.target.value })}
@@ -1093,19 +1166,33 @@ function EditRoundModal({ round, onClose, onUpdated }) {
           onChange={(e) =>
             setFormData({ ...formData, checkInStartTime: e.target.value })
           }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
           <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in End (IST)</span><input type="datetime-local"
           required
           value={formData.checkInEndTime}
           onChange={(e) =>
             setFormData({ ...formData, checkInEndTime: e.target.value })
           }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Quick open from now:</span>
+          {[15, 20, 30].map((mins) => (
+            <button
+              key={mins}
+              type="button"
+              onClick={() => applyWindowPreset(mins)}
+              className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium text-foreground transition-colors"
+            >
+              Open {mins}m
+            </button>
+          ))}
         </div>
     
         <label ><span className="text-xs font-semibold mb-1 block text-foreground">Status</span><select value={formData.status}
         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"><option value="UPCOMING">Upcoming</option>
+        className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"><option value="UPCOMING">Upcoming</option>
         <option value="ONGOING">Ongoing</option>
         <option value="COMPLETED">Completed</option></select></label>
     
@@ -1128,14 +1215,14 @@ function EditRoundModal({ round, onClose, onUpdated }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
+            className="flex-1 min-h-11 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
+            className="flex-1 min-h-11 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
           >
             {loading ? "Updating..." : "Save Changes"}
           </button>

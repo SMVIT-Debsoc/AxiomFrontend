@@ -35,6 +35,22 @@ Source of truth: `tailwind.config.js`, `src/index.css`, and `src/neobrutalism.cs
 | Crimson Alert (Error Surface) | `#a51818` | Error banners and destructive alert accents |
 | Soft Rose Alert (Error Text) | `#ff9c9c` | Accessible error messaging on dark surfaces |
 
+### Semantic Signal & Feedback System
+
+Axiom balances its monochrome Carbon/Celadon surface base with high-contrast semantic signal tokens in **both Light and Dark themes** (`>= 4.5:1` WCAG AA contrast) so live tournament telemetry, qualification verdicts, and side assignments never collapse into pale green/mint:
+
+| Token / Class | Light Mode | Dark Mode | Purpose & Luminance Rule |
+| --- | --- | --- | --- |
+| `--axiom-status-success` / `.ax-signal-win` / `.ax-chip--win` | `#047857` / `#065F46` ink on `#10B981` border | `#34D399` / `#6EE7B7` ink on `#10B981` border | `QUALIFIED`, `PRESENT`, `OPEN NOW` check-in windows (`0 0 22px -6px rgb(16 185 129 / 0.45)`) |
+| `--axiom-status-danger` / `.ax-signal-loss` / `.ax-chip--loss` | `#B91C1C` / `#991B1B` ink on `#EF4444` border | `#F87171` / `#FCA5A5` ink on `#EF4444` border | `ELIMINATED`, `ABSENT`, `CLOSED` windows, and `GameOverCard` crimson accents (`0 0 22px -6px rgb(239 68 68 / 0.45)`) |
+| `--axiom-status-warning` / `.ax-signal-warn` / `.ax-chip--warn` | `#B45309` / `#92400E` ink on `#F59E0B` border | `#FBBF24` / `#FCD34D` ink on `#F59E0B` border | `AWAITING SELECTION`, `OPENS AT ...` scheduled check-ins, pending adjudication (`0 0 20px -6px rgb(245 158 11 / 0.38)`) |
+| `--axiom-status-info` / `.ax-signal-info` / `.ax-chip--info` | `#1D4ED8` / `#1E40AF` ink on `#3B82F6` border | `#60A5FA` / `#93C5FD` ink on `#60A5FA` border | Opponent focus cards, user rank highlights, upcoming round metadata |
+| `.ax-chip--gov` / `.ax-chip--opp` | Emerald (`#065F46`) / Indigo (`#3730A3`) | Emerald (`#6EE7B7`) / Indigo (`#C7D2FE`) | Polarity side pills distinguishing Government vs. Opposition without overlapping loss crimson |
+| `.ax-room-selected` | `2px` `#10B981` border & `#064E3B` ink | `2px` `#B9F5D8` border & `#EAFBF5` ink | Active room selection ring & emerald luminance glow for allocation modals |
+
+- **Static Glow & Motion Restraint**: Signal glows are static directional luminance (`box-shadow`) with zero continuous pulsing/breathing loops, honoring `@media (prefers-reduced-motion: reduce)`.
+- **Privacy Alignment**: Semantic signals expose **only** Competition Privacy Boundary-safe participant states (check-in `Opens`/`Closes` IST timestamps, GOV/OPP side, published `QUALIFIED` / `ELIMINATED` / `AWAITING SELECTION`, and unlocked Gold/Silver/Bronze standings after `resultsPublished`), never leaking unreleased speaker scores or unpublished room pairings.
+
 ### Typography
 
 | Role | Font Family | Usage |

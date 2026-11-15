@@ -2,8 +2,8 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {Search, X} from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
-import {AdminApi, EventApi, UserApi} from "../../services/api";
-import {useEventSocket} from "../../hooks/useSocket";
+import {AdminApi, EventApi} from "../../services/api";
+import {useEventSocket, useRoundSocket, useSocket, SocketEvents} from "../../hooks/useSocket";
 import {useToast} from "../../hooks/useToast";
 import {useAdminEvent} from "../../contexts/adminEvent";
 import ModalSurface from "../../components/ui/ModalSurface";
@@ -44,44 +44,79 @@ export default function AdminPeople() {
     const [modal, setModal] = useState(null); // "qr" | "add"
     const [live, setLive] = useState([]);
     const getTokenRef = useRef(getToken);
+    const fetchGenRef = useRef(0);
     useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-    const load = useCallback(async () => {
+    const load = useCallback(async (isBackground = false) => {
+        const gen = ++fetchGenRef.current;
         try {
             const token = await getTokenRef.current();
+            const opts = { skipCache: true };
             const [usersRes, partsRes, roundsRes] = await Promise.all([
-                UserApi.list(token, 500),
-                eventId ? EventApi.getParticipants(eventId, token) : Promise.resolve(null),
-                eventId ? AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token) : Promise.resolve(null),
+                AdminApi.apiRequest("/users?limit=500", "GET", null, token, opts),
+                eventId ? AdminApi.apiRequest(`/events/${eventId}/participants`, "GET", null, token, opts) : Promise.resolve(null),
+                eventId ? AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, opts) : Promise.resolve(null),
             ]);
+            if (gen !== fetchGenRef.current) return;
             setUsers(usersRes.success ? usersRes.users || [] : []);
             setEnrolledIds(new Set(partsRes?.success ? (partsRes.participants || []).map((p) => p.id) : []));
             const list = (roundsRes?.success ? roundsRes.rounds || [] : []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
             const cur = list.find((r) => String(r.status).toUpperCase() === "ONGOING") || list.find((r) => String(r.status).toUpperCase() !== "COMPLETED") || list[list.length - 1];
             if (cur) {
-                const detail = await AdminApi.apiRequest(`/rounds/${cur.id}`, "GET", null, token);
+                const detail = await AdminApi.apiRequest(`/rounds/${cur.id}`, "GET", null, token, opts);
+                if (gen !== fetchGenRef.current) return;
                 setRound(cur);
                 setPresentIds(new Set(detail.success ? (detail.round.checkIns || []).filter((c) => c.status === "PRESENT").map((c) => c.userId) : []));
             } else { setRound(null); setPresentIds(new Set()); }
         } catch (failure) {
             console.error("Failed to load people", failure);
-            toast.error("Error", "Failed to load people");
-        } finally { setLoading(false); }
+            if (!isBackground) toast.error("Error", "Failed to load people");
+        } finally {
+            if (gen === fetchGenRef.current && !isBackground) setLoading(false);
+        }
     }, [eventId, toast]);
 
     useEffect(() => { setLoading(true); load(); }, [load]);
 
-    // Live registrations: new enrolments arrive over the event socket.
+    // Live registrations and check-ins: debounce refreshes to 100ms with cache bypass.
     const timer = useRef(null);
     useEffect(() => () => clearTimeout(timer.current), []);
+    const scheduleReload = useCallback(() => {
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => load(true), 100);
+    }, [load]);
+
     useEventSocket(eventId, {
         onEventEnrollment: (data) => {
             setLive((prev) => [{key: `${Date.now()}`, name: data?.userName || data?.name || "New debater", college: data?.college || "", at: new Date().toISOString()}, ...prev].slice(0, 6));
-            clearTimeout(timer.current);
-            timer.current = setTimeout(load, 400);
+            scheduleReload();
         },
-        onCheckInCount: () => { clearTimeout(timer.current); timer.current = setTimeout(load, 600); },
+        onCheckInCount: scheduleReload,
+        onRoundCreated: scheduleReload,
+        onRoundStatusChange: scheduleReload,
     });
+
+    useRoundSocket(round?.id, {
+        onCheckInUpdate: (data) => {
+            const uid = data?.userId || data?.user?.id;
+            if (uid && data?.status) {
+                setPresentIds((prev) => {
+                    const next = new Set(prev);
+                    if (data.status === "PRESENT") next.add(uid);
+                    else next.delete(uid);
+                    return next;
+                });
+            }
+            scheduleReload();
+        },
+        onRoundStatusChange: scheduleReload,
+        onRoundUpdated: scheduleReload,
+    });
+
+    const {subscribe} = useSocket({eventId, roundId: round?.id});
+    useEffect(() => {
+        return subscribe(SocketEvents.ROUND_CHECKIN_WINDOW, scheduleReload);
+    }, [subscribe, scheduleReload]);
 
     // Event participants plus anyone whose profile is still incomplete
     const rows = useMemo(() => users.filter((u) => enrolledIds.has(u.id) || incomplete(u)).map((u) => ({

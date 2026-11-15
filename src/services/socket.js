@@ -151,8 +151,8 @@ class SocketService {
             upgrade: true,
             reconnection: true,
             reconnectionAttempts: Infinity,
-            reconnectionDelay: 1500,
-            reconnectionDelayMax: 10000,
+            reconnectionDelay: 500,
+            reconnectionDelayMax: 5000,
             timeout: 20000,
             autoConnect: true,
             forceNew: false,
@@ -251,9 +251,11 @@ class SocketService {
     joinEvent(eventId) {
         if (!eventId) return;
 
-        this.connect();
-        this.socket?.emit(SocketEvents.JOIN_EVENT, eventId);
         this.connectedRooms.add(`event:${eventId}`);
+        this.connect();
+        if (this.socket?.connected) {
+            this.socket.emit(SocketEvents.JOIN_EVENT, eventId);
+        }
         console.log("[Socket] Joined event:", eventId);
     }
 
@@ -263,8 +265,10 @@ class SocketService {
     leaveEvent(eventId) {
         if (!eventId) return;
 
-        this.socket?.emit(SocketEvents.LEAVE_EVENT, eventId);
         this.connectedRooms.delete(`event:${eventId}`);
+        if (this.socket?.connected) {
+            this.socket.emit(SocketEvents.LEAVE_EVENT, eventId);
+        }
         console.log("[Socket] Left event:", eventId);
     }
 
@@ -274,9 +278,11 @@ class SocketService {
     joinRound(roundId) {
         if (!roundId) return;
 
-        this.connect();
-        this.socket?.emit(SocketEvents.JOIN_ROUND, roundId);
         this.connectedRooms.add(`round:${roundId}`);
+        this.connect();
+        if (this.socket?.connected) {
+            this.socket.emit(SocketEvents.JOIN_ROUND, roundId);
+        }
         console.log("[Socket] Joined round:", roundId);
     }
 
@@ -286,8 +292,10 @@ class SocketService {
     leaveRound(roundId) {
         if (!roundId) return;
 
-        this.socket?.emit(SocketEvents.LEAVE_ROUND, roundId);
         this.connectedRooms.delete(`round:${roundId}`);
+        if (this.socket?.connected) {
+            this.socket.emit(SocketEvents.LEAVE_ROUND, roundId);
+        }
         console.log("[Socket] Left round:", roundId);
     }
 
