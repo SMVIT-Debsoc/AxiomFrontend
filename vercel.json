@@ -1,4 +1,14 @@
 {
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "axiom4.online" }],
+      "destination": "https://www.axiom4.online/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/socket.io/(.*)",
@@ -9,8 +19,12 @@
       "destination": "https://axiom26-aezg.onrender.com/api/$1"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/:workspace(dashboard|admin|sign-in|sign-up)/:path*",
+      "destination": "/app"
+    },
+    {
+      "source": "/:entry(sso-callback|auth-redirect|complete-profile|login-select|forgot-password|reset-password|get-started)",
+      "destination": "/app"
     }
   ]
 }

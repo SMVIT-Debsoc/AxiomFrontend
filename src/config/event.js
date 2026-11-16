@@ -5,7 +5,7 @@
  */
 export const EVENT_CONFIG = {
     name: "AXIOM 4.0",
-    organiser: "SMVIT Debsoc",
+    organiser: "SMVIT DebSoc",
     organiserLong: "SMVIT Debating Society",
     city: "Bengaluru",
     venue: "Sir MVIT, Bengaluru",

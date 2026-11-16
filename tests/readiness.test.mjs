@@ -2,20 +2,52 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile, readdir} from 'node:fs/promises';
 import {resolveConfig} from 'vite';
+import {SITE_ORIGIN, ORGANISER_URL} from '../src/config/seo.js';
 
 const config = await resolveConfig({logLevel:'silent'}, 'build', 'production');
 
-test('landing metadata identifies the debate tournament in the initial HTML', async () => {
-  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-  const title = html.match(/<title>([^<]+)<\/title>/)?.[1];
-  const description = html.match(/<meta name="description" content="([^"]+)"/)?.[1];
+async function transformPage(file) {
+  const html = await readFile(new URL('../' + file, import.meta.url), 'utf8');
+  const plugin = config.plugins.find(({name}) => name === 'public-page-html');
+  return plugin.transformIndexHtml(html, {filename: file});
+}
 
-  assert.match(title, /AXIOM 4\.0 Debate Tournament \| SMVIT DebSoc/);
-  assert.match(description, /collegiate debate tournament.*register as a debater/i);
-  for (const tag of ['property="og', 'name="twitter']) {
-    assert.ok(html.includes(`<meta ${tag}:title" content="${title}"`));
-    assert.ok(html.includes(`<meta ${tag}:description" content="${description}"`));
+test('public HTML has discoverable content, distinct canonical metadata and absolute social images', async () => {
+  for (const [file, path, expectedTitle] of [
+    ['index.html', '/', 'AXIOM 4.0 Debate Tournament | SMVIT DebSoc'],
+    ['about.html', '/about', 'About AXIOM 4.0 | Parliamentary Debate at Sir MVIT'],
+  ]) {
+    const {html, tags} = await transformPage(file);
+    const meta = key => tags.find(({attrs}) => attrs.name === key || attrs.property === key)?.attrs.content;
+    assert.equal(tags.find(({tag}) => tag === 'title').children, expectedTitle);
+    assert.equal(tags.find(({attrs}) => attrs.rel === 'canonical').attrs.href, SITE_ORIGIN + path);
+    assert.equal(meta('og:url'), SITE_ORIGIN + path);
+    assert.match(meta('description'), /Sir MVIT in Bengaluru/);
+    assert.equal(meta('robots'), undefined);
+    for (const prefix of ['og', 'twitter']) {
+      assert.equal(meta(prefix + ':title'), expectedTitle);
+      assert.equal(meta(prefix + ':description'), meta('description'));
+      assert.equal(meta(prefix + ':image'), SITE_ORIGIN + '/brand/social-card.png');
+    }
+    assert.match(html, /<h1>[^<]*AXIOM 4\.0/);
+    assert.ok(html.includes(`href="${ORGANISER_URL}"`));
+    if (path === '/') {
+      assert.match(meta('description'), /collegiate debate tournament.*register as a debater/i);
+      const website = JSON.parse(tags.find(({tag}) => tag === 'script').children);
+      assert.equal(website.publisher.url, ORGANISER_URL);
+    }
   }
+});
+
+test('sitemap contains only public canonical URLs and workspace HTML opts out of indexing', async () => {
+  const sitemap = await readFile(new URL('../public/sitemap.xml', import.meta.url), 'utf8');
+  assert.deepEqual([...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match => match[1]),
+    [SITE_ORIGIN + '/', SITE_ORIGIN + '/about']);
+  const robots = await readFile(new URL('../public/robots.txt', import.meta.url), 'utf8');
+  assert.ok(robots.includes('Sitemap: ' + SITE_ORIGIN + '/sitemap.xml'));
+  const {tags} = await transformPage('app.html');
+  assert.ok(tags.some(({attrs}) => attrs.name === 'robots' && attrs.content === 'noindex'));
+  assert.ok(!tags.some(({attrs}) => attrs.rel === 'canonical'));
 });
 
 test('production build must not select temporary authentication', () => {
@@ -45,6 +77,11 @@ test('production API and socket rewrites target the active Render API', async ()
   const rewrites = new Map(vercel.rewrites.map(({source, destination}) => [source, destination]));
   assert.equal(rewrites.get('/api/(.*)'), 'https://axiom26-aezg.onrender.com/api/$1');
   assert.equal(rewrites.get('/socket.io/(.*)'), 'https://axiom26-aezg.onrender.com/socket.io/$1');
+  assert.equal(rewrites.has('/(.*)'), false);
+  assert.equal(rewrites.get('/:workspace(dashboard|admin|sign-in|sign-up)/:path*'), '/app');
+  assert.equal(rewrites.get('/:entry(sso-callback|auth-redirect|complete-profile|login-select|forgot-password|reset-password|get-started)'), '/app');
+  assert.equal(vercel.cleanUrls, true);
+  assert.equal(vercel.redirects[0].destination, SITE_ORIGIN + '/:path*');
 });
 test('Azure deploy workflows are removed and Render deploy waits for CI', async () => {
   const workflowDirectory = new URL('../.github/workflows/', import.meta.url);

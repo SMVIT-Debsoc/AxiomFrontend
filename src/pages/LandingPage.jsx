@@ -7,6 +7,7 @@ import DebSocPromoCard from "../components/brand/DebSocPromoCard";
 import ThemeToggle from "../components/ui/ThemeToggle";
 import {GoogleAuthButton} from "../auth/client.jsx";
 import {EVENT_CONFIG as E} from "../config/event";
+import {ORGANISER_URL} from "../config/seo.js";
 
 const AdminAccessModal = lazy(() => import("../components/brand/AdminAccessModal"));
 
@@ -54,7 +55,7 @@ export default function LandingPage() {
                     <a href="#how" className="hidden px-3.5 py-3 text-[15px] font-medium md:inline">How it works</a>
                     <a href="#faq" className="hidden px-3.5 py-3 text-[15px] font-medium md:inline">FAQ</a>
                     <a
-                        href="https://www.smvitdebsoc.com"
+                        href={ORGANISER_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="hidden sm:inline-flex items-center gap-1 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-[#B9F5D8] hover:text-primary"
@@ -78,7 +79,7 @@ export default function LandingPage() {
                         Ancient thought.<br /><span className="text-[#4A5646] dark:text-[#9FE3C2]">New arguments.</span>
                     </h1>
                     <p className="hidden max-w-[520px] text-[19px] leading-relaxed text-muted-foreground md:block">
-                        {E.name} is {E.organiser}'s competitive debate tournament. Register in under a minute: sign in with Google, add your details, and you're in.
+                        {E.name} is {E.organiser}'s collegiate debate tournament at {E.venue}. Sign in with Google and add your details to register.
                     </p>
                     <div id="hero-cta" ref={heroCta} className="hidden max-w-[520px] flex-col gap-2.5 md:flex">
                         <GoogleAuthButton variant="hero" />
@@ -93,7 +94,7 @@ export default function LandingPage() {
                     <div className="relative flex flex-col gap-3.5 md:hidden">
                         <p className="inline-flex items-center gap-2 self-start rounded-full bg-[#B9F5D8] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-[#141510]"><span aria-hidden="true" className="h-[7px] w-[7px] rounded-full bg-[#1D1E18]" />Registrations open</p>
                         <h1 className="font-display text-[72px] font-normal leading-[0.86] text-[#EAFBF5]">Ancient<br />thought.<br /><span className="text-[#B9F5D8]">New<br />arguments.</span></h1>
-                        <p className="m-0 max-w-[250px] text-base leading-normal text-[#BDD9CA]">{E.organiser}'s debate tournament. Register in about a minute.</p>
+                        <p className="m-0 max-w-[250px] text-base leading-normal text-[#BDD9CA]">{E.organiser}'s collegiate debate tournament at {E.venue}. Register with Google.</p>
                     </div>
 
                     <div className="relative mt-6 flex flex-col gap-2.5 md:hidden">

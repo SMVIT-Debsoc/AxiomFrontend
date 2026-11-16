@@ -16,6 +16,7 @@ import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
 import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
 import {AuthenticateWithRedirectCallback} from "./auth/client.jsx";
 import ApiAuthSync from "./components/ApiAuthSync";
+import PageMetadata from "./components/PageMetadata";
 import {ToastProvider} from "./components/ui/Toast";
 
 import LandingPage from "./pages/LandingPage";
@@ -50,6 +51,7 @@ function App() {
             <ToastProvider>
                 <ApiAuthSync />
                 <BrowserRouter>
+                    <PageMetadata />
                     <VercelAnalytics />
                     <Suspense fallback={<div className="min-h-svh bg-background" role="status" aria-label="Loading" />}>
                     <Routes>
