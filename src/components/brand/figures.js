@@ -42,3 +42,5 @@ export function figureFor(key, choices = FIGURE_IDS) {
   for (let i = 0; i < key.length; i += 1) h = (Math.imul(h, 31) + key.charCodeAt(i)) >>> 0;
   return choices[h % choices.length];
 }
+export const HERO_SCULPTURE_SIZES = "(max-width: 640px) 145px, (max-width: 1024px) 241px, 260px";
+export const sculptureSrcSet = (sources) => sources.map(([url, width]) => `${url} ${width}w`).join(", ");

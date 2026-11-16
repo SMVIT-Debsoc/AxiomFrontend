@@ -1,9 +1,10 @@
-import {lazy, Suspense} from "react";
+import {lazy, Suspense, useState} from "react";
 import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom";
-import MainLayout from "./layouts/MainLayout";
+const MainLayout = lazy(() => import("./layouts/MainLayout"));
+const WorkspaceProviders = lazy(() => import("./components/WorkspaceProviders"));
 const Placeholder = lazy(() => import("./pages/Placeholder"));
 const Home = lazy(() => import("./pages/Home"));
-import DashboardLayout from "./layouts/DashboardLayout";
+const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"));
 const DashboardHome = lazy(() => import("./pages/dashboard/DashboardHome"));
 const DashboardEvents = lazy(() => import("./pages/dashboard/DashboardEvents"));
 const EventDetails = lazy(() => import("./pages/dashboard/EventDetails"));
@@ -12,18 +13,19 @@ const Participants = lazy(() => import("./pages/dashboard/Participants"));
 const RoundDetails = lazy(() => import("./pages/dashboard/RoundDetails"));
 const Results = lazy(() => import("./pages/dashboard/Results"));
 import {OnboardingGuard} from "./components/OnboardingGuard";
-import {ProfileCompletionGuard} from "./components/ProfileCompletionGuard";
+const ProfileCompletionGuard = lazy(() => import("./components/ProfileCompletionGuard").then(module => ({
+    default: module.ProfileCompletionGuard,
+})));
 import {AuthRedirectHandler} from "./components/AuthRedirectHandler";
 import {AuthenticateWithRedirectCallback} from "./auth/client.jsx";
 import ApiAuthSync from "./components/ApiAuthSync";
 import PageMetadata from "./components/PageMetadata";
-import {ToastProvider} from "./components/ui/Toast";
 
 import LandingPage from "./pages/LandingPage";
 
 // Admin imports
 import {AdminGuard} from "./components/AdminGuard";
-import AdminLayout from "./layouts/AdminLayout";
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminLive = lazy(() => import("./pages/admin/AdminLive"));
 const AdminPeople = lazy(() => import("./pages/admin/AdminPeople"));
@@ -45,10 +47,10 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 import {VercelAnalytics} from "./components/analytics/VercelAnalytics";
 
 function App() {
+    const [showIntro] = useState(() => window.location.pathname !== "/");
     return (
         <>
-            <Preloader />
-            <ToastProvider>
+            {showIntro && <Preloader />}
                 <ApiAuthSync />
                 <BrowserRouter>
                     <PageMetadata />
@@ -88,6 +90,7 @@ function App() {
                             />
                         </Route>
 
+                        <Route element={<WorkspaceProviders />}>
                         {/* Profile Completion Route - Without ProfileCompletionGuard */}
                         <Route
                             path="/complete-profile"
@@ -187,11 +190,11 @@ function App() {
                                 }
                             />
                         </Route>
+                        </Route>
                         <Route path="*" element={<NotFoundPage />} />
                     </Routes>
                     </Suspense>
                 </BrowserRouter>
-            </ToastProvider>
         </>
     );
 }

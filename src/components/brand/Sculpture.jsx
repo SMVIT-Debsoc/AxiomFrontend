@@ -1,14 +1,16 @@
-import {FIGURES} from "./figures";
+import {FIGURES, HERO_SCULPTURE_SIZES, sculptureSrcSet} from "./figures";
 
-export default function Sculpture({className = "", variant = "portrait", figure = "shiva-mahadeva", eager = false}) {
+export default function Sculpture({
+    className = "", variant = "portrait", figure = "shiva-mahadeva", eager = false, sizes = HERO_SCULPTURE_SIZES
+}) {
     const data = FIGURES[figure] || FIGURES["shiva-mahadeva"];
     const largest = data.sources[data.sources.length - 1];
     return (
         <img
             className={`axiom-sculpture axiom-sculpture--${variant} ${className}`}
             src={largest[0]}
-            srcSet={data.sources.map(([url, width]) => `${url} ${width}w`).join(", ")}
-            sizes="(max-width: 640px) 145px, (max-width: 1024px) 241px, 260px"
+            srcSet={sculptureSrcSet(data.sources)}
+            sizes={sizes}
             width={data.width}
             height={data.height}
             alt=""

@@ -1,7 +1,6 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useAuth, useUser} from "../auth/client.jsx";
 import {setApiAuthTokenProvider} from "../services/api";
-import {socketService} from "../services/socket";
 
 function hasSecretAdminSession() {
     if (typeof window === "undefined") return false;
@@ -15,6 +14,7 @@ export default function ApiAuthSync() {
     const {getToken} = useAuth();
     const {isSignedIn} = useUser();
     const [adminSessionActive, setAdminSessionActive] = useState(hasSecretAdminSession);
+    const socket = useRef(null);
 
     useEffect(() => {
         const handleSync = () => setAdminSessionActive(hasSecretAdminSession());
@@ -25,8 +25,8 @@ export default function ApiAuthSync() {
     useEffect(() => {
         if (!isSignedIn && !adminSessionActive) {
             setApiAuthTokenProvider(null);
-            socketService.setAuthProvider(null);
-            socketService.disconnect();
+            socket.current?.setAuthProvider(null);
+            socket.current?.disconnect();
             return;
         }
 
@@ -46,13 +46,21 @@ export default function ApiAuthSync() {
         };
 
         setApiAuthTokenProvider(tokenProvider);
-        socketService.setAuthProvider(tokenProvider);
-        // A socket opened before sign-in / admin unlock has stale (anonymous) auth.
-        socketService.refreshAuth();
+        let disposed = false;
+        import("../services/socket").then(({socketService}) => {
+            if (disposed) return;
+            socket.current = socketService;
+            socketService.setAuthProvider(tokenProvider);
+            // A socket opened before sign-in or admin unlock has stale credentials.
+            socketService.refreshAuth();
+        }).catch(error => {
+            if (!disposed) console.error("Unable to initialize live updates:", error);
+        });
 
         return () => {
+            disposed = true;
             setApiAuthTokenProvider(null);
-            socketService.setAuthProvider(null);
+            socket.current?.setAuthProvider(null);
         };
     }, [getToken, isSignedIn, adminSessionActive]);
 

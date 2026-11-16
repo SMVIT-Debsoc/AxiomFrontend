@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import {fileURLToPath} from 'node:url'
+import {readFileSync} from 'node:fs'
 import {ORGANISER_URL, PUBLIC_PAGES, pageMetadata} from './src/config/seo.js'
+import {FIGURES, HERO_SCULPTURE_SIZES, sculptureSrcSet} from './src/components/brand/figures.js'
 
 const htmlEntries = {'index.html': '/', 'about.html': '/about', 'app.html': '/app'}
+const publicSummaryCss = readFileSync(new URL('./public/brand/public-summary.css', import.meta.url), 'utf8')
 
 // https://vite.dev/config/
 export default defineConfig(() => {
@@ -18,7 +21,20 @@ export default defineConfig(() => {
     <p>${page.description}</p>
     <p><a href="${path === '/' ? '/about' : '/'}">${path === '/' ? 'About the tournament' : 'Tournament homepage'}</a> · <a href="${ORGANISER_URL}">SMVIT DebSoc</a></p>
   </main>` : ''
-        return {html: html.replace('<!-- public-page-summary -->', summary), tags: pageMetadata(path)}
+        const tags = pageMetadata(path)
+        if (page) tags.push({tag: 'style', attrs: {}, children: publicSummaryCss, injectTo: 'head'})
+        if (path === '/') {
+          tags.push({
+            tag: 'link',
+            injectTo: 'head',
+            attrs: {
+              rel: 'preload', as: 'image', type: 'image/webp', fetchpriority: 'high',
+              imagesrcset: sculptureSrcSet(FIGURES['shiva-music'].sources),
+              imagesizes: HERO_SCULPTURE_SIZES,
+            },
+          })
+        }
+        return {html: html.replace('<!-- public-page-summary -->', summary), tags}
       },
     }],
     envPrefix: [
@@ -32,7 +48,6 @@ export default defineConfig(() => {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-clerk': ['@clerk/clerk-react'],
-            'vendor-motion': ['framer-motion'],
             'vendor-socket': ['socket.io-client'],
             'vendor-icons': ['lucide-react'],
           },

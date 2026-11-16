@@ -149,7 +149,7 @@ export default function LandingPage() {
 
             <section aria-labelledby="cta-title" className="px-4 pb-6 md:px-6">
                 <div className="relative mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-8 overflow-hidden rounded-3xl bg-[#1D1E18] p-5 py-6 text-[#EAFBF5] md:rounded-[32px] md:p-[clamp(32px,6vw,72px)]">
-                    <Sculpture figure="vishnu" className="!absolute -right-5 -top-2.5 !h-[260px] !w-auto opacity-20 mix-blend-luminosity md:right-[26%] md:top-auto md:bottom-0 md:!h-full md:opacity-[0.18]" />
+                    <Sculpture figure="vishnu" sizes="(min-width: 768px) 145px, 92px" className="!absolute -right-5 -top-2.5 !h-[260px] !w-auto opacity-20 mix-blend-luminosity md:right-[26%] md:top-auto md:bottom-0 md:!h-full md:opacity-[0.18]" />
                     <div className="relative flex flex-col gap-2 md:gap-3">
                         <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#9FE3C2] md:text-[13px]">The floor is yours</p>
                         <h2 id="cta-title" className="font-display text-[64px] font-normal leading-[0.88] text-[#EAFBF5] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>

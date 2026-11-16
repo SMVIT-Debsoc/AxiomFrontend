@@ -21,6 +21,7 @@ export default function DebSocPromoCard() {
             {/* Classical Sculpture accent */}
             <Sculpture
                 figure="surya"
+                sizes="(min-width: 768px) 110px, 92px"
                 className="!absolute -right-8 -bottom-10 !h-[300px] md:!h-[360px] !w-auto opacity-20 md:opacity-30 mix-blend-luminosity pointer-events-none object-contain"
             />
 

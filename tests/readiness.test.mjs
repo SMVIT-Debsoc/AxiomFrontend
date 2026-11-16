@@ -50,6 +50,17 @@ test('sitemap contains only public canonical URLs and workspace HTML opts out of
   assert.ok(!tags.some(({attrs}) => attrs.rel === 'canonical'));
 });
 
+test('only the homepage preloads the responsive hero and public HTML avoids an external font stylesheet', async () => {
+  const {html, tags} = await transformPage('index.html');
+  const hero = tags.find(({attrs}) => attrs.rel === 'preload' && attrs.as === 'image');
+  assert.equal(hero.attrs.fetchpriority, 'high');
+  assert.match(hero.attrs.imagesrcset, /shiva-music-sm\.webp 335w, .*shiva-music-lg\.webp 609w/);
+  assert.match(hero.attrs.imagesizes, /145px/);
+  assert.doesNotMatch(html, /fonts\.googleapis\.com|public-summary\.css/);
+  const {tags: aboutTags} = await transformPage('about.html');
+  assert.ok(!aboutTags.some(({attrs}) => attrs.rel === 'preload' && attrs.as === 'image'));
+});
+
 test('production build must not select temporary authentication', () => {
   assert.equal(config.plugins.some(plugin => plugin.name.includes('temporary-auth')), false,
     'Temporary authentication server middleware must not be part of the production build.');
