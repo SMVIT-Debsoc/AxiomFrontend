@@ -18,6 +18,7 @@ import {EventApi, DebateApi, UserApi} from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { cn } from "../../lib/utils";
 import { useEventSocket, useLiveRefresh } from "../../hooks/useSocket";
+import { socketService } from "../../services/socket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { EventDetailsSkeleton } from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
@@ -217,6 +218,7 @@ export default function EventDetails() {
         "You have been registered for this event."
       );
       setIsEnrolled(true);
+      socketService.joinEvent(id);
       // Refresh participants list
       const partsParams = await EventApi.getParticipants(id, token);
       if (partsParams.success) {
