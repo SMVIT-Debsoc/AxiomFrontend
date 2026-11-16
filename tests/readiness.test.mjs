@@ -4,6 +4,20 @@ import {readFile, readdir} from 'node:fs/promises';
 import {resolveConfig} from 'vite';
 
 const config = await resolveConfig({logLevel:'silent'}, 'build', 'production');
+
+test('landing metadata identifies the debate tournament in the initial HTML', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const title = html.match(/<title>([^<]+)<\/title>/)?.[1];
+  const description = html.match(/<meta name="description" content="([^"]+)"/)?.[1];
+
+  assert.match(title, /AXIOM 4\.0 Debate Tournament \| SMVIT DebSoc/);
+  assert.match(description, /collegiate debate tournament.*register as a debater/i);
+  for (const tag of ['property="og', 'name="twitter']) {
+    assert.ok(html.includes(`<meta ${tag}:title" content="${title}"`));
+    assert.ok(html.includes(`<meta ${tag}:description" content="${description}"`));
+  }
+});
+
 test('production build must not select temporary authentication', () => {
   assert.equal(config.plugins.some(plugin => plugin.name.includes('temporary-auth')), false,
     'Temporary authentication server middleware must not be part of the production build.');

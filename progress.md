@@ -231,3 +231,11 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - **Verification results**:
   - `Axiom26`: `npx prisma validate` PASS, `npm run build` PASS, `npm test` PASS (6/6), `REQUIRE_DATABASE=true bun ./dist/tests/autoEnrollUnit.test.js` PASS, and GitHub Actions CI run `43604302981` on `main` (`f129043`) PASS (`conclusion: "success"`).
   - `AxiomFrontend`: `npm run lint` PASS, `npm test` 44/44 PASS, `npm run build` PASS (`3.32s`), `npm run test:browser` 39/39 PASS (`audit-artifacts/browser-results.json`), and GitHub Actions CI run `43603938734` (`82163d2`) PASS (`conclusion: "success"`).
+
+## Homepage search metadata (2026-11-16)
+
+- Scope and status: homepage metadata passed local verification. The title identifies AXIOM 4.0, SMVIT DebSoc and the debate tournament. The description explains the event and registration. The initial HTML contains matching Open Graph and Twitter metadata.
+- Files changed: `index.html`, `tests/readiness.test.mjs`, and this log.
+- Checks: `npm test` passed 58/58, including the metadata regression check. `npm run build` passed. A focused Chromium check against `npm run preview` verified HTTP 200, metadata with JavaScript disabled, the social image response, and normal landing-page rendering at 1280px and 390px without uncaught browser errors. External requests were intercepted for the focused check.
+- Known issues: the broader fixture run started before the edit reported 41 passes and six timeouts across landing load, closed check-in, published pairing, check-in opening and closing, and mobile dashboard. Repository lint reported 28 errors in unchanged application files. The browser checks used the locally cached Playwright 1.58.2 and its installed Chromium. Deployment, Google indexing, and social-platform link previews remain unverified.
+- Next recommended task: give `/about` its own metadata. Confirm the official hostname before adding canonical URLs and a sitemap. Public-page prerendering and index controls remain open.
