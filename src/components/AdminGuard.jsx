@@ -26,25 +26,6 @@ export function AdminGuard({children}) {
                 return;
             }
 
-            const envSecretKey = (
-                import.meta.env.VITE_ADMIN_SECRET_KEY ||
-                import.meta.env.ADMIN_SECRET_KEY ||
-                ""
-            ).trim();
-            const storedKey =
-                typeof window !== "undefined"
-                    ? (sessionStorage.getItem("adminSecretKey") || "").trim()
-                    : "";
-
-            if (hasSecretAdminSession && envSecretKey && storedKey !== envSecretKey) {
-                sessionStorage.removeItem("isAdminSession");
-                sessionStorage.removeItem("adminSecretKey");
-                window.dispatchEvent(new Event("axiom-admin-session-changed"));
-                setError("Invalid Admin Secret Key");
-                setChecking(false);
-                return;
-            }
-
             try {
                 const response = await AdminApi.getProfile();
                 if (response.success && response.admin) {

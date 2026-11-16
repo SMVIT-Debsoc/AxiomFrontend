@@ -33,25 +33,11 @@ export default function AdminAccessModal({isOpen, onClose}) {
         setError("");
 
         try {
-            const envSecretKey = (
-                import.meta.env.VITE_ADMIN_SECRET_KEY ||
-                import.meta.env.ADMIN_SECRET_KEY ||
-                ""
-            ).trim();
-
-            if (envSecretKey) {
-                if (trimmedKey !== envSecretKey) {
-                    setError("Invalid Admin Secret Key. Access denied.");
-                    setBusy(false);
-                    return;
-                }
-            } else {
-                const res = await AdminApi.validateKey(trimmedKey);
-                if (!res?.valid) {
-                    setError("Invalid Admin Secret Key. Access denied.");
-                    setBusy(false);
-                    return;
-                }
+            const res = await AdminApi.validateKey(trimmedKey);
+            if (!res?.valid) {
+                setError("Invalid Admin Secret Key. Access denied.");
+                setBusy(false);
+                return;
             }
 
             sessionStorage.setItem("isAdminSession", "true");

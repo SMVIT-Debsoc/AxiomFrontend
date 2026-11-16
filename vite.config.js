@@ -21,7 +21,10 @@ export default defineConfig(() => {
         return {html: html.replace('<!-- public-page-summary -->', summary), tags: pageMetadata(path)}
       },
     }],
-    envPrefix: ['VITE_', 'ADMIN_SECRET_KEY'],
+    envPrefix: [
+      'VITE_API_URL', 'VITE_AUTH_MOCK', 'VITE_CLERK_PUBLISHABLE_KEY',
+      'VITE_GOOGLE_AUTH_ENABLED', 'VITE_SOCKET_TRANSPORTS', 'VITE_SOCKET_URL',
+    ],
     build: {
       rollupOptions: {
         input: Object.keys(htmlEntries).map(file => fileURLToPath(new URL(file, import.meta.url))),
