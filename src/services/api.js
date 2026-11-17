@@ -8,12 +8,29 @@ const isLocalhost =
 const DEFAULT_API_BASE_URL = isLocalhost ? `http://${window.location.hostname}:3000/api` : "/api";
 export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL;
 
+// Per-tab id sent as X-Client-Id on every request. The server echoes it as
+// `actorClientId` in socket payloads, so a tab skips only its own echoes (not
+// those of the same admin working in another tab).
+function makeClientId() {
+    try {
+        if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    } catch {
+        // fall through
+    }
+    return `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
+export const CLIENT_ID = makeClientId();
+
 // In-memory request caching for smooth navigation without re-fetching
 const apiCache = new Map();
 const CACHE_TTL_MS = 20000; // 20s client cache for fast tab switching
 const RETURN_CACHE_TTL_MS = 120000;
 const pendingCacheReads = new Set();
 const MAX_CACHE_ENTRIES = 256;
+// Identical GETs that are already on the wire (same endpoint + same auth) share
+// one network request. Several live-page sections and socket-driven refreshes
+// often ask for the same round at the same moment.
+const inflightGets = new Map();
 
 const MUTATION_CACHE_TARGETS = {
     "check-in": ["check-in", "rounds"],
@@ -22,6 +39,7 @@ const MUTATION_CACHE_TARGETS = {
     rounds: ["rounds", "events", "debates", "check-in", "stats", "leaderboard"],
     events: ["events", "rounds"],
     admin: ["admin", "rounds", "debates", "events", "stats", "leaderboard", "/users/me"],
+    rooms: ["rooms", "debates", "rounds"],
 };
 
 function invalidateMutationCache(endpoint) {
@@ -49,6 +67,59 @@ export function clearApiCache(prefix = null) {
     for (const read of pendingCacheReads) {
         if (matches(read.key)) read.invalidated = true;
     }
+    // A GET that started before a mutation/realtime change must not be joined
+    // by callers asking after it; they start a fresh request instead.
+    for (const key of inflightGets.keys()) {
+        if (matches(key)) inflightGets.delete(key);
+    }
+}
+
+function cloneData(data) {
+    return data == null ? data : JSON.parse(JSON.stringify(data));
+}
+
+/** Build the Error thrown for a failed API call, keeping the server's code and payload. */
+export function apiFailure(message, status, data) {
+    const failure = new Error(message);
+    failure.status = status;
+    failure.code = data?.code;
+    failure.data = data;
+    return failure;
+}
+
+// Attach one caller (with its own optional AbortSignal) to a shared request.
+// The shared fetch is only aborted once every caller that can abort has done so.
+function joinShared(entry, signal) {
+    entry.waiters += 1;
+    if (!signal) return entry.promise;
+    if (signal.aborted) {
+        entry.waiters -= 1;
+        return Promise.reject(signal.reason);
+    }
+    return new Promise((resolve, reject) => {
+        const onAbort = () => {
+            entry.waiters -= 1;
+            if (entry.waiters <= 0) entry.controller?.abort(signal.reason);
+            reject(signal.reason);
+        };
+        signal.addEventListener("abort", onAbort, {once: true});
+        entry.promise.then(
+            (value) => { signal.removeEventListener("abort", onAbort); resolve(value); },
+            (error) => { signal.removeEventListener("abort", onAbort); reject(error); },
+        );
+    });
+}
+
+/**
+ * Hands out increasing tickets so a caller can tell whether a response is
+ * still the latest one it asked for (drop out-of-order responses).
+ */
+export function createRequestSequencer() {
+    let latest = 0;
+    return {
+        next: () => ++latest,
+        isLatest: (ticket) => ticket === latest,
+    };
 }
 
 // Only route metadata can be shown past the normal cache lifetime. Publication
@@ -106,6 +177,7 @@ export async function apiRequest(
 
     const headers = {
         "Content-Type": "application/json",
+        "X-Client-Id": CLIENT_ID,
     };
 
     const hasSessionStorage = typeof sessionStorage !== "undefined";
@@ -163,6 +235,30 @@ export async function apiRequest(
         }
     }
 
+    if (isGet && !options.noDedup) {
+        const dedupKey = JSON.stringify([endpoint, initialAuthorization || null, adminSecretKey]);
+        let entry = inflightGets.get(dedupKey);
+        if (entry) {
+            return joinShared(entry, options.signal).then(cloneData);
+        }
+        // Only make the shared request abortable when its first caller can abort.
+        const controller = options.signal ? new AbortController() : null;
+        entry = {controller, waiters: 0, promise: null};
+        entry.promise = executeRequest(endpoint, method, {...config, signal: controller?.signal}, {
+            isGet, cacheKey, initialAuthorization, headers, retryAuthFailure,
+        }).finally(() => {
+            if (inflightGets.get(dedupKey) === entry) inflightGets.delete(dedupKey);
+        });
+        // Avoid unhandled rejections when every caller aborted.
+        entry.promise.catch(() => {});
+        inflightGets.set(dedupKey, entry);
+        return joinShared(entry, options.signal);
+    }
+
+    return executeRequest(endpoint, method, config, {isGet, cacheKey, initialAuthorization, headers, retryAuthFailure});
+}
+
+async function executeRequest(endpoint, method, config, {isGet, cacheKey, initialAuthorization, headers, retryAuthFailure}) {
     const cacheRead = isBrowser && isGet ? {key: cacheKey, invalidated: false} : null;
     if (cacheRead) pendingCacheReads.add(cacheRead);
     try {
@@ -219,19 +315,19 @@ export async function apiRequest(
         }
 
         if (!response.ok) {
-            const failure = new Error(
-                data.error ||
-                    data.message ||
+            throw apiFailure(
+                data?.error ||
+                    data?.message ||
                     `API request failed with status ${response.status}`,
+                response.status,
+                data,
             );
-            failure.status = response.status;
-            throw failure;
         }
 
         // The backend uses both HTTP errors and {success:false} payloads; never
         // let a 200 response accidentally satisfy onboarding or enrollment.
         if (data?.success === false) {
-            throw new Error(data.error || data.message || "The request was not completed.");
+            throw apiFailure(data.error || data.message || "The request was not completed.", response.status, data);
         }
 
         if (isGet) {
@@ -372,18 +468,30 @@ export const AdminApi = {
     // Matchmaking / Pairings
     previewPairings: (roundId, token) =>
         apiRequest(`/pairing/${roundId}/preview`, "GET", null, token),
-    generateRound1Pairings: (roundId, token) =>
-        apiRequest(`/pairing/${roundId}/round1`, "POST", null, token),
-    generatePowerMatchPairings: (roundId, token) =>
-        apiRequest(`/pairing/${roundId}/power-match`, "POST", null, token),
-    allocateRooms: (roundId, config, token) =>
+    // `force` regenerates even when the draw is already published (409 PAIRINGS_PUBLISHED otherwise).
+    generateRound1Pairings: (roundId, token, {force = false} = {}) =>
+        apiRequest(`/pairing/${roundId}/round1`, "POST", force ? {force: true} : null, token),
+    generatePowerMatchPairings: (roundId, token, {force = false} = {}) =>
+        apiRequest(`/pairing/${roundId}/power-match`, "POST", force ? {force: true} : null, token),
+    // `onlyUnassigned: true` fills only debates without a room (keeps manual room edits).
+    allocateRooms: (roundId, config, token, {onlyUnassigned = false} = {}) =>
         apiRequest(
             `/pairing/${roundId}/allocate-rooms`,
             "POST",
             {
                 ...config,
-                roomIds: config.selectedRoomIds || config.roomIds
+                roomIds: config?.selectedRoomIds || config?.roomIds,
+                ...(onlyUnassigned ? {onlyUnassigned: true} : {}),
             },
+            token,
+        ),
+    // Partial debate edit (judge/room/time). Pass the debate's updatedAt so a
+    // concurrent edit answers 409 BALLOT_CONFLICT instead of being overwritten.
+    updateDebate: (debateId, fields, token, {expectedUpdatedAt} = {}) =>
+        apiRequest(
+            `/debates/${debateId}`,
+            "PUT",
+            expectedUpdatedAt ? {...fields, expectedUpdatedAt} : fields,
             token,
         ),
 
@@ -392,8 +500,55 @@ export const AdminApi = {
 
     getRoundPerformers: (roundId, token) =>
         apiRequest(`/admin/rounds/${roundId}/performers`, "GET", null, token),
-    promoteDebaters: (roundId, userIds, token) =>
-        apiRequest(`/admin/rounds/${roundId}/promote`, "POST", {userIds}, token),
+    promoteDebaters: (roundId, userIds, token, {expectedPromotedIds} = {}) =>
+        apiRequest(
+            `/admin/rounds/${roundId}/promote`,
+            "POST",
+            expectedPromotedIds ? {userIds, expectedPromotedIds} : {userIds},
+            token,
+        ),
+    // Preferred: send only what this admin changed so concurrent toggles merge.
+    updatePromotions: (roundId, {add = [], remove = []}, token) =>
+        apiRequest(`/admin/rounds/${roundId}/promote`, "POST", {add, remove}, token),
     publishResults: (roundId, published, token) =>
         apiRequest(`/admin/rounds/${roundId}/publish`, "POST", {published}, token),
+};
+
+// ---------------------------------------------------------------------------
+// Tournament operations (stations redesign). Contract shared with backend
+// branch admin-multiuser-hardening. Public endpoints pass requireAuth:false.
+// ---------------------------------------------------------------------------
+export const OpsApi = {
+    // E-ballots: one private token per debate (backend Debate.ballotToken)
+    getBallotLinks: (roundId, token) =>
+        apiRequest(`/admin/rounds/${roundId}/ballot-links`, "GET", null, token),
+    getPublicBallot: (ballotToken) =>
+        apiRequest(`/ballot/${encodeURIComponent(ballotToken)}`, "GET", null, null, {requireAuth: false, skipCache: true}),
+    submitPublicBallot: (ballotToken, {debater1Score, debater2Score, winnerId, judgeName}) =>
+        apiRequest(`/ballot/${encodeURIComponent(ballotToken)}`, "POST", {debater1Score, debater2Score, winnerId, judgeName}, null, {requireAuth: false}),
+
+    // Venue check-in: rotating short code shown as a QR on Display / Desk
+    getVenueCode: (roundId, token) =>
+        apiRequest(`/admin/rounds/${roundId}/venue-code`, "GET", null, token, {skipCache: true}),
+    venueCheckIn: (roundId, code, token) =>
+        apiRequest(`/check-in/venue`, "POST", {roundId, code}, token),
+    // Personal pass: participant shows it, Desk scans or types the short code
+    getMyCheckInPass: (token) =>
+        apiRequest(`/users/me/checkin-pass`, "GET", null, token, {skipCache: true}),
+    scanCheckIn: (roundId, pass, token) =>
+        apiRequest(`/check-in/scan`, "POST", {roundId, pass}, token),
+
+    // Promotions: ranked best-loser proposal with a cut line
+    getPromotionProposal: (roundId, token, {targetSize} = {}) =>
+        apiRequest(`/admin/rounds/${roundId}/promotion-proposal${targetSize ? `?targetSize=${Number(targetSize)}` : ""}`, "GET", null, token, {skipCache: true}),
+
+    // Activity feed (audit log)
+    getActivity: ({eventId, roundId, limit = 50, before} = {}, token) => {
+        const q = new URLSearchParams();
+        if (eventId) q.set("eventId", eventId);
+        if (roundId) q.set("roundId", roundId);
+        if (limit) q.set("limit", String(limit));
+        if (before) q.set("before", before);
+        return apiRequest(`/admin/activity?${q.toString()}`, "GET", null, token, {skipCache: true});
+    },
 };

@@ -1,309 +1,54 @@
-import {useBallotSave} from "../../hooks/useBallotSave";
-import BallotRecovery from "../../components/admin/BallotRecovery";
-import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { motion as Motion } from "framer-motion";
-import {
-    ArrowLeft,
-    Loader2,
-    CheckCircle2,
-    AlertCircle,
-    Save
-} from "lucide-react";
-import { useAuth } from "../../auth/client.jsx";
-import { AdminApi } from "../../services/api";
-import { UserAvatar } from "../../components/ui/UserAvatar";
+import {useCallback, useEffect, useState} from "react";
+import {Navigate, useParams} from "react-router-dom";
+import {useAuth} from "../../auth/client.jsx";
+import {AdminApi} from "../../services/api";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import { resolveWinnerId } from "../../lib/scoring.js";
+import LoadError from "../../components/ui/LoadError";
 
+// Ballot entry now lives in the Live Results station. This route looks up the
+// debate's round and lands there with the ballot sheet open.
 export default function AdminResultSubmission() {
-    const { id: debateId } = useParams();
-    return <BallotPage key={debateId} debateId={debateId} />;
+    const {id: debateId} = useParams();
+    return <ResultRedirect key={debateId} debateId={debateId} />;
 }
 
-function BallotPage({debateId}) {
-    const { getToken } = useAuth();
-    const navigate = useNavigate();
-
-    const [debate, setDebate] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const {save, verify, busy, recovery, saveError, clearSaveError} = useBallotSave((_, saved) => {
-        navigate("/admin/rounds/" + (saved?.roundId || debate.roundId));
-    });
-    const submitting = busy === "save";
-    const locked = Boolean(busy) || recovery?.kind === "unconfirmed";
+function ResultRedirect({debateId}) {
+    const {getToken} = useAuth();
+    const [roundId, setRoundId] = useState(null);
     const [error, setError] = useState(null);
-
-    const [formData, setFormData] = useState({
-        debater1Score: "",
-        debater2Score: "",
-        winnerId: ""
-    });
-
-    const getTokenRef = useRef(getToken);
-    useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
         let active = true;
-        const fetchDebate = async () => {
+        (async () => {
             try {
-                const token = await getTokenRef.current();
-                const response = await AdminApi.apiRequest(`/debates/${debateId}`, "GET", null, token);
-                if (active && response.success) {
-                    setDebate(response.debate);
-                    const s1 = response.debate.debater1Score?.toString() || "";
-                    const s2 = response.debate.debater2Score?.toString() || "";
-                    const w = response.debate.winnerId || "";
-                    setFormData({
-                        debater1Score: s1,
-                        debater2Score: s2,
-                        winnerId: resolveWinnerId(s1, s2, w, response.debate.debater1Id, response.debate.debater2Id)
-                    });
-                }
+                const token = await getToken();
+                const res = await AdminApi.apiRequest(`/debates/${debateId}`, "GET", null, token, {skipCache: true});
+                if (!active) return;
+                const id = res?.debate?.roundId || res?.debate?.round?.id;
+                if (id) setRoundId(id);
+                else setError("This debate has no round.");
             } catch (err) {
-                console.error("Failed to fetch debate:", err);
-                if (active) setError(err?.message || "Failed to load debate");
-            } finally {
-                if (active) setLoading(false);
+                if (active) setError(err?.message || "Could not load this debate.");
             }
-        };
-        fetchDebate();
+        })();
         return () => { active = false; };
-    }, [debateId]);
+    }, [debateId, getToken, attempt]);
 
-    const handleScoreChange = (field, val) => {
-        const newForm = { ...formData, [field]: val };
-        const autoWinner = resolveWinnerId(
-            field === "debater1Score" ? val : formData.debater1Score,
-            field === "debater2Score" ? val : formData.debater2Score,
-            formData.winnerId,
-            debate?.debater1Id,
-            debate?.debater2Id
-        );
-        newForm.winnerId = autoWinner;
-        setFormData(newForm);
+    const retry = useCallback(() => {
         setError(null);
-        clearSaveError();
-    };
+        setAttempt((n) => n + 1);
+    }, []);
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        if (locked) return;
-        const winnerId = resolveWinnerId(
-            formData.debater1Score, formData.debater2Score, formData.winnerId,
-            debate.debater1Id, debate.debater2Id
-        );
-        if (!winnerId) {
-            setError("Please select a winner (required if scores are tied)");
-            return;
-        }
-        setError(null);
-        await save({
-            debateId,
-            debater1Score: parseFloat(formData.debater1Score),
-            debater2Score: parseFloat(formData.debater2Score),
-            winnerId,
-        });
-    };
-
-    if (loading) {
+    if (roundId) {
+        return <Navigate to={`/admin?round=${encodeURIComponent(roundId)}&station=results&debate=${encodeURIComponent(debateId)}`} replace />;
+    }
+    if (error) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <LoadingIndicator label="Loading debate ballots" />
+            <div className="mx-auto mt-10 max-w-lg px-4">
+                <LoadError message="Could not open this ballot." detail={error} onRetry={retry} />
             </div>
         );
     }
-
-    if (!debate) {
-        return (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground">Debate not found</p>
-                <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                        disabled={Boolean(busy)}
-                    className="mt-4 px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    Go back
-                </button>
-            </div>
-        );
-    }
-
-    return (
-        <Motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl mx-auto space-y-8"
-        >
-            <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
-                <div className="flex items-center gap-4">
-                    <button
-                        type="button"
-                        onClick={() => navigate(-1)}
-                        disabled={Boolean(busy)}
-                        aria-label="Go back"
-                        title="Go back"
-                        className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div>
-                        <span className="axiom-eyebrow text-emerald-600 dark:text-emerald-400">Decision & Scoring</span>
-                        <h1 className="text-3xl font-heading font-bold tracking-tight text-foreground">Submit Debate Result</h1>
-                        <p className="text-sm text-muted-foreground mt-0.5 font-mono">Debate ID: {debateId}</p>
-                    </div>
-                </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {(error || saveError) && (
-                    <div
-                        role="alert"
-                        className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 text-sm flex items-start gap-2.5"
-                    >
-                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <span>{error || saveError}</span>
-                    </div>
-                )}
-
-                <BallotRecovery recovery={recovery} busy={busy} onVerify={verify} />
-
-                <div className="grid md:grid-cols-2 gap-8">
-                    {/* Debater 1 */}
-                    <div className={`p-6 md:p-8 rounded-2xl border transition-all ${
-                        formData.winnerId === debate.debater1Id
-                            ? 'border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/30'
-                            : 'border-border bg-card'
-                    }`}>
-                        <div className="flex items-center gap-4 mb-6">
-                            <UserAvatar
-                                user={debate.debater1}
-                                imageUrl={debate.debater1.imageUrl}
-                                size="xl"
-                            />
-                            <div>
-                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Opponent 1</p>
-                                <h3 className="text-xl font-heading font-bold text-foreground">
-                                    {debate.debater1.firstName} {debate.debater1.lastName}
-                                </h3>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="speaker-score-1" className="text-sm font-medium mb-1.5 block text-foreground">
-                                    Speaker Score (60-100)
-                                </label>
-                                <input
-                                    id="speaker-score-1"
-                                    aria-label={`Speaker Score (60-100) for ${debate.debater1.firstName} ${debate.debater1.lastName}`}
-                                    type="number"
-                                    step="0.5"
-                                    required
-                                    min="0"
-                                    max="100"
-                                    value={formData.debater1Score}
-                                    disabled={locked}
-                                    onChange={(e) => handleScoreChange("debater1Score", e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
-                                    placeholder="85.5"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                disabled={locked}
-                                onClick={() => setFormData({ ...formData, winnerId: debate.debater1Id })}
-                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                                    formData.winnerId === debate.debater1Id
-                                        ? 'bg-emerald-600 text-white shadow-sm'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                                }`}
-                            >
-                                {formData.winnerId === debate.debater1Id && <CheckCircle2 className="w-5 h-5" />}
-                                {formData.winnerId === debate.debater1Id ? 'Winner Selected' : 'Set as Winner'}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Debater 2 */}
-                    <div className={`p-6 md:p-8 rounded-2xl border transition-all ${
-                        formData.winnerId === debate.debater2Id
-                            ? 'border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/30'
-                            : 'border-border bg-card'
-                    }`}>
-                        <div className="flex items-center gap-4 mb-6">
-                            <UserAvatar
-                                user={debate.debater2}
-                                imageUrl={debate.debater2.imageUrl}
-                                size="xl"
-                            />
-                            <div>
-                                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Opponent 2</p>
-                                <h3 className="text-xl font-heading font-bold text-foreground">
-                                    {debate.debater2.firstName} {debate.debater2.lastName}
-                                </h3>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label htmlFor="speaker-score-2" className="text-sm font-medium mb-1.5 block text-foreground">
-                                    Speaker Score (60-100)
-                                </label>
-                                <input
-                                    id="speaker-score-2"
-                                    aria-label={`Speaker Score (60-100) for ${debate.debater2.firstName} ${debate.debater2.lastName}`}
-                                    type="number"
-                                    step="0.5"
-                                    required
-                                    min="0"
-                                    max="100"
-                                    value={formData.debater2Score}
-                                    disabled={locked}
-                                    onChange={(e) => handleScoreChange("debater2Score", e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
-                                    placeholder="82.0"
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                disabled={locked}
-                                onClick={() => setFormData({ ...formData, winnerId: debate.debater2Id })}
-                                className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                                    formData.winnerId === debate.debater2Id
-                                        ? 'bg-emerald-600 text-white shadow-sm'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                                }`}
-                            >
-                                {formData.winnerId === debate.debater2Id && <CheckCircle2 className="w-5 h-5" />}
-                                {formData.winnerId === debate.debater2Id ? 'Winner Selected' : 'Set as Winner'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-5 flex items-start gap-3.5">
-                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                        <h4 className="font-bold text-sm text-amber-600 dark:text-amber-400">Validation Note</h4>
-                        <p className="text-sm text-amber-700/90 dark:text-amber-300/80 leading-relaxed mt-0.5">
-                            Submitting high scores improves users&apos; rankings on the leaderboard. Ensure scores reflect the actual debate performance. Once submitted, the round statistics will be updated automatically.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                    <button
-                        type="submit"
-                        disabled={locked}
-                        className="w-full sm:w-auto min-h-12 flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                        {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                        {debate.status === 'COMPLETED' ? 'Update Final Result' : 'Submit Final Result'}
-                    </button>
-                </div>
-            </form>
-        </Motion.div>
-    );
+    return <div className="grid min-h-[50vh] place-items-center"><LoadingIndicator label="Opening ballot" /></div>;
 }

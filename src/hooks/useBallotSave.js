@@ -6,7 +6,20 @@ import {createRequestSignal} from "../lib/requestSignal.js";
 const SAVE_TIMEOUT_MS = 12000;
 const VERIFY_TIMEOUT_MS = 8000;
 
-export function useBallotSave(onConfirmed) {
+/**
+ * Ballot save with recovery for flaky networks and concurrent admins.
+ *
+ * Ballots may carry `expectedUpdatedAt` (the debate.updatedAt the admin loaded).
+ * The server answers 409 when someone else saved in between:
+ *  - BALLOT_CONFLICT → recovery {kind: "different", conflict: true, saved: server's current debate}
+ *  - DEBATE_REPLACED → the debate was deleted by re-pairing; onReplaced(error) is called
+ *
+ * After an unconfirmed save, verify() reads the stored ballot. When it differs
+ * from this admin's entry, onRebase(saved) hands the sheet the server's debate
+ * (with its updatedAt) so the next save is based on it instead of the stale
+ * version, which would otherwise come back as a self-inflicted BALLOT_CONFLICT.
+ */
+export function useBallotSave(onConfirmed, {onReplaced, onRebase} = {}) {
   const {getToken} = useAuth();
   const operation = useRef(null);
   const pendingBallot = useRef(null);
@@ -42,7 +55,8 @@ export function useBallotSave(onConfirmed) {
     await run("save", SAVE_TIMEOUT_MS, async (signal, isCurrent) => {
       setSaveError(null);
       setRecovery(null);
-      const {debateId, nextDebate, ...scores} = ballot;
+      const {debateId, nextDebate, ...payload} = ballot;
+      const {expectedUpdatedAt, ...scores} = payload;
       let response;
       let requestStarted = false;
       try {
@@ -52,10 +66,21 @@ export function useBallotSave(onConfirmed) {
           throw signal.reason ?? new DOMException("The request was cancelled.", "AbortError");
         }
         requestStarted = true;
-        response = await AdminApi.submitResult(debateId, scores, token, {summary: true, signal});
+        // Older backends ignore expectedUpdatedAt; omit it when unknown.
+        const body = expectedUpdatedAt ? {...scores, expectedUpdatedAt} : scores;
+        response = await AdminApi.submitResult(debateId, body, token, {summary: true, signal});
       } catch (error) {
         if (!isCurrent()) return;
         const status = error?.status;
+        if (status === 409 && error?.code === "BALLOT_CONFLICT") {
+          setRecovery({kind: "different", conflict: true, saved: error.data?.current || null});
+          return;
+        }
+        if (status === 409 && error?.code === "DEBATE_REPLACED") {
+          setSaveError(error.message || "This debate was replaced by new pairings.");
+          onReplaced?.(error);
+          return;
+        }
         if (!requestStarted || (status >= 400 && status < 500 && status !== 408 && status !== 409)) {
           setSaveError(error?.message || "Could not start the ballot save.");
         } else {
@@ -64,7 +89,10 @@ export function useBallotSave(onConfirmed) {
         }
         return;
       }
-      if (isCurrent()) onConfirmed({...scores, debateId, nextDebate}, response.debate);
+      if (isCurrent()) {
+        const saved = response.debate || (response.updatedAt ? {updatedAt: response.updatedAt} : undefined);
+        onConfirmed({...scores, debateId, nextDebate}, saved);
+      }
     });
   }
 
@@ -92,10 +120,22 @@ export function useBallotSave(onConfirmed) {
         setRecovery(null);
         onConfirmed(ballot, saved);
       } else {
+        onRebase?.(saved);
         setRecovery({kind: "different", saved});
       }
     });
   }
 
-  return {save, verify, busy, recovery, saveError, clearSaveError: () => setSaveError(null)};
+  return {
+    save,
+    verify,
+    busy,
+    recovery,
+    saveError,
+    clearSaveError: () => setSaveError(null),
+    clearRecovery: () => {
+      pendingBallot.current = null;
+      setRecovery(null);
+    },
+  };
 }

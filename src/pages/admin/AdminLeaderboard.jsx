@@ -9,8 +9,16 @@ import StandingRank from "../../components/ui/StandingRank";
 import { useAuth } from "../../auth/client.jsx";
 import { StatsApi, EventApi } from "../../services/api";
 import { useSocket, SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
+import { useDebouncedCallback, useLatestRequest, useSocketRefresh } from "../../hooks/useAdminRealtime";
+import LoadError from "../../components/ui/LoadError";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { LeaderboardSkeleton } from "../../components/ui/Skeleton";
+
+const pickActiveEvent = (events) => {
+  const byStatus = (status) => events.filter((e) => String(e.status).toUpperCase() === status);
+  // Priority: ACTIVE/ONGOING > UPCOMING > Any (matches upstream pick)
+  return byStatus("ACTIVE")[0] || byStatus("ONGOING")[0] || byStatus("UPCOMING")[0] || events[0] || null;
+};
 
 export default function AdminLeaderboard({ embedded = false } = {}) {
   const { getToken } = useAuth();
@@ -19,25 +27,25 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
   const [loading, setLoading] = useState(true);
   const [activeEvent, setActiveEvent] = useState(null);
   const [isEventLoading, setIsEventLoading] = useState(true);
-  const [, setError] = useState(null);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { subscribe } = useSocket({ eventId: activeEvent?.id });
+  const latest = useLatestRequest();
+  useSocket({ eventId: activeEvent?.id });
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-  // 1. Fetch Active Event to determine default view
+  // 1. One event list read; the default event is picked client-side.
   useEffect(() => {
     let cancelled = false;
     const fetchActiveEvent = async () => {
       try {
         const token = await getTokenRef.current();
         const eventsResponse = await EventApi.list(token);
-        const events = eventsResponse.events || [];
-        const active = events.find((e) => ["ACTIVE", "ONGOING"].includes(String(e.status).toUpperCase())) || events[0];
-
-        if (!cancelled && active) {
-          setActiveEvent(active);
+        if (cancelled) return;
+        const event = pickActiveEvent(eventsResponse.events || []);
+        if (event) {
+          setActiveEvent(event);
           setFilter("current-event");
         }
       } catch (err) {
@@ -51,11 +59,14 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
   }, []); // runs once
 
   const fetchLeaderboard = useCallback(async ({silent = false} = {}) => {
+    const request = latest.begin();
     try {
       if (!silent) setLoading(true);
       const token = await getTokenRef.current();
       const eventId = filter === "current-event" ? activeEvent?.id : null;
-      const response = await StatsApi.getLeaderboard(token, eventId, 50, {skipCache: silent});
+      const response = await StatsApi.getLeaderboard(token, eventId, 50, {skipCache: silent, signal: request.signal});
+      // Switching filters quickly must not let the older standings win.
+      if (!latest.isCurrent(request.id)) return;
 
       let data = [];
       if (response.success && response.data?.leaderboard) {
@@ -68,34 +79,27 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
       setLeaderboard(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err) {
+      if (!latest.isCurrent(request.id)) return;
       console.error("Failed to fetch leaderboard:", err);
-      setError(err.message);
-      setLeaderboard([]);
+      setError(err?.message || "Failed to load leaderboard");
+      // Keep the last good standings on a failed background refresh.
+      if (!silent) setLeaderboard([]);
     } finally {
-      setLoading(false);
+      if (latest.isCurrent(request.id)) setLoading(false);
     }
-  }, [filter, activeEvent]); // stable - getToken via ref
+  }, [filter, activeEvent, latest]); // stable - getToken via ref
 
   useEffect(() => {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
-  const updateTimer = useRef(null);
-  const refreshLeaderboard = useCallback(() => {
-    clearTimeout(updateTimer.current);
-    updateTimer.current = setTimeout(() => fetchLeaderboard({silent: true}), 150);
-  }, [fetchLeaderboard]);
-  useEffect(() => () => clearTimeout(updateTimer.current), [refreshLeaderboard]);
+  const refreshLeaderboard = useDebouncedCallback(() => fetchLeaderboard({silent: true}), 500);
 
-  // Subscribe to leaderboard updates
-  useEffect(() => {
-    const unsubscribe = subscribe(SocketEvents.LEADERBOARD_UPDATE, (data) => {
-      if (filter === "current-event" && data?.eventId && data.eventId !== activeEvent?.id) return;
-      refreshLeaderboard();
-    });
-
-    return () => unsubscribe?.();
-  }, [subscribe, refreshLeaderboard, filter, activeEvent?.id]);
+  // Subscribe to leaderboard updates (debounced; a results burst = one read).
+  useSocketRefresh([SocketEvents.LEADERBOARD_UPDATE, SocketEvents.ROUND_RESULTS_PUBLISHED], refreshLeaderboard, {
+    delay: 0,
+    filter: (data) => !(filter === "current-event" && data?.eventId && data.eventId !== activeEvent?.id),
+  });
   useLiveRefresh(refreshLeaderboard, {
     enabled: !isEventLoading, eventId: activeEvent?.id, jitterMs: 3000, invalidateCache: false,
   });
@@ -220,6 +224,15 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
         </div>
       )}
 
+      {error && (
+        <LoadError
+          compact
+          message={leaderboard.length ? "Could not refresh standings. Showing the last loaded list." : "Could not load standings."}
+          onRetry={() => fetchLeaderboard()}
+          busy={loading}
+        />
+      )}
+
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-none">
         <div className="p-4 border-b border-border bg-card flex items-center gap-4">
           <div className="relative flex-1">
@@ -283,7 +296,9 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
               {filteredLeaderboard.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground text-sm">
-                    {searchQuery ? `No debaters found matching "${searchQuery}"` : "No debaters recorded on the leaderboard yet."}
+                    {error && !leaderboard.length
+                      ? "Standings are unavailable right now."
+                      : searchQuery ? `No debaters found matching "${searchQuery}"` : "No debaters recorded on the leaderboard yet."}
                   </td>
                 </tr>
               ) : (

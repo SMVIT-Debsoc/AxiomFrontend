@@ -7,10 +7,13 @@ import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "../../auth/client.jsx";
 import { UserApi, EventApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
-import { useSocket, SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
+import { SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
+import LoadError from "../../components/ui/LoadError";
+import { useAdminMutation } from "../../hooks/useAdminMutation";
+import { useLatestRequest, useSocketRefresh } from "../../hooks/useAdminRealtime";
 
-export default function AdminParticipants() {
+export default function AdminParticipants({ embedded = false } = {}) {
   const { getToken } = useAuth();
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +21,9 @@ export default function AdminParticipants() {
   const [events, setEvents] = useState([]);
   const [enrollingUser, setEnrollingUser] = useState(null);
   const [showEventSelect, setShowEventSelect] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const { run, isBusy } = useAdminMutation();
+  const latest = useLatestRequest();
 
   const getTokenRef = useRef(getToken);
   useEffect(() => {
@@ -25,43 +31,45 @@ export default function AdminParticipants() {
   }, [getToken]);
 
   const fetchParticipants = useCallback(async ({silent = false} = {}) => {
+    const request = latest.begin();
     try {
       if (!silent) setLoading(true);
       const token = await getTokenRef.current();
       const [response, eventResponse] = await Promise.all([
-        UserApi.list(token, 500, 0, {skipCache: silent}),
-        EventApi.list(token),
+        UserApi.list(token, 500, 0, {skipCache: silent, signal: request.signal}),
+        EventApi.list(token, null, {skipCache: silent, signal: request.signal}),
       ]);
+      // A slower, older response must not overwrite a newer one.
+      if (!latest.isCurrent(request.id)) return;
       if (response.success) {
         setParticipants(response.users || []);
       }
       if (eventResponse.success) {
         setEvents(eventResponse.events || []);
       }
+      setLoadError(null);
     } catch (err) {
+      if (!latest.isCurrent(request.id)) return;
       console.error("Failed to fetch data", err);
+      setLoadError(err?.message || "Request failed");
     } finally {
-      setLoading(false);
+      if (latest.isCurrent(request.id)) setLoading(false);
     }
-  }, []);
+  }, [latest]);
 
   useEffect(() => {
     fetchParticipants();
   }, [fetchParticipants]);
 
-  // Real-time updates
-  const { subscribe } = useSocket();
-  useEffect(() => {
-    const unsubs = [
-      subscribe(SocketEvents.USER_UPDATED, () => {
-        fetchParticipants({silent: true});
-      }),
-      subscribe(SocketEvents.USER_DELETED, () => {
-        fetchParticipants({silent: true});
-      }),
-    ];
-    return () => unsubs.forEach((u) => u && u());
-  }, [subscribe, fetchParticipants]);
+  // Real-time updates: bursts (bulk imports, several admins) collapse into one refetch.
+  useSocketRefresh(
+    [SocketEvents.USER_UPDATED, SocketEvents.USER_DELETED, SocketEvents.EVENT_ENROLLMENT],
+    () => fetchParticipants({silent: true}),
+  );
+  useSocketRefresh(
+    [SocketEvents.EVENT_CREATED, SocketEvents.EVENT_UPDATED_GLOBAL, SocketEvents.EVENT_DELETED_GLOBAL],
+    () => fetchParticipants({silent: true}),
+  );
   useLiveRefresh(() => fetchParticipants({silent: true}), {jitterMs: 3000, invalidateCache: false});
 
 
@@ -81,50 +89,80 @@ export default function AdminParticipants() {
     );
   });
 
-  const handleDelete = async (id, name) => {
-    if (!confirm(`Are you sure you want to delete participant: ${name}?`))
-      return;
-    try {
-      const token = await getToken();
-      const response = await UserApi.deleteParticipant(id, token);
-      if (response.success) {
-        setParticipants(participants.filter((p) => p.id !== id));
-      } else {
-        alert(response.error || "Failed to delete participant");
-      }
-    } catch {
-      alert("Error deleting participant");
-    }
-  };
+  const handleDelete = (id, name) =>
+    run(
+      `delete:${id}`,
+      async () => {
+        const token = await getToken();
+        return UserApi.deleteParticipant(id, token);
+      },
+      {
+        confirm: `Delete participant ${name}? This cannot be undone.`,
+        success: `${name} deleted`,
+        onSuccess: () => {
+          setParticipants((prev) => prev.filter((p) => p.id !== id));
+          fetchParticipants({silent: true});
+        },
+        onConflict: () => fetchParticipants({silent: true}),
+      },
+    );
 
-  const handleEnroll = async (eventId, userId) => {
-    try {
-      const token = await getToken();
-      const response = await EventApi.enrollUserManual(eventId, userId, token);
-      if (response.success) {
-        alert("User enrolled successfully");
-        setShowEventSelect(false);
-        setEnrollingUser(null);
-        fetchParticipants();
-      } else {
-        alert(response.error || "Failed to enroll user");
-      }
-    } catch {
-      alert("Error during manual enrollment");
-    }
-  };
+  const handleEnroll = (event, user) =>
+    run(
+      "enroll",
+      async () => {
+        const token = await getToken();
+        return EventApi.enrollUserManual(event.id, user.id, token);
+      },
+      {
+        success: `${user.firstName || "Debater"} enrolled in ${event.name}`,
+        onSuccess: () => {
+          setShowEventSelect(false);
+          setEnrollingUser(null);
+          fetchParticipants({silent: true});
+        },
+        onConflict: () => fetchParticipants({silent: true}),
+      },
+    );
 
   if (loading && participants.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[40vh]">
         <LoadingIndicator label="Loading debater roster" />
       </div>
+    );
+  }
+
+  if (loadError && participants.length === 0) {
+    return (
+      <LoadError
+        className="mt-10"
+        message="Could not load the participant registry."
+        detail={loadError}
+        onRetry={() => fetchParticipants()}
+      />
     );
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
+      {embedded ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="m-0 text-sm text-muted-foreground">Every account, across all events. Enrol a debater into an event or remove an account.</p>
+          <div className="flex shrink-0 gap-2.5">
+          <button
+            onClick={() => fetchParticipants()}
+            disabled={loading}
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Refresh Data"
+            aria-label="Refresh participants list"
+          >
+            <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
+          </button>
+          </div>
+        </div>
+      ) : (
       <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -155,6 +193,7 @@ export default function AdminParticipants() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Search Input */}
       <div className="relative">
@@ -168,6 +207,10 @@ export default function AdminParticipants() {
           className="w-full min-h-11 pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
         />
       </div>
+
+      {loadError && (
+        <LoadError compact message="Could not refresh participants. Showing the last loaded list." onRetry={() => fetchParticipants()} busy={loading} />
+      )}
 
       {filteredParticipants.length === 0 && !loading ? (
         <EmptyState
@@ -374,7 +417,8 @@ export default function AdminParticipants() {
                           </button>
                           <button
                             onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
-                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            disabled={isBusy(`delete:${p.id}`)}
+                            className="disabled:opacity-50 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title="Delete Participant"
                             aria-label={`Delete participant ${p.firstName} ${p.lastName}`}
                           >
@@ -428,8 +472,9 @@ export default function AdminParticipants() {
               {events.filter(e => e.status !== 'COMPLETED').map(event => (
                 <button
                   key={event.id}
-                  onClick={() => handleEnroll(event.id, enrollingUser.id)}
-                  className="w-full text-left p-3.5 rounded-lg border border-border/70 hover:border-primary/50 hover:bg-primary/5 transition-all group flex items-center justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => handleEnroll(event, enrollingUser)}
+                  disabled={isBusy("enroll")}
+                  className="disabled:opacity-50 disabled:cursor-wait w-full text-left p-3.5 rounded-lg border border-border/70 hover:border-primary/50 hover:bg-primary/5 transition-all group flex items-center justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <div>
                     <h4 className="font-heading font-semibold text-sm text-foreground group-hover:text-primary transition-colors">

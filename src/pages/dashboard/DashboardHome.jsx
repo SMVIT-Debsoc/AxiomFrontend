@@ -38,6 +38,7 @@ import NeoButton from "../../components/neo/NeoButton";
 import GameOverCard from "../../components/dashboard/GameOverCard";
 import {cn, formatTimeIST, getPodiumMedal} from "../../lib/utils";
 import StandingRank from "../../components/ui/StandingRank";
+import CheckInPassCard from "../../components/dashboard/CheckInPassCard";
 
 const WhatsAppGroupBanner = lazy(() =>
   import("../../components/dashboard/WhatsAppGroupPrompt").then((m) => ({
@@ -1203,6 +1204,7 @@ function DashboardContent() {
                   refresh("debates");
                 }} />
               )}
+              {!isCheckedIn && checkInMeta.state !== "CLOSED" && <CheckInPassCard />}
               {/* Matchup & Motion Panel */}
               {debatesLoading && !nextDebate ? (
                 <p role="status" className="py-4 text-center text-xs text-muted-foreground">

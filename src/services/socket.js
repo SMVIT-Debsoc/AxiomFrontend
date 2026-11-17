@@ -108,6 +108,17 @@ export const SocketEvents = {
     DEBATE_CREATED: "debate:created",
     DEBATE_UPDATED: "debate:updated",
     DEBATE_DELETED: "debate:deleted",
+
+    // Multi-admin sync events (backend: admin-multiuser-hardening)
+    ROUND_PROMOTIONS: "round:promotions",
+    ROOMS_UPDATED: "rooms:updated",
+    DASHBOARD_CHANGED: "dashboard:changed",
+
+    // Stations redesign: presence, soft locks, activity feed, e-ballots
+    PRESENCE_UPDATE: "presence:update", // client -> server {eventId, roundId, station, focus, name, clientId}
+    PRESENCE_STATE: "presence:state",   // server -> admins of round {roundId, admins:[{clientId, actorId, name, station, focus, at}]}
+    ACTIVITY_NEW: "activity:new",       // server -> admin:event {id, eventId, roundId, actorName, action, entityType, entityId, summary, createdAt}
+    BALLOT_SUBMITTED: "ballot:submitted", // server -> admin round/event {debateId, roundId, source:"eballot", flags, updatedAt}
 };
 
 class SocketService {
@@ -381,7 +392,22 @@ class SocketService {
     emit(event, data) {
         this.socket?.emit(event, data);
     }
+
+    /**
+     * Presence (stations redesign). Sends PRESENCE_UPDATE only while connected:
+     * a buffered, stale announcement must never be replayed after a reconnect.
+     * Callers re-announce on CONNECTION and on a heartbeat (see usePresence).
+     */
+    emitPresence(payload) {
+        this.connect();
+        if (!payload?.roundId || !this.socket?.connected) return false;
+        this.socket.emit(SocketEvents.PRESENCE_UPDATE, payload);
+        return true;
+    }
 }
+
+/** Heartbeat interval for PRESENCE_UPDATE re-announcements. */
+export const PRESENCE_HEARTBEAT_MS = 20000;
 
 // Export singleton instance
 export const socketService = new SocketService();

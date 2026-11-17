@@ -1,8 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile, readdir} from 'node:fs/promises';
 
 const readSrc = (rel) => readFile(new URL(`../${rel}`, import.meta.url), 'utf8');
+// The Live page is split into station files under src/pages/admin/live/.
+const readTree = async (rel) => {
+  const entries = await readdir(new URL(`../${rel}`, import.meta.url), {recursive: true});
+  const files = entries.filter((f) => /\.jsx?$/.test(f)).sort();
+  return (await Promise.all(files.map((f) => readSrc(`${rel}/${f}`)))).join('\n');
+};
 
 test('check-in mutation invalidates both check-in and rounds caches cleanly', async () => {
   const source = (await readSrc('src/services/api.js'))
@@ -41,7 +47,8 @@ test('check-in mutation invalidates both check-in and rounds caches cleanly', as
 });
 
 test('AllocateRoomsModal enforces 7m default speaker time, 11m buffer, 5m gap, and 25m minimum floor', async () => {
-  const roundMgmt = await readSrc('src/pages/admin/AdminRoundManagement.jsx');
+  // Moved out of AdminRoundManagement (now a redirect into Live).
+  const roundMgmt = await readSrc('src/pages/admin/live/modals/AllocateRoomsModal.jsx');
   assert.match(roundMgmt, /speakingTime:\s*7/);
   assert.match(roundMgmt, /bufferTime:\s*11/);
   assert.match(roundMgmt, /gap:\s*5/);
@@ -49,9 +56,10 @@ test('AllocateRoomsModal enforces 7m default speaker time, 11m buffer, 5m gap, a
   assert.match(roundMgmt, /ax-room-selected/);
 });
 
-test('AdminLive and AdminEventDetails default check-in window to 20 minutes and expose preview pairings modal', async () => {
-  const adminLive = await readSrc('src/pages/admin/AdminLive.jsx');
-  const adminEventDetails = await readSrc('src/pages/admin/AdminEventDetails.jsx');
+test('AdminLive and the Setup round dialog default check-in window to 20 minutes and expose preview pairings modal', async () => {
+  const adminLive = (await readSrc('src/pages/admin/AdminLive.jsx')) + (await readTree('src/pages/admin/live'));
+  // Create/Edit Round moved from AdminEventDetails into the shared Setup round dialogs.
+  const adminEventDetails = await readSrc('src/pages/admin/setup/RoundModals.jsx');
 
   assert.match(adminLive, /Date\.now\(\)\s*\+\s*20\s*\*\s*60000/);
   assert.match(adminEventDetails, /Date\.now\(\)\s*\+\s*20\s*\*\s*60000/);
@@ -60,21 +68,13 @@ test('AdminLive and AdminEventDetails default check-in window to 20 minutes and 
   assert.match(adminLive, /inline-promotion-panel/);
 });
 
-test('AdminLayout reduces primary navigation to 4 cohesive items while App preserves legacy routes', async () => {
+test('AdminLayout has exactly five destinations while App preserves legacy routes', async () => {
   const layout = await readSrc('src/layouts/AdminLayout.jsx');
   const app = await readSrc('src/App.jsx');
 
+  // One list drives both the desktop sidebar and the phone bottom bar.
   const navMatches = [...layout.matchAll(/label:\s*"([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(navMatches, [
-    'Live Round',
-    'Events & Rooms',
-    'Participants',
-    'Results & Standings',
-    'Live',
-    'Events',
-    'People',
-    'Results',
-  ]);
+  assert.deepEqual(navMatches, ['Live', 'Setup', 'People', 'Results', 'Display']);
 
   for (const legacyPath of ['rounds/:id/promotion', 'overview', 'rooms', 'leaderboard', 'participants', 'settings']) {
     assert.ok(app.includes(legacyPath), `Expected legacy route ${legacyPath} in App.jsx`);

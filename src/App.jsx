@@ -26,23 +26,23 @@ import LandingPage from "./pages/LandingPage";
 
 // Admin imports
 import {AdminGuard} from "./components/AdminGuard";
+import KeepQueryRedirect from "./components/ops/KeepQueryRedirect";
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminEventProvider = lazy(() => import("./contexts/AdminEventProvider"));
 const AdminLive = lazy(() => import("./pages/admin/AdminLive"));
+const AdminSetup = lazy(() => import("./pages/admin/setup/AdminSetup"));
 const AdminPeople = lazy(() => import("./pages/admin/AdminPeople"));
-const AdminEvents = lazy(() => import("./pages/admin/AdminEvents"));
-const AdminEventDetails = lazy(() => import("./pages/admin/AdminEventDetails"));
+const AdminResults = lazy(() => import("./pages/admin/AdminResults"));
+const AdminDisplay = lazy(() => import("./pages/admin/AdminDisplay"));
 const AdminRoundManagement = lazy(() => import("./pages/admin/AdminRoundManagement"));
-const AdminRounds = lazy(() => import("./pages/admin/AdminRounds"));
 const AdminResultSubmission = lazy(() => import("./pages/admin/AdminResultSubmission"));
 const AdminPromotion = lazy(() => import("./pages/admin/AdminPromotion"));
-
-const AdminResults = lazy(() => import("./pages/admin/AdminResults"));
-const AdminLeaderboard = lazy(() => import("./pages/admin/AdminLeaderboard"));
-const AdminParticipants = lazy(() => import("./pages/admin/AdminParticipants"));
-
-const AdminRooms = lazy(() => import("./pages/admin/AdminRooms"));
 const AdminPlaceholder = lazy(() => import("./pages/admin/AdminPlaceholder"));
+
+// Public judge e-ballot and participant venue check-in
+const PublicBallot = lazy(() => import("./pages/ballot/PublicBallot"));
+const VenueCheckIn = lazy(() => import("./pages/checkin/VenueCheckIn"));
+import ResumePendingReturn from "./pages/checkin/ResumePendingReturn";
 import Preloader from "./components/Preloader";
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 import {VercelAnalytics} from "./components/analytics/VercelAnalytics";
@@ -55,6 +55,7 @@ function App() {
                 <ApiAuthSync />
                 <BrowserRouter>
                     <PageMetadata />
+                    <ResumePendingReturn />
                     <VercelAnalytics />
                     <Suspense fallback={<div className="min-h-svh bg-background" role="status" aria-label="Loading" />}>
                     <Routes>
@@ -82,6 +83,9 @@ function App() {
                         {["/login-select", "/sign-in/*", "/sign-up/*", "/forgot-password", "/reset-password", "/get-started"].map((path) => (
                             <Route key={path} path={path} element={<Navigate to="/" replace />} />
                         ))}
+
+                        {/* Judge e-ballot: public, no account, outside every guard and layout */}
+                        <Route path="/ballot/:token" element={<PublicBallot />} />
 
                         {/* Public Routes with Navbar */}
                         <Route element={<MainLayout />}>
@@ -141,7 +145,22 @@ function App() {
                             />
                         </Route>
 
-                        {/* Admin Routes - Protected */}
+                        {/* Venue check-in from the Display QR: participant sign-in required (handled inside) */}
+                        <Route path="/checkin/:roundId" element={<VenueCheckIn />} />
+
+                        {/* Projector Display: admin-only, full screen, no organiser chrome */}
+                        <Route
+                            path="/admin/display"
+                            element={
+                                <AdminGuard>
+                                    <AdminEventProvider>
+                                        <AdminDisplay />
+                                    </AdminEventProvider>
+                                </AdminGuard>
+                            }
+                        />
+
+                        {/* Admin Routes - Protected. Five places: Live · Setup · People · Results · Display */}
                         <Route
                             path="/admin"
                             element={
@@ -151,38 +170,22 @@ function App() {
                             }
                         >
                             <Route index element={<AdminLive />} />
-                            <Route path="overview" element={<AdminDashboard />} />
+                            <Route path="setup" element={<AdminSetup />} />
+                            <Route path="setup/:id" element={<AdminSetup />} />
                             <Route path="people" element={<AdminPeople />} />
-                            <Route path="events" element={<AdminEvents />} />
-                            <Route
-                                path="events/:id"
-                                element={<AdminEventDetails />}
-                            />
-
-                            <Route path="rounds" element={<AdminRounds />} />
-                            <Route
-                                path="rounds/:id"
-                                element={<AdminRoundManagement />}
-                            />
-                            <Route
-                                path="rounds/:id/promotion"
-                                element={<AdminPromotion />}
-                            />
-
-                            <Route
-                                path="participants"
-                                element={<AdminParticipants />}
-                            />
-
-                            <Route path="rooms" element={<AdminRooms />} />
-
-                            <Route path="leaderboard" element={<AdminLeaderboard />} />
-
                             <Route path="results" element={<AdminResults />} />
-                            <Route
-                                path="results/:id"
-                                element={<AdminResultSubmission />}
-                            />
+                            <Route path="results/:id" element={<AdminResultSubmission />} />
+                            <Route path="rounds/:id" element={<AdminRoundManagement />} />
+                            <Route path="rounds/:id/promotion" element={<AdminPromotion />} />
+
+                            {/* Retired URLs redirect into the five places (query kept) */}
+                            <Route path="overview" element={<KeepQueryRedirect to="/admin/setup" />} />
+                            <Route path="events" element={<KeepQueryRedirect to="/admin/setup" />} />
+                            <Route path="events/:id" element={<KeepQueryRedirect to="/admin/setup/:id" />} />
+                            <Route path="rounds" element={<KeepQueryRedirect to="/admin/setup" />} />
+                            <Route path="rooms" element={<KeepQueryRedirect to="/admin/setup?tab=rooms" />} />
+                            <Route path="participants" element={<KeepQueryRedirect to="/admin/people?tab=registry" />} />
+                            <Route path="leaderboard" element={<KeepQueryRedirect to="/admin/results?tab=standings" />} />
 
                             <Route
                                 path="settings"

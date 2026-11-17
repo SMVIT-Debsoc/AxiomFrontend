@@ -1,48 +1,47 @@
-import ModalSurface from "../../components/ui/ModalSurface";
-import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
-import { motion as Motion } from "framer-motion";
-import {
-  Calendar,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  MessageCircle,
-  RotateCcw,
-  Flag,
-  DoorOpen,
-  X,
-} from "lucide-react";
-import LoadingIndicator from "../../components/ui/LoadingIndicator";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { Calendar, Plus, Search, Edit, Trash2, MessageCircle, RotateCcw, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../auth/client.jsx";
-import { Link, useSearchParams } from "react-router-dom";
 import { AdminApi, EventApi } from "../../services/api";
-import {useToast} from "../../hooks/useToast"
-import { useSocket, SocketEvents, useLiveRefresh, invalidateRealtimeCache } from "../../hooks/useSocket";
-import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
+import { useToast } from "../../hooks/useToast";
+import { SocketEvents, useLiveRefresh, invalidateRealtimeCache } from "../../hooks/useSocket";
+import { useLatestRequest, useSocketRefresh } from "../../hooks/useAdminRealtime";
+import { useAdminMutation } from "../../hooks/useAdminMutation";
+import { useAdminEvent } from "../../contexts/adminEvent";
+import LoadError from "../../components/ui/LoadError";
 import EmptyState from "../../components/ui/EmptyState";
+import EventFormModal from "./setup/EventModals";
 
-const AdminRooms = lazy(() => import("./AdminRooms"));
+const STATUS_CHIP = {
+  ONGOING: "ax-chip--ok",
+  UPCOMING: "ax-chip--info",
+  COMPLETED: "ax-chip--idle",
+};
 
+const formatDate = (value) =>
+  value ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+function EventsSkeleton() {
+  return (
+    <div role="status" aria-label="Loading events" className="space-y-2.5">
+      {[0, 1, 2].map((i) => <div key={i} className="ax-card h-[72px] animate-pulse bg-muted/50" />)}
+    </div>
+  );
+}
+
+/** Setup → Events: every tournament, create / edit / delete, pick the current one. */
 export default function AdminEvents() {
   const { getToken } = useAuth();
   const toast = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") === "rooms" ? "rooms" : "events";
+  const { eventId: currentEventId, setEventId } = useAdminEvent();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingEvent, setEditingEvent] = useState(null);
-
-  const setActiveTab = (tab) => {
-    const next = new URLSearchParams(searchParams);
-    if (tab === "events") next.delete("tab");
-    else next.set("tab", tab);
-    setSearchParams(next, { replace: true });
-  };
+  const [modal, setModal] = useState(null); // {mode:"create"} | {mode:"edit", event}
+  const [loadError, setLoadError] = useState(null);
+  const { run, isBusy } = useAdminMutation();
+  const latest = useLatestRequest();
 
   const getTokenRef = useRef(getToken);
   useEffect(() => {
@@ -50,18 +49,23 @@ export default function AdminEvents() {
   }, [getToken]);
 
   const fetchEvents = useCallback(async ({ silent = false } = {}) => {
+    const request = latest.begin();
     try {
       if (!silent) setLoading(true);
       const token = await getTokenRef.current();
-      const response = await EventApi.list(token);
+      const response = await EventApi.list(token, null, { skipCache: silent, signal: request.signal });
+      // Ignore a slower, older response that lands after a newer one.
+      if (!latest.isCurrent(request.id)) return;
       setEvents(response.events || response.data || []);
+      setLoadError(null);
     } catch (err) {
+      if (!latest.isCurrent(request.id)) return;
       console.error("Failed to fetch events", err);
-      if (!silent) toast.error("Error", "Failed to load events");
+      setLoadError(err?.message || "Failed to load events");
     } finally {
-      if (!silent) setLoading(false);
+      if (latest.isCurrent(request.id)) setLoading(false);
     }
-  }, [toast]);
+  }, [latest]);
 
   useEffect(() => {
     fetchEvents();
@@ -69,675 +73,198 @@ export default function AdminEvents() {
 
   useLiveRefresh(() => fetchEvents({ silent: true }));
 
-  // Real-time updates
-  const { subscribe } = useSocket();
-  useEffect(() => {
-    const unsubs = [
-      subscribe(SocketEvents.EVENT_CREATED, (data) => {
-        invalidateRealtimeCache();
-        fetchEvents({ silent: true });
-        toast.success(
-          "New Event",
-          `Event "${data.event?.name || "Tournament"}" has been created.`
-        );
-      }),
-      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, () => {
-        invalidateRealtimeCache();
-        fetchEvents({ silent: true });
-      }),
-      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, () => {
-        invalidateRealtimeCache();
-        fetchEvents({ silent: true });
-        toast.info("Event Deleted", "An event has been deleted.");
-      }),
-    ];
-    return () => unsubs.forEach((u) => u && u());
-  }, [subscribe, toast, fetchEvents]);
+  // Several admins editing at once produce bursts; each burst collapses into one refetch.
+  useSocketRefresh(
+    [SocketEvents.EVENT_CREATED, SocketEvents.EVENT_UPDATED_GLOBAL, SocketEvents.EVENT_DELETED_GLOBAL],
+    () => {
+      invalidateRealtimeCache();
+      fetchEvents({ silent: true });
+    },
+  );
+  // Other admins' important actions get a toast immediately; only the refetch is debounced.
+  useSocketRefresh([SocketEvents.EVENT_DELETED_GLOBAL], () => {
+    toast.info("Event deleted", "Another admin deleted an event.");
+  }, { delay: 0 });
 
-  const filteredEvents = events.filter((event) =>
-    event.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const q = searchQuery.trim().toLowerCase();
+  const filteredEvents = events.filter((event) => !q || String(event.name || "").toLowerCase().includes(q));
+
+  const handleDeleteEvent = (event) =>
+    run(
+      `delete:${event.id}`,
+      async () => {
+        const token = await getToken();
+        return AdminApi.deleteEvent(event.id, token);
+      },
+      {
+        confirm: `Delete "${event.name}"? All its rounds, draws and ballots are lost. This cannot be undone.`,
+        success: "Event deleted",
+        onSuccess: () => {
+          setEvents((prev) => prev.filter((e) => e.id !== event.id));
+          fetchEvents({ silent: true });
+        },
+        onConflict: () => fetchEvents({ silent: true }),
+      }
+    );
+
+  const toolbar = (
+    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <label className="relative block flex-1">
+        <span className="sr-only">Search events</span>
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <input
+          type="text"
+          placeholder="Search events"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full h-11 pl-9 pr-4 rounded-xl border-[1.5px] border-input bg-card text-base sm:text-[15px]"
+        />
+      </label>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => fetchEvents()}
+          disabled={loading}
+          className="ax-ghost-btn !min-h-11 !min-w-11 !px-0"
+          title="Refresh"
+          aria-label="Refresh events"
+        >
+          <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
+        </button>
+        <button type="button" onClick={() => setModal({ mode: "create" })} className="ax-primary-btn flex-1 !min-h-11 !text-sm sm:flex-none">
+          <Plus className="w-4 h-4" aria-hidden="true" /> New event
+        </button>
+      </div>
+    </div>
   );
 
-  const handleDeleteEvent = async (id) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this event? All associated rounds and debates will be lost."
-      )
-    )
-      return;
-    try {
-      const token = await getToken();
-      const response = await AdminApi.deleteEvent(id, token);
-      if (response.success) {
-        setEvents(events.filter((e) => e.id !== id));
-        toast.success("Deleted", "Event deleted successfully");
-      } else {
-        toast.error("Delete failed", response.error || "Failed to delete event");
-      }
-    } catch {
-      toast.error("Error deleting event");
-    }
-  };
+  let body;
+  if (loading && events.length === 0) {
+    body = <EventsSkeleton />;
+  } else if (loadError && events.length === 0) {
+    body = <LoadError message="Could not load events." detail={loadError} onRetry={() => fetchEvents()} />;
+  } else if (filteredEvents.length === 0) {
+    body = (
+      <EmptyState
+        title={q ? "Nothing matched" : "No events yet"}
+        description={q ? "No event matches your search." : "Create your first event to get started."}
+        action={!q && (
+          <button type="button" onClick={() => setModal({ mode: "create" })} className="ax-primary-btn !min-h-11 !text-sm">
+            <Plus size={16} aria-hidden="true" /> New event
+          </button>
+        )}
+      />
+    );
+  } else {
+    body = (
+      <>
+        {loadError && <LoadError compact message="Could not refresh events. Showing the last loaded list." onRetry={() => fetchEvents()} busy={loading} />}
 
-  if (loading && activeTab === "events") {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingIndicator label="Loading tournament events" />
-      </div>
+        {/* Desktop table */}
+        <div className="ax-card hidden overflow-hidden md:block">
+          <table className="w-full text-left text-[15px]" aria-label="Events">
+            <thead className="border-b border-border text-xs uppercase tracking-[0.06em] text-muted-foreground">
+              <tr>
+                <th scope="col" className="px-5 py-3">Event</th>
+                <th scope="col" className="px-5 py-3 whitespace-nowrap">Starts</th>
+                <th scope="col" className="px-5 py-3 whitespace-nowrap">Rounds</th>
+                <th scope="col" className="px-5 py-3 whitespace-nowrap">Status</th>
+                <th scope="col" className="px-5 py-3 text-right whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredEvents.map((event) => {
+                const current = event.id === currentEventId;
+                return (
+                  <tr key={event.id} className={cn("hover:bg-muted/30", current && "bg-muted/40")}>
+                    <td className="px-5 py-3.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link to={`/admin/setup/${event.id}`} onClick={() => setEventId(event.id)} className="font-heading font-semibold text-foreground hover:underline">
+                          {event.name}
+                        </Link>
+                        {current && <span className="ax-chip ax-chip--idle">Current</span>}
+                        {event.whatsappLink && (
+                          <span className="ax-chip ax-chip--idle" title={event.whatsappLink}>
+                            <MessageCircle className="w-3 h-3" aria-hidden="true" /> WhatsApp
+                          </span>
+                        )}
+                      </div>
+                      <p className="m-0 line-clamp-1 text-xs text-muted-foreground">{event.description || "No description"}</p>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-muted-foreground whitespace-nowrap tabular-nums">{formatDate(event.startDate)}</td>
+                    <td className="px-5 py-3.5 text-sm whitespace-nowrap tabular-nums">{event.rounds?.length || 0}</td>
+                    <td className="px-5 py-3.5 whitespace-nowrap"><span className={cn("ax-chip uppercase", STATUS_CHIP[event.status] || "ax-chip--idle")}>{event.status}</span></td>
+                    <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button type="button" onClick={() => setModal({ mode: "edit", event })} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`Edit ${event.name}`} title="Edit event">
+                          <Edit className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                        <button type="button" onClick={() => handleDeleteEvent(event)} disabled={isBusy(`delete:${event.id}`)} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50" aria-label={`Delete ${event.name}`} title="Delete event">
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                        <Link to={`/admin/setup/${event.id}`} onClick={() => setEventId(event.id)} className="ax-ghost-btn !min-h-11 !text-sm">
+                          Rounds <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Phone cards */}
+        <div className="md:hidden space-y-2.5">
+          {filteredEvents.map((event) => {
+            const current = event.id === currentEventId;
+            return (
+              <div key={event.id} className={cn("ax-card flex flex-col gap-2 p-3.5", current && "border-2")}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Calendar className="w-4 h-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="m-0 truncate font-heading font-semibold">{event.name}</p>
+                      <p className="m-0 text-xs text-muted-foreground tabular-nums">{formatDate(event.startDate)} · {event.rounds?.length || 0} rounds</p>
+                    </div>
+                  </div>
+                  <span className={cn("ax-chip shrink-0 uppercase", STATUS_CHIP[event.status] || "ax-chip--idle")}>{event.status}</span>
+                </div>
+                <div className="flex items-center gap-1 border-t border-border pt-2">
+                  <Link to={`/admin/setup/${event.id}`} onClick={() => setEventId(event.id)} className="ax-ghost-btn mr-auto !min-h-11 !text-sm">
+                    {current ? "Current · Rounds" : "Rounds"} <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                  </Link>
+                  <button type="button" onClick={() => setModal({ mode: "edit", event })} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={`Edit ${event.name}`}>
+                    <Edit className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                  <button type="button" onClick={() => handleDeleteEvent(event)} disabled={isBusy(`delete:${event.id}`)} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label={`Delete ${event.name}`}>
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
-        <div className="max-w-full">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-600 dark:text-emerald-400">
-              AXIOM 4.0
-            </span>
-            <span className="text-muted-foreground/60">•</span>
-            <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
-              {activeTab === "rooms" ? "Venues & Halls" : "Tournaments"}
-            </span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground break-words">
-            {activeTab === "rooms" ? "Venue Rooms" : "Events Management"}
-          </h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-0.5 max-w-xl font-sans">
-            {activeTab === "rooms"
-              ? "Manage debating halls, capacities, and active adjudicators"
-              : "Oversee parliamentary tournaments, round sequencing, and participant enrollment"}
-          </p>
-        </div>
-        {activeTab === "events" && (
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => fetchEvents()}
-              disabled={loading}
-              className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              title="Refresh Data"
-              aria-label="Refresh events list"
-            >
-              <RotateCcw className={cn("w-4 h-4", loading && "animate-spin")} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingEvent(null);
-                setShowCreateModal(true);
-              }}
-              className="min-h-11 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-sans font-medium text-sm hover:bg-primary/90 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Plus className="w-4 h-4" aria-hidden="true" />
-              <span>Create Event</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Unified Sub-tabs: Events | Venue Rooms */}
-      <div className="inline-flex items-center gap-1 bg-muted/60 border border-border/80 p-1 rounded-xl" role="tablist" aria-label="Events and rooms sections">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "events"}
-          onClick={() => setActiveTab("events")}
-          className={cn(
-            "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            activeTab === "events"
-              ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Flag className="w-4 h-4" aria-hidden="true" />
-          <span>Events</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "rooms"}
-          onClick={() => setActiveTab("rooms")}
-          className={cn(
-            "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            activeTab === "rooms"
-              ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <DoorOpen className="w-4 h-4" aria-hidden="true" />
-          <span>Venue Rooms</span>
-        </button>
-      </div>
-
-      {activeTab === "rooms" ? (
-        <Suspense fallback={<div className="flex items-center justify-center min-h-[40vh]"><LoadingIndicator label="Loading venue rooms" /></div>}>
-          <AdminRooms embedded />
-        </Suspense>
-      ) : (
-        <>
-          {/* Search Filter */}
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <input
-              type="text"
-              placeholder="Search tournaments by name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search tournaments"
-              className="w-full min-h-11 pl-9 pr-4 py-2 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
-            />
-          </div>
-
-          {/* Events List */}
-      {filteredEvents.length === 0 ? (
-        <EmptyState
-          title={searchQuery ? "Nothing matched" : "No tournaments yet"}
-          description={searchQuery ? "No events matched your search query." : "Create your first tournament to get started."}
-          action={
-            <button onClick={() => setShowCreateModal(true)} className="axiom-button axiom-button--green axiom-press axiom-sheen">
-              <Plus size={16} aria-hidden="true" />
-              <span>Create event</span>
-            </button>
-          }
-        />
-      ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left" aria-label="Tournament events">
-                <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
-                  <tr>
-                    <th scope="col" className="px-5 py-3.5">Tournament</th>
-                    <th scope="col" className="px-5 py-3.5 whitespace-nowrap">Date</th>
-                    <th scope="col" className="px-5 py-3.5 whitespace-nowrap">Rounds</th>
-                    <th scope="col" className="px-5 py-3.5 whitespace-nowrap">Status</th>
-                    <th scope="col" className="px-5 py-3.5 text-right whitespace-nowrap">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {filteredEvents.map((event, index) => (
-                    <Motion.tr
-                      key={event.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: index * 0.03 }}
-                      className="hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Link
-                                to={`/admin/events/${event.id}`}
-                                className="font-heading font-semibold text-sm truncate text-foreground hover:text-primary transition-colors block"
-                              >
-                                {event.name}
-                              </Link>
-                              {event.whatsappLink && (
-                                <span
-                                  className="ax-signal-win inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-200"
-                                  title={event.whatsappLink}
-                                >
-                                  <MessageCircle className="w-3 h-3" aria-hidden="true" />
-                                  <span>WhatsApp</span>
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground font-sans line-clamp-1">
-                              {event.description || "No description provided"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-xs font-sans text-muted-foreground whitespace-nowrap">
-                        {new Date(event.startDate).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="px-5 py-4 text-xs font-sans text-muted-foreground whitespace-nowrap">
-                        <span className="font-medium text-foreground">{event.rounds?.length || 0}</span> rounds
-                      </td>
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <span
-                          className={`text-[10px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                            event.status === "ONGOING"
-                              ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35"
-                              : event.status === "UPCOMING"
-                              ? "ax-signal-info bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 border-indigo-500/35"
-                              : "bg-muted text-muted-foreground border-border"
-                          }`}
-                        >
-                          {event.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Link
-                            to={`/admin/events/${event.id}`}
-                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            title="View Tournament"
-                            aria-label={`View tournament ${event.name}`}
-                          >
-                            <Eye className="w-4 h-4" aria-hidden="true" />
-                          </Link>
-                          <button
-                            type="button"
-                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            title="Edit Tournament"
-                            aria-label={`Edit tournament ${event.name}`}
-                            onClick={() => setEditingEvent(event)}
-                          >
-                            <Edit className="w-4 h-4" aria-hidden="true" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteEvent(event.id)}
-                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-rose-500/15 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            title="Delete Tournament"
-                            aria-label={`Delete tournament ${event.name}`}
-                          >
-                            <Trash2 className="w-4 h-4" aria-hidden="true" />
-                          </button>
-                        </div>
-                      </td>
-                    </Motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="md:hidden space-y-3">
-            {filteredEvents.map((event, index) => (
-              <Motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.04 }}
-                className="bg-card/70 border border-border/70 rounded-xl p-4 flex flex-col gap-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Calendar className="w-4 h-4 text-primary" aria-hidden="true" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-heading font-semibold text-sm truncate text-foreground">
-                        {event.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground font-sans">
-                        {new Date(event.startDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-[9px] font-sans font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
-                      event.status === "ONGOING"
-                        ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-500/35"
-                        : event.status === "UPCOMING"
-                        ? "ax-signal-info bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 border-indigo-500/35"
-                        : "bg-muted text-muted-foreground border-border"
-                    }`}
-                  >
-                    {event.status}
-                  </span>
-                </div>
-
-                {event.description && (
-                  <p className="text-xs text-muted-foreground font-sans line-clamp-2">
-                    {event.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between pt-2 border-t border-border/60 mt-auto text-xs">
-                  <span className="text-muted-foreground font-sans">
-                    <span className="font-semibold text-foreground">{event.rounds?.length || 0}</span> rounds
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Link
-                      to={`/admin/events/${event.id}`}
-                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label="View tournament details"
-                    >
-                      <Eye className="w-4 h-4" aria-hidden="true" />
-                    </Link>
-                    <button
-                      type="button"
-                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      onClick={() => setEditingEvent(event)}
-                      aria-label="Edit tournament"
-                    >
-                      <Edit className="w-4 h-4" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteEvent(event.id)}
-                      className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-rose-500/15 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
-                      aria-label="Delete tournament"
-                    >
-                      <Trash2 className="w-4 h-4" aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-              </Motion.div>
-            ))}
-          </div>
-        </>
-      )}
-        </>
-      )}
-
-      {/* Create Event Modal */}
-      {showCreateModal && (
-        <CreateEventModal
-          onClose={() => setShowCreateModal(false)}
-          onCreated={() => {
-            setShowCreateModal(false);
-            fetchEvents();
-          }}
-        />
-      )}
-
-      {/* Edit Event Modal */}
-      {editingEvent && (
-        <EditEventModal
-          event={editingEvent}
-          onClose={() => setEditingEvent(null)}
-          onUpdated={() => {
-            setEditingEvent(null);
-            fetchEvents();
+    <div className="space-y-3">
+      {toolbar}
+      {body}
+      {modal && (
+        <EventFormModal
+          event={modal.mode === "edit" ? modal.event : null}
+          onClose={() => setModal(null)}
+          onSaved={(response) => {
+            const createdId = modal.mode === "create" ? response?.event?.id || response?.data?.id : null;
+            setModal(null);
+            fetchEvents({ silent: true });
+            if (createdId) setEventId(createdId);
           }}
         />
       )}
     </div>
-  );
-}
-
-function CreateEventModal({ onClose, onCreated }) {
-  const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    whatsappLink: "",
-  });
-
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const token = await getToken();
-      const payload = serializeEventDates({
-        ...formData,
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        whatsappLink: formData.whatsappLink.trim(),
-      });
-      const response = await AdminApi.createEvent(payload, token);
-
-      if (response.success) {
-        onCreated();
-      } else {
-        setError(response.error || "Failed to create event");
-      }
-    } catch (err) {
-      setError(err?.message || "Failed to create event");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <ModalSurface onDismiss={onClose} aria-label="Create New Event"
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"><Motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-md shadow-xl"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-heading font-bold text-foreground">Create New Tournament</h2>
-          <p className="text-xs text-muted-foreground font-sans">Set up basic schedule and details</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Close dialog"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </button>
-      </div>
-    
-      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
-        {error && (
-          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
-          </div>
-        )}
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Tournament Name</span><input type="text"
-        required
-        value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-        placeholder="Axiom 4.0 Parliamentary" /></label>
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">
-          Description
-        </span><textarea value={formData.description}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            description: e.target.value,
-          })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
-        rows={3}
-        placeholder="Annual national debate tournament format..." /></label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">
-            Start Date (local time)
-          </span><input type="datetime-local"
-          required
-          value={formData.startDate}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              startDate: e.target.value,
-            })
-          }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">End Date (local time)</span><input type="datetime-local"
-          value={formData.endDate}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              endDate: e.target.value,
-            })
-          }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-        </div>
-        <label ><span className="text-xs font-semibold mb-1 flex items-center gap-1.5 text-foreground"><MessageCircle className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-        WhatsApp Group Link
-        <span className="text-[11px] text-muted-foreground font-normal">(Optional)</span></span><input type="url"
-        value={formData.whatsappLink}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            whatsappLink: e.target.value,
-          })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-emerald-500/30 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-xs transition-all"
-        placeholder="https://chat.whatsapp.com/..." /></label>
-        <div className="flex gap-2.5 pt-3 border-t border-border/60">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
-          >
-            {loading ? "Creating..." : "Create Event"}
-          </button>
-        </div>
-      </form>
-    </Motion.div></ModalSurface>
-  );
-}
-
-function EditEventModal({ event, onClose, onUpdated }) {
-  const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState({
-    name: event.name || "",
-    description: event.description || "",
-    startDate: event.startDate
-      ? toLocalDateTime(event.startDate)
-      : "",
-    endDate: event.endDate
-      ? toLocalDateTime(event.endDate)
-      : "",
-    status: event.status || "UPCOMING",
-    whatsappLink: event.whatsappLink || "",
-  });
-
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const token = await getToken();
-      const response = await AdminApi.updateEvent(event.id, serializeEventDates(formData, event), token);
-      if (response.success) {
-        onUpdated();
-      } else {
-        setError(response.error || "Failed to update event");
-      }
-    } catch (err) {
-      setError(err?.message || "Error updating event");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <ModalSurface onDismiss={onClose} aria-label="Edit Event"
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"><Motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl"
-    >
-      <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
-        <div>
-          <h2 className="text-lg font-heading font-bold text-foreground">Edit Tournament</h2>
-          <p className="text-xs text-muted-foreground font-sans">Modify parameters and status</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Close dialog"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </button>
-      </div>
-    
-      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
-        {error && (
-          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
-          </div>
-        )}
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Tournament Name</span><input type="text"
-        required
-        value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
-    
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">
-          Description
-        </span><textarea value={formData.description}
-        onChange={(e) =>
-          setFormData({ ...formData, description: e.target.value })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
-        rows={3} /></label>
-    
-        <div className="grid md:grid-cols-2 gap-3">
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">
-            Start Date (local time)
-          </span><input type="datetime-local"
-          required
-          value={formData.startDate}
-          onChange={(e) =>
-            setFormData({ ...formData, startDate: e.target.value })
-          }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">End Date (local time)</span><input type="datetime-local"
-          value={formData.endDate}
-          onChange={(e) =>
-            setFormData({ ...formData, endDate: e.target.value })
-          }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-        </div>
-    
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Status</span><select value={formData.status}
-        onChange={(e) =>
-          setFormData({ ...formData, status: e.target.value })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"><option value="UPCOMING">Upcoming</option>
-        <option value="ONGOING">Ongoing</option>
-        <option value="COMPLETED">Completed</option></select></label>
-    
-        <label ><span className="text-xs font-semibold mb-1 flex items-center gap-1.5 text-foreground"><MessageCircle className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-        WhatsApp Group Link
-        <span className="text-[11px] text-muted-foreground font-normal">(Optional)</span></span><input type="url"
-        value={formData.whatsappLink}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            whatsappLink: e.target.value,
-          })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-emerald-500/30 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-xs transition-all"
-        placeholder="https://chat.whatsapp.com/..." /></label>
-    
-        <div className="flex gap-2.5 pt-4 border-t border-border/60 mt-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
-          >
-            {loading ? "Updating..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
-    </Motion.div></ModalSurface>
   );
 }
