@@ -1,3 +1,4 @@
+import {dashboardRoutes} from "./lib/dashboardRoutes";
 import {lazy, Suspense, useState} from "react";
 import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom";
 const MainLayout = lazy(() => import("./layouts/MainLayout"));
@@ -5,13 +6,13 @@ const WorkspaceProviders = lazy(() => import("./components/WorkspaceProviders"))
 const Placeholder = lazy(() => import("./pages/Placeholder"));
 const Home = lazy(() => import("./pages/Home"));
 const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"));
-const DashboardHome = lazy(() => import("./pages/dashboard/DashboardHome"));
-const DashboardEvents = lazy(() => import("./pages/dashboard/DashboardEvents"));
-const EventDetails = lazy(() => import("./pages/dashboard/EventDetails"));
+const DashboardHome = lazy(dashboardRoutes.home);
+const DashboardEvents = lazy(dashboardRoutes.events);
+const EventDetails = lazy(dashboardRoutes.event);
 const Profile = lazy(() => import("./pages/dashboard/Profile"));
-const Participants = lazy(() => import("./pages/dashboard/Participants"));
-const RoundDetails = lazy(() => import("./pages/dashboard/RoundDetails"));
-const Results = lazy(() => import("./pages/dashboard/Results"));
+const Participants = lazy(dashboardRoutes.participants);
+const RoundDetails = lazy(dashboardRoutes.round);
+const Results = lazy(dashboardRoutes.results);
 import {OnboardingGuard} from "./components/OnboardingGuard";
 const ProfileCompletionGuard = lazy(() => import("./components/ProfileCompletionGuard").then(module => ({
     default: module.ProfileCompletionGuard,

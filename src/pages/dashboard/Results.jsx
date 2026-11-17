@@ -1,5 +1,6 @@
+import DashboardLink from "../../components/dashboard/DashboardLink";
 import {useState, useEffect} from "react";
-import {useParams, Link} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import {motion as Motion} from "framer-motion";
 import {
   ArrowLeft,
@@ -22,6 +23,7 @@ import {useEventSocket, useLiveRefresh} from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {ResultsSkeleton} from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
+import SectionRetry from "../../components/ui/SectionRetry";
 
 const RESULTS_FIELDS = ["event", "personal"];
 
@@ -42,6 +44,9 @@ function ResultsPage({eventId}) {
 
   const [personalLoading, setPersonalLoading] = useState(true);
   const [standingsLoaded, setStandingsLoaded] = useState(false);
+  const [standingsFailed, setStandingsFailed] = useState(false);
+  const [standingsRetrying, setStandingsRetrying] = useState(false);
+  const [personalFailed, setPersonalFailed] = useState(false);
 
   const refresh = usePageRequests(RESULTS_FIELDS, async (field, token, options, isCurrent) => {
     try {
@@ -57,19 +62,29 @@ function ResultsPage({eventId}) {
           DebateApi.getMyDebates(token, options, eventId),
         ]);
         if (!isCurrent()) return;
+        setPersonalFailed(debates.status === "rejected");
         if (profile.status === "fulfilled" && profile.value?.success) setCurrentUser(profile.value.user);
         if (debates.status === "fulfilled" && debates.value?.success) setMyDebates(debates.value.debates || []);
       } else if (field === "standings") {
         const response = await StatsApi.getLeaderboard(token, eventId, 100, options);
-        if (isCurrent()) setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
+        if (isCurrent()) {
+          setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
+          setStandingsFailed(false);
+        }
       }
     } catch (error) {
-      if (isCurrent()) console.error("Failed to fetch results", error);
+      if (isCurrent()) {
+        if (field === "standings") setStandingsFailed(true);
+        console.error("Failed to fetch results", error);
+      }
     } finally {
       if (isCurrent()) {
         if (field === "event") setLoading(false);
         if (field === "personal") setPersonalLoading(false);
-        if (field === "standings") setStandingsLoaded(true);
+        if (field === "standings") {
+          setStandingsLoaded(true);
+          setStandingsRetrying(false);
+        }
       }
     }
   }, "event");
@@ -134,12 +149,12 @@ function ResultsPage({eventId}) {
     <div className="max-w-4xl mx-auto space-y-6 px-4 pb-10">
       {/* Header */}
       <div className="axiom-page-header pb-4 border-b border-border">
-        <Link
+        <DashboardLink
           to={`/dashboard/events/${eventId}`}
           className="inline-flex min-h-11 items-center text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground mb-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" /> Back to Event
-        </Link>
+        </DashboardLink>
 
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
@@ -240,9 +255,15 @@ function ResultsPage({eventId}) {
           animate={{opacity: 1}}
           className="space-y-3"
         >
-          {personalLoading ? (
+          {personalFailed && (
+            <SectionRetry message="Could not refresh your results." busy={personalLoading} onRetry={() => {
+              setPersonalLoading(true);
+              refresh("personal");
+            }} />
+          )}
+          {personalLoading && !myEventDebates.length ? (
             <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading your results…</p>
-          ) : myEventDebates.length === 0 ? (
+          ) : myEventDebates.length === 0 && personalFailed ? null : myEventDebates.length === 0 ? (
             <EmptyState
               compact
               icon={Trophy}
@@ -355,6 +376,12 @@ function ResultsPage({eventId}) {
           animate={{opacity: 1}}
           className="space-y-3"
         >
+          {hasPublishedResults && standingsFailed && (
+            <SectionRetry message="Could not refresh standings." busy={standingsRetrying} onRetry={() => {
+              setStandingsRetrying(true);
+              refresh("standings");
+            }} />
+          )}
           {!hasPublishedResults ? (
             <EmptyState
               compact
@@ -364,7 +391,7 @@ function ResultsPage({eventId}) {
             />
           ) : !standingsLoaded ? (
             <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading standings…</p>
-          ) : leaderboard.length === 0 ? (
+          ) : standingsFailed && leaderboard.length === 0 ? null : leaderboard.length === 0 ? (
             <EmptyState
               compact
               icon={Trophy}

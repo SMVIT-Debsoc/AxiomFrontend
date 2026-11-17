@@ -1,9 +1,9 @@
+import DashboardLink from "../../components/dashboard/DashboardLink";
 import {useState, useEffect} from "react";
 import {motion as Motion} from "framer-motion";
 import {Trophy} from "lucide-react";
 import {usePageRequests} from "../../hooks/usePageRequests";
 import {EventApi} from "../../services/api";
-import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {useSocket, SocketEvents, useLiveRefresh} from "../../hooks/useSocket";
@@ -160,12 +160,12 @@ export default function DashboardEvents() {
                       </span>
                     )}
                   </div>
-                  <Link
+                  <DashboardLink
                     to={`/dashboard/events/${event.id}`}
                     className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     View Details
-                  </Link>
+                  </DashboardLink>
                 </div>
               </div>
             </Motion.div>

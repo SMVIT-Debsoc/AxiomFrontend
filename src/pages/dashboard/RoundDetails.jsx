@@ -1,5 +1,6 @@
+import DashboardLink from "../../components/dashboard/DashboardLink";
 import {useState, useEffect, useRef, useMemo} from "react";
-import {useParams, Link} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import {motion as Motion} from "framer-motion";
 import {
   ArrowLeft,
@@ -24,6 +25,7 @@ import {cn, formatTimeIST} from "../../lib/utils";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {RoundDetailsSkeleton} from "../../components/ui/Skeleton";
 import GameOverCard from "../../components/dashboard/GameOverCard";
+import SectionRetry from "../../components/ui/SectionRetry";
 
 const ROUND_FIELDS = ["round", "profile", "checkIn", "debates"];
 const ROUND_LIVE_FIELDS = ["round", "checkIn", "debates"];
@@ -48,7 +50,9 @@ function RoundPage({eventId, roundId}) {
 
   const [checkInLoading, setCheckInLoading] = useState(true);
   const [debatesLoading, setDebatesLoading] = useState(true);
+  const [sectionFailed, setSectionFailed] = useState({});
   const checkInVersion = useRef(0);
+  const checkInInFlight = useRef(false);
   const currentUserId = currentUser?.id;
   const myDebate = allMyDebates.find((debate) => debate.roundId === roundId) || null;
 
@@ -73,8 +77,12 @@ function RoundPage({eventId, roundId}) {
         const response = await DebateApi.getMyDebates(token, options, eventId);
         if (isCurrent() && response?.success) setAllMyDebates(response.debates || []);
       }
+      if (isCurrent()) setSectionFailed((previous) => previous[field] ? {...previous, [field]: false} : previous);
     } catch (failure) {
-      if (isCurrent() && field === "round") setError(failure.message);
+      if (isCurrent()) {
+        if (field === "round" && !round) setError(failure.message);
+        else setSectionFailed((previous) => ({...previous, [field]: true}));
+      }
     } finally {
       if (isCurrent()) {
         if (field === "round") setLoading(false);
@@ -127,12 +135,15 @@ function RoundPage({eventId, roundId}) {
   });
 
   const handleCheckIn = async () => {
+    if (checkInInFlight.current) return;
     try {
+      checkInInFlight.current = true;
       setCheckingIn(true);
       const token = await getToken();
       const response = await CheckInApi.checkIn(roundId, token);
       checkInVersion.current += 1;
       setCheckInStatus({checkIn: response.checkIn, isCheckedIn: true});
+      setSectionFailed((previous) => ({...previous, checkIn: false}));
       setCheckInLoading(false);
 
       toast.success(
@@ -145,6 +156,7 @@ function RoundPage({eventId, roundId}) {
       console.error("Check-in failed", err);
       toast.error("Check-in Failed", err.message);
     } finally {
+      checkInInFlight.current = false;
       setCheckingIn(false);
     }
   };
@@ -292,12 +304,12 @@ function RoundPage({eventId, roundId}) {
         <p className="text-muted-foreground mb-6">
           {error || "The round you are looking for does not exist."}
         </p>
-        <Link
+        <DashboardLink
           to={`/dashboard/events/${eventId}`}
           className="inline-flex min-h-11 items-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium"
         >
           <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" /> Back to Event
-        </Link>
+        </DashboardLink>
       </div>
     );
   }
@@ -317,12 +329,12 @@ function RoundPage({eventId, roundId}) {
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div>
-        <Link
+        <DashboardLink
           to={`/dashboard/events/${eventId}`}
           className="inline-flex min-h-11 items-center text-xs font-sans text-muted-foreground hover:text-primary mb-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> Back to Tournament
-        </Link>
+        </DashboardLink>
 
         <div className="rounded-xl bg-card border border-border p-6 md:p-8 relative">
           <div className="axiom-page-header relative z-10">
@@ -352,6 +364,21 @@ function RoundPage({eventId, roundId}) {
 
       {/* Main Round Stack */}
       <div className="space-y-4">
+        {sectionFailed.round && (
+          <SectionRetry message="Could not refresh this round." onRetry={() => refresh("round")} />
+        )}
+        {sectionFailed.checkIn && (
+          <SectionRetry message="Could not refresh your check-in status." busy={checkInLoading} onRetry={() => {
+            setCheckInLoading(true);
+            refresh("checkIn");
+          }} />
+        )}
+        {sectionFailed.debates && (
+          <SectionRetry message="Could not refresh your debate assignment." busy={debatesLoading} onRetry={() => {
+            setDebatesLoading(true);
+            refresh("debates");
+          }} />
+        )}
         {/* Compact Game Over Banner if Eliminated in Event */}
         {isEliminated && (
           <GameOverCard
@@ -653,7 +680,7 @@ function RoundPage({eventId, roundId}) {
         )}
 
         {/* No Debate Found (only when not already showing GameOverCard or clarify cleanly) */}
-        {round.pairingsPublished && !debatesLoading && !myDebate && !isEliminated && (
+        {round.pairingsPublished && !debatesLoading && !sectionFailed.debates && !myDebate && !isEliminated && (
           <div className="bg-card border border-border rounded-xl p-6 text-center">
             <XCircle
               className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50"
@@ -747,12 +774,12 @@ function RoundPage({eventId, roundId}) {
         {(round.status === "COMPLETED" ||
           round.resultsPublished ||
           myDebate?.status === "COMPLETED") && (
-          <Link
+          <DashboardLink
             to={`/dashboard/events/${eventId}/results`}
             className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             View Full Results &amp; Standings
-          </Link>
+          </DashboardLink>
         )}
       </div>
     </div>

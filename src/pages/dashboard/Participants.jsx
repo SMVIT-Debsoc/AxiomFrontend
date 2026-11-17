@@ -1,5 +1,6 @@
+import DashboardLink from "../../components/dashboard/DashboardLink";
 import {useState} from "react";
-import {useParams, Link} from "react-router-dom";
+import {useParams} from "react-router-dom";
 import {
   Users,
   ArrowLeft,
@@ -71,12 +72,12 @@ function ParticipantsPage({eventId}) {
     <div className="max-w-4xl space-y-6">
       {/* Header */}
       <div>
-        <Link
+        <DashboardLink
           to={`/dashboard/events/${eventId}`}
           className="inline-flex items-center text-xs font-sans text-muted-foreground hover:text-primary mb-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> Back to Tournament
-        </Link>
+        </DashboardLink>
 
         <div className="axiom-page-header">
           <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">

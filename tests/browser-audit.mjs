@@ -650,6 +650,44 @@ try {
     }
   });
 
+  await run('focusing a tournament link preloads its route without fetching its data', {signedIn: true}, async (page) => {
+    await page.goto(origin + '/dashboard');
+    const link = page.getByRole('link', {name: 'Tournament Hub'});
+    await link.waitFor();
+    let eventRequests = 0;
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === '/api/events/e1') eventRequests += 1;
+    });
+    const preloaded = page.waitForRequest((request) =>
+      new URL(request.url()).pathname === '/src/pages/dashboard/EventDetails.jsx'
+    );
+    await link.focus();
+    await preloaded;
+    assert.equal(eventRequests, 0);
+    await link.click();
+    await page.getByRole('link', {name: 'Back to Tournaments'}).waitFor();
+    assert.equal(eventRequests > 0, true);
+  });
+
+  await run('standings can be retried without leaving personal results', {
+    signedIn: true, assigned: true, resultsPublished: true,
+  }, async page => {
+    let attempts = 0;
+    await page.route(/\/api\/stats\/leaderboard\?/, async route => {
+      attempts += 1;
+      if (attempts > 1) return route.fallback();
+      return route.fulfill({status: 503, json: {success: false, error: 'Standings temporarily unavailable'}});
+    });
+    await page.goto(origin + '/dashboard/events/e1/results');
+    await visible(page, 'QUALIFIED');
+    await page.getByRole('tab', {name: 'Standings'}).click();
+    await visible(page, 'Could not refresh standings.');
+    await page.getByRole('button', {name: 'Retry', exact: true}).click();
+    await visible(page, 'No standings yet');
+    await page.getByRole('tab', {name: 'My Results'}).click();
+    await visible(page, 'QUALIFIED');
+  });
+
   await run('first-time login shows visual navigation guide strip, advances steps, and persists dismissal across reload', {signedIn: true}, async page => {
     await page.goto(origin + '/dashboard');
     const guideRegion = page.getByRole('region', {name: 'First-time login visual guide'});

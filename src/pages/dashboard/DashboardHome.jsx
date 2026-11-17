@@ -1,3 +1,4 @@
+import DashboardLink from "../../components/dashboard/DashboardLink";
 import {lazy, Suspense, useState, useEffect, useRef, useCallback, useMemo} from "react";
 import {
   Trophy,
@@ -21,7 +22,6 @@ import {
   CheckInApi,
   StatsApi,
 } from "../../services/api";
-import {Link} from "react-router-dom";
 import {useToast} from "../../hooks/useToast";
 import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
 import {
@@ -32,6 +32,7 @@ import {
 } from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import EmptyState from "../../components/ui/EmptyState";
+import SectionRetry from "../../components/ui/SectionRetry";
 import CountUp from "../../components/ui/CountUp";
 import NeoButton from "../../components/neo/NeoButton";
 import GameOverCard from "../../components/dashboard/GameOverCard";
@@ -107,6 +108,8 @@ function ResultsHubSection({
   rounds,
   leaderboard,
   leaderboardLoading,
+  leaderboardFailed,
+  retryLeaderboard,
   currentUserId,
 }) {
   const hasPublishedResults = Boolean(
@@ -299,13 +302,13 @@ function ResultsHubSection({
                       </div>
 
                       {activeEvent?.id && debate.roundId && (
-                        <Link
+                        <DashboardLink
                           to={`/dashboard/events/${activeEvent.id}/rounds/${debate.roundId}`}
                           className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2.5 text-xs font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           <span>Round</span>
                           <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                        </Link>
+                        </DashboardLink>
                       )}
                     </div>
                   </div>
@@ -328,6 +331,9 @@ function ResultsHubSection({
             )}
           </div>
 
+          {hasPublishedResults && leaderboardFailed && (
+            <SectionRetry message="Could not refresh standings." busy={leaderboardLoading} onRetry={retryLeaderboard} />
+          )}
           {!hasPublishedResults ? (
             <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2.5">
               <div className="w-10 h-10 mx-auto rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
@@ -340,11 +346,11 @@ function ResultsHubSection({
                 Official tournament standings unlock once round results are published by the adjudication desk.
               </p>
             </div>
-          ) : leaderboardLoading ? (
+          ) : leaderboardLoading && leaderboard.length === 0 ? (
             <p role="status" className="p-5 text-center text-xs text-muted-foreground">
               Loading standings…
             </p>
-          ) : leaderboard.length === 0 ? (
+          ) : leaderboardFailed && leaderboard.length === 0 ? null : leaderboard.length === 0 ? (
             <EmptyState
               compact
               icon={Trophy}
@@ -441,6 +447,7 @@ function DashboardContent() {
   const [debatesLoading, setDebatesLoading] = useState(true);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [sectionFailed, setSectionFailed] = useState({});
   const [checkInStatus, setCheckInStatus] = useState(null);
   const [currentRound, setCurrentRound] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -456,6 +463,7 @@ function DashboardContent() {
   const refreshQueue = useRef(null);
   const roundIdRef = useRef(null);
   const checkInVersion = useRef(0);
+  const checkInInFlight = useRef(false);
   const refresh = useCallback((...fields) => refreshQueue.current?.(fields), []);
 
   useEffect(() => {
@@ -512,16 +520,24 @@ function DashboardContent() {
       const eventChanged = oldEvent !== event?.id;
       const roundChanged = oldRound !== round?.id;
       const tasks = [];
+      const markFailure = (field, failed) => {
+        if (!stopped) setSectionFailed((previous) =>
+          Boolean(previous[field]) === failed ? previous : {...previous, [field]: failed}
+        );
+      };
       setActiveEvent(event);
       setCurrentRound(round);
 
       if (eventChanged) {
+        markFailure("debates", false);
+        markFailure("leaderboard", false);
         setMyDebates([]);
         setDebatesLoading(true);
         setLeaderboard([]);
         loadedBoard = null;
       }
       if (roundChanged) {
+        markFailure("checkIn", false);
         roundIdRef.current = round?.id ?? null;
         setCheckInStatus(null);
         setCheckInLoading(Boolean(round));
@@ -535,9 +551,12 @@ function DashboardContent() {
       if (fields.has("debates") || eventChanged) {
         tasks.push(DebateApi.getMyDebates(token, options, event?.id)
           .then((response) => {
-            if (!stopped && response?.success) setMyDebates(response.debates || []);
+            if (!stopped && response?.success) {
+              setMyDebates(response.debates || []);
+              markFailure("debates", false);
+            }
           })
-          .catch(() => {})
+          .catch(() => markFailure("debates", true))
           .finally(() => { if (!stopped) setDebatesLoading(false); }));
       }
 
@@ -547,6 +566,7 @@ function DashboardContent() {
           .then((response) => {
             if (stopped || checkInVersion.current !== version || !response?.success) return;
             const status = response.checkIn?.status || (response.isCheckedIn ? "PRESENT" : null);
+            markFailure("checkIn", false);
             setCheckInStatus({
               ...response.checkIn,
               status,
@@ -554,20 +574,23 @@ function DashboardContent() {
               isEliminated: Boolean(response.isEliminated || response.checkIn?.isEliminated),
             });
           })
-          .catch(() => {})
+          .catch(() => {
+            if (checkInVersion.current === version) markFailure("checkIn", true);
+          })
           .finally(() => { if (!stopped) setCheckInLoading(false); }));
       }
 
       if (event?.rounds?.some((item) => item.resultsPublished)
           && (fields.has("leaderboard") || loadedBoard !== event.id)) {
-        setLeaderboardLoading(loadedBoard !== event.id);
+        if (loadedBoard !== event.id) setLeaderboardLoading(true);
         tasks.push(StatsApi.getLeaderboard(token, event.id, 100, options)
           .then((response) => {
             if (stopped || !response?.success) return;
             loadedBoard = event.id;
+            markFailure("leaderboard", false);
             setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
           })
-          .catch(() => {})
+          .catch(() => markFailure("leaderboard", true))
           .finally(() => { if (!stopped) setLeaderboardLoading(false); }));
       }
 
@@ -782,8 +805,10 @@ function DashboardContent() {
   const checkInMeta = getCheckInWindowMeta(currentRound, clockNow);
 
   const handleCheckIn = async () => {
+    if (checkInInFlight.current) return;
     if (!currentRound) return;
     try {
+      checkInInFlight.current = true;
       setCheckingIn(true);
       const token = await getToken();
       const response = await CheckInApi.checkIn(currentRound.id, token);
@@ -796,12 +821,14 @@ function DashboardContent() {
           isCheckedIn: true,
           isEliminated: false,
         });
+        setSectionFailed((previous) => ({...previous, checkIn: false}));
         toast.success("Successfully checked in!");
         refresh("checkIn");
       }
     } catch (err) {
       toast.error(err.message || "Failed to check in. Please try again.");
     } finally {
+      checkInInFlight.current = false;
       setCheckingIn(false);
     }
   };
@@ -989,12 +1016,12 @@ function DashboardContent() {
                 </h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Link
+                <DashboardLink
                   to={`/dashboard/events/${activeEvent.id}`}
                   className="inline-flex min-h-11 items-center justify-center px-4 rounded-xl border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-colors"
                 >
                   Tournament Hub
-                </Link>
+                </DashboardLink>
                 {activeEvent.whatsappLink && (
                   <a
                     href={activeEvent.whatsappLink}
@@ -1170,8 +1197,20 @@ function DashboardContent() {
                 )}
               </div>
 
+              {sectionFailed.checkIn && (
+                <SectionRetry message="Could not refresh your check-in status." busy={checkInLoading} onRetry={() => {
+                  setCheckInLoading(true);
+                  refresh("checkIn");
+                }} />
+              )}
+              {sectionFailed.debates && (
+                <SectionRetry message="Could not refresh your debate assignment." busy={debatesLoading} onRetry={() => {
+                  setDebatesLoading(true);
+                  refresh("debates");
+                }} />
+              )}
               {/* Matchup & Motion Panel */}
-              {debatesLoading ? (
+              {debatesLoading && !nextDebate ? (
                 <p role="status" className="py-4 text-center text-xs text-muted-foreground">
                   Loading your debate…
                 </p>
@@ -1230,15 +1269,15 @@ function DashboardContent() {
                     </div>
                   </div>
 
-                  <Link
+                  <DashboardLink
                     to={`/dashboard/events/${activeEvent.id}/rounds/${currentRound.id}`}
                     className="min-h-11 w-full rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors flex items-center justify-center gap-2"
                   >
                     <span>View Round Draw &amp; Details</span>
                     <ArrowRight size={14} aria-hidden="true" />
-                  </Link>
+                  </DashboardLink>
                 </div>
-              ) : currentRound.pairingsPublished ? (
+              ) : sectionFailed.debates ? null : currentRound.pairingsPublished ? (
                 <div className="text-center py-4 text-xs text-muted-foreground">
                   Draw released. You do not have a scheduled debate in this round.
                 </div>
@@ -1355,6 +1394,8 @@ function DashboardContent() {
                 rounds={roundsList}
                 leaderboard={leaderboard}
                 leaderboardLoading={leaderboardLoading}
+                leaderboardFailed={sectionFailed.leaderboard}
+                retryLeaderboard={() => { setLeaderboardLoading(true); refresh("leaderboard"); }}
                 currentUserId={userData?.id}
               />
             </div>
@@ -1400,13 +1441,13 @@ function DashboardContent() {
                     </p>
                   </div>
 
-                  <Link
+                  <DashboardLink
                     to={`/dashboard/events/${activeEvent.id}/rounds/${r.id}`}
                     className="min-h-11 px-4 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors flex items-center justify-center gap-1.5 shrink-0"
                   >
                     <span>Open Round</span>
                     <ArrowRight size={13} aria-hidden="true" />
-                  </Link>
+                  </DashboardLink>
                 </div>
               );
             })
@@ -1443,6 +1484,8 @@ function DashboardContent() {
                 rounds={roundsList}
                 leaderboard={leaderboard}
                 leaderboardLoading={leaderboardLoading}
+                leaderboardFailed={sectionFailed.leaderboard}
+                retryLeaderboard={() => { setLeaderboardLoading(true); refresh("leaderboard"); }}
                 currentUserId={userData?.id}
               />
             </>
@@ -1472,18 +1515,18 @@ function DashboardContent() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link
+            <DashboardLink
               to="/dashboard/events"
               className="min-h-11 px-3.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors flex items-center"
             >
               All Tournaments
-            </Link>
-            <Link
+            </DashboardLink>
+            <DashboardLink
               to="/dashboard/profile"
               className="min-h-11 px-3.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted text-foreground transition-colors flex items-center"
             >
               My Profile
-            </Link>
+            </DashboardLink>
           </div>
         </div>
       </aside>

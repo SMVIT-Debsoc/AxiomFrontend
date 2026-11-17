@@ -1,5 +1,7 @@
+import DashboardLink from "../../components/dashboard/DashboardLink";
+import SectionRetry from "../../components/ui/SectionRetry";
 import { lazy, Suspense, useState, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import {useParams} from "react-router-dom";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -48,11 +50,14 @@ function EventOverview({id}) {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollmentLoading, setEnrollmentLoading] = useState(true);
+  const [enrollmentFailed, setEnrollmentFailed] = useState(false);
 
   const [participantCount, setParticipantCount] = useState(null);
   const [myDebates, setMyDebates] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [personalLoading, setPersonalLoading] = useState(true);
+  const [personalFailed, setPersonalFailed] = useState(false);
+  const eventDebates = myDebates.filter((debate) => rounds.some((round) => round.id === debate.roundId));
 
   const deleted = useRef(false);
   const enrollmentVersion = useRef(0);
@@ -86,6 +91,7 @@ function EventOverview({id}) {
         const response = await EventApi.getEnrollmentStatus(id, token, options);
         if (canUpdate() && version === enrollmentVersion.current && response?.success) {
           setIsEnrolled(response.isEnrolled);
+          setEnrollmentFailed(false);
         }
       } else if (field === "personal") {
         const [profile, debates] = await Promise.allSettled([
@@ -93,11 +99,13 @@ function EventOverview({id}) {
           DebateApi.getMyDebates(token, options, id),
         ]);
         if (!canUpdate()) return;
+        setPersonalFailed(debates.status === "rejected");
         if (profile.status === "fulfilled" && profile.value?.success) setCurrentUser(profile.value.user);
         if (debates.status === "fulfilled" && debates.value?.success) setMyDebates(debates.value.debates || []);
       }
     } catch (error) {
       if (canUpdate() && field === "overview" && !options.skipCache) setError(error.message);
+      if (canUpdate() && field === "enrollment" && version === enrollmentVersion.current) setEnrollmentFailed(true);
     } finally {
       if (canUpdate()) {
         if (field === "overview") setLoading(false);
@@ -222,6 +230,7 @@ function EventOverview({id}) {
       );
       enrollmentVersion.current += 1;
       setIsEnrolled(true);
+      setEnrollmentFailed(false);
       socketService.retryRoom("event", id, true);
       refresh("overview", "enrollment");
     } catch (err) {
@@ -244,12 +253,12 @@ function EventOverview({id}) {
         <p className="text-muted-foreground mb-6">
           {error || "The event you are looking for does not exist."}
         </p>
-        <Link
+        <DashboardLink
           to="/dashboard/events"
           className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium"
         >
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Events
-        </Link>
+        </DashboardLink>
       </div>
     );
   }
@@ -261,12 +270,12 @@ function EventOverview({id}) {
       </Suspense>
       {/* Header / Breadcrumb */}
       <div>
-        <Link
+        <DashboardLink
           to="/dashboard/events"
           className="inline-flex items-center text-xs font-sans text-muted-foreground hover:text-primary mb-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           <ArrowLeft className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> Back to Tournaments
-        </Link>
+        </DashboardLink>
 
         <div className="rounded-xl bg-card border border-border p-6 md:p-8 relative">
           <div className="axiom-page-header relative z-10">
@@ -326,6 +335,12 @@ function EventOverview({id}) {
                     enrollmentLoading ? "Checking enrollment…" : "Enroll Now"
                   )}
                 </button>
+                {enrollmentFailed && (
+                  <SectionRetry message="Could not verify enrollment." busy={enrollmentLoading} onRetry={() => {
+                    setEnrollmentLoading(true);
+                    refresh("enrollment");
+                  }} />
+                )}
                 {event.whatsappLink && (
                   <a
                     href={event.whatsappLink}
@@ -525,7 +540,7 @@ function EventOverview({id}) {
                         Your Status
                       </span>
                       <span className="font-medium text-foreground">
-                        {enrollmentLoading ? "Checking…" : isEnrolled ? "Enrolled" : "Not enrolled"}
+                        {isEnrolled ? "Enrolled" : enrollmentLoading ? "Checking…" : enrollmentFailed ? "Status unavailable" : "Not enrolled"}
                       </span>
                     </div>
                   </div>
@@ -560,7 +575,7 @@ function EventOverview({id}) {
                 <EmptyState compact icon={Clock} title="No rounds scheduled" description="The schedule appears here once rounds are created." />
               ) : (
                 rounds.map((round) => (
-                  <Link
+                  <DashboardLink
                     key={round.id}
                     to={`/dashboard/events/${id}/rounds/${round.id}`}
                     className="block p-5 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -612,7 +627,7 @@ function EventOverview({id}) {
                           </p>
                         </div>
                       )}
-                  </Link>
+                  </DashboardLink>
                 ))
               )}
             </Motion.div>
@@ -637,13 +652,17 @@ function EventOverview({id}) {
                     transition={{ duration: 0.2 }}
                     className="space-y-3"
                   >
-                    {personalLoading ? (
+                    {personalFailed && (
+                      <SectionRetry message="Could not refresh your results." busy={personalLoading} onRetry={() => {
+                        setPersonalLoading(true);
+                        refresh("personal");
+                      }} />
+                    )}
+                    {personalLoading && !eventDebates.length ? (
                       <p role="status" className="py-12 text-center text-sm text-muted-foreground">
                         Loading your results…
                       </p>
-                    ) : myDebates.filter((d) =>
-                      rounds.map((r) => r.id).includes(d.roundId)
-                    ).length === 0 ? (
+                    ) : !eventDebates.length && personalFailed ? null : !eventDebates.length ? (
                       <div className="text-center py-12 bg-card border border-border rounded-xl">
                         <Trophy className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50" aria-hidden="true" />
                         <p className="text-muted-foreground font-sans text-sm">
@@ -651,11 +670,7 @@ function EventOverview({id}) {
                         </p>
                       </div>
                     ) : (
-                      myDebates
-                        .filter((d) =>
-                          rounds.map((r) => r.id).includes(d.roundId)
-                        )
-                        .map((debate, index) => {
+                      eventDebates.map((debate, index) => {
                           const round = rounds.find(
                             (r) => r.id === debate.roundId
                           );
@@ -749,12 +764,12 @@ function EventOverview({id}) {
                           );
                         })
                     )}
-                    <Link
+                    <DashboardLink
                       to={`/dashboard/events/${id}/results`}
                       className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-primary hover:border-primary/40 transition-colors"
                     >
                       Open Full Results &amp; Standings
-                    </Link>
+                    </DashboardLink>
                   </Motion.div>
                 </AnimatePresence>
               </div>
