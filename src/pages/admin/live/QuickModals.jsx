@@ -202,18 +202,20 @@ export function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onC
                         </label>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-muted-foreground font-medium">Window duration:</span>
-                        {[15, 20, 30, 45, 60].map((mins) => (
-                            <button
-                                key={mins}
-                                type="button"
-                                onClick={() => applyPreset(mins)}
-                                className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground font-semibold transition-colors"
-                            >
-                                {mins}m
-                            </button>
-                        ))}
+                    <div className="space-y-1.5">
+                        <span className="block text-muted-foreground font-medium">Window duration</span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            {[15, 20, 30, 45, 60].map((mins) => (
+                                <button
+                                    key={mins}
+                                    type="button"
+                                    onClick={() => applyPreset(mins)}
+                                    className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground font-semibold transition-colors"
+                                >
+                                    {mins}m
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div>
