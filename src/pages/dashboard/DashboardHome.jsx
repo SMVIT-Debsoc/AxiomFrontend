@@ -48,11 +48,6 @@ const WhatsAppFirstLoginModal = lazy(() =>
     default: m.WhatsAppFirstLoginModal,
   }))
 );
-const FirstLoginGuideStrip = lazy(() =>
-  import("../../components/dashboard/QuickStartGuide").then((m) => ({
-    default: m.FirstLoginGuideStrip,
-  }))
-);
 
 function getCheckInWindowMeta(round, nowMs) {
   if (!round?.checkInStartTime || !round?.checkInEndTime) {
@@ -148,6 +143,8 @@ function ResultsHubSection({
             <Trophy className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
             <h2
               id="inline-results-heading"
+              data-tour-anchor="results"
+              data-tour-state={hasPublishedResults ? "published" : "waiting"}
               className="text-base sm:text-lg font-heading font-bold text-foreground"
             >
               All Results &amp; Event Standings
@@ -854,18 +851,14 @@ function DashboardContent() {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto font-sans">
-      {/* WhatsApp First Login Modal, Persistent Alert & First-Time Visual Guide */}
+      {/* WhatsApp first-login prompt and persistent link */}
       <Suspense fallback={null}>
         <WhatsAppFirstLoginModal event={activeEvent} />
         <WhatsAppGroupBanner
           whatsappLink={activeEvent?.whatsappLink}
           eventName={activeEvent?.name}
         />
-        <FirstLoginGuideStrip
-          onOpenFullGuide={() =>
-            window.dispatchEvent(new CustomEvent("axiom:open-visual-guide"))
-          }
-        />
+        <span hidden data-tour-whatsapp-ready />
       </Suspense>
 
       {/* Error Banner */}
@@ -904,7 +897,7 @@ function DashboardContent() {
           />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-heading font-bold text-foreground truncate">
+              <h1 data-tour-anchor="overview" className="text-lg sm:text-xl font-heading font-bold text-foreground truncate">
                 {displayName}
               </h1>
               <span className="ax-chip ax-chip--gov font-heading uppercase shrink-0">
@@ -954,6 +947,7 @@ function DashboardContent() {
           type="button"
           role="tab"
           aria-selected={mobileTab === "now"}
+          data-tour-anchor="tab-now"
           onClick={() => setMobileTab("now")}
           className={cn(
             "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5 px-2",
@@ -970,6 +964,7 @@ function DashboardContent() {
           type="button"
           role="tab"
           aria-selected={mobileTab === "rounds"}
+          data-tour-anchor="tab-rounds"
           onClick={() => setMobileTab("rounds")}
           className={cn(
             "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5 px-2",
@@ -988,6 +983,7 @@ function DashboardContent() {
           type="button"
           role="tab"
           aria-selected={mobileTab === "results"}
+          data-tour-anchor="tab-results"
           onClick={() => setMobileTab("results")}
           className={cn(
             "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5 px-2",
@@ -1020,6 +1016,7 @@ function DashboardContent() {
               <div className="flex flex-wrap items-center gap-2">
                 <DashboardLink
                   to={`/dashboard/events/${activeEvent.id}`}
+                  data-tour-anchor="active-event"
                   className="inline-flex min-h-11 items-center justify-center px-4 rounded-xl border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-colors"
                 >
                   Tournament Hub
@@ -1087,6 +1084,11 @@ function DashboardContent() {
 
               {/* Check-In Row with Explicit Open/Close IST Timestamps & Status Pill */}
               <div
+                data-tour-anchor="check-in"
+                data-tour-window={checkInMeta.state}
+                data-tour-state={isCheckedIn ? "present" : checkInStatusLoading ? "loading"
+                  : checkInStatusUnavailable ? "unavailable" : checkInMeta.state === "NOT_CONFIGURED"
+                  ? "pending" : checkInMeta.state.toLowerCase()}
                 className={cn(
                   "flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl",
                   isCheckedIn
@@ -1220,7 +1222,7 @@ function DashboardContent() {
                 </p>
               ) : nextDebate ? (
                 <div className="space-y-3 pt-1">
-                  <div className="p-3.5 rounded-xl border border-border bg-background/50 space-y-2.5">
+                  <div data-tour-anchor="matchup" className="p-3.5 rounded-xl border border-border bg-background/50 space-y-2.5">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="font-bold text-primary flex items-center gap-1.5">
                         <Swords size={14} aria-hidden="true" /> Assigned Matchup
@@ -1282,11 +1284,11 @@ function DashboardContent() {
                   </DashboardLink>
                 </div>
               ) : sectionFailed.debates ? null : currentRound.pairingsPublished ? (
-                <div className="text-center py-4 text-xs text-muted-foreground">
+                <div data-tour-anchor="matchup" data-tour-state="unassigned" className="text-center py-4 text-xs text-muted-foreground">
                   Draw released. You do not have a scheduled debate in this round.
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20 text-xs text-muted-foreground">
+                <div data-tour-anchor="matchup" data-tour-state="waiting" className="flex items-center gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20 text-xs text-muted-foreground">
                   <Lock size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span>
                     Pairings are being drawn by the adjudication core. Check back soon.
@@ -1447,6 +1449,7 @@ function DashboardContent() {
 
                   <DashboardLink
                     to={`/dashboard/events/${activeEvent.id}/rounds/${r.id}`}
+                    data-tour-anchor={r.id === (currentRound?.id || roundsList[0]?.id) ? "rounds" : undefined}
                     className="min-h-11 px-4 rounded-xl border border-border bg-card text-foreground font-semibold text-xs hover:bg-muted transition-colors flex items-center justify-center gap-1.5 shrink-0"
                   >
                     <span>Open Round</span>

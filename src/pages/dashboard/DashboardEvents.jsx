@@ -77,7 +77,7 @@ export default function DashboardEvents() {
         <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
           Competitions
         </span>
-        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1 break-words">
+        <h1 data-tour-anchor="events" className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1 break-words">
           Tournaments
         </h1>
         <p className="text-sm md:text-base text-muted-foreground font-sans mt-1">
@@ -162,6 +162,7 @@ export default function DashboardEvents() {
                   </div>
                   <DashboardLink
                     to={`/dashboard/events/${event.id}`}
+                    data-tour-anchor="event-link"
                     className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     View Details

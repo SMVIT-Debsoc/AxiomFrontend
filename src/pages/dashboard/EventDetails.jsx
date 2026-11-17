@@ -313,6 +313,8 @@ function EventOverview({id}) {
               <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
                 <button
                   onClick={handleEnroll}
+                  data-tour-anchor="enrollment"
+                  data-tour-state={isEnrolled ? "enrolled" : undefined}
                   disabled={isEnrolled || enrolling || enrollmentLoading}
                   className={cn(
                     "px-5 py-2.5 rounded-lg font-heading font-semibold text-xs transition-colors min-w-[140px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

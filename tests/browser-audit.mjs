@@ -735,37 +735,119 @@ try {
     await visible(page, 'QUALIFIED');
   });
 
-  await run('first-time login shows visual navigation guide strip, advances steps, and persists dismissal across reload', {signedIn: true}, async page => {
+  await run('first visit offers the site tour and remembers Skip after reload', {signedIn: true, window: 'closed'}, async page => {
     await page.goto(origin + '/dashboard');
-    const guideRegion = page.getByRole('region', {name: 'First-time login visual guide'});
-    await guideRegion.waitFor({state: 'visible'});
-    await visible(guideRegion, 'No check-in, no mic.');
-
-    await guideRegion.getByRole('button', {name: 'Next Tip'}).click();
-    await visible(guideRegion, 'GOV opens. OPP claps back.');
-
-    await guideRegion.getByRole('button', {name: 'Got it'}).click();
-    assert.equal(await page.getByRole('region', {name: 'First-time login visual guide'}).count(), 0);
-
+    const invitation = page.getByRole('region', {name: 'Take a tour of AXIOM'});
+    await invitation.getByRole('button', {name: 'Skip for now'}).click();
+    await invitation.waitFor({state: 'hidden'});
     await page.reload();
     await page.getByRole('tab', {name: 'Live Matchup'}).waitFor({state: 'visible'});
-    assert.equal(await page.getByRole('region', {name: 'First-time login visual guide'}).count(), 0);
+    assert.equal(await page.evaluate(() => localStorage.getItem('axiom.site-tour.v1.u1')), 'dismissed');
+    assert.equal(await invitation.count(), 0);
   });
 
-  await run('header Guide button opens interactive 4-step visual guide modal on mobile without overflow', {signedIn: true}, async page => {
-    await page.setViewportSize({width: 390, height: 844});
+  await run('site tour invitation waits for the WhatsApp prompt', {
+    signedIn: true, window: 'closed', whatsappLink: 'https://chat.whatsapp.com/test',
+  }, async page => {
     await page.goto(origin + '/dashboard');
-    await page.getByRole('button', {name: 'Open quick navigation guide'}).click();
-    const dialog = page.getByRole('dialog');
-    await dialog.waitFor({state: 'visible'});
-    await visible(dialog, 'How to Navigate the Arena');
-    await visible(dialog, 'No check-in, no mic.');
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+    const whatsapp = page.getByRole('dialog');
+    await whatsapp.waitFor();
+    const invitation = page.getByRole('region', {name: 'Take a tour of AXIOM'});
+    assert.equal(await invitation.count(), 0);
+    await whatsapp.getByRole('button', {name: 'Close', exact: true}).click();
+    await invitation.waitFor();
+  });
 
-    await dialog.getByRole('tab', {name: /04/}).click();
-    await visible(dialog, 'Scores stay backstage. Qualification hits the stage.');
-    await dialog.getByRole('button', {name: /Got It, Let's Debate/}).click();
-    assert.equal(await page.getByRole('dialog').count(), 0);
+  for (const viewport of [{width: 390, height: 740}, {width: 1280, height: 800}]) {
+    await run(`site tour follows the real debater journey at ${viewport.width}px`, {
+      signedIn: true, enrolled: true, assigned: true, published: true,
+    }, async (page, state) => {
+      await page.setViewportSize(viewport);
+      state.debate.status = 'SCHEDULED';
+      state.events.unshift({...state.event, id: 'e2', name: 'Another Tournament', status: 'UPCOMING'});
+      const writes = [];
+      page.on('request', request => {
+        if (request.method() === 'POST' && /\/api\/(?:check-in|events\/[^/]+\/enroll)$/.test(new URL(request.url()).pathname)) {
+          writes.push(request.url());
+        }
+      });
+      await page.goto(origin + '/dashboard');
+      await page.getByRole('button', {name: 'Check In Now'}).waitFor();
+      assert.equal(await page.getByRole('region', {name: 'Take a tour of AXIOM'}).count(), 0);
+      await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
+      await page.getByRole('button', {name: 'Start tour'}).click();
+      const dialog = page.getByRole('dialog');
+      const next = dialog.getByRole('button', {name: 'Next', exact: true});
+      const steps = [
+        ['Start on your dashboard', 'overview', '/dashboard'],
+        ['Find your tournament', 'event-link', '/dashboard/events'],
+        ['Join the tournament', 'enrollment', '/dashboard/events/e1'],
+        ['Check in before you debate', 'check-in', '/dashboard'],
+        ['Find your debate', 'matchup', '/dashboard'],
+        ['See your round schedule', 'rounds', '/dashboard'],
+        ['See if you advance', 'results', '/dashboard'],
+        ['Keep your details up to date', 'profile', '/dashboard/profile'],
+      ];
+      for (const [index, [title, anchor, path]] of steps.entries()) {
+        await page.waitForURL(origin + path);
+        await dialog.getByRole('heading', {name: title, exact: true}).waitFor();
+        await page.waitForFunction(anchor => {
+          const event = anchor === 'event-link' ? '[href="/dashboard/events/e1"]' : '';
+          const target = document.querySelector(`[data-tour-anchor="${anchor}"]${event}`)?.getBoundingClientRect();
+          const highlight = document.querySelector('[data-testid="tour-highlight"]')?.getBoundingClientRect();
+          const panel = document.querySelector('.site-tour-panel')?.getBoundingClientRect();
+          const arrow = document.querySelector('.site-tour-arrow')?.getBoundingClientRect();
+          return target && highlight && panel && arrow && Math.abs(target.top - highlight.top) < 4 &&
+            Math.abs(highlight.left - target.left) < 4 && panel.left >= 0 && panel.right <= innerWidth &&
+            (panel.top >= highlight.bottom || panel.bottom <= highlight.top) &&
+            arrow.left < highlight.right && arrow.right > highlight.left &&
+            Math.min(Math.abs(arrow.bottom - panel.top), Math.abs(arrow.top - panel.bottom)) <= 2;
+        }, anchor);
+        if (index === 3) {
+          if (viewport.width === 390) await page.screenshot({path: 'audit-artifacts/site-tour-mobile.png'});
+          await page.keyboard.press('Escape');
+          await dialog.waitFor({state: 'hidden'});
+          await page.reload();
+          await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
+          await page.getByRole('button', {name: 'Resume tour'}).click();
+          await dialog.getByRole('heading', {name: title, exact: true}).waitFor();
+          await visible(dialog, 'Check-in tells the organizers you’re here for this round. Tap Check In Now before the closing time. Look for Presence Verified afterward.');
+          assert.deepEqual(writes, []);
+          if (viewport.width === 390) {
+            await page.getByRole('button', {name: 'Check In Now', exact: true}).click();
+            await visible(dialog, 'Presence Verified means the organizers have marked you as here for this round.');
+          }
+        }
+        if (index < steps.length - 1) await next.click();
+      }
+      await dialog.getByRole('button', {name: 'Finish'}).click();
+      await dialog.waitFor({state: 'hidden'});
+      assert.equal(state.checkedIn, viewport.width === 390);
+      assert.equal(writes.length, viewport.width === 390 ? 1 : 0);
+      await page.getByText('Successfully checked in!', {exact: true}).waitFor({state: 'hidden', timeout: 6000});
+      await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
+      await page.getByRole('button', {name: 'Restart tour'}).click();
+      await dialog.getByRole('heading', {name: 'Start on your dashboard'}).waitFor();
+    });
+  }
+
+  await run('site tour explains where details will appear before a round exists', {signedIn: true}, async (page, state) => {
+    state.event.rounds = [];
+    await page.setViewportSize({width: 360, height: 640});
+    await page.goto(origin + '/dashboard');
+    await page.getByRole('button', {name: 'Start tour'}).click();
+    const dialog = page.getByRole('dialog');
+    const next = dialog.getByRole('button', {name: 'Next', exact: true});
+    for (let step = 0; step < 3; step++) await next.click();
+    await visible(dialog, 'When a round is available, its check-in times appear under Live Matchup. Check in during those times to tell the organizers you’re here.');
+    await next.click();
+    await visible(dialog, 'When the organizers publish who debates whom, look here for your room, side, and topic.');
+    await next.click();
+    await visible(dialog, 'When the organizers add rounds, they’ll appear here with their check-in times.');
+    await dialog.getByRole('button', {name: 'Back', exact: true}).click();
+    await dialog.getByRole('heading', {name: 'Find your debate'}).waitFor();
+    await dialog.getByRole('button', {name: 'Exit tour'}).click();
+    assert.ok(await page.getByRole('button', {name: 'Site Tour', exact: true}).evaluate(el => el === document.activeElement));
   });
 
   await run('admin inline result entry automatically tags higher score as winner', {signedIn: true, admin: true, assigned: true, published: true}, async (page, state) => {

@@ -194,7 +194,7 @@ function ProfileSettings() {
           <span className="axiom-eyebrow text-xs tracking-wider uppercase text-primary font-heading font-semibold">
             Identity
           </span>
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1">My Profile</h1>
+          <h1 data-tour-anchor="profile" className="text-2xl md:text-3xl font-heading font-bold text-foreground mt-1">My Profile</h1>
           <p className="text-sm text-muted-foreground font-sans mt-0.5">
             Manage your personal credentials and tournament identity.
           </p>
