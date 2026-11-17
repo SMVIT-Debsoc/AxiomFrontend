@@ -11,6 +11,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL
 // In-memory request caching for smooth navigation without re-fetching
 const apiCache = new Map();
 const CACHE_TTL_MS = 20000; // 20s client cache for fast tab switching
+const MAX_CACHE_ENTRIES = 256;
 
 const MUTATION_CACHE_TARGETS = {
     "check-in": ["check-in", "rounds"],
@@ -119,6 +120,7 @@ export async function apiRequest(
         method,
         headers,
         credentials: "include",
+        signal: options.signal,
     };
 
     if (body) {
@@ -126,7 +128,8 @@ export async function apiRequest(
     }
 
     const isGet = method.toUpperCase() === "GET";
-    const cacheKey = `${endpoint}::${resolvedToken ? "auth" : adminSecretKey ? "admin" : "anon"}`;
+    const cacheKey = JSON.stringify([endpoint, resolvedToken, adminSecretKey]);
+    const initialAuthorization = headers.Authorization;
 
     if (isBrowser && isGet) {
         if (options.skipCache) {
@@ -209,7 +212,13 @@ export async function apiRequest(
         }
 
         if (isGet) {
-            apiCache.set(cacheKey, {data, timestamp: Date.now()});
+            if (isBrowser && initialAuthorization === headers.Authorization) {
+                apiCache.delete(cacheKey);
+                if (apiCache.size >= MAX_CACHE_ENTRIES) {
+                    apiCache.delete(apiCache.keys().next().value);
+                }
+                apiCache.set(cacheKey, {data, timestamp: Date.now()});
+            }
         } else {
             // Invalidate related caches for mutations
             invalidateMutationCache(endpoint);
@@ -246,7 +255,7 @@ export const UserApi = {
 export const EventApi = {
     list: (token, status = null, options = {}) =>
         apiRequest(
-            `/events${status ? `?status=${status}` : ""}`,
+            `/events${status ? `?status=${status}` : options.dashboard ? "?view=dashboard" : ""}`,
             "GET",
             null,
             token,
@@ -254,6 +263,7 @@ export const EventApi = {
         ),
     get: (id, token, options = {}) => apiRequest(`/events/${id}`, "GET", null, token, options),
     getById: (id, token, options = {}) => apiRequest(`/events/${id}`, "GET", null, token, options),
+    getOverview: (id, token, options = {}) => apiRequest(`/events/${id}?view=overview`, "GET", null, token, options),
     getParticipants: (eventId, token, options = {}) =>
         apiRequest(`/events/${eventId}/participants`, "GET", null, token, options),
     enroll: (id, token) =>
@@ -282,8 +292,8 @@ export const CheckInApi = {
 
 // Debate Endpoints
 export const DebateApi = {
-    getMyDebates: (token, options = {}) =>
-        apiRequest("/debates/my-debates", "GET", null, token, options),
+    getMyDebates: (token, options = {}, eventId) =>
+        apiRequest(`/debates/my-debates${eventId ? `?eventId=${encodeURIComponent(eventId)}` : ""}`, "GET", null, token, options),
     getByRound: (roundId, token, options = {}) =>
         apiRequest(`/debates/round/${roundId}`, "GET", null, token, options),
     getById: (id, token, options = {}) => apiRequest(`/debates/${id}`, "GET", null, token, options),

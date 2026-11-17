@@ -17,7 +17,12 @@ export function invalidateRealtimeCache() {
  * - Refreshes on socket reconnect after a disconnection
  * - Polls every `intervalMs` ONLY when the socket is disconnected and tab is visible
  */
-export function useLiveRefresh(refreshFn, {enabled = true, intervalMs = 25000} = {}) {
+export function useLiveRefresh(refreshFn, {
+  enabled = true,
+  intervalMs = 25000,
+  jitterMs = 0,
+  invalidateCache = true,
+} = {}) {
   const refreshRef = useRef(refreshFn);
   useEffect(() => {
     refreshRef.current = refreshFn;
@@ -30,7 +35,7 @@ export function useLiveRefresh(refreshFn, {enabled = true, intervalMs = 25000} =
 
     const triggerRefresh = () => {
       if (document.visibilityState !== "visible") return;
-      invalidateRealtimeCache();
+      if (invalidateCache) invalidateRealtimeCache();
       refreshRef.current?.();
     };
 
@@ -52,19 +57,22 @@ export function useLiveRefresh(refreshFn, {enabled = true, intervalMs = 25000} =
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
-    const timer = window.setInterval(() => {
-      if (!socketService.isConnected() && document.visibilityState === "visible") {
-        triggerRefresh();
-      }
-    }, intervalMs);
+    let timer;
+    const schedulePoll = () => {
+      timer = window.setTimeout(() => {
+        if (!socketService.isConnected()) triggerRefresh();
+        schedulePoll();
+      }, intervalMs + Math.random() * jitterMs);
+    };
+    schedulePoll();
 
     return () => {
       unsubConnect();
       unsubDisconnect();
       document.removeEventListener("visibilitychange", handleVisibility);
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
     };
-  }, [enabled, intervalMs]);
+  }, [enabled, intervalMs, jitterMs, invalidateCache]);
 }
 
 /**

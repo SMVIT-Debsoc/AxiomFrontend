@@ -30,83 +30,94 @@ const WhatsAppFirstLoginModal = lazy(() =>
 );
 
 export default function EventDetails() {
-  const { id } = useParams();
+  const {id} = useParams();
+  return <EventOverview key={id} id={id} />;
+}
+
+function EventOverview({id}) {
   const { getToken } = useAuth();
   const toast = useToast();
   const [event, setEvent] = useState(null);
   const [rounds, setRounds] = useState([]);
-  const [activeTab, setActiveTab] = useState("overview"); // overview | rounds | participants | results
+  const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
 
-  // New State for inline tabs
-  const [participants, setParticipants] = useState([]);
+  const [participantCount, setParticipantCount] = useState(null);
   const [myDebates, setMyDebates] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [personalLoading, setPersonalLoading] = useState(true);
 
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
+  const fetchVersion = useRef(0);
+  const updateParticipantCount = useCallback(async (response, token, options, isCurrent) => {
+    const count = response?.event?._count?.participants;
+    if (Number.isInteger(count)) {
+      if (isCurrent()) setParticipantCount(count);
+      return;
+    }
+
+    // Older API deployments may not include the count on an event overview.
+    const roster = await EventApi.getParticipants(id, token, options).catch(() => null);
+    if (isCurrent() && roster?.success) {
+      setParticipantCount(roster.total ?? roster.participants?.length ?? 0);
+    }
+  }, [id]);
+
   // Fetch data in parallel to minimize loading latency
   const fetchData = useCallback(async ({ silent = false } = {}) => {
+    const version = ++fetchVersion.current;
+    const isCurrent = () => version === fetchVersion.current;
     try {
       if (!silent) setLoading(true);
       const token = await getTokenRef.current();
-      const reqOptions = silent ? { skipCache: true } : {};
+      if (!isCurrent()) return;
+      const reqOptions = silent ? {skipCache: true} : {};
 
-      const [
-        eventResponse,
-        enrollmentResponse,
-        partsParams,
-        userResponse,
-        myDebatesResponse,
-      ] = await Promise.all([
-        EventApi.get(id, token, reqOptions),
-        EventApi.getEnrollmentStatus(id, token, reqOptions).catch(() => ({success: false})),
-        EventApi.getParticipants(id, token, reqOptions).catch(() => ({success: false, participants: []})),
-        UserApi.getProfile(token, reqOptions).catch(() => ({success: false})),
-        DebateApi.getMyDebates(token, reqOptions).catch(() => ({success: false, debates: []})),
+      // Personal results can arrive after the event and enrollment controls.
+      void Promise.allSettled([
+        UserApi.getProfile(token),
+        DebateApi.getMyDebates(token, reqOptions, id),
+      ]).then(([profile, debates]) => {
+        if (!isCurrent()) return;
+        if (profile.status === "fulfilled" && profile.value?.success) setCurrentUser(profile.value.user);
+        if (debates.status === "fulfilled" && debates.value?.success) setMyDebates(debates.value.debates || []);
+        setPersonalLoading(false);
+      });
+
+      const [eventResponse, enrollmentResponse] = await Promise.all([
+        EventApi.getOverview(id, token, reqOptions),
+        EventApi.getEnrollmentStatus(id, token, reqOptions).catch(() => null),
       ]);
+      if (!isCurrent()) return;
 
-      if (eventResponse?.success && eventResponse.event) {
-        setEvent(eventResponse.event);
-        setRounds(eventResponse.event.rounds || []);
-        setError(null);
-      } else {
+      if (!eventResponse?.success || !eventResponse.event) {
         setError("Event not found");
+        return;
       }
-
-      if (enrollmentResponse?.success) {
-        setIsEnrolled(enrollmentResponse.isEnrolled);
-      }
-
-      if (partsParams?.success) {
-        setParticipants(partsParams.participants || []);
-      }
-
-      if (userResponse?.success) {
-        setCurrentUser(userResponse.user);
-      }
-
-      if (myDebatesResponse?.success) {
-        setMyDebates(myDebatesResponse.debates || []);
-      }
+      setEvent(eventResponse.event);
+      setRounds(eventResponse.event.rounds || []);
+      setError(null);
+      if (enrollmentResponse?.success) setIsEnrolled(enrollmentResponse.isEnrolled);
+      void updateParticipantCount(eventResponse, token, reqOptions, isCurrent);
     } catch (err) {
-      console.error("Failed to fetch event details", err);
-      setError(err.message);
+      if (isCurrent() && !silent) setError(err.message);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, [id]); // stable - getToken via ref, id is the real dependency
+  }, [id, updateParticipantCount]);
 
   useEffect(() => {
     fetchData();
+    return () => { fetchVersion.current += 1; };
   }, [fetchData]);
 
   const softRefetch = useCallback(() => fetchData({ silent: true }), [fetchData]);
-  useLiveRefresh(softRefetch, { enabled: Boolean(id) });
+  useLiveRefresh(softRefetch, { enabled: Boolean(id), jitterMs: 3000 });
 
   // Real-time updates via WebSocket
   useEventSocket(id, {
@@ -166,6 +177,7 @@ export default function EventDetails() {
           "Check your assigned debate room."
         );
       }
+      softRefetch();
     },
     onDebateResult: (data) => {
       console.log("[Socket] Debate result:", data);
@@ -178,12 +190,8 @@ export default function EventDetails() {
       );
 
       toast.info("Result Submitted", "A debate result has been submitted.");
-      // Refresh sanitized data silently
-      softRefetch();
-    },
-    onLeaderboardUpdate: () => {
-      console.log("[Socket] Leaderboard updated");
-      softRefetch();
+      // The overview only needs a fresh result when this participant was involved.
+      if (myDebates.some((debate) => debate.id === data.debateId)) softRefetch();
     },
     onResultsPublished: (data) => {
       if (data?.published) {
@@ -201,6 +209,8 @@ export default function EventDetails() {
       }
     },
     onEventDeleted: () => {
+      fetchVersion.current += 1;
+      setLoading(false);
       toast.error("Event Deleted", "This event has been cancelled or removed.");
       // Redirect to dashboard logic could be added here, but for now just show toast/error state
       setError("Event has been deleted.");
@@ -219,11 +229,7 @@ export default function EventDetails() {
       );
       setIsEnrolled(true);
       socketService.joinEvent(id);
-      // Refresh participants list
-      const partsParams = await EventApi.getParticipants(id, token);
-      if (partsParams.success) {
-        setParticipants(partsParams.participants || []);
-      }
+      void softRefetch();
     } catch (err) {
       console.error("Enrollment failed", err);
       toast.error("Enrollment Failed", err.message);
@@ -518,7 +524,7 @@ export default function EventDetails() {
                       <span className="text-muted-foreground">
                         Registered Debaters
                       </span>
-                      <span className="font-medium text-foreground">{participants.length}</span>
+                      <span className="font-medium text-foreground">{participantCount ?? "…"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
@@ -637,7 +643,11 @@ export default function EventDetails() {
                     transition={{ duration: 0.2 }}
                     className="space-y-3"
                   >
-                    {myDebates.filter((d) =>
+                    {personalLoading ? (
+                      <p role="status" className="py-12 text-center text-sm text-muted-foreground">
+                        Loading your results…
+                      </p>
+                    ) : myDebates.filter((d) =>
                       rounds.map((r) => r.id).includes(d.roundId)
                     ).length === 0 ? (
                       <div className="text-center py-12 bg-card border border-border rounded-xl">

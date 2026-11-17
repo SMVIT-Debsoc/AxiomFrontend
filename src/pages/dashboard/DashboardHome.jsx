@@ -20,7 +20,6 @@ import {
   DebateApi,
   CheckInApi,
   StatsApi,
-  clearApiCache,
 } from "../../services/api";
 import {Link} from "react-router-dom";
 import {useToast} from "../../hooks/useToast";
@@ -30,7 +29,6 @@ import {
   useSocket,
   SocketEvents,
   useLiveRefresh,
-  invalidateRealtimeCache,
 } from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import EmptyState from "../../components/ui/EmptyState";
@@ -108,6 +106,7 @@ function ResultsHubSection({
   eventDebates,
   rounds,
   leaderboard,
+  leaderboardLoading,
   currentUserId,
 }) {
   const hasPublishedResults = Boolean(
@@ -341,6 +340,10 @@ function ResultsHubSection({
                 Official tournament standings unlock once round results are published by the adjudication desk.
               </p>
             </div>
+          ) : leaderboardLoading ? (
+            <p role="status" className="p-5 text-center text-xs text-muted-foreground">
+              Loading standings…
+            </p>
           ) : leaderboard.length === 0 ? (
             <EmptyState
               compact
@@ -417,7 +420,14 @@ function ResultsHubSection({
   );
 }
 
+const LIVE_FIELDS = ["event", "debates", "checkIn", "leaderboard"];
+
 export default function DashboardHome() {
+  const {sessionId, userId} = useAuth();
+  return <DashboardContent key={sessionId || userId} />;
+}
+
+function DashboardContent() {
   const {getToken} = useAuth();
   const {user: authUser, isLoaded: authLoaded} = useUser();
   const toast = useToast();
@@ -427,8 +437,9 @@ export default function DashboardHome() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [myDebates, setMyDebates] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
-  const [nextDebate, setNextDebate] = useState(null);
-  const [latestCompletedDebate, setLatestCompletedDebate] = useState(null);
+  const [debatesLoading, setDebatesLoading] = useState(true);
+  const [checkInLoading, setCheckInLoading] = useState(false);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [checkInStatus, setCheckInStatus] = useState(null);
   const [currentRound, setCurrentRound] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -440,196 +451,205 @@ export default function DashboardHome() {
     getTokenRef.current = getToken;
   }, [getToken]);
 
-  const fetchDashboardData = useCallback(
-    async ({silent = false} = {}) => {
-      if (!authLoaded) return;
-      if (!silent) setLoading(true);
-      const reqOptions = silent ? {skipCache: true} : {};
 
-      try {
-        const token = await getTokenRef.current();
-
-        const [profileRes, eventsRes, debatesRes] = await Promise.all([
-          UserApi.getProfile(token, reqOptions),
-          EventApi.list(token, null, reqOptions),
-          DebateApi.getMyDebates(token, reqOptions).catch(() => ({
-            success: false,
-            debates: [],
-          })),
-        ]);
-
-        if (profileRes?.user) {
-          setUserData(profileRes.user);
-        }
-
-        const allEvents = eventsRes?.events || [];
-        const event =
-          allEvents.find((e) => e.status === "ONGOING") ||
-          allEvents.find((e) => e.status === "UPCOMING") ||
-          allEvents[0] ||
-          null;
-
-        if (event) {
-          setActiveEvent(event);
-
-          const targetRound =
-            event.rounds?.find((r) => r.status === "ONGOING") ||
-            event.rounds?.find((r) => r.status === "UPCOMING") ||
-            (event.rounds?.length > 0
-              ? event.rounds[event.rounds.length - 1]
-              : null);
-
-          setCurrentRound(targetRound);
-
-          const [checkInRes, leaderboardRes] = await Promise.all([
-            targetRound
-              ? CheckInApi.getMyStatus(targetRound.id, token, reqOptions).catch(
-                  () => null
-                )
-              : Promise.resolve(null),
-            StatsApi.getLeaderboard(token, event.id, 100, reqOptions).catch(
-              () => ({success: false})
-            ),
-          ]);
-
-          if (checkInRes?.success) {
-            setCheckInStatus({
-              ...(checkInRes.checkIn || {}),
-              status:
-                checkInRes.checkIn?.status ||
-                (checkInRes.isCheckedIn ? "PRESENT" : null),
-              isCheckedIn: Boolean(
-                checkInRes.isCheckedIn ||
-                  checkInRes.checkIn?.status === "PRESENT"
-              ),
-              isEliminated: Boolean(
-                checkInRes.isEliminated || checkInRes.checkIn?.isEliminated
-              ),
-            });
-          } else {
-            setCheckInStatus(null);
-          }
-
-          const board =
-            leaderboardRes?.data?.leaderboard ||
-            (Array.isArray(leaderboardRes?.leaderboard)
-              ? leaderboardRes.leaderboard
-              : []);
-          setLeaderboard(board);
-        } else {
-          setActiveEvent(null);
-          setCurrentRound(null);
-          setCheckInStatus(null);
-          setLeaderboard([]);
-        }
-
-        const allDebates = debatesRes?.debates || [];
-        setMyDebates(allDebates);
-
-        const eventRoundIds = new Set((event?.rounds || []).map((r) => r.id));
-        const eventScopedDebates = event
-          ? allDebates.filter(
-              (d) =>
-                d.round?.eventId === event.id || eventRoundIds.has(d.roundId)
-            )
-          : allDebates;
-
-        const scheduled =
-          eventScopedDebates.find((d) => d.status === "SCHEDULED") || null;
-        const completed = eventScopedDebates
-          .filter((d) => d.status === "COMPLETED")
-          .sort(
-            (a, b) =>
-              (b.round?.roundNumber || 0) - (a.round?.roundNumber || 0)
-          );
-
-        setNextDebate(scheduled);
-        setLatestCompletedDebate(completed[0] || null);
-        setError(null);
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-        if (!silent) setError(err.message);
-      } finally {
-        if (!silent) setLoading(false);
-      }
-    },
-    [authLoaded]
-  );
+  const refreshQueue = useRef(null);
+  const roundIdRef = useRef(null);
+  const checkInVersion = useRef(0);
+  const refresh = useCallback((...fields) => refreshQueue.current?.(fields), []);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    if (!authLoaded) return;
+    let stopped = false;
+    let running = false;
+    let timer;
+    let event = null;
+    let round = null;
+    let loadedBoard = null;
+    let pending = new Set(["profile", ...LIVE_FIELDS]);
 
-  const softRefresh = useCallback(
-    () => fetchDashboardData({silent: true}),
-    [fetchDashboardData]
-  );
+    async function fetchData(fields, initial) {
+      const token = await getTokenRef.current();
+      if (stopped) return;
+      // Bound each batch so a stalled request can't block later live updates.
+      const options = {skipCache: !initial, signal: AbortSignal.timeout(15000)};
+      const profile = fields.has("profile")
+        ? UserApi.getProfile(token, options).then((response) => {
+            if (!stopped && response.user) setUserData(response.user);
+          }).catch((failure) => {
+            if (!stopped && initial) setError(failure.message);
+          })
+        : Promise.resolve();
 
-  useLiveRefresh(softRefresh, {intervalMs: 12000});
+      const oldEvent = event?.id;
+      const oldRound = round?.id;
+      let eventError;
+      if (fields.has("event")) {
+        try {
+          const response = await EventApi.list(token, null, {...options, dashboard: true});
+          const events = response.events || [];
+          event = events.find((item) => item.status === "ONGOING")
+            || events.find((item) => item.status === "UPCOMING")
+            || events[0] || null;
+          const rounds = event?.rounds || [];
+          round = rounds.find((item) => item.status === "ONGOING")
+            || rounds.find((item) => item.status === "UPCOMING")
+            || rounds.at(-1) || null;
+        } catch (failure) {
+          eventError = failure;
+        }
+      }
+      if (stopped) return;
+
+      const eventChanged = oldEvent !== event?.id;
+      const roundChanged = oldRound !== round?.id;
+      const tasks = [];
+      setActiveEvent(event);
+      setCurrentRound(round);
+
+      if (eventChanged) {
+        setMyDebates([]);
+        setDebatesLoading(true);
+        setLeaderboard([]);
+        loadedBoard = null;
+      }
+      if (roundChanged) {
+        roundIdRef.current = round?.id ?? null;
+        setCheckInStatus(null);
+        setCheckInLoading(Boolean(round));
+      }
+
+      if (fields.has("debates") || eventChanged) {
+        tasks.push(DebateApi.getMyDebates(token, options, event?.id)
+          .then((response) => {
+            if (!stopped && response?.success) setMyDebates(response.debates || []);
+          })
+          .catch(() => {})
+          .finally(() => { if (!stopped) setDebatesLoading(false); }));
+      }
+
+      if (round && (fields.has("checkIn") || roundChanged)) {
+        const version = checkInVersion.current;
+        tasks.push(CheckInApi.getMyStatus(round.id, token, options)
+          .then((response) => {
+            if (stopped || checkInVersion.current !== version || !response?.success) return;
+            const status = response.checkIn?.status || (response.isCheckedIn ? "PRESENT" : null);
+            setCheckInStatus({
+              ...response.checkIn,
+              status,
+              isCheckedIn: Boolean(response.isCheckedIn || status === "PRESENT"),
+              isEliminated: Boolean(response.isEliminated || response.checkIn?.isEliminated),
+            });
+          })
+          .catch(() => {})
+          .finally(() => { if (!stopped) setCheckInLoading(false); }));
+      }
+
+      if (event?.rounds?.some((item) => item.resultsPublished)
+          && (fields.has("leaderboard") || loadedBoard !== event.id)) {
+        setLeaderboardLoading(loadedBoard !== event.id);
+        tasks.push(StatsApi.getLeaderboard(token, event.id, 100, options)
+          .then((response) => {
+            if (stopped || !response?.success) return;
+            loadedBoard = event.id;
+            setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
+          })
+          .catch(() => {})
+          .finally(() => { if (!stopped) setLeaderboardLoading(false); }));
+      }
+
+      if (fields.has("event")) setError(eventError?.message || null);
+      await profile;
+      if (initial && !stopped) setLoading(false);
+      await Promise.all(tasks);
+    }
+
+    async function flush(initial = false) {
+      if (stopped || running || pending.size === 0) return;
+      const fields = pending;
+      pending = new Set();
+      running = true;
+      try {
+        await fetchData(fields, initial);
+      } catch (failure) {
+        if (!stopped) {
+          setError(failure.message);
+          setLoading(false);
+        }
+      } finally {
+        running = false;
+        schedule();
+      }
+    }
+
+    function schedule() {
+      if (stopped || running || timer !== undefined || pending.size === 0) return;
+      timer = window.setTimeout(() => {
+        timer = undefined;
+        void flush();
+      }, 150);
+    }
+
+    refreshQueue.current = (fields) => {
+      fields.forEach((field) => pending.add(field));
+      schedule();
+    };
+    void flush(true);
+
+    return () => {
+      stopped = true;
+      refreshQueue.current = null;
+      window.clearTimeout(timer);
+    };
+  }, [authLoaded]);
+
+  useLiveRefresh(() => refresh("profile", ...LIVE_FIELDS), {
+    intervalMs: 12000,
+    jitterMs: 3000,
+    invalidateCache: false,
+  });
 
   useEventSocket(activeEvent?.id, {
-    onRoundCreated: () => softRefresh(),
+    onRoundCreated: () => refresh("event", "checkIn"),
+    onRoundDeleted: () => refresh(...LIVE_FIELDS),
     onRoundStatusChange: (data) => {
-      toast.info("Update", `Round status updated to ${data.status}`);
-      softRefresh();
+      toast.info("Update", "Round status updated to " + data.status);
+      refresh("event", "checkIn");
     },
-    onRoundCheckInWindow: (data) => {
-      if (data?.roundId) {
-        setCurrentRound((prev) =>
-          prev && prev.id === data.roundId
-            ? {
-                ...prev,
-                checkInStartTime: data.checkInStartTime,
-                checkInEndTime: data.checkInEndTime,
-              }
-            : prev
-        );
-        setActiveEvent((prev) =>
-          prev
-            ? {
-                ...prev,
-                rounds: prev.rounds?.map((r) =>
-                  r.id === data.roundId
-                    ? {
-                        ...r,
-                        checkInStartTime: data.checkInStartTime,
-                        checkInEndTime: data.checkInEndTime,
-                      }
-                    : r
-                ),
-              }
-            : prev
-        );
-      }
+    onRoundCheckInWindow: () => {
       toast.info("Check-in Window Updated", "Round check-in times were updated.");
-      softRefresh();
+      refresh("event", "checkIn");
     },
     onPairingsPublished: (data) => {
-      if (data.published) {
-        toast.success("Draw Released!", "Pairings have been published.");
-      }
-      softRefresh();
+      if (data.published) toast.success("Draw Released!", "Pairings have been published.");
+      refresh("event", "debates", "checkIn");
     },
-    onRoundUpdated: () => softRefresh(),
-    onDebateCreated: () => softRefresh(),
-    onDebateResult: () => softRefresh(),
-    onLeaderboardUpdate: () => softRefresh(),
-    onResultsPublished: (data) => {
-      if (data?.published) {
-        toast.success("Results Published!", "Round results are now available.");
+    onRoundUpdated: () => refresh(...LIVE_FIELDS),
+    onDebateCreated: () => refresh("debates"),
+    onDebateResult: ({debateId}) => {
+      if (myDebates.some((debate) => debate.id === debateId)) {
+        refresh("profile", "debates", "checkIn");
       }
-      softRefresh();
+    },
+    onLeaderboardUpdate: () => refresh("leaderboard"),
+    onResultsPublished: (data) => {
+      if (data?.published) toast.success("Results Published!", "Round results are now available.");
+      refresh("profile", ...LIVE_FIELDS);
     },
   });
 
   const {subscribe} = useSocket();
   useEffect(() => {
-    const unsub = subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, () => {
-      invalidateRealtimeCache();
-      softRefresh();
-    });
-    return () => unsub?.();
-  }, [subscribe, softRefresh]);
+    const refreshEvent = () => refresh("event");
+    const subscriptions = [
+      subscribe(SocketEvents.EVENT_CREATED, refreshEvent),
+      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, refreshEvent),
+      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, refreshEvent),
+      subscribe(SocketEvents.CHECKIN_UPDATE, (data) => {
+        if (data.roundId === roundIdRef.current) refresh("checkIn");
+      }),
+    ];
+    return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
+  }, [subscribe, refresh]);
 
   // Live boundary timer for check-in window transitions
   const checkInStartTime = currentRound?.checkInStartTime;
@@ -662,6 +682,14 @@ export default function DashboardHome() {
       (d) => d.round?.eventId === activeEvent.id || roundIds.has(d.roundId)
     );
   }, [activeEvent, myDebates]);
+
+  const nextDebate = eventDebates.find((debate) => debate.status === "SCHEDULED");
+  const latestCompletedDebate = eventDebates.reduce((latest, debate) => {
+    if (debate.status !== "COMPLETED") return latest;
+    return !latest || (debate.round?.roundNumber || 0) > (latest.round?.roundNumber || 0)
+      ? debate
+      : latest;
+  }, null);
 
   const {isEliminatedInEvent, latestPublishedDebate, eventRoundsDebated, eventWins} =
     useMemo(() => {
@@ -737,6 +765,8 @@ export default function DashboardHome() {
       const token = await getToken();
       const response = await CheckInApi.checkIn(currentRound.id, token);
       if (response.success) {
+        if (roundIdRef.current !== currentRound.id) return;
+        checkInVersion.current += 1;
         setCheckInStatus({
           ...(response.checkIn || {}),
           status: "PRESENT",
@@ -744,7 +774,7 @@ export default function DashboardHome() {
           isEliminated: false,
         });
         toast.success("Successfully checked in!");
-        softRefresh();
+        refresh("checkIn");
       }
     } catch (err) {
       toast.error(err.message || "Failed to check in. Please try again.");
@@ -801,9 +831,8 @@ export default function DashboardHome() {
           <button
             type="button"
             onClick={() => {
-              clearApiCache();
               setError(null);
-              fetchDashboardData();
+              refresh("profile", ...LIVE_FIELDS);
             }}
             className="min-h-11 px-3.5 rounded-lg bg-[#EF4444]/15 text-xs font-bold ax-signal-ink hover:bg-[#EF4444]/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -1083,7 +1112,7 @@ export default function DashboardHome() {
                   <button
                     type="button"
                     onClick={handleCheckIn}
-                    disabled={checkingIn}
+                    disabled={checkingIn || checkInLoading || debatesLoading}
                     className="min-h-11 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {checkingIn ? (
@@ -1098,7 +1127,7 @@ export default function DashboardHome() {
                     ) : (
                       <>
                         <CheckCircle2 size={14} aria-hidden="true" />
-                        <span>Check In Now</span>
+                        <span>{checkInLoading || debatesLoading ? "Loading status…" : "Check In Now"}</span>
                       </>
                     )}
                   </button>
@@ -1119,7 +1148,11 @@ export default function DashboardHome() {
               </div>
 
               {/* Matchup & Motion Panel */}
-              {nextDebate ? (
+              {debatesLoading ? (
+                <p role="status" className="py-4 text-center text-xs text-muted-foreground">
+                  Loading your debate…
+                </p>
+              ) : nextDebate ? (
                 <div className="space-y-3 pt-1">
                   <div className="p-3.5 rounded-xl border border-border bg-background/50 space-y-2.5">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -1298,6 +1331,7 @@ export default function DashboardHome() {
                 eventDebates={eventDebates}
                 rounds={roundsList}
                 leaderboard={leaderboard}
+                leaderboardLoading={leaderboardLoading}
                 currentUserId={userData?.id}
               />
             </div>
@@ -1385,6 +1419,7 @@ export default function DashboardHome() {
                 eventDebates={eventDebates}
                 rounds={roundsList}
                 leaderboard={leaderboard}
+                leaderboardLoading={leaderboardLoading}
                 currentUserId={userData?.id}
               />
             </>

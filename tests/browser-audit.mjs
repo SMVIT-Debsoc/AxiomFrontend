@@ -411,7 +411,7 @@ try {
 
   await run('closed round window prevents check-in', {signedIn: true, window: 'closed'}, async page => {
     await page.goto(origin + '/dashboard/events/e1/rounds/r1');
-    await visible(page, 'Check-in Not Available');
+    await visible(page, 'Check-in Window Closed');
     assert.equal(await page.getByRole('button', {name: 'Check In Now'}).count(), 0);
   });
 
@@ -425,7 +425,7 @@ try {
   await run('published pairing displays opponent, position and room', {signedIn: true, published: true, assigned: true}, async page => {
     await page.goto(origin + '/dashboard/events/e1/rounds/r1');
     await visible(page, 'Audit Opponent');
-    await visible(page, 'Government');
+    await visible(page, 'Government (GOV)');
     await visible(page, 'Audit Hall');
     await visible(page, 'Audit Judge');
   });
@@ -451,7 +451,7 @@ try {
   await run('check-in window opening updates the button without a reload', {signedIn: true, window: 'future'}, async page => {
     await page.clock.install({time: new Date()});
     await page.goto(origin + '/dashboard/events/e1/rounds/r1');
-    await visible(page, 'Check-in Not Available');
+    await visible(page, 'Check-in Not Started Yet');
     await page.clock.fastForward(10000);
     await page.getByRole('button', {name: 'Check In Now'}).waitFor();
   });
@@ -461,7 +461,7 @@ try {
     await page.goto(origin + '/dashboard/events/e1/rounds/r1');
     await page.getByRole('button', {name: 'Check In Now'}).waitFor();
     await page.clock.fastForward(90000);
-    await visible(page, 'Check-in Not Available');
+    await visible(page, 'Check-in Window Closed');
   });
 
   await run('participant cannot open admin workspace', {signedIn: true}, async page => {
@@ -538,8 +538,36 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 
     await page.getByRole('tab', {name: 'Results'}).click();
-    await visible(page, 'Tournament Results & Standings');
+    await visible(page, 'All Results & Event Standings');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  });
+
+  await run('dashboard becomes usable before check-in and standings responses finish', {
+    signedIn: true,
+    enrolled: true,
+    resultsPublished: true,
+  }, async page => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/check-in/round/r1/me', async route => {
+      await held;
+      return route.fallback();
+    });
+    await page.route('**/api/stats/leaderboard?*', async route => {
+      await held;
+      return route.fallback();
+    });
+
+    try {
+      await page.goto(origin + '/dashboard');
+      await visible(page, 'Audit Tournament');
+      assert.ok(await page.getByRole('button', {name: 'Loading status…'}).isDisabled());
+    } finally {
+      release();
+    }
+    const checkIn = page.getByRole('button', {name: 'Check In Now'});
+    await checkIn.click();
+    await visible(page, 'Presence Verified');
   });
 
   await run('first-time login shows visual navigation guide strip, advances steps, and persists dismissal across reload', {signedIn: true}, async page => {

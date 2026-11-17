@@ -51,6 +51,14 @@ test('selective realtime cache invalidation clears realtime routes while keeping
   assert.equal(fetchCount, 3);
 });
 
+test('profile cache is isolated by the current session credential', async () => {
+  await api.UserApi.getProfile('fixture-account-one');
+  await api.UserApi.getProfile('fixture-account-one');
+  assert.equal(fetchCount, 1);
+  await api.UserApi.getProfile('fixture-account-two');
+  assert.equal(fetchCount, 2);
+});
+
 test('SocketService re-attaches tracked listeners after disconnect and reconnect, and refreshAuth re-handshakes', async () => {
   const socketRaw = (await readFile(new URL('../src/services/socket.js', import.meta.url), 'utf8'))
     .replace('import {io, Socket} from "socket.io-client";', `
