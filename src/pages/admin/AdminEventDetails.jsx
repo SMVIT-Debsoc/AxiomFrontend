@@ -305,7 +305,7 @@ function AdminEventPage({eventId}) {
           </>
         )}
         <p className="m-0 text-xs text-muted-foreground">
-          Generating a draw closes check-in and eliminates debaters who did not check in. Enrolment and walk-ins are in{" "}
+          Generating a draw closes check-in for this round. Eliminations only take effect once Advance &amp; Results are published. Enrolment and walk-ins are in{" "}
           <Link to="/admin/people" className="font-semibold underline underline-offset-2">People</Link>.
         </p>
       </section>

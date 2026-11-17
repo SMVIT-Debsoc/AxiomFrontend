@@ -720,7 +720,8 @@ function DashboardContent() {
 
   const nextDebate = eventDebates.find((debate) => debate.status === "SCHEDULED");
   const latestCompletedDebate = eventDebates.reduce((latest, debate) => {
-    if (debate.status !== "COMPLETED") return latest;
+    const published = Boolean(debate.resultsPublished || debate.round?.resultsPublished);
+    if (debate.status !== "COMPLETED" || !published) return latest;
     return !latest || (debate.round?.roundNumber || 0) > (latest.round?.roundNumber || 0)
       ? debate
       : latest;

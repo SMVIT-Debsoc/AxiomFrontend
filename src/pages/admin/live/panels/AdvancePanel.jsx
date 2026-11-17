@@ -453,6 +453,40 @@ export default function AdvancePanel({
             footer={footerContent}
         >
             <div id="inline-promotion-panel" className="space-y-4">
+                {/* Explicit 4-step pipeline indicator */}
+                <ol aria-label="Result and promotion pipeline" className="m-0 grid list-none grid-cols-2 gap-1.5 p-0 text-[11px] sm:grid-cols-4">
+                    {[
+                        {num: "1", label: "Scores & Winners", done: effective.pendingResults === 0 && (winnerRows.length > 0 || candidates.length > 0), active: false},
+                        {num: "2", label: "Who Gets Promoted", done: step === "review" || resultsPublished, active: step === "select" && !resultsPublished},
+                        {num: "3", label: "Review Result", done: resultsPublished, active: step === "review" && !resultsPublished},
+                        {num: "4", label: "Publish & Complete", done: resultsPublished, active: resultsPublished},
+                    ].map((stage) => (
+                        <li
+                            key={stage.num}
+                            className={cn(
+                                "rounded-lg border px-2 py-1.5 font-semibold",
+                                stage.active
+                                    ? "border-foreground bg-foreground text-background"
+                                    : stage.done
+                                        ? "border-emerald-600/35 bg-emerald-600/10 text-emerald-800 dark:text-emerald-200"
+                                        : "border-border bg-muted/30 text-muted-foreground",
+                            )}
+                        >
+                            <span className="font-mono mr-1">{stage.num}.</span>
+                            {stage.label}
+                        </li>
+                    ))}
+                </ol>
+
+                {!resultsPublished && (
+                    <p className="ax-state-waiting m-0 rounded-xl border px-3 py-2 text-xs">
+                        {effective.pendingResults > 0
+                            ? `${effective.pendingResults} ballot${effective.pendingResults === 1 ? "" : "s"} still pending. `
+                            : ""}
+                        No results are shown, no one is eliminated, and this round stays <b>ONGOING</b> until you publish. Publishing marks the round <b>COMPLETED</b>.
+                    </p>
+                )}
+
                 {/* Step switcher + live publication state */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1 text-xs font-semibold" role="tablist" aria-label="Promotion steps">
@@ -466,7 +500,7 @@ export default function AdvancePanel({
                                 step === "select" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                             )}
                         >
-                            1. Select ({selectedSet.size})
+                            Who Gets Promoted ({selectedSet.size})
                         </button>
                         <button
                             type="button"
@@ -478,12 +512,12 @@ export default function AdvancePanel({
                                 step === "review" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                             )}
                         >
-                            2. Review &amp; Publish
+                            Review Result &amp; Publish
                         </button>
                     </div>
 
                     <span className={cn("ax-chip text-[11px] font-bold uppercase", resultsPublished ? "ax-chip--win" : "ax-chip--warn")}>
-                        {resultsPublished ? "Published (live)" : "Draft (hidden)"}
+                        {resultsPublished ? "Published · Completed" : "Draft · Ongoing"}
                     </span>
                 </div>
 
@@ -689,7 +723,9 @@ export default function AdvancePanel({
                             <div className="ax-signal-loss rounded-xl border p-3">
                                 <p className="m-0 text-[11px] font-mono uppercase tracking-wider opacity-85">Not Advancing</p>
                                 <p className="m-0 mt-1 font-display text-3xl leading-none tabular-nums">{reviewEliminated.length}</p>
-                                <p className="m-0 mt-1 text-[11px] opacity-80">Will see Game Over once published</p>
+                                <p className="m-0 mt-1 text-[11px] opacity-80">
+                                    {resultsPublished ? "Eliminated (Game Over live)" : "Will be eliminated only after you publish"}
+                                </p>
                             </div>
                         </div>
 

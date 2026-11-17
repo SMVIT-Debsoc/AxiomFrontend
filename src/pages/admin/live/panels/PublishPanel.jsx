@@ -33,14 +33,25 @@ export default function PublishPanel({round, debates, resultsPublished, busy, on
                         {published ? "Unpublish draw" : "Publish draw"}
                     </button>
                     {published && (
-                        <button
-                            type="button"
-                            onClick={onPublishResults}
-                            disabled={busy === "results"}
-                            className={allBallots && !resultsPublished ? "ax-primary-btn w-full sm:w-auto" : "ax-ghost-btn min-h-11 w-full sm:w-auto"}
-                        >
-                            {resultsPublished ? "Hide results" : `Publish results (${done}/${debates.length})`}
-                        </button>
+                        resultsPublished ? (
+                            <button
+                                type="button"
+                                onClick={() => onPublishResults(false)}
+                                disabled={busy === "results"}
+                                className="ax-ghost-btn min-h-11 w-full sm:w-auto"
+                            >
+                                Revoke / Hide results
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => onOpenPanel("advance")}
+                                disabled={busy === "results"}
+                                className={allBallots ? "ax-primary-btn w-full sm:w-auto" : "ax-ghost-btn min-h-11 w-full sm:w-auto"}
+                            >
+                                {`Promote, review & publish (${done}/${debates.length})`}
+                            </button>
+                        )
                     )}
                 </div>
             )}

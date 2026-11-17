@@ -720,13 +720,12 @@ function RoundPage({eventId, roundId}) {
           </div>
         )}
 
-        {/* Round Outcome Showcase */}
+        {/* Round Outcome Showcase (shown only after promotion results are published) */}
         {myDebate &&
           myDebate.status === "COMPLETED" &&
+          Boolean(round.resultsPublished || myDebate.resultsPublished) &&
           (() => {
-            const published = Boolean(
-              round.resultsPublished || myDebate.resultsPublished
-            );
+            const published = true;
             const qualified = Boolean(myDebate.isPromoted);
 
             return (
@@ -795,10 +794,8 @@ function RoundPage({eventId, roundId}) {
             );
           })()}
 
-        {/* View Results Link */}
-        {(round.status === "COMPLETED" ||
-          round.resultsPublished ||
-          myDebate?.status === "COMPLETED") && (
+        {/* View Results Link (shown only after promotion results are published) */}
+        {Boolean(round.resultsPublished) && (
           <DashboardLink
             to={`/dashboard/events/${eventId}/results`}
             className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
