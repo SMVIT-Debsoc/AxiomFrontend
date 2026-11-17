@@ -110,8 +110,8 @@
   * { @apply border-border; }
   html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
   body { @apply bg-background text-foreground; font-feature-settings: 'cv11','ss01'; margin: 0; font-family: var(--font-body); line-height: 1.6; }
-  html, body { width: 100%; min-height: 100%; -webkit-tap-highlight-color: transparent; }
-  #root { min-height: 100svh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  html, body { width: 100%; min-height: 100%; overflow-x: clip; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+  #root { min-height: 100svh; min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
   h1, h2 { font-family: var(--font-display); font-weight: 400; line-height: 1; letter-spacing: -.015em; }
   h3, h4, h5, h6 { font-family: var(--font-heading); line-height: 1.2; }
   button, input, textarea, select { font: inherit; }
@@ -234,9 +234,9 @@
 .axiom-workspace :is(.text-blue-500, .text-blue-600, [class~="dark:text-blue-400"]):not([class*="ax-"]) { color: var(--axiom-status-info); }
 .axiom-dialog:not([open]) { display: none; }
 /* Fixed dialogs must not inherit a parent space-y utility's sibling margins. */
-.axiom-dialog { max-width: 100vw; max-height: 100dvh; margin: 0 !important; border: 0; color: inherit; }
+.axiom-dialog { max-width: 100vw; max-height: 100dvh; margin: 0 !important; border: 0; color: inherit; overscroll-behavior: contain; }
 .axiom-dialog:not(.axiom-dialog--drawer) { width: 100%; height: 100%; }
-.axiom-dialog:not(.axiom-dialog--drawer) > * { max-height: calc(100dvh - 2rem); overflow-y: auto; }
+.axiom-dialog:not(.axiom-dialog--drawer) > * { max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .axiom-dialog--drawer { width: min(280px, 100vw); height: 100dvh; padding: 0; }
 .axiom-dialog::backdrop { background: rgb(0 0 0 / .6); }
 .axiom-workspace :is([type="checkbox"], [type="radio"], [type="range"]) { accent-color: hsl(var(--ring)); }
@@ -286,6 +286,9 @@
   .axiom-registration-art img { width: 130px; }
   .axiom-registration-art > span { font-size: 2.75rem; }
   .axiom-auth-card .cl-rootBox, .axiom-auth-card .cl-cardBox { max-width: 100%; width: 100%; }
+  .axiom-footer-top { grid-template-columns: 1fr; gap: 1.75rem; padding-bottom: 2rem; }
+  .axiom-dialog:not(.axiom-dialog--drawer) { align-items: flex-end; padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom)); }
+  .axiom-dialog:not(.axiom-dialog--drawer) > * { width: 100%; max-height: calc(100dvh - 1rem - env(safe-area-inset-top)); border-bottom-left-radius: 1.25rem; border-bottom-right-radius: 1.25rem; }
 }
 @media (max-width: 359px) {
   .axiom-poster-brand { min-height: 560px; }
