@@ -764,6 +764,10 @@ try {
     }, async (page, state) => {
       await page.setViewportSize(viewport);
       state.debate.status = 'SCHEDULED';
+      state.debate.debater1Position = viewport.width === 390 ? 'OPP' : 'GOV';
+      state.debate.startTime = '2026-11-17T10:00:00.000Z';
+      state.debate.endTime = '2026-11-17T10:20:00.000Z';
+      state.round.motion = 'This House would make public transport free';
       state.events.unshift({...state.event, id: 'e2', name: 'Another Tournament', status: 'UPCOMING'});
       const writes = [];
       page.on('request', request => {
@@ -778,13 +782,16 @@ try {
       await page.getByRole('button', {name: 'Start tour'}).click();
       const dialog = page.getByRole('dialog');
       const next = dialog.getByRole('button', {name: 'Next', exact: true});
+      const roundPath = '/dashboard/events/e1/rounds/r1';
       const steps = [
         ['Start on your dashboard', 'overview', '/dashboard'],
         ['Find your tournament', 'event-link', '/dashboard/events'],
         ['Join the tournament', 'enrollment', '/dashboard/events/e1'],
-        ['Check in before you debate', 'check-in', '/dashboard'],
-        ['Find your debate', 'matchup', '/dashboard'],
         ['See your round schedule', 'rounds', '/dashboard'],
+        ['Check in before you debate', 'check-in', roundPath],
+        ['Find your side and opponent', 'side', roundPath],
+        ['Find your room and debate time', 'room', roundPath],
+        ['Find the debate topic', 'motion', roundPath],
         ['See if you advance', 'results', '/dashboard'],
         ['Keep your details up to date', 'profile', '/dashboard/profile'],
       ];
@@ -803,7 +810,16 @@ try {
             arrow.left < highlight.right && arrow.right > highlight.left &&
             Math.min(Math.abs(arrow.bottom - panel.top), Math.abs(arrow.top - panel.bottom)) <= 2;
         }, anchor);
-        if (index === 3) {
+        const highlighted = page.locator(`[data-tour-anchor="${anchor}"]`);
+        if (anchor === 'side') await visible(highlighted, viewport.width === 390 ? 'Opposition (OPP)' : 'Government (GOV)');
+        if (anchor === 'room') {
+          await visible(highlighted, 'Audit Hall');
+          await visible(highlighted, 'Time Slot');
+          assert.match(await highlighted.innerText(), /0?3:30\s*pm\s*-\s*0?3:50\s*pm\s*IST/i);
+        }
+        if (anchor === 'motion') await visible(highlighted, state.round.motion);
+        if (anchor === 'check-in') {
+          await visible(highlighted, 'Check-in Window');
           if (viewport.width === 390) await page.screenshot({path: 'audit-artifacts/site-tour-mobile.png'});
           await page.keyboard.press('Escape');
           await dialog.waitFor({state: 'hidden'});
@@ -811,11 +827,12 @@ try {
           await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
           await page.getByRole('button', {name: 'Resume tour'}).click();
           await dialog.getByRole('heading', {name: title, exact: true}).waitFor();
-          await visible(dialog, 'Check-in tells the organizers you’re here for this round. Tap Check In Now before the closing time. Look for Presence Verified afterward.');
+          await page.waitForURL(origin + roundPath);
+          await visible(dialog, 'Check the opening and closing times in IST. Tap Check In Now while the window is open. You’re Checked In confirms the organizers know you’re here.');
           assert.deepEqual(writes, []);
           if (viewport.width === 390) {
             await page.getByRole('button', {name: 'Check In Now', exact: true}).click();
-            await visible(dialog, 'Presence Verified means the organizers have marked you as here for this round.');
+            await visible(dialog, 'You’re Checked In means the organizers have marked you as present for this round.');
           }
         }
         if (index < steps.length - 1) await next.click();
@@ -824,7 +841,7 @@ try {
       await dialog.waitFor({state: 'hidden'});
       assert.equal(state.checkedIn, viewport.width === 390);
       assert.equal(writes.length, viewport.width === 390 ? 1 : 0);
-      await page.getByText('Successfully checked in!', {exact: true}).waitFor({state: 'hidden', timeout: 6000});
+      await page.getByText('Checked In!', {exact: true}).waitFor({state: 'hidden', timeout: 6000});
       await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
       await page.getByRole('button', {name: 'Restart tour'}).click();
       await dialog.getByRole('heading', {name: 'Start on your dashboard'}).waitFor();
@@ -839,15 +856,33 @@ try {
     const dialog = page.getByRole('dialog');
     const next = dialog.getByRole('button', {name: 'Next', exact: true});
     for (let step = 0; step < 3; step++) await next.click();
-    await visible(dialog, 'When a round is available, its check-in times appear under Live Matchup. Check in during those times to tell the organizers you’re here.');
-    await next.click();
-    await visible(dialog, 'When the organizers publish who debates whom, look here for your room, side, and topic.');
-    await next.click();
     await visible(dialog, 'When the organizers add rounds, they’ll appear here with their check-in times.');
+    await next.click();
+    await visible(dialog, 'Once a round appears here, tap Open Round and look for Check-in Window. Its opening and closing times tell you when you can check in.');
+    await next.click();
+    await visible(dialog, 'After organizers publish who debates whom, open the round and look for Your Position and Your Opponent.');
     await dialog.getByRole('button', {name: 'Back', exact: true}).click();
-    await dialog.getByRole('heading', {name: 'Find your debate'}).waitFor();
+    await dialog.getByRole('heading', {name: 'Check in before you debate'}).waitFor();
     await dialog.getByRole('button', {name: 'Exit tour'}).click();
     assert.ok(await page.getByRole('button', {name: 'Site Tour', exact: true}).evaluate(el => el === document.activeElement));
+  });
+
+  await run('site tour explains unpublished round details without displaying them', {signedIn: true, assigned: true}, async (page, state) => {
+    state.round.motion = 'Unpublished fixture motion';
+    await page.addInitScript(() => localStorage.setItem('axiom.site-tour.v1.u1', 'side'));
+    await page.setViewportSize({width: 390, height: 740});
+    await page.goto(origin + '/dashboard/events/e1/rounds/r1');
+    await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
+    await page.getByRole('button', {name: 'Resume tour'}).click();
+    const tour = page.getByRole('dialog');
+    const next = tour.getByRole('button', {name: 'Next', exact: true});
+    await visible(tour, 'After organizers publish who debates whom, open the round and look for Your Position and Your Opponent.');
+    await next.click();
+    await visible(tour, 'After organizers assign your room and time, open the round and look for Room and Time Slot.');
+    await next.click();
+    await visible(tour, 'Once organizers release the topic, open the round and look for Motion near the top.');
+    assert.equal(await page.getByText('Audit Hall', {exact: true}).count(), 0);
+    assert.equal(await page.getByText(state.round.motion, {exact: true}).count(), 0);
   });
 
   await run('admin inline result entry automatically tags higher score as winner', {signedIn: true, admin: true, assigned: true, published: true}, async (page, state) => {

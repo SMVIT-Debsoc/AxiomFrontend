@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {createPortal} from "react-dom";
-import {useLocation, useNavigate} from "react-router-dom";
+import {matchPath, useLocation, useNavigate} from "react-router-dom";
 import {GUIDE_STEPS, getStepCopy, readTourProgress, writeTourProgress} from "../../lib/visualGuide";
 import "./siteTour.css";
 
@@ -36,7 +36,8 @@ export default function SiteTour({userId, requested, launcher}) {
     const next = GUIDE_STEPS[nextIndex];
     const link = anchor("active-event") || tournamentLink(eventPath.current);
     if (link) eventPath.current = link.pathname;
-    const path = next.id === "enrollment" && eventPath.current ? eventPath.current : next.path;
+    const currentRound = next.round && matchPath("/dashboard/events/:eventId/rounds/:roundId", pathname);
+    const path = (next.id === "enrollment" && eventPath.current) || (currentRound && pathname) || next.path;
     setPosition(null);
     setIndex(nextIndex);
     setDestination(path);
@@ -104,15 +105,26 @@ export default function SiteTour({userId, requested, launcher}) {
         navigate(path);
         return;
       }
-      const tab = onDestination && step.tab && anchor(`tab-${step.tab}`);
+      const tab = onDestination && pathname === step.path && step.tab && anchor(`tab-${step.tab}`);
       if (tab && tab.getAttribute("aria-selected") !== "true") {
         tab.click();
         return;
       }
+      const roundLink = tab && step.round && anchor("rounds");
+      if (roundLink) {
+        const path = roundLink.pathname;
+        setPosition(null);
+        setDestination(path);
+        navigate(path);
+        return;
+      }
       const exact = onDestination
-        ? step.id === "events" ? tournamentLink(eventPath.current) || anchor("events") : anchor(step.id)
+        ? step.id === "events" ? tournamentLink(eventPath.current) || anchor("events")
+          : step.round && pathname === step.path ? null : anchor(step.id)
         : null;
-      const target = exact || tab || (onDestination && step.id === "enrollment" ? anchor("events") : null);
+      const roundHeader = onDestination && step.round && anchor("round-header");
+      if (!exact && roundHeader?.dataset?.tourLoading === "true" && Date.now() - started < 3500) return;
+      const target = exact || tab || roundHeader || (onDestination && step.id === "enrollment" ? anchor("events") : null);
       const scroller = document.querySelector("[data-tour-scroll]");
       if (target && target !== lastTarget) {
         target.scrollIntoView({block: "center", inline: "nearest", behavior: "instant"});
@@ -138,7 +150,7 @@ export default function SiteTour({userId, requested, launcher}) {
       const panelLeft = narrow ? 12 : Math.max(16, Math.min(center - panelWidth / 2, innerWidth - panelWidth - 16));
       const value = {
         target: visible ? {top: Math.round(top), height: Math.round(end - top), left, width} : null,
-        exact: Boolean(exact && (step.id !== "matchup" || exact.dataset.tourState !== "waiting")),
+        exact: Boolean(exact && exact.dataset.tourState !== "unassigned"),
         state: exact?.dataset.tourState,
         top: Math.max(8, Math.round(panelTop)),
         left: Math.round(panelLeft),

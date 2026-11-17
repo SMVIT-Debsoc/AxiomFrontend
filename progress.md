@@ -297,3 +297,10 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Checks: 63/63 unit and API contract tests, 64/64 Chromium browser fixtures, lint, and production build passed. Chromium checked the whole tour at 390px and 1280px, including arrow alignment and an uncovered target. The fixtures also covered a 360px no-round journey, WhatsApp priority, skip, Escape, resume after reload, restart, and a deliberate check-in that updated the tour copy.
 - Remaining: physical phones, live staging, and comprehension with first-time debaters are unverified. Concurrent local changes to `package-lock.json` and `src/components/admin/InlineResultSheet.jsx` are outside the tour commit.
 - Next recommended task: on staging, ask new debaters on their own phones to use the tour, then find check-in, their room, and their results without prompting. Record where the wording or navigation still causes hesitation.
+
+## Site Tour round details (2026-11-17)
+
+- The first tour used the dashboard summary for check-in and matchup. It now shows **Rounds → Open Round**, opens the actual round, and highlights **Check-in Window**, **Your Position**, **Room / Time Slot**, and **Motion** before returning to Results. The copy explains the participant’s assigned side and distinguishes check-in hours from the debate slot. Missing and unpublished details use explanatory fallbacks.
+- Files changed: `SiteTour.jsx`, `visualGuide.js`, `DashboardHome.jsx`, `RoundDetails.jsx`, both guide test suites, and this log.
+- Checks: 63 unit and API contract tests, lint, production build, the 64-scenario browser audit, and six focused Chromium tour fixtures passed. Focused checks covered both assigned sides, actual room and IST time, the published motion, check-in confirmation, and unpublished details at phone and desktop widths where applicable.
+- Remaining: no live deployment or first-time debater usability check. Next, have a debater replay the tour on staging after organizers publish a real draw. Existing unrelated lockfile and admin edits remain local.

@@ -357,7 +357,8 @@ function RoundPage({eventId, roundId}) {
                 {round.event?.name}
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
+            <h1 data-tour-anchor="round-header" data-tour-loading={checkInLoading || debatesLoading}
+              className="text-2xl md:text-3xl font-heading font-bold text-foreground">
               {round.name || `Round ${round.roundNumber}`}
             </h1>
           </div>
@@ -395,6 +396,7 @@ function RoundPage({eventId, roundId}) {
         {/* Motion Display */}
         {round.motion && round.pairingsPublished && (
           <Motion.div
+            data-tour-anchor="motion"
             initial={{opacity: 0, y: 10}}
             animate={{opacity: 1, y: 0}}
             transition={{duration: 0.24}}
@@ -415,6 +417,9 @@ function RoundPage({eventId, roundId}) {
         {/* Check-in Section (Hidden when eliminated) */}
         {!isEliminated && round.checkInStartTime && round.checkInEndTime && (
           <Motion.div
+            data-tour-anchor="check-in"
+            data-tour-state={isCheckedIn ? "present" : windowUpcoming ? "upcoming" : !windowOpen ? "closed"
+              : checkInStatusLoading ? "loading" : checkInStatusUnavailable ? "unavailable" : "open"}
             initial={{opacity: 0, y: 10}}
             animate={{opacity: 1, y: 0}}
             transition={{duration: 0.24, delay: 0.04}}
@@ -547,6 +552,8 @@ function RoundPage({eventId, roundId}) {
             {/* Your Position */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
               <div
+                data-tour-anchor="side"
+                data-tour-state={userPosition.position === "GOV" ? "gov" : "opp"}
                 className={cn(
                   "p-4 flex items-center justify-between gap-3",
                   userPosition.position === "GOV"
@@ -616,7 +623,13 @@ function RoundPage({eventId, roundId}) {
                 </div>
 
                 {/* Room & Adjudicator & Time */}
-                <div className="grid sm:grid-cols-2 gap-2.5 pt-2 border-t border-border/50 text-xs font-sans">
+                <div
+                  data-tour-anchor={myDebate.room || myDebate.startTime || myDebate.endTime ? "room" : undefined}
+                  data-tour-state={myDebate.room
+                    ? myDebate.startTime || myDebate.endTime ? "room-and-time" : "room-only"
+                    : "time-only"}
+                  className="grid sm:grid-cols-2 gap-2.5 pt-2 border-t border-border/50 text-xs font-sans"
+                >
                   {myDebate.room && (
                     <div className="flex items-center gap-2 p-2.5 bg-muted/30 border border-border/40 rounded-lg">
                       <MapPin
@@ -657,8 +670,6 @@ function RoundPage({eventId, roundId}) {
                       </div>
                     </div>
                   )}
-                </div>
-
                 {(myDebate.startTime || myDebate.endTime) && (
                   <div className="flex items-center gap-2 p-2.5 bg-muted/30 border border-border/40 rounded-lg text-xs font-sans">
                     <Clock
@@ -678,6 +689,7 @@ function RoundPage({eventId, roundId}) {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
             </div>
           </Motion.div>
@@ -685,7 +697,7 @@ function RoundPage({eventId, roundId}) {
 
         {/* No Debate Found (only when not already showing GameOverCard or clarify cleanly) */}
         {round.pairingsPublished && !debatesLoading && !sectionFailed.debates && !myDebate && !isEliminated && (
-          <div className="bg-card border border-border rounded-xl p-6 text-center">
+          <div data-tour-anchor="side" data-tour-state="unassigned" className="bg-card border border-border rounded-xl p-6 text-center">
             <XCircle
               className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50"
               aria-hidden="true"

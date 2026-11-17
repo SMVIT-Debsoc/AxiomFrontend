@@ -1222,7 +1222,7 @@ function DashboardContent() {
                 </p>
               ) : nextDebate ? (
                 <div className="space-y-3 pt-1">
-                  <div data-tour-anchor="matchup" className="p-3.5 rounded-xl border border-border bg-background/50 space-y-2.5">
+                  <div className="p-3.5 rounded-xl border border-border bg-background/50 space-y-2.5">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="font-bold text-primary flex items-center gap-1.5">
                         <Swords size={14} aria-hidden="true" /> Assigned Matchup
@@ -1284,11 +1284,11 @@ function DashboardContent() {
                   </DashboardLink>
                 </div>
               ) : sectionFailed.debates ? null : currentRound.pairingsPublished ? (
-                <div data-tour-anchor="matchup" data-tour-state="unassigned" className="text-center py-4 text-xs text-muted-foreground">
+                <div className="text-center py-4 text-xs text-muted-foreground">
                   Draw released. You do not have a scheduled debate in this round.
                 </div>
               ) : (
-                <div data-tour-anchor="matchup" data-tour-state="waiting" className="flex items-center gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20 text-xs text-muted-foreground">
+                <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/80 bg-muted/20 text-xs text-muted-foreground">
                   <Lock size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span>
                     Pairings are being drawn by the adjudication core. Check back soon.
