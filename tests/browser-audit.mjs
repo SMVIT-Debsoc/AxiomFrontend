@@ -814,7 +814,7 @@ try {
         assert.match(await gold.innerText(), /you/i);
       } else {
         await page.getByPlaceholder('Search debater by name or college...').fill('Fourth');
-        await page.getByRole('table', {name: 'Tournament leaderboard'}).getByText('Fourth Fixture Debater', {exact: true}).waitFor({state: 'visible'});
+        await page.locator('table[aria-label="Tournament leaderboard"]').getByText('Fourth Fixture Debater', {exact: true}).first().waitFor({state: 'visible'});
         assert.equal(await page.locator('[data-podium]').count(), 0);
       }
       if (tab === 'Standings') await page.screenshot({path: 'audit-artifacts/standings-podium-mobile.png'});

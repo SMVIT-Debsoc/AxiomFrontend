@@ -13,6 +13,7 @@ import { useDebouncedCallback, useLatestRequest, useSocketRefresh } from "../../
 import LoadError from "../../components/ui/LoadError";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { LeaderboardSkeleton } from "../../components/ui/Skeleton";
+import { useAdminEvent } from "../../contexts/adminEvent";
 
 const pickActiveEvent = (events) => {
   const byStatus = (status) => events.filter((e) => String(e.status).toUpperCase() === status);
@@ -22,11 +23,13 @@ const pickActiveEvent = (events) => {
 
 export default function AdminLeaderboard({ embedded = false } = {}) {
   const { getToken } = useAuth();
-  const [filter, setFilter] = useState("all-time");
+  const adminEventContext = useAdminEvent();
+  const contextEvent = adminEventContext?.event || null;
+  const [activeEvent, setActiveEvent] = useState(() => contextEvent);
+  const [filter, setFilter] = useState(() => (contextEvent ? "current-event" : "all-time"));
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeEvent, setActiveEvent] = useState(null);
-  const [isEventLoading, setIsEventLoading] = useState(true);
+  const [isEventLoading, setIsEventLoading] = useState(() => !contextEvent && Boolean(adminEventContext?.loading));
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const latest = useLatestRequest();
@@ -35,8 +38,21 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
   const getTokenRef = useRef(getToken);
   useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-  // 1. One event list read; the default event is picked client-side.
+  // Keep in sync with the event switcher in AdminEventProvider.
   useEffect(() => {
+    if (adminEventContext?.event && adminEventContext.event.id !== activeEvent?.id) {
+      setActiveEvent(adminEventContext.event);
+      setFilter("current-event");
+      setIsEventLoading(false);
+    }
+  }, [adminEventContext?.event, activeEvent?.id]);
+
+  // 1. Standalone fallback: one event list read if outside AdminEventProvider.
+  useEffect(() => {
+    if (contextEvent || adminEventContext?.events?.length) {
+      setIsEventLoading(false);
+      return;
+    }
     let cancelled = false;
     const fetchActiveEvent = async () => {
       try {
@@ -56,7 +72,7 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
     };
     fetchActiveEvent();
     return () => { cancelled = true; };
-  }, []); // runs once
+  }, [contextEvent, adminEventContext?.events?.length]); // runs once when outside provider
 
   const fetchLeaderboard = useCallback(async ({silent = false} = {}) => {
     const request = latest.begin();
@@ -282,7 +298,7 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
 
         {/* Desktop Standings Table */}
         <div className="hidden md:block overflow-x-auto" tabIndex={0} role="region" aria-label="Tournament standings">
-          <table className="w-full" aria-label="Tournament leaderboard">
+          <table role="table" className="w-full" aria-label="Tournament leaderboard">
             <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
               <tr>
                 <th scope="col" className="px-6 py-4 text-left w-20">Rank</th>
