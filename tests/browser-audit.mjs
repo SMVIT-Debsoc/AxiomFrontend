@@ -423,6 +423,52 @@ try {
     assert.equal(await page.getByText("You're Checked In", {exact: true}).count(), 0);
   });
 
+  for (const [path, confirmation] of [
+    ['/dashboard', 'Presence Verified'],
+    ['/dashboard/events/e1/rounds/r1', "You're Checked In"],
+  ]) {
+    for (const [statusPath, errorMessage] of [
+      ['/api/check-in/round/r1/me', 'Could not refresh your check-in status.'],
+      ['/api/debates/my-debates', 'Could not refresh your debate assignment.'],
+    ]) {
+      await run(`${path} blocks check-in until ${statusPath} recovers`, {signedIn: true, enrolled: true}, async (page, state) => {
+        let failStatus = true;
+        let releaseRetry;
+        const retryResponse = new Promise(resolve => { releaseRetry = resolve; });
+        await page.route(url => url.pathname === statusPath, async route => {
+          if (failStatus) return route.fulfill({status: 503, json: {success: false, error: 'Fixture unavailable'}});
+          await retryResponse;
+          return route.fallback();
+        });
+
+        const unavailable = page.getByRole('button', {name: 'Status unavailable'});
+        const loading = page.getByRole('button', {name: 'Loading status…'});
+        try {
+          await page.goto(origin + path);
+          await visible(page, errorMessage);
+          await unavailable.waitFor();
+          assert.ok(await unavailable.isDisabled());
+          assert.equal(state.checkedIn, false);
+
+          failStatus = false;
+          await page.getByRole('button', {name: 'Retry', exact: true}).click();
+          await loading.waitFor();
+          assert.ok(await loading.isDisabled());
+          assert.equal(state.checkedIn, false);
+        } finally {
+          releaseRetry();
+        }
+
+        await page.getByRole('button', {name: 'Check In Now'}).click();
+        await visible(page, confirmation);
+        assert.equal(state.checkedIn, true);
+        assert.equal(await page.getByText(errorMessage, {exact: true}).count(), 0);
+        await page.reload();
+        await visible(page, confirmation);
+      });
+    }
+  }
+
   await run('published pairing displays opponent, position and room', {signedIn: true, published: true, assigned: true}, async page => {
     await page.goto(origin + '/dashboard/events/e1/rounds/r1');
     await visible(page, 'Audit Opponent');

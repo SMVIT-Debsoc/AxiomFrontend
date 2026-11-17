@@ -321,6 +321,8 @@ function RoundPage({eventId, roundId}) {
     ? formatTimeIST(round.checkInEndTime)
     : null;
   const windowOpen = isCheckInOpen();
+  const checkInStatusLoading = checkInLoading || debatesLoading;
+  const checkInStatusUnavailable = sectionFailed.checkIn || sectionFailed.debates;
   const windowUpcoming =
     Boolean(round.checkInStartTime) &&
     clockNow < new Date(round.checkInStartTime).getTime();
@@ -467,7 +469,7 @@ function RoundPage({eventId, roundId}) {
               <button
                 type="button"
                 onClick={handleCheckIn}
-                disabled={checkingIn || checkInLoading || debatesLoading}
+                disabled={checkingIn || checkInStatusLoading || checkInStatusUnavailable}
                 className="w-full min-h-11 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {checkingIn ? (
@@ -475,7 +477,9 @@ function RoundPage({eventId, roundId}) {
                 ) : (
                   <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                 )}
-                <span>{checkingIn ? "Checking In..." : checkInLoading || debatesLoading ? "Loading status…" : "Check In Now"}</span>
+                <span>
+                  {checkingIn ? "Checking In..." : checkInStatusLoading ? "Loading status…" : checkInStatusUnavailable ? "Status unavailable" : "Check In Now"}
+                </span>
               </button>
             ) : (
               <div

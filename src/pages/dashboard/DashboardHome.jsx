@@ -803,6 +803,8 @@ function DashboardContent() {
     checkInStatus?.isCheckedIn || checkInStatus?.status === "PRESENT"
   );
   const checkInMeta = getCheckInWindowMeta(currentRound, clockNow);
+  const checkInStatusLoading = checkInLoading || debatesLoading;
+  const checkInStatusUnavailable = sectionFailed.checkIn || sectionFailed.debates;
 
   const handleCheckIn = async () => {
     if (checkInInFlight.current) return;
@@ -1162,7 +1164,7 @@ function DashboardContent() {
                   <button
                     type="button"
                     onClick={handleCheckIn}
-                    disabled={checkingIn || checkInLoading || debatesLoading}
+                    disabled={checkingIn || checkInStatusLoading || checkInStatusUnavailable}
                     className="min-h-11 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {checkingIn ? (
@@ -1177,7 +1179,9 @@ function DashboardContent() {
                     ) : (
                       <>
                         <CheckCircle2 size={14} aria-hidden="true" />
-                        <span>{checkInLoading || debatesLoading ? "Loading status…" : "Check In Now"}</span>
+                        <span>
+                          {checkInStatusLoading ? "Loading status…" : checkInStatusUnavailable ? "Status unavailable" : "Check In Now"}
+                        </span>
                       </>
                     )}
                   </button>

@@ -280,3 +280,11 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Changed `index.html`, `about.html`, and `tests/readiness.test.mjs`. Build, lint and 60 frontend tests passed. In Chromium at 390px and 1280px, pausing the JavaScript request kept the summary hidden. Resuming opened the homepage directly, and clicking About loaded `/about`. Both static summaries and canonical tags passed with JavaScript disabled.
 - Next: publish and verify a cold load on the official domain.
 - The newer remote main commit also removed the React entry script on `/`. Restored the script and added a regression assertion for both public documents. The existing local Inter font remains in use.
+
+## Debater check-in recovery (2026-11-17)
+
+- Status: verified locally against API fixtures. During an open check-in window, the dashboard and round details keep check-in disabled when attendance status or debate assignment fails to load. The relevant error offers Retry, the action stays disabled while the retry is pending, and a successful retry restores check-in. Successful attendance is displayed on the page and after reload.
+- Files changed: `src/pages/dashboard/DashboardHome.jsx`, `src/pages/dashboard/RoundDetails.jsx`, `tests/browser-audit.mjs`, and `progress.md`.
+- Verification: 63/63 frontend unit and API contract tests, repository lint, production build and 61/61 Chromium browser fixtures passed. Four new journeys combine both pages with independent attendance and assignment failures. The suite also passed the existing closed-window, boundary transition, rejected check-in, pairing and mobile dashboard cases. The browser used the locally installed Chromium because the Playwright-pinned binary was unavailable.
+- Remaining: staging authentication, database persistence and eligibility enforcement with a real participant are unverified. The browser suite ran with intercepted API responses. A concurrent local edit to `src/components/admin/InlineResultSheet.jsx` appeared during verification and is outside this change.
+- Next recommended task: verify dashboard and round-page check-in on staging with eligible and eliminated debaters, including attendance persistence and agreement between the two pages.
