@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {useSearchParams} from "react-router-dom";
+import {useLocation, useSearchParams} from "react-router-dom";
 import {useAuth} from "../auth/client.jsx";
 import {EventApi} from "../services/api";
 import {SocketEvents} from "../services/socket";
@@ -23,6 +23,7 @@ function writeStored(id) {
 
 export default function AdminEventProvider({children}) {
     const {getToken} = useAuth();
+    const location = useLocation();
     const [events, setEvents] = useState([]);
     const [searchParams, setSearchParams] = useSearchParams();
     const urlEventId = searchParams.get(EVENT_PARAM);
@@ -100,12 +101,16 @@ export default function AdminEventProvider({children}) {
     // Mirror the resolved event into ?event= (replace, so history is not spammed).
     useEffect(() => {
         if (!resolvedId || urlEventId === resolvedId) return;
+        // A child <Navigate> effect runs before parent effects; if it already
+        // changed the route in this commit, wait for the next render so
+        // setSearchParams does not navigate back to the old pathname.
+        if (typeof window !== "undefined" && window.location.pathname !== location.pathname) return;
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
             next.set(EVENT_PARAM, resolvedId);
             return next;
         }, {replace: true});
-    }, [resolvedId, urlEventId, setSearchParams]);
+    }, [resolvedId, urlEventId, location.pathname, setSearchParams]);
 
     const value = useMemo(
         () => ({events, event, eventId: event?.id || null, setEventId, loading, error, refreshEvents}),
