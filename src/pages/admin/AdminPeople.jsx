@@ -193,9 +193,9 @@ function AdminPeoplePage({event, eventId, eventsLoading}) {
                                 </button>
                             )}
                         </label>
-                        <div role="group" aria-label="Filter" className="flex gap-1.5">
+                        <div role="group" aria-label="Filter" className="flex flex-wrap gap-1.5">
                             {FILTERS.map(([key, label]) => (
-                                <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={cn("min-h-10 rounded-full border px-3.5 text-sm font-semibold", filter === key ? "border-[#1D1E18] bg-[#1D1E18] text-[#EAFBF5] dark:border-[#B9F5D8] dark:bg-[#B9F5D8] dark:text-[#141510]" : "border-input bg-card")}>{label}</button>
+                                <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={cn("min-h-11 rounded-full border px-3.5 text-xs sm:text-sm font-semibold", filter === key ? "border-[#1D1E18] bg-[#1D1E18] text-[#EAFBF5] dark:border-[#B9F5D8] dark:bg-[#B9F5D8] dark:text-[#141510]" : "border-input bg-card")}>{label}</button>
                             ))}
                         </div>
                     </div>

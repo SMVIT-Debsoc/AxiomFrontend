@@ -1095,7 +1095,7 @@ function CheckInWindowStrip({round, busy, onUpdateWindow}) {
                     )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap w-full sm:w-auto items-center gap-1.5">
                     <button
                         type="button"
                         disabled={windowBusy}
@@ -1429,44 +1429,72 @@ function PairingsPanel({round, debates, onRegenerate, onSaveMotion, onPreview, p
             {!hasDebates ? (
                 <p className="m-0 text-muted-foreground text-sm">No pairings yet. Close check-in to generate them.</p>
             ) : (
-                <div className="overflow-x-auto max-h-[460px]">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr className="text-xs uppercase tracking-[0.06em] text-muted-foreground border-b border-border">
-                                <th scope="col" className="py-2 pr-3">#</th>
-                                <th scope="col" className="py-2 pr-3">Proposition (GOV)</th>
-                                <th scope="col" className="py-2 pr-3">Opposition (OPP)</th>
-                                <th scope="col" className="py-2">Room</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {debates.slice(0, 100).map((d, i) => (
-                                <tr key={d.id} className="border-b border-border/40 hover:bg-muted/30">
-                                    <td className="py-2.5 pr-3 text-muted-foreground">{i + 1}</td>
-                                    <td className="py-2.5 pr-3 font-semibold text-foreground">
-                                        <span className="ax-chip ax-chip--gov mr-1.5 inline-block text-[10px] font-bold">
-                                            GOV
+                <>
+                    <ul className="m-0 flex list-none flex-col gap-2 p-0 max-h-[460px] overflow-y-auto md:hidden">
+                        {debates.slice(0, 100).map((d, i) => (
+                            <li key={d.id} className="rounded-xl border border-border bg-card/60 p-3 space-y-2 text-xs">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="font-mono font-bold text-muted-foreground">Matchup #{i + 1}</span>
+                                    {d.room?.name ? (
+                                        <span className="font-heading font-bold text-primary">{d.room.name}</span>
+                                    ) : (
+                                        <span className="ax-signal-warn inline-block px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 text-[10px] font-semibold">
+                                            Unallocated
                                         </span>
-                                        {fullName(d.debater1)}
-                                    </td>
-                                    <td className="py-2.5 pr-3 font-semibold text-foreground">
-                                        <span className="ax-chip ax-chip--opp mr-1.5 inline-block text-[10px] font-bold">
-                                            OPP
-                                        </span>
-                                        {fullName(d.debater2)}
-                                    </td>
-                                    <td className="py-2.5">
-                                        {d.room?.name || (
-                                            <span className="ax-signal-warn inline-block px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 text-[11px] font-semibold">
-                                                Unallocated
-                                            </span>
-                                        )}
-                                    </td>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 gap-1.5">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="ax-chip ax-chip--gov shrink-0 text-[10px] font-bold">GOV</span>
+                                        <span className="font-semibold text-foreground truncate">{fullName(d.debater1)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="ax-chip ax-chip--opp shrink-0 text-[10px] font-bold">OPP</span>
+                                        <span className="font-semibold text-foreground truncate">{fullName(d.debater2)}</span>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="hidden md:block overflow-x-auto max-h-[460px]">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="text-xs uppercase tracking-[0.06em] text-muted-foreground border-b border-border">
+                                    <th scope="col" className="py-2 pr-3">#</th>
+                                    <th scope="col" className="py-2 pr-3">Proposition (GOV)</th>
+                                    <th scope="col" className="py-2 pr-3">Opposition (OPP)</th>
+                                    <th scope="col" className="py-2">Room</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {debates.slice(0, 100).map((d, i) => (
+                                    <tr key={d.id} className="border-b border-border/40 hover:bg-muted/30">
+                                        <td className="py-2.5 pr-3 text-muted-foreground">{i + 1}</td>
+                                        <td className="py-2.5 pr-3 font-semibold text-foreground">
+                                            <span className="ax-chip ax-chip--gov mr-1.5 inline-block text-[10px] font-bold">
+                                                GOV
+                                            </span>
+                                            {fullName(d.debater1)}
+                                        </td>
+                                        <td className="py-2.5 pr-3 font-semibold text-foreground">
+                                            <span className="ax-chip ax-chip--opp mr-1.5 inline-block text-[10px] font-bold">
+                                                OPP
+                                            </span>
+                                            {fullName(d.debater2)}
+                                        </td>
+                                        <td className="py-2.5">
+                                            {d.room?.name || (
+                                                <span className="ax-signal-warn inline-block px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 text-[11px] font-semibold">
+                                                    Unallocated
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
             )}
         </div>
     );
@@ -1735,7 +1763,7 @@ function ResultsPanel({
                             const w2 = d.winnerId === d.debater2Id;
                             return (
                                 <li key={d.id} className="flex items-center justify-between gap-3 text-xs p-2 rounded-lg bg-muted/20 border border-border/40">
-                                    <div className="min-w-0 flex-1 truncate flex items-center gap-2">
+                                    <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5">
                                         <span className={cn(
                                             "px-2 py-0.5 rounded-md transition-colors",
                                             hasWinner && w1 && "ax-signal-win bg-emerald-500/25 border border-emerald-500/50 text-emerald-800 dark:text-emerald-100 font-bold",
@@ -1901,7 +1929,7 @@ function QuickRoomModal({onClose, onCreated}) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-black/80">
             <div className="bg-card border-2 border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 font-sans">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                     <h3 className="font-heading font-bold text-lg text-foreground">Quick Add Room</h3>
@@ -2002,7 +2030,7 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-black/80">
             <div className="bg-card border-2 border-border rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4 font-sans max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-border pb-3">
                     <h3 className="font-heading font-bold text-lg text-foreground">Add New Round</h3>

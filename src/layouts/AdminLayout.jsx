@@ -170,17 +170,15 @@ function Shell() {
                         <Settings size={17} aria-hidden="true" />
                     </Link>
                     <ThemeToggle />
-                    {!user && (
-                        <button
-                            type="button"
-                            onClick={handleAdminSignOut}
-                            aria-label="Exit Admin"
-                            title="Exit Admin"
-                            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-foreground hover:bg-muted"
-                        >
-                            <LogOut size={17} aria-hidden="true" />
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        onClick={handleAdminSignOut}
+                        aria-label="Exit Admin"
+                        title="Exit Admin"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-foreground hover:bg-muted"
+                    >
+                        <LogOut size={17} aria-hidden="true" />
+                    </button>
                 </header>
 
                 <div className="hidden items-center justify-end px-8 pt-4 md:flex">
@@ -190,7 +188,7 @@ function Shell() {
                     </div>
                 </div>
 
-                <main id="admin-main" className="min-w-0 flex-1 px-4 pb-44 pt-4 md:px-8 md:pb-10">
+                <main id="admin-main" className="min-w-0 flex-1 px-3.5 sm:px-4 pb-[calc(10.5rem+env(safe-area-inset-bottom))] pt-4 md:px-8 md:pb-10">
                     <div key={location.pathname} className="axiom-page-body"><Outlet /></div>
                 </main>
 

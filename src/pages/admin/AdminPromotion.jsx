@@ -147,12 +147,12 @@ export default function AdminPromotion() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <button
             type="button"
             onClick={handleSavePromotion}
             disabled={saving || loading}
-            className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex-1 sm:flex-initial min-h-11 justify-center px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Save Selection
@@ -163,7 +163,7 @@ export default function AdminPromotion() {
             onClick={() => handlePublishResults(!resultsPublished)}
             disabled={publishing || loading}
             className={cn(
-              "px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex-1 sm:flex-initial min-h-11 justify-center px-5 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               resultsPublished 
                 ? "bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20" 
                 : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
@@ -225,7 +225,66 @@ export default function AdminPromotion() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Cards */}
+        <div className="md:hidden divide-y divide-border">
+          {filteredPerformers.length === 0 ? (
+            <div className="px-4 py-10 text-center text-muted-foreground text-sm italic">
+              No performers found matching the criteria.
+            </div>
+          ) : (
+            filteredPerformers.map((performer, index) => {
+              const isSelected = selectedUsers.has(performer.userId);
+              return (
+                <div
+                  key={performer.userId}
+                  className={cn(
+                    "p-3.5 flex items-center justify-between gap-3 transition-colors",
+                    isSelected ? "bg-emerald-500/5" : ""
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className="text-xs font-mono text-muted-foreground w-6 shrink-0">#{index + 1}</span>
+                    <UserAvatar user={performer} size="sm" className="shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-foreground truncate">
+                        {performer.firstName} {performer.lastName}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {performer.college || "No College"}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",
+                          performer.won
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            : "bg-destructive/10 text-destructive border-destructive/20"
+                        )}>
+                          {performer.won ? "Won" : "Lost"}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-muted text-foreground font-mono font-bold text-xs border border-border">
+                          {performer.score.toFixed(1)} pts
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePromote(performer.userId)}
+                    aria-label={`Toggle promotion for ${performer.firstName} ${performer.lastName}`}
+                    aria-pressed={isSelected}
+                    className="inline-flex items-center justify-center w-12 min-h-11 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className={cn("relative block w-11 h-6 rounded-full transition-colors", isSelected ? "bg-primary" : "bg-muted border border-border")}>
+                      <span className={cn("absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform", isSelected ? "bg-primary-foreground translate-x-5" : "bg-foreground translate-x-0")} />
+                    </span>
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
               <tr>

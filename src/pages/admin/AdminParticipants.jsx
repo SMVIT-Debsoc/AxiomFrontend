@@ -147,7 +147,7 @@ export default function AdminParticipants() {
           <button
             onClick={() => fetchParticipants()}
             disabled={loading}
-            className="p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title="Refresh Data"
             aria-label="Refresh participants list"
           >
@@ -165,7 +165,7 @@ export default function AdminParticipants() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="Search participants"
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
+          className="w-full min-h-11 pl-9 pr-4 py-2.5 rounded-lg bg-card/70 border border-border/70 text-sm font-sans focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/60"
         />
       </div>
 
@@ -175,7 +175,88 @@ export default function AdminParticipants() {
           description={searchQuery ? "Try a different search query." : "Wait for debaters to register or add them manually."}
         />
       ) : (
-        <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
+        <>
+        {/* Mobile Card List */}
+        <div className="md:hidden space-y-3">
+          {filteredParticipants.map((p) => {
+            const isUnenrolled = !p.participatingEvents || !p.participatingEvents.some(e => e.status !== 'COMPLETED');
+            return (
+              <div
+                key={p.id}
+                className={cn(
+                  "bg-card/80 border border-border/70 rounded-xl p-4 space-y-3",
+                  isUnenrolled && "border-l-4 border-l-destructive/40"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <UserAvatar user={p} size="sm" />
+                    <div className="min-w-0">
+                      <p className="font-heading font-semibold text-sm text-foreground truncate">
+                        {p.firstName} {p.lastName}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground font-mono truncate">
+                        {p.usn ? `USN: ${p.usn}` : `ID: ${p.id.substring(0, 8)}`}
+                        {p.gender ? ` · ${p.gender}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className={cn(
+                        "text-[10px] font-sans uppercase font-bold tracking-wider px-2 py-0.5 rounded border",
+                        p.isProfileComplete
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                      )}
+                    >
+                      {p.isProfileComplete ? "Complete" : "Incomplete"}
+                    </span>
+                    {isUnenrolled && (
+                      <span className="text-[9px] font-sans uppercase font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                        Unenrolled
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-1 text-xs text-muted-foreground font-sans">
+                  {p.college && <p className="text-foreground font-medium truncate">{p.college}</p>}
+                  {p.mobile && (
+                    <p className="font-medium text-foreground tabular-nums">
+                      <a href={`tel:${p.mobile}`} className="hover:underline">{p.mobile}</a>
+                    </p>
+                  )}
+                  {p.email && <p className="truncate">{p.email}</p>}
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEnrollingUser(p);
+                      setShowEventSelect(true);
+                    }}
+                    className="min-h-11 px-3.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-primary/20 transition-colors"
+                    aria-label={`Enroll ${p.firstName} ${p.lastName} in tournament`}
+                  >
+                    <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Enroll</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
+                    className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg border border-border/70 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    aria-label={`Delete participant ${p.firstName} ${p.lastName}`}
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left" aria-label="Participant list">
               <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
@@ -285,7 +366,7 @@ export default function AdminParticipants() {
                               setEnrollingUser(p);
                               setShowEventSelect(true);
                             }}
-                            className="p-1.5 rounded-md hover:bg-primary/10 text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-primary/10 text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title="Enroll in Tournament"
                             aria-label={`Enroll ${p.firstName} ${p.lastName} in tournament`}
                           >
@@ -293,7 +374,7 @@ export default function AdminParticipants() {
                           </button>
                           <button
                             onClick={() => handleDelete(p.id, `${p.firstName} ${p.lastName}`)}
-                            className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             title="Delete Participant"
                             aria-label={`Delete participant ${p.firstName} ${p.lastName}`}
                           >
@@ -308,6 +389,7 @@ export default function AdminParticipants() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Manual Enrollment Event Selector */}
@@ -335,7 +417,7 @@ export default function AdminParticipants() {
                   setShowEventSelect(false);
                   setEnrollingUser(null);
                 }}
-                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Close dialog"
               >
                 <X className="w-4 h-4" aria-hidden="true" />

@@ -78,7 +78,7 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-black/80 animate-in fade-in duration-200">
             <div className="relative w-full max-w-2xl bg-card border-2 border-border rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8 space-y-6 max-h-[92vh] overflow-y-auto font-sans">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4 border-b border-border/80 pb-4">
@@ -101,7 +101,7 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
                         onClick={onClose}
                         aria-label="Close ballot sheet"
                         disabled={Boolean(busy)}
-                        className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
                         <X size={18} />
                     </button>

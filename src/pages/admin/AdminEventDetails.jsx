@@ -193,7 +193,7 @@ function AdminEventPage({eventId}) {
         <div className="flex items-start gap-3.5 flex-1 min-w-0">
           <button
             onClick={() => navigate("/admin/events")}
-            className="p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors shrink-0 mt-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors shrink-0 mt-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Back to tournaments list"
           >
             <ArrowLeft className="w-5 h-5" aria-hidden="true" />
@@ -227,7 +227,7 @@ function AdminEventPage({eventId}) {
         <div className="flex gap-2.5 w-full md:w-auto shrink-0">
           <button
             onClick={() => setShowEditEvent(true)}
-            className="p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title="Edit Tournament Settings"
             aria-label="Edit tournament settings"
           >
@@ -407,7 +407,7 @@ function AdminEventPage({eventId}) {
                                 e.stopPropagation();
                                 setEditingRound(round);
                               }}
-                              className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground opacity-100 md:opacity-0 group-hover:opacity-100 transition-all focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground opacity-100 md:opacity-0 group-hover:opacity-100 transition-all focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               aria-label={`Edit round ${round.name}`}
                               title="Edit Round"
                             >
@@ -420,7 +420,7 @@ function AdminEventPage({eventId}) {
                                 handleDeleteRound(round.id);
                               }}
                               disabled={deletingRoundId === round.id}
-                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               aria-label={`Delete round ${round.name}`}
                               title="Delete Round"
                             >
@@ -474,7 +474,25 @@ function AdminEventPage({eventId}) {
                     description="Enroll registered debaters manually or share tournament registration links."
                   />
                 ) : (
-                  <div className="bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
+                  <>
+                  <div className="md:hidden space-y-2.5">
+                    {participants.map((p) => (
+                      <div key={p.id} className="bg-card/80 border border-border/70 rounded-xl p-3.5 space-y-1.5 text-xs">
+                        <div className="flex items-center gap-2.5">
+                          <UserAvatar user={p} size="xs" className="w-8 h-8 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sm text-foreground truncate">{p.firstName} {p.lastName}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{p.college || "N/A"}{p.usn ? ` · ${p.usn}` : ""}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-muted-foreground">
+                          {p.mobile ? <a href={`tel:${p.mobile}`} className="font-medium text-foreground tabular-nums hover:underline">{p.mobile}</a> : <span>No phone</span>}
+                          {p.email && <span className="truncate">{p.email}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left" aria-label="Enrolled participants">
                         <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
@@ -536,6 +554,7 @@ function AdminEventPage({eventId}) {
                       </table>
                     </div>
                   </div>
+                  </>
                 )}
               </Motion.div>
             )}
@@ -662,7 +681,7 @@ function AdminEventPage({eventId}) {
               </div>
               <button
                 onClick={() => setShowAddParticipant(false)}
-                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Close dialog"
               >
                 <X className="w-4 h-4" aria-hidden="true" />
@@ -943,7 +962,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" aria-hidden="true" />

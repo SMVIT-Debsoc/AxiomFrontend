@@ -245,7 +245,41 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
           </div>
         </div>
 
-        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tournament standings">
+        {/* Mobile Standings Cards */}
+        <div className="md:hidden divide-y divide-border" role="region" aria-label="Mobile tournament standings">
+          {filteredLeaderboard.length === 0 ? (
+            <div className="px-4 py-10 text-center text-muted-foreground text-sm">
+              {searchQuery ? `No debaters found matching "${searchQuery}"` : "No debaters recorded on the leaderboard yet."}
+            </div>
+          ) : (
+            filteredLeaderboard.map(({ entry, rank }) => (
+              <div key={entry.user?.id || entry.id || rank} className="flex items-center gap-3 p-3.5">
+                <div className={cn(
+                  "w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs border shrink-0",
+                  rank <= 3 ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/35" : "border-border bg-muted/40 text-muted-foreground font-mono"
+                )}>
+                  #{rank}
+                </div>
+                <UserAvatar user={entry.user || entry} size="sm" className="shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-foreground text-sm truncate">{getDisplayName(entry)}</p>
+                  <p className="text-xs text-muted-foreground truncate">{getCollege(entry)}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-bold font-mono text-foreground text-sm tabular-nums">
+                    {getStats(entry).totalScore?.toFixed(0) || 0} pts
+                  </p>
+                  <p className="text-[11px] font-mono text-muted-foreground tabular-nums">
+                    {getStats(entry).winRate?.toFixed(0) || 0}% win
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Standings Table */}
+        <div className="hidden md:block overflow-x-auto" tabIndex={0} role="region" aria-label="Tournament standings">
           <table className="w-full" aria-label="Tournament leaderboard">
             <thead className="bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
               <tr>

@@ -516,7 +516,7 @@ function CreateEventModal({ onClose, onCreated }) {
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" aria-hidden="true" />
@@ -654,7 +654,7 @@ function EditEventModal({ event, onClose, onUpdated }) {
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" aria-hidden="true" />
