@@ -1,5 +1,5 @@
 import ModalSurface from "../../components/ui/ModalSurface";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion as Motion } from "framer-motion";
 import { MapPin, Plus, Search, Trash2, Edit, Users, X } from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
@@ -7,79 +7,108 @@ import { useAuth } from "../../auth/client.jsx";
 import { AdminApi } from "../../services/api";
 import { useToast } from "../../hooks/useToast";
 import EmptyState from "../../components/ui/EmptyState";
+import LoadError from "../../components/ui/LoadError";
+import { useAdminMutation } from "../../hooks/useAdminMutation";
+import { useLatestRequest, useSocketRefresh } from "../../hooks/useAdminRealtime";
+import { SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
+import { adoptDebateCurrent, relabelDebateConflict } from "../../lib/liveMerge";
+
+const judgeNameOf = (debate) =>
+    debate?.judgeName || (debate?.adjudicator ? `${debate.adjudicator.firstName} ${debate.adjudicator.lastName}` : "");
 
 export default function AdminRooms({ embedded = false } = {}) {
     const { getToken } = useAuth();
-    const toast = useToast();
     const [rooms, setRooms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingRoom, setEditingRoom] = useState(null);
-    const [, setUsers] = useState([]);
+    const [loadError, setLoadError] = useState(null);
+    const { run, isBusy } = useAdminMutation();
+    const latest = useLatestRequest();
+    const getTokenRef = useRef(getToken);
+    useEffect(() => {
+        getTokenRef.current = getToken;
+    }, [getToken]);
+
+    const fetchRooms = useCallback(async () => {
+        const request = latest.begin();
+        try {
+            const token = await getTokenRef.current();
+            const response = await AdminApi.apiRequest("/rooms", "GET", null, token, { skipCache: true, signal: request.signal });
+            if (!latest.isCurrent(request.id)) return;
+            if (response.success) setRooms(response.rooms || []);
+            setLoadError(null);
+        } catch (error) {
+            if (!latest.isCurrent(request.id)) return;
+            console.error("Failed to fetch rooms:", error);
+            setLoadError(error?.message || "Failed to load rooms");
+        } finally {
+            if (latest.isCurrent(request.id)) setLoading(false);
+        }
+    }, [latest]);
 
     useEffect(() => {
         fetchRooms();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [fetchRooms]);
 
-    const fetchRooms = async () => {
-        try {
-            const token = await getToken();
-            const results = await Promise.allSettled([
-                AdminApi.apiRequest("/rooms", "GET", null, token, { skipCache: true }),
-                AdminApi.apiRequest("/users", "GET", null, token, { skipCache: true })
-            ]);
-
-            const [roomsRes, usersRes] = results;
-
-            if (roomsRes.status === "fulfilled" && roomsRes.value.success) {
-                setRooms(roomsRes.value.rooms || []);
-            }
-
-            if (usersRes.status === "fulfilled" && usersRes.value.success) {
-                setUsers(usersRes.value.users || []);
-            }
-        } catch (error) {
-            console.error("Failed to fetch rooms/users:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Another admin adding, editing or deleting a room (or re-allocating) refreshes this list.
+    useSocketRefresh([SocketEvents.ROOMS_UPDATED, SocketEvents.ROOMS_ALLOCATED], fetchRooms);
+    useLiveRefresh(fetchRooms, { jitterMs: 3000, invalidateCache: false });
 
     const filteredRooms = rooms.filter((room) =>
         room.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this room?")) return;
-        try {
-            const token = await getToken();
-            const response = await AdminApi.apiRequest(`/rooms/${id}`, "DELETE", null, token);
-            if (response.success) {
-                setRooms((prev) => prev.filter((r) => r.id !== id));
-                toast.success("Room deleted");
-            } else {
-                toast.error(response.error || "Failed to delete room");
+    const handleDelete = (room) =>
+        run(
+            `delete:${room.id}`,
+            async () => {
+                const token = await getToken();
+                return AdminApi.deleteRoom(room.id, token);
+            },
+            {
+                confirm: `Delete ${room.name || "this room"}? This cannot be undone.`,
+                success: "Room deleted",
+                onSuccess: () => {
+                    setRooms((prev) => prev.filter((r) => r.id !== room.id));
+                    fetchRooms();
+                },
+                onConflict: () => fetchRooms(),
             }
-        } catch (err) {
-            toast.error(err?.message || "Failed to delete room");
-        }
-    };
+        );
 
-    const handleAssignJudge = async (debateId, judgeName) => {
-        try {
-            const token = await getToken();
-            const response = await AdminApi.apiRequest(`/debates/${debateId}`, "PUT", { judgeName }, token);
-            if (response.success) {
-                toast.success("Adjudicator updated");
-                fetchRooms();
-            } else {
-                toast.error(response.error || "Failed to assign judge");
+    const handleAssignJudge = (debate, judgeName) => {
+        const next = judgeName.trim();
+        if (next === judgeNameOf(debate).trim()) return;
+        run(
+            `judge:${debate.id}`,
+            async () => {
+                const token = await getToken();
+                try {
+                    return await AdminApi.updateDebate(debate.id, { judgeName: next }, token, {
+                        expectedUpdatedAt: debate.updatedAt,
+                    });
+                } catch (err) {
+                    throw relabelDebateConflict(err);
+                }
+            },
+            {
+                success: "Adjudicator updated",
+                onSuccess: () => fetchRooms(),
+                // 409 (another admin changed it): adopt their judge name, then reload.
+                onConflict: (err) => {
+                    const current = err?.data?.current;
+                    if (current?.id === debate.id) {
+                        setRooms((prev) => prev.map((room) => ({
+                            ...room,
+                            debates: (room.debates || []).map((d) => (d.id === debate.id ? adoptDebateCurrent(d, current) : d)),
+                        })));
+                    }
+                },
+                onError: () => fetchRooms(),
             }
-        } catch (err) {
-            toast.error(err?.message || "Error assigning judge");
-        }
+        );
     };
 
     if (loading) {
@@ -88,6 +117,10 @@ export default function AdminRooms({ embedded = false } = {}) {
                 <LoadingIndicator label="Loading debating venues" />
             </div>
         );
+    }
+
+    if (loadError && rooms.length === 0) {
+        return <LoadError className="mt-6" message="Could not load rooms." detail={loadError} onRetry={fetchRooms} />;
     }
 
     return (
@@ -151,6 +184,10 @@ export default function AdminRooms({ embedded = false } = {}) {
                     />
                 </div>
 
+                {loadError && (
+                    <LoadError compact message="Could not refresh rooms. Showing the last loaded list." onRetry={fetchRooms} />
+                )}
+
                 {filteredRooms.length === 0 ? (
                     <EmptyState
                       title={searchQuery ? "No room matched" : "No rooms yet"}
@@ -197,8 +234,9 @@ export default function AdminRooms({ embedded = false } = {}) {
 
                                             <button
                                                 type="button"
-                                                onClick={() => handleDelete(room.id)}
-                                                className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-rose-500/15 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                onClick={() => handleDelete(room)}
+                                                disabled={isBusy(`delete:${room.id}`)}
+                                                className="disabled:opacity-50 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-rose-500/15 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                                 aria-label={`Delete ${room.name}`}
                                                 title="Delete Room"
                                             >
@@ -219,10 +257,13 @@ export default function AdminRooms({ embedded = false } = {}) {
                                             </label>
                                             {room.debates?.[0] ? (
                                                 <input
+                                                    // Re-key on the server value so another admin's change shows up here.
+                                                    key={`${room.debates[0].id}:${judgeNameOf(room.debates[0])}`}
                                                     id={`room-judge-${room.id}`}
                                                     type="text"
-                                                    defaultValue={room.debates[0].judgeName || (room.debates[0].adjudicator ? `${room.debates[0].adjudicator.firstName} ${room.debates[0].adjudicator.lastName}` : "")}
-                                                    onBlur={(e) => handleAssignJudge(room.debates[0].id, e.target.value)}
+                                                    defaultValue={judgeNameOf(room.debates[0])}
+                                                    disabled={isBusy(`judge:${room.debates[0].id}`)}
+                                                    onBlur={(e) => handleAssignJudge(room.debates[0], e.target.value)}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') {
                                                             e.currentTarget.blur();

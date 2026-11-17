@@ -5,6 +5,7 @@ import {clearApiCache} from "../services/api";
 // Re-export SocketEvents for convenience
 export {SocketEvents};
 
+const VISIBILITY_RESYNC_MS = 30000;
 const REALTIME_CACHE_PREFIXES = ["/events", "/rounds", "/debates", "/check-in", "/stats", "/admin"];
 
 export function invalidateRealtimeCache() {
@@ -46,7 +47,8 @@ function invalidateSocketUpdate(handler, data, eventId, roundId) {
 
 /**
  * Keeps a view live even when WebSockets are disconnected or the browser tab was backgrounded:
- * - Refreshes immediately on tab visibility return (`visible`)
+ * - Refreshes on tab visibility return when hidden > 30s or the socket dropped meanwhile
+ * - Refreshes once after the first room join (events between initial GET and join ack)
  * - Refreshes on socket reconnect after a disconnection
  * - Polls every `intervalMs` ONLY when the socket is disconnected and tab is visible
  */
@@ -67,10 +69,14 @@ export function useLiveRefresh(refreshFn, {
     if (!enabled || typeof document === "undefined") return undefined;
 
     let wasDisconnected = !socketService.isConnected();
-    let needsRoomRefresh = false;
     const hasRooms = Boolean(eventId || roundId);
     const roomsReady = () => socketService.isRoomReady("event", eventId) &&
       socketService.isRoomReady("round", roundId);
+    // Events emitted between the page's initial GET and the room-join ack are
+    // lost, so the first room-ready after mount triggers one resync.
+    let needsRoomRefresh = hasRooms && !roomsReady();
+    let hiddenAt = document.visibilityState === "visible" ? null : Date.now();
+    let disconnectedWhileHidden = false;
 
     const triggerRefresh = () => {
       if (document.visibilityState !== "visible") return;
@@ -89,6 +95,7 @@ export function useLiveRefresh(refreshFn, {
     const unsubDisconnect = socketService.on(SocketEvents.DISCONNECT, () => {
       wasDisconnected = true;
       needsRoomRefresh = hasRooms;
+      if (document.visibilityState !== "visible") disconnectedWhileHidden = true;
     });
     const unsubRoomReady = socketService.onRoomReady((type, id) => {
       if ((type === "event" ? id === eventId : id === roundId) && needsRoomRefresh && roomsReady()) {
@@ -97,10 +104,20 @@ export function useLiveRefresh(refreshFn, {
       }
     });
 
+    // Returning to the tab only resyncs when updates could have been missed:
+    // the tab was hidden long enough for the browser to throttle/suspend the
+    // socket, or the socket dropped meanwhile. A quick tab switch keeps caches.
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        triggerRefresh();
+      if (document.visibilityState !== "visible") {
+        hiddenAt = Date.now();
+        disconnectedWhileHidden = false;
+        return;
       }
+      const hiddenFor = hiddenAt == null ? 0 : Date.now() - hiddenAt;
+      const missed = disconnectedWhileHidden || !socketService.isConnected() || !roomsReady();
+      hiddenAt = null;
+      disconnectedWhileHidden = false;
+      if (hiddenFor > VISIBILITY_RESYNC_MS || missed) triggerRefresh();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 

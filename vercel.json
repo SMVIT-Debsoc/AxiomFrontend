@@ -23,6 +23,10 @@
       "destination": "/app"
     },
     {
+      "source": "/:ops(checkin|ballot)/:path*",
+      "destination": "/app"
+    },
+    {
       "source": "/:entry(sso-callback|auth-redirect|complete-profile|login-select|forgot-password|reset-password|get-started)",
       "destination": "/app"
     }

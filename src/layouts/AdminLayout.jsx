@@ -1,5 +1,5 @@
 import {Link, NavLink, Outlet, useLocation, useNavigate} from "react-router-dom";
-import {Activity, Flag, LogOut, Settings, Trophy, Users} from "lucide-react";
+import {Activity, LogOut, MonitorPlay, Search, Settings, SlidersHorizontal, Trophy, Users} from "lucide-react";
 import {UserButton, useAuth, useUser} from "../auth/client.jsx";
 import {clearApiCache} from "../services/api";
 import {useSocketStatus} from "../hooks/useSocket";
@@ -9,17 +9,16 @@ import LoadingIndicator from "../components/ui/LoadingIndicator";
 import AdminEventProvider from "../contexts/AdminEventProvider";
 import {useAdminEvent} from "../contexts/adminEvent";
 import {cn} from "../lib/utils";
+import CommandPalette, {OPEN_PALETTE_EVENT} from "../components/ops/CommandPalette";
 
-const GROUPS = [
-    {
-        title: "Organiser Desk",
-        items: [
-            {label: "Live Round", path: "/admin", icon: Activity, end: true},
-            {label: "Events & Rooms", path: "/admin/events", icon: Flag, also: ["/admin/rounds", "/admin/rooms"]},
-            {label: "Participants", path: "/admin/people", icon: Users, also: ["/admin/participants", "/admin/overview"]},
-            {label: "Results & Standings", path: "/admin/results", icon: Trophy, also: ["/admin/leaderboard"]},
-        ],
-    },
+// Exactly five organiser destinations. Old URLs redirect into these (see App.jsx);
+// `also` keeps the right tab highlighted on deep links such as /admin/rounds/:id.
+const DESTINATIONS = [
+    {label: "Live", hint: "Round control", path: "/admin", icon: Activity, end: true},
+    {label: "Setup", hint: "Events, rounds, rooms", path: "/admin/setup", icon: SlidersHorizontal, also: ["/admin/rounds", "/admin/events", "/admin/rooms", "/admin/overview"]},
+    {label: "People", hint: "Registry & enrolment", path: "/admin/people", icon: Users, also: ["/admin/participants"]},
+    {label: "Results", hint: "Ballots & standings", path: "/admin/results", icon: Trophy, also: ["/admin/leaderboard"]},
+    {label: "Display", hint: "Projector screen", path: "/admin/display", icon: MonitorPlay, external: true},
 ];
 
 function isActive(item, pathname) {
@@ -72,13 +71,10 @@ function Shell() {
     };
 
     const linkBase = "flex min-h-11 items-center justify-between gap-2 rounded-xl px-3 text-[15px] font-medium transition-colors";
-    const [liveItem, eventsItem, peopleItem, resultsItem] = GROUPS[0].items;
-    const tabs = [
-        {label: "Live", path: "/admin", icon: Activity, active: isActive(liveItem, location.pathname)},
-        {label: "Events", path: "/admin/events", icon: Flag, active: isActive(eventsItem, location.pathname)},
-        {label: "People", path: "/admin/people", icon: Users, active: isActive(peopleItem, location.pathname)},
-        {label: "Results", path: "/admin/results", icon: Trophy, active: isActive(resultsItem, location.pathname)},
-    ];
+    // Carry ?event= so a link opened in a new tab (Display) lands on the same event.
+    const eventParam = new URLSearchParams(location.search).get("event");
+    const hrefFor = (item) => (item.external && eventParam ? `${item.path}?event=${encodeURIComponent(eventParam)}` : item.path);
+    const tabs = DESTINATIONS.map((item) => ({...item, to: hrefFor(item), active: isActive(item, location.pathname)}));
     const settingsActive = location.pathname === "/admin/settings" || location.pathname.startsWith("/admin/settings/");
 
     return (
@@ -92,19 +88,29 @@ function Shell() {
                     <span className="rounded-md bg-[#B9F5D8] px-2 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-[#141510]">Organiser</span>
                 </div>
                 <EventSwitcher className="mb-3" />
-                {GROUPS.map((group) => (
-                    <div key={group.title} className="flex flex-col gap-1">
-                        <p className="mx-2 mb-0.5 mt-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#AAD2BA]">{group.title}</p>
-                        {group.items.map((item) => {
-                            const active = isActive(item, location.pathname);
-                            return (
-                                <NavLink key={item.path} to={item.path} aria-current={active ? "page" : undefined} className={cn(linkBase, active ? "bg-[#EAFBF5] font-bold text-[#1D1E18]" : "text-[#EAFBF5] hover:bg-[#4A5646]")}>
-                                    <span className="flex items-center gap-2.5"><item.icon size={18} aria-hidden="true" />{item.label}</span>
-                                </NavLink>
-                            );
-                        })}
-                    </div>
-                ))}
+                <div className="flex flex-col gap-1">
+                    {tabs.map((item) => (
+                        <NavLink
+                            key={item.path}
+                            to={item.to}
+                            target={item.external ? "_blank" : undefined}
+                            rel={item.external ? "noopener" : undefined}
+                            aria-current={item.active ? "page" : undefined}
+                            className={cn(linkBase, item.active ? "bg-[#EAFBF5] font-bold text-[#1D1E18]" : "text-[#EAFBF5] hover:bg-[#4A5646]")}
+                        >
+                            <span className="flex items-center gap-2.5"><item.icon size={18} aria-hidden="true" />{item.label}</span>
+                            <span className={cn("text-[11px] font-normal", item.active ? "text-[#4A5646]" : "text-[#AAD2BA]")}>{item.external ? "Opens new tab" : item.hint}</span>
+                        </NavLink>
+                    ))}
+                </div>
+                <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
+                    className="mt-3 flex min-h-11 items-center justify-between gap-2 rounded-xl border border-[#4A5646] bg-[#2F322A] px-3 text-sm font-semibold text-[#EAFBF5] hover:bg-[#4A5646]"
+                >
+                    <span className="flex items-center gap-2"><Search size={16} aria-hidden="true" />Jump to…</span>
+                    <kbd className="rounded-md border border-[#4A5646] px-1.5 text-[11px] text-[#AAD2BA]">⌘K</kbd>
+                </button>
                 <div className="mt-auto flex flex-col gap-3 border-t border-[#4A5646] pt-4">
                     <div className="flex items-center gap-2 px-1">
                         <div className="min-w-0 flex-1">
@@ -192,16 +198,17 @@ function Shell() {
                     <div key={location.pathname} className="axiom-page-body"><Outlet /></div>
                 </main>
 
-                {/* Phone bottom tab bar — 4 unified destinations */}
-                <nav aria-label="Organiser" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t border-[#4A5646] bg-[#1D1E18] pb-[env(safe-area-inset-bottom)] text-[#EAFBF5] md:hidden dark:bg-[#161710]">
+                {/* Phone bottom tab bar — the same five destinations */}
+                <nav aria-label="Organiser" className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-5 border-t border-[#4A5646] bg-[#1D1E18] pb-[env(safe-area-inset-bottom)] text-[#EAFBF5] md:hidden dark:bg-[#161710]">
                     {tabs.map((t) => (
-                        <Link key={t.path} to={t.path} aria-current={t.active ? "page" : undefined} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-semibold", t.active ? "text-[#EAFBF5]" : "text-[#BDD9CA]")}>
+                        <Link key={t.path} to={t.to} target={t.external ? "_blank" : undefined} rel={t.external ? "noopener" : undefined} aria-current={t.active ? "page" : undefined} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 text-xs font-semibold", t.active ? "text-[#EAFBF5]" : "text-[#BDD9CA]")}>
                             <span className={cn("grid h-7 w-12 place-items-center rounded-full", t.active && "bg-[#4A5646]")}><t.icon size={18} aria-hidden="true" /></span>
                             <span className="truncate max-w-full px-1">{t.label}</span>
                         </Link>
                     ))}
                 </nav>
             </div>
+            <CommandPalette />
         </div>
     );
 }

@@ -1,8 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile, readdir} from 'node:fs/promises';
 
 const readSrc = (rel) => readFile(new URL(`../${rel}`, import.meta.url), 'utf8');
+// The Live page is split into station files under src/pages/admin/live/.
+const readTree = async (rel) => {
+  const entries = await readdir(new URL(`../${rel}`, import.meta.url), {recursive: true});
+  const files = entries.filter((f) => /\.jsx?$/.test(f)).sort();
+  return (await Promise.all(files.map((f) => readSrc(`${rel}/${f}`)))).join('\n');
+};
 
 test('iosViewportFix updates --vh and --app-dvh passively without swallowing rapid taps or forcing +1px overflow', async () => {
   const iosFix = await readSrc('src/utils/iosViewportFix.js');
@@ -49,10 +55,11 @@ test('participant workspace and profile forms enforce dvh containers, 16px mobil
 
 test('organiser console provides dedicated mobile card layouts alongside desktop tables and 44px touch targets', async () => {
   const adminLayout = await readSrc('src/layouts/AdminLayout.jsx');
-  const adminLive = await readSrc('src/pages/admin/AdminLive.jsx');
+  const adminLive = (await readSrc('src/pages/admin/AdminLive.jsx')) + (await readTree('src/pages/admin/live'));
   const adminParticipants = await readSrc('src/pages/admin/AdminParticipants.jsx');
   const adminLeaderboard = await readSrc('src/pages/admin/AdminLeaderboard.jsx');
-  const adminPromotion = await readSrc('src/pages/admin/AdminPromotion.jsx');
+  // AdminPromotion redirects to the Director's Advance panel.
+  const adminPromotion = (await readSrc('src/pages/admin/AdminPromotion.jsx')) + (await readSrc('src/pages/admin/live/panels/AdvancePanel.jsx'));
   const adminEventDetails = await readSrc('src/pages/admin/AdminEventDetails.jsx');
   const inlineSheet = await readSrc('src/components/admin/InlineResultSheet.jsx');
 

@@ -1,15 +1,28 @@
 import {usePageRequests} from "../../hooks/usePageRequests";
-import {useEffect, useMemo, useState} from "react";
+import {lazy, Suspense, useEffect, useMemo, useState} from "react";
 import {Link} from "react-router-dom";
-import {Search, X} from "lucide-react";
+import {Database, Search, Users, X} from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
 import {AdminApi, EventApi} from "../../services/api";
-import {useEventSocket, useRoundSocket, useSocket, SocketEvents, useLiveRefresh} from "../../hooks/useSocket";
+import {useEventSocket, useRoundSocket, SocketEvents, useLiveRefresh} from "../../hooks/useSocket";
+import {useSocketRefresh} from "../../hooks/useAdminRealtime";
+import {useAdminMutation} from "../../hooks/useAdminMutation";
+import LoadError from "../../components/ui/LoadError";
 import {useToast} from "../../hooks/useToast";
 import {useAdminEvent} from "../../contexts/adminEvent";
 import ModalSurface from "../../components/ui/ModalSurface";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {cn} from "../../lib/utils";
+import QrCode from "../../components/ops/QrCode";
+import {AreaHeader, AreaTabs} from "../../components/ops/AreaHeader";
+import {useAreaTab} from "../../components/ops/useAreaTab";
+
+const AdminParticipants = lazy(() => import("./AdminParticipants"));
+
+const PEOPLE_TABS = [
+    {key: "event", label: "This event", icon: Users},
+    {key: "registry", label: "All users", icon: Database},
+];
 
 const nameOf = (u) => `${u?.firstName || ""} ${u?.lastName || ""}`.trim() || u?.email || "Unknown";
 const initials = (u) => nameOf(u).split(/\s+/).slice(0, 2).map((s) => s[0]).join("").toUpperCase();
@@ -34,12 +47,32 @@ const FILTERS = [["all", "All"], ["incomplete", "Incomplete"], ["absent", "Not c
 const PEOPLE_FIELDS = ["users", "roster", "rounds"];
 const ATTENDANCE_FIELDS = ["attendance"];
 
+/**
+ * People: one registry. "This event" = attendance, live registrations, walk-ins
+ * and the join QR for the current event; "All users" = every account, enrol
+ * into an event, delete.
+ */
 export default function AdminPeople() {
     const {event, eventId, loading: eventsLoading} = useAdminEvent();
-    return <AdminPeoplePage key={eventId} event={event} eventId={eventId} eventsLoading={eventsLoading} />;
+    const [tab, setTab] = useAreaTab(PEOPLE_TABS);
+    return (
+        <div className="mx-auto max-w-[1180px] font-sans">
+            <AreaHeader eyebrow={event?.name || "No event selected"} title="People" />
+            <AreaTabs tabs={PEOPLE_TABS} active={tab} onChange={setTab} label="People sections" />
+            <div role="tabpanel" aria-labelledby={`area-tab-${tab}`}>
+                {tab === "event" ? (
+                    <AdminPeoplePage key={eventId} eventId={eventId} eventsLoading={eventsLoading} />
+                ) : (
+                    <Suspense fallback={<div role="status" aria-label="Loading" className="ax-card h-48 animate-pulse bg-muted/50" />}>
+                        <AdminParticipants embedded />
+                    </Suspense>
+                )}
+            </div>
+        </div>
+    );
 }
 
-function AdminPeoplePage({event, eventId, eventsLoading}) {
+function AdminPeoplePage({eventId, eventsLoading}) {
     const toast = useToast();
     const [users, setUsers] = useState([]);
     const [enrolledIds, setEnrolledIds] = useState(new Set());
@@ -51,6 +84,7 @@ function AdminPeoplePage({event, eventId, eventsLoading}) {
     const [filter, setFilter] = useState("all");
     const [modal, setModal] = useState(null); // "qr" | "add"
     const [live, setLive] = useState([]);
+    const [loadError, setLoadError] = useState(null);
     const refreshPeople = usePageRequests(PEOPLE_FIELDS, async (field, token, options, isCurrent) => {
         try {
             if (!eventId && field !== "users") return;
@@ -61,7 +95,10 @@ function AdminPeoplePage({event, eventId, eventsLoading}) {
             }[field];
             const response = await AdminApi.apiRequest(url, "GET", null, token, options);
             if (!isCurrent() || !response.success) return;
-            if (field === "users") setUsers(response.users || []);
+            if (field === "users") {
+                setUsers(response.users || []);
+                setLoadError(null);
+            }
             if (field === "roster") setEnrolledIds(new Set((response.participants || []).map((p) => p.id)));
             if (field === "rounds") {
                 const list = response.rounds || [];
@@ -69,7 +106,10 @@ function AdminPeoplePage({event, eventId, eventsLoading}) {
                     || list.find((r) => r.status !== "COMPLETED") || list.at(-1) || null);
             }
         } catch (failure) {
-            if (isCurrent() && !options.skipCache && field === "users") toast.error("Error", "Failed to load people");
+            if (isCurrent() && field === "users") {
+                if (!options.skipCache) toast.error("Error", failure?.message || "Failed to load people");
+                setLoadError(failure?.message || "Failed to load people");
+            }
             console.error("Failed to load people", failure);
         } finally {
             if (isCurrent() && field === "users") setLoading(false);
@@ -119,15 +159,9 @@ function AdminPeoplePage({event, eventId, eventsLoading}) {
         refreshPeople(...PEOPLE_FIELDS);
         refreshAttendance("attendance");
     }, {eventId, roundId: round?.id, jitterMs: 3000, invalidateCache: false});
-    const {subscribe} = useSocket();
-    useEffect(() => {
-        const refreshRegistry = () => refreshPeople("users", "roster");
-        const unsubscribe = [
-            subscribe(SocketEvents.USER_UPDATED, refreshRegistry),
-            subscribe(SocketEvents.USER_DELETED, refreshRegistry),
-        ];
-        return () => unsubscribe.forEach((stop) => stop());
-    }, [subscribe, refreshPeople]);
+    // Debounced: a burst of profile edits collapses into one registry read. usePageRequests
+    // keeps one request per section in flight, so responses cannot land out of order.
+    useSocketRefresh([SocketEvents.USER_UPDATED, SocketEvents.USER_DELETED], () => refreshPeople("users", "roster"));
 
     // Event participants plus anyone whose profile is still incomplete
     const rows = useMemo(() => users.filter((u) => enrolledIds.has(u.id) || incomplete(u)).map((u) => ({
@@ -154,18 +188,15 @@ function AdminPeoplePage({event, eventId, eventsLoading}) {
     const statusChip = {in: ["Checked in", "ax-chip--ok"], reg: ["Registered", "ax-chip--idle"], inc: ["Needs details", "ax-chip--warn"]};
 
     if (eventsLoading || loading) return <div className="grid min-h-[50vh] place-items-center"><LoadingIndicator label="Loading people" /></div>;
+    if (loadError && users.length === 0) {
+        return <LoadError className="mt-6" message="Could not load people." detail={loadError} onRetry={() => refreshPeople(...PEOPLE_FIELDS)} />;
+    }
 
     return (
-        <div className="mx-auto max-w-[1180px] font-sans">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                    <p className="m-0 text-[13px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{event?.name || "No event selected"}</p>
-                    <h1 className="font-display text-[44px] font-normal leading-[0.95] text-primary md:text-[56px]">People</h1>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setModal("qr")} className="ax-ghost-btn">Show join QR</button>
-                    <button type="button" onClick={() => setModal("add")} disabled={!eventId || rosterLoading} className="ax-primary-btn !min-h-11 !text-sm">+ Add walk-in</button>
-                </div>
+        <div>
+            <div className="mb-3 flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={() => setModal("qr")} className="ax-ghost-btn flex-1 sm:flex-none">Show join QR</button>
+                <button type="button" onClick={() => setModal("add")} disabled={!eventId || rosterLoading} className="ax-primary-btn flex-1 !min-h-11 !text-sm sm:flex-none">+ Add walk-in</button>
             </div>
 
             <div className="mb-4 grid grid-cols-2 gap-2.5 md:grid-cols-4">
@@ -233,7 +264,7 @@ function AdminPeoplePage({event, eventId, eventsLoading}) {
                         </table>
                     </div>
                     {shown.length === 0 && <p className="m-0 py-6 text-center text-muted-foreground">{rows.length === 0 ? "Nobody has registered yet." : "No one matches this filter."}</p>}
-                    <p className="m-0 mt-3 text-sm text-muted-foreground">Need to remove someone or enrol into a different event? <Link className="font-semibold text-primary underline underline-offset-2" to="/admin/participants">Advanced participant tools</Link>.</p>
+                    <p className="m-0 mt-3 text-sm text-muted-foreground">Need to remove someone or enrol into a different event? <Link className="font-semibold text-primary underline underline-offset-2" to="/admin/people?tab=registry">All users</Link>.</p>
                 </section>
 
                 <aside aria-labelledby="feed" className="ax-card order-1 p-4 lg:order-2">
@@ -276,8 +307,9 @@ function QrModal({onClose}) {
     };
     return (
         <Sheet title="Join link" onClose={onClose}>
-            <p className="m-0 text-muted-foreground">Debaters open this address, sign in with Google and add three details. Print it as a QR at the desk using any QR generator.</p>
-            <p className="my-4 break-all rounded-2xl bg-muted p-4 text-center font-heading text-2xl font-bold text-primary">{url}</p>
+            <p className="m-0 text-muted-foreground">Debaters scan this, sign in with Google and add three details. They're enrolled automatically.</p>
+            <div className="my-4 flex justify-center"><QrCode value={url} size={240} label="Scan to join" /></div>
+            <p className="mb-4 mt-0 break-all rounded-2xl bg-muted p-3 text-center font-heading text-lg font-bold text-primary">{url}</p>
             <button type="button" onClick={copy} className="ax-primary-btn w-full">{copied ? "Copied" : "Copy link"}</button>
         </Sheet>
     );
@@ -285,19 +317,13 @@ function QrModal({onClose}) {
 
 function AddWalkInModal({users, enrolledIds, eventId, onClose, onDone}) {
     const {getToken} = useAuth();
-    const toast = useToast();
+    const {run, isBusy} = useAdminMutation();
     const [q, setQ] = useState("");
-    const [busyId, setBusyId] = useState(null);
     const candidates = users.filter((u) => !enrolledIds.has(u.id)).filter((u) => !q.trim() || `${nameOf(u)} ${u.email || ""} ${u.mobile || ""} ${u.usn || ""} ${u.college || ""}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
-    const enroll = async (u) => {
-        setBusyId(u.id);
-        try {
-            const token = await getToken();
-            const res = await EventApi.enrollUserManual(eventId, u.id, token);
-            if (res.success) { toast.success("Added", `${nameOf(u)} is enrolled.`); onDone(); }
-            else toast.error("Could not add", res.error || "Enrolment failed");
-        } catch { toast.error("Error", "Enrolment failed"); } finally { setBusyId(null); }
-    };
+    const enroll = (u) => run("enroll", async () => {
+        const token = await getToken();
+        return EventApi.enrollUserManual(eventId, u.id, token);
+    }, {success: `${nameOf(u)} is enrolled`, onSuccess: () => onDone(), onConflict: () => onDone()});
     return (
         <Sheet title="Add walk-in" onClose={onClose}>
             <p className="m-0 mb-3 text-sm text-muted-foreground">Walk-ins sign in with Google on their own phone first. Find them here and enrol them.</p>
@@ -306,7 +332,7 @@ function AddWalkInModal({users, enrolledIds, eventId, onClose, onDone}) {
                 {candidates.map((u) => (
                     <li key={u.id} className="flex items-center gap-3 rounded-xl border border-border px-3 py-2.5">
                         <div className="min-w-0 flex-1"><p className="m-0 truncate font-semibold">{nameOf(u)}</p><p className="m-0 truncate text-[13px] text-muted-foreground">{u.email}</p></div>
-                        <button type="button" disabled={busyId === u.id} onClick={() => enroll(u)} className="ax-ghost-btn !min-h-11">{busyId === u.id ? "…" : "Enrol"}</button>
+                        <button type="button" disabled={isBusy("enroll")} onClick={() => enroll(u)} className="ax-ghost-btn !min-h-11">{isBusy("enroll") ? "…" : "Enrol"}</button>
                     </li>
                 ))}
             </ul>

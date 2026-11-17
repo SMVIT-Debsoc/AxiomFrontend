@@ -1,58 +1,67 @@
 import {usePageRequests} from "../../hooks/usePageRequests";
-import ModalSurface from "../../components/ui/ModalSurface";
-import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion as Motion, AnimatePresence } from "framer-motion";
-import { cn, addMinutesToISTDateTime, toISTISOString, getCurrentISTDateTimeLocal } from "../../lib/utils";
-import {
-  Clock,
-  Plus,
-  ChevronRight,
-  Settings,
-  Users,
-  Activity,
-  Loader2,
-  ArrowLeft,
-  CheckCircle2,
-  Info,
-  MessageCircle,
-  Search,
-  Shield,
-  X,
-} from "lucide-react";
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Plus, Settings, Activity, Loader2, X, ChevronRight, ExternalLink } from "lucide-react";
+import { cn, formatTimeIST } from "../../lib/utils";
 import { useAuth } from "../../auth/client.jsx";
-import {UserAvatar} from "../../components/ui/UserAvatar";
-import { AdminApi, EventApi } from "../../services/api";
-import {serializeEventDates, toLocalDateTime} from "../../lib/datetime";
-import LoadingIndicator from "../../components/ui/LoadingIndicator";
+import { AdminApi } from "../../services/api";
 import { useEventSocket, useLiveRefresh } from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
+import LoadError from "../../components/ui/LoadError";
+import { useAdminMutation } from "../../hooks/useAdminMutation";
+import { advanceTargetLabel } from "../../lib/advanceTarget";
+import EventFormModal from "./setup/EventModals";
+import { CreateRoundModal, EditRoundModal } from "./setup/RoundModals";
 
-const ADMIN_EVENT_FIELDS = ["event", "rounds", "stats", "roster"];
+// Setup → Rounds for one event: the round sequence, per-round settings (incl.
+// advance target), create / edit / delete. Enrolment lives in People.
 
-export default function AdminEventDetails() {
-  const {id: eventId} = useParams();
+const ADMIN_EVENT_FIELDS = ["event", "rounds", "stats"];
+
+const ROUND_STATE = {
+  ONGOING: ["Live", "ax-state-live"],
+  COMPLETED: ["Done", "ax-state-done"],
+  UPCOMING: ["Waiting", "ax-state-waiting"],
+};
+
+const formatDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "—";
+
+export default function AdminEventDetails({ eventId: eventIdProp }) {
+  const { id } = useParams();
+  const eventId = eventIdProp || id;
+  if (!eventId) {
+    return <EmptyState compact title="No event selected" description="Pick or create an event in the Events tab first." />;
+  }
   return <AdminEventPage key={eventId} eventId={eventId} />;
+}
+
+function RoundStateChip({ status }) {
+  const [label, cls] = ROUND_STATE[String(status).toUpperCase()] || ROUND_STATE.UPCOMING;
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold", cls)}>
+      <span className="ax-state-dot" aria-hidden="true" />{label}
+    </span>
+  );
 }
 
 function AdminEventPage({eventId}) {
   const { getToken } = useAuth();
-  const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [rounds, setRounds] = useState([]);
   const [roundsLoading, setRoundsLoading] = useState(true);
   const [stats, setStats] = useState(null);
-  const [participants, setParticipants] = useState([]);
-  const [rosterLoading, setRosterLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showCreateRound, setShowCreateRound] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [editingRound, setEditingRound] = useState(null);
-  const [activeTab, setActiveTab] = useState("rounds");
   const [deletingRoundId, setDeletingRoundId] = useState(null);
-  const [showAddParticipant, setShowAddParticipant] = useState(false);
-  const [allUsers, setAllUsers] = useState([]);
-  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [loadErrors, setLoadErrors] = useState({});
+  // Bumped whenever a live round event names the round currently open in the editor.
+  const [editingRoundChanges, setEditingRoundChanges] = useState(0);
+  const { run } = useAdminMutation();
 
   const refresh = usePageRequests(ADMIN_EVENT_FIELDS, async (field, token, options, isCurrent) => {
     if (field === "event" && !options.skipCache) setLoading(true);
@@ -61,579 +70,250 @@ function AdminEventPage({eventId}) {
         event: `/events/${eventId}?view=metadata`,
         rounds: `/rounds/event/${eventId}?view=summary`,
         stats: `/stats/event/${eventId}`,
-        roster: `/events/${eventId}/participants`,
       }[field];
       const response = await AdminApi.apiRequest(url, "GET", null, token, options);
       if (!isCurrent() || !response.success) return;
       if (field === "event") setEvent(response.event);
       if (field === "rounds") setRounds(response.rounds || []);
       if (field === "stats") setStats(response.data);
-      if (field === "roster") setParticipants(response.participants || []);
+      setLoadErrors((prev) => (prev[field] ? { ...prev, [field]: null } : prev));
     } catch (error) {
-      if (isCurrent()) console.error("Failed to fetch event data:", error);
+      if (!isCurrent()) return;
+      console.error("Failed to fetch event data:", error);
+      setLoadErrors((prev) => ({
+        ...prev,
+        [field]: { message: error?.message || "Request failed", status: error?.status },
+      }));
     } finally {
       if (isCurrent() && field === "event") setLoading(false);
       if (isCurrent() && field === "rounds") setRoundsLoading(false);
-      if (isCurrent() && field === "roster") setRosterLoading(false);
     }
   }, undefined, eventId);
 
   const fetchData = () => refresh(...ADMIN_EVENT_FIELDS);
   useLiveRefresh(fetchData, {enabled: Boolean(eventId), eventId, jitterMs: 3000, invalidateCache: false});
+  const editingRoundId = editingRound?.id || null;
+  const onRoundChanged = (data) => {
+    refresh("rounds", "stats");
+    if (editingRoundId && (!data?.roundId || data.roundId === editingRoundId)) {
+      setEditingRoundChanges((n) => n + 1);
+    }
+  };
   useEventSocket(eventId, {
     onEventUpdated: () => refresh("event"),
     onRoundCreated: () => refresh("rounds", "stats"),
-    onRoundUpdated: () => refresh("rounds", "stats"),
-    onRoundDeleted: () => refresh("rounds", "stats"),
-    onEventEnrollment: () => refresh("roster", "stats"),
-    onRoundStatusChange: () => refresh("rounds", "stats"),
-    onPairingsPublished: () => refresh("rounds"),
-    onRoundCheckInWindow: () => refresh("rounds"),
+    onRoundUpdated: onRoundChanged,
+    onRoundDeleted: onRoundChanged,
+    onEventEnrollment: () => refresh("stats"),
+    onRoundStatusChange: onRoundChanged,
+    onPairingsPublished: onRoundChanged,
+    onRoundCheckInWindow: onRoundChanged,
     onDebateResult: () => refresh("stats"),
     onDebateCreated: () => refresh("stats"),
     onDebateDeleted: () => refresh("stats"),
   });
 
-  const handleDeleteRound = async (id) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this round? All pairings and results will be lost."
-      )
-    )
-      return;
-    try {
-      setDeletingRoundId(id);
-      const token = await getToken();
-      const response = await AdminApi.deleteRound(id, token);
-      if (response.success) {
-        fetchData();
-      } else {
-        alert(response.error || "Failed to delete round");
+  const handleDeleteRound = (round) =>
+    run(
+      `delete-round:${round.id}`,
+      async () => {
+        setDeletingRoundId(round.id);
+        try {
+          const token = await getToken();
+          return await AdminApi.deleteRound(round.id, token);
+        } finally {
+          setDeletingRoundId(null);
+        }
+      },
+      {
+        confirm: `Delete ${round.name}? Its draw and ballots are lost. This cannot be undone.`,
+        success: "Round deleted",
+        onSuccess: () => refresh("rounds", "stats"),
+        onConflict: () => refresh("rounds", "stats"),
       }
-    } catch {
-      alert("Error deleting round");
-    } finally {
-      setDeletingRoundId(null);
-    }
-  };
+    );
 
-  const fetchUsers = async () => {
-    try {
-      const token = await getToken();
-      const response = await AdminApi.apiRequest("/users?limit=1000", "GET", null, token);
-      if (response.success) {
-        // Filter out users already enrolled
-        const enrolledIds = new Set(participants.map((p) => p.id));
-        setAllUsers(response.users.filter((u) => !enrolledIds.has(u.id)));
-      }
-    } catch (error) {
-      console.error("Failed to fetch users", error);
-    }
-  };
-
-  const handleManualEnroll = async (userId) => {
-    try {
-      const token = await getToken();
-      const response = await EventApi.enrollUserManual(eventId, userId, token);
-      if (response.success) {
-        refresh("roster", "stats");
-        setShowAddParticipant(false);
-      } else {
-        alert(response.error || "Failed to enroll user");
-      }
-    } catch {
-      alert("Error enrolling user");
-    }
-  };
-
-  useEffect(() => {
-    if (showAddParticipant) {
-      fetchUsers();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAddParticipant]);
-
-  if (loading) {
+  if (loading && !event) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingIndicator label="Loading tournament details" />
+      <div role="status" aria-label="Loading rounds" className="space-y-3">
+        <div className="ax-card h-24 animate-pulse bg-muted/50" />
+        <div className="grid grid-cols-3 gap-2.5">{[0, 1, 2].map((i) => <div key={i} className="ax-card h-20 animate-pulse bg-muted/50" />)}</div>
+        <div className="ax-card h-48 animate-pulse bg-muted/50" />
       </div>
     );
   }
 
-  if (!event) return <div className="text-center py-20 font-sans text-muted-foreground">Event not found</div>;
+  if (!event) {
+    const failure = loadErrors.event;
+    if (failure && failure.status !== 404) {
+      return (
+        <LoadError
+          message="Could not load this event."
+          detail={failure.message}
+          onRetry={() => {
+            setLoading(true);
+            refresh(...ADMIN_EVENT_FIELDS);
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        title="Event not found"
+        description="This event may have been deleted by another admin."
+        action={<Link to="/admin/setup" className="ax-primary-btn !min-h-11 !text-sm">Back to events</Link>}
+      />
+    );
+  }
 
-  const statsCards = [
-    {
-      label: "Check-ins",
-      value: stats?.checkIns?.present || 0,
-      total: stats?.checkIns?.total,
-      icon: Users,
-      color: "text-blue-500",
-    },
-    {
-      label: "Rounds",
-      value: rounds.length,
-      icon: Activity,
-      color: "text-primary",
-    },
-    {
-      label: "Debates",
-      value: stats?.debates?.completed || 0,
-      total: stats?.debates?.total,
-      icon: CheckCircle2,
-      color: "text-emerald-500",
-    },
+  const statTiles = [
+    ["Checked in", stats?.checkIns?.present ?? 0, stats?.checkIns?.total],
+    ["Rounds", rounds.length, null],
+    ["Ballots in", stats?.debates?.completed ?? 0, stats?.debates?.total],
   ];
+  const nextNumber = rounds.length + 1;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
-        <div className="flex items-start gap-3.5 flex-1 min-w-0">
-          <button
-            onClick={() => navigate("/admin/events")}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors shrink-0 mt-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Back to tournaments list"
-          >
-            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
+    <div className="space-y-4">
+      {/* Event strip */}
+      <section aria-label="Event" className="ax-card flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-heading text-xl font-bold text-foreground break-words">{event.name}</h2>
+            <RoundStateChip status={event.status} />
+          </div>
+          <p className="m-0 mt-0.5 text-sm text-muted-foreground line-clamp-2">{event.description || "No description"}</p>
+          <p className="m-0 mt-1 text-xs text-muted-foreground tabular-nums">
+            {formatDateTime(event.startDate)} → {formatDateTime(event.endDate)}
+            {" · "}
+            <Link to={`/dashboard/events/${eventId}`} className="inline-flex items-center gap-1 font-semibold underline underline-offset-2">
+              Public page <ExternalLink className="w-3 h-3" aria-hidden="true" />
+            </Link>
+          </p>
+        </div>
+        <div className="flex w-full gap-2 md:w-auto">
+          <button type="button" onClick={() => setShowEditEvent(true)} className="ax-ghost-btn !min-h-11" aria-label="Edit event">
+            <Settings className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">Edit event</span>
           </button>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-500">
-                Tournament
-              </span>
-              <span className="text-muted-foreground/60">•</span>
-              <span
-                className={`text-[10px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded border shrink-0 ${
-                  event.status === "ONGOING"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                    : event.status === "UPCOMING"
-                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                    : "bg-muted text-muted-foreground border-border"
-                }`}
-              >
-                {event.status}
-              </span>
-            </div>
-            <h1 className="text-xl md:text-3xl font-heading font-bold text-foreground break-words mt-1">
-              {event.name}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-xs md:text-sm font-sans break-words line-clamp-2 md:line-clamp-none max-w-2xl">
-              {event.description || "No description provided"}
+          <button type="button" onClick={() => setShowCreateRound(true)} disabled={roundsLoading} className="ax-primary-btn flex-1 !min-h-11 !text-sm md:flex-none">
+            <Plus className="w-4 h-4" aria-hidden="true" /> Create Round {nextNumber}
+          </button>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-3 gap-2.5">
+        {statTiles.map(([label, value, total]) => (
+          <div key={label} className="ax-card p-3 md:p-4">
+            <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground md:text-xs">{label}</p>
+            <p className="m-0 mt-1 font-display text-3xl leading-none text-primary tabular-nums md:text-4xl">
+              {value}{total ? <span className="font-sans text-sm text-muted-foreground"> / {total}</span> : null}
             </p>
           </div>
-        </div>
-        <div className="flex gap-2.5 w-full md:w-auto shrink-0">
-          <button
-            onClick={() => setShowEditEvent(true)}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            title="Edit Tournament Settings"
-            aria-label="Edit tournament settings"
-          >
-            <Settings className="w-4 h-4" aria-hidden="true" />
-          </button>
-          <button
-            onClick={() => setShowCreateRound(true)}
-            disabled={roundsLoading}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            <span>Create Round {rounds.length + 1}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-        {statsCards.map((card, i) => (
-          <Motion.div
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="bg-card/70 border border-border/70 rounded-xl p-5 flex items-center justify-between backdrop-blur-sm"
-          >
-            <div>
-              <p className="text-xs text-muted-foreground font-sans font-medium mb-1">
-                {card.label}
-              </p>
-              <h3 className="text-2xl font-heading font-bold text-foreground">
-                {card.value}
-                {card.total ? (
-                  <span className="text-sm text-muted-foreground font-sans font-normal">
-                    {" "}
-                    / {card.total}
-                  </span>
-                ) : (
-                  ""
-                )}
-              </h3>
-            </div>
-            <card.icon className={`w-7 h-7 ${card.color} opacity-30`} aria-hidden="true" />
-          </Motion.div>
         ))}
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex items-center gap-6 border-b border-border/70 mb-6" role="group" aria-label="Tournament view">
-        <button
-          type="button"
-          aria-pressed={activeTab === "rounds"}
-          onClick={() => setActiveTab("rounds")}
-          className={cn(
-            "relative pb-3 text-sm font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
-            activeTab === "rounds"
-              ? "text-primary font-semibold"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Tournament Rounds
-          {activeTab === "rounds" && (
-            <Motion.div
-              layoutId="activeAdminTab"
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-              transition={{ type: "tween", duration: .24, ease: "easeOut" }}
-            />
-          )}
-        </button>
-        <button
-          type="button"
-          aria-pressed={activeTab === "participants"}
-          onClick={() => setActiveTab("participants")}
-          className={cn(
-            "relative pb-3 text-sm font-sans font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
-            activeTab === "participants"
-              ? "text-primary font-semibold"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Participants ({rosterLoading ? "…" : participants.length})
-          {activeTab === "participants" && (
-            <Motion.div
-              layoutId="activeAdminTab"
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-              transition={{ type: "tween", duration: .24, ease: "easeOut" }}
-            />
-          )}
-        </button>
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Main Content Column */}
-        <div className="lg:col-span-2 space-y-4 relative overflow-hidden min-h-[350px]">
-          <AnimatePresence mode="wait">
-            {activeTab === "rounds" ? (
-              <Motion.div
-                key="rounds"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-heading font-bold text-foreground">Round Sequence</h2>
-                </div>
-
-                {roundsLoading ? (
-                  <LoadingIndicator label="Loading rounds" />
-                ) : rounds.length === 0 ? (
-                  <EmptyState
-                    compact
-                    icon={Activity}
-                    title="No rounds configured"
-                    description="Start your tournament by creating the first preliminary round."
-                    action={
-                      <button onClick={() => setShowCreateRound(true)} className="axiom-button axiom-button--green axiom-press">
-                        Create Round 1
-                      </button>
-                    }
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {rounds.map((round) => (
-                      <Link
-                        key={round.id}
-                        to={`/admin/rounds/${round.id}`}
-                        className="block group bg-card/70 border border-border/70 rounded-xl p-4 hover:border-primary/50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center font-heading font-bold text-primary shrink-0 text-sm">
-                              {round.roundNumber}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="font-heading font-semibold text-sm break-words pr-2 text-foreground group-hover:text-primary transition-colors">
-                                {round.name}
-                              </h4>
-                              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground font-sans mt-0.5">
-                                <span className="flex items-center gap-1 whitespace-nowrap">
-                                  <Clock className="w-3 h-3" aria-hidden="true" />
-                                  {new Date(round.checkInStartTime).toLocaleTimeString("en-IN", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    timeZone: "Asia/Kolkata",
-                                  })}{" "}
-                                  IST
-                                </span>
-                                <span>•</span>
-                                <span
-                                  className={`capitalize font-medium ${
-                                    round.status === "ONGOING"
-                                      ? "text-emerald-500"
-                                      : round.status === "COMPLETED"
-                                      ? "text-blue-500"
-                                      : "text-muted-foreground"
-                                  }`}
-                                >
-                                  {round.status?.toLowerCase()}
-                                </span>
-                                {round.pairingsPublished && (
-                                  <>
-                                    <span>•</span>
-                                    <span className="text-[10px] font-bold uppercase text-emerald-500 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
-                                      Draw Public
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setEditingRound(round);
-                              }}
-                              className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground opacity-100 md:opacity-0 group-hover:opacity-100 transition-all focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={`Edit round ${round.name}`}
-                              title="Edit Round"
-                            >
-                              <Settings className="w-4 h-4" aria-hidden="true" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleDeleteRound(round.id);
-                              }}
-                              disabled={deletingRoundId === round.id}
-                              className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-100 md:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={`Delete round ${round.name}`}
-                              title="Delete Round"
-                            >
-                              {deletingRoundId === round.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                              ) : (
-                                <X className="w-4 h-4" aria-hidden="true" />
-                              )}
-                            </button>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" aria-hidden="true" />
-                          </div>
+      <section aria-labelledby="round-sequence" className="space-y-2.5">
+        <h2 id="round-sequence" className="font-heading text-lg font-bold">Round sequence</h2>
+        {loadErrors.rounds && !roundsLoading && (
+          <LoadError compact message="Could not refresh rounds." onRetry={() => refresh("rounds", "stats")} />
+        )}
+        {roundsLoading ? (
+          <div role="status" aria-label="Loading rounds" className="ax-card h-32 animate-pulse bg-muted/50" />
+        ) : rounds.length === 0 && loadErrors.rounds ? null : rounds.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Activity}
+            title="No rounds yet"
+            description="Create Round 1 with its motion and check-in window."
+            action={<button type="button" onClick={() => setShowCreateRound(true)} className="ax-primary-btn !min-h-11 !text-sm">Create Round 1</button>}
+          />
+        ) : (
+          <>
+            {/* Desktop: dense table (Director on a laptop) */}
+            <div className="ax-card hidden overflow-hidden md:block">
+              <table className="w-full text-left text-[15px]" aria-label="Rounds">
+                <thead className="border-b border-border text-xs uppercase tracking-[0.06em] text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-4 py-3 w-12">#</th>
+                    <th scope="col" className="px-4 py-3">Round</th>
+                    <th scope="col" className="px-4 py-3 whitespace-nowrap">Check-in window</th>
+                    <th scope="col" className="px-4 py-3">State</th>
+                    <th scope="col" className="px-4 py-3">Draw</th>
+                    <th scope="col" className="px-4 py-3 whitespace-nowrap">Advance target</th>
+                    <th scope="col" className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {rounds.map((round) => (
+                    <tr key={round.id} className="hover:bg-muted/30 align-top">
+                      <td className="px-4 py-3 font-display text-2xl leading-none tabular-nums">{round.roundNumber}</td>
+                      <td className="px-4 py-3">
+                        <p className="m-0 font-semibold">{round.name}</p>
+                        {round.motion && <p className="m-0 mt-0.5 line-clamp-1 max-w-md text-xs text-muted-foreground">{round.motion}</p>}
+                      </td>
+                      <td className="px-4 py-3 text-sm whitespace-nowrap tabular-nums">
+                        {round.checkInStartTime ? `${formatTimeIST(round.checkInStartTime)}–${formatTimeIST(round.checkInEndTime)} IST` : "—"}
+                      </td>
+                      <td className="px-4 py-3"><RoundStateChip status={round.status} /></td>
+                      <td className="px-4 py-3 text-sm">{round.pairingsPublished ? "Published" : "Not published"}</td>
+                      <td className="px-4 py-3 text-sm tabular-nums">{advanceTargetLabel(round.advanceTarget)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button type="button" onClick={() => setEditingRound(round)} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`Edit ${round.name}`} title="Edit round">
+                            <Settings className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                          <button type="button" onClick={() => handleDeleteRound(round)} disabled={deletingRoundId === round.id} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50" aria-label={`Delete ${round.name}`} title="Delete round">
+                            {deletingRoundId === round.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <X className="w-4 h-4" aria-hidden="true" />}
+                          </button>
+                          <Link to={`/admin/rounds/${round.id}`} className="ax-ghost-btn !min-h-11 !text-sm">Open <ChevronRight className="w-4 h-4" aria-hidden="true" /></Link>
                         </div>
-                        {round.motion && (
-                          <div className="mt-3 p-2.5 rounded-lg bg-muted/40 text-xs italic text-muted-foreground border-l-2 border-primary/50 font-serif">
-                            "{round.motion}"
-                          </div>
-                        )}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </Motion.div>
-            ) : (
-              <Motion.div
-                key="participants"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-heading font-bold text-foreground">Enrolled Debaters</h2>
-                  <button
-                    onClick={() => setShowAddParticipant(true)}
-                    disabled={rosterLoading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-sans font-medium hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-                    <span>Add Participant</span>
-                  </button>
-                </div>
-
-                {rosterLoading ? (
-                  <LoadingIndicator label="Loading participants" />
-                ) : participants.length === 0 ? (
-                  <EmptyState
-                    compact
-                    icon={Users}
-                    title="No participants registered"
-                    description="Enroll registered debaters manually or share tournament registration links."
-                  />
-                ) : (
-                  <>
-                  <div className="md:hidden space-y-2.5">
-                    {participants.map((p) => (
-                      <div key={p.id} className="bg-card/80 border border-border/70 rounded-xl p-3.5 space-y-1.5 text-xs">
-                        <div className="flex items-center gap-2.5">
-                          <UserAvatar user={p} size="xs" className="w-8 h-8 shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-sm text-foreground truncate">{p.firstName} {p.lastName}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">{p.college || "N/A"}{p.usn ? ` · ${p.usn}` : ""}</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-muted-foreground">
-                          {p.mobile ? <a href={`tel:${p.mobile}`} className="font-medium text-foreground tabular-nums hover:underline">{p.mobile}</a> : <span>No phone</span>}
-                          {p.email && <span className="truncate">{p.email}</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="hidden md:block bg-card/70 border border-border/70 rounded-xl overflow-hidden backdrop-blur-sm">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left" aria-label="Enrolled participants">
-                        <thead className="bg-muted/40 text-xs font-heading font-semibold uppercase text-muted-foreground border-b border-border/70">
-                          <tr>
-                            <th scope="col" className="px-4 py-3">Debater</th>
-                            <th scope="col" className="px-4 py-3">Institution</th>
-                            <th scope="col" className="px-4 py-3">Contact &amp; ID</th>
-                            <th scope="col" className="px-4 py-3 hidden lg:table-cell">Enrolled</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/60">
-                          {participants.map((p) => (
-                            <tr
-                              key={p.id}
-                              className="hover:bg-muted/30 transition-colors"
-                            >
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2.5">
-                                  <UserAvatar user={p} size="xs" className="w-7 h-7" />
-                                  <div>
-                                    <span className="font-sans font-medium text-sm text-foreground block">
-                                      {p.firstName} {p.lastName}
-                                    </span>
-                                    {p.gender && (
-                                      <span className="text-[11px] text-muted-foreground font-sans">
-                                        {p.gender}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-xs text-muted-foreground font-sans">
-                                <p className="text-foreground">{p.college || "N/A"}</p>
-                                {p.usn && <p className="text-[11px] font-mono text-muted-foreground mt-0.5">{p.usn}</p>}
-                              </td>
-                              <td className="px-4 py-3 text-xs text-muted-foreground font-sans">
-                                {p.mobile ? (
-                                  <p className="font-medium text-foreground tabular-nums">
-                                    <a href={`tel:${p.mobile}`} className="hover:text-primary hover:underline">
-                                      {p.mobile}
-                                    </a>
-                                  </p>
-                                ) : (
-                                  <p className="text-muted-foreground">No phone</p>
-                                )}
-                                {p.email && <p className="truncate">{p.email}</p>}
-                              </td>
-                              <td className="px-4 py-3 text-xs text-muted-foreground font-sans lg:table-cell hidden">
-                                {p.createdAt
-                                  ? new Date(p.createdAt).toLocaleDateString(undefined, {
-                                      month: "short",
-                                      day: "numeric",
-                                    })
-                                  : "N/A"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  </>
-                )}
-              </Motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Sidebar Info */}
-        <div className="space-y-4">
-          <div className="bg-card/70 border border-border/70 rounded-xl p-5 backdrop-blur-sm">
-            <h3 className="font-heading font-bold text-sm text-foreground flex items-center gap-2 mb-3">
-              <Info className="w-4 h-4 text-primary" aria-hidden="true" />
-              Tournament Logistics
-            </h3>
-            <div className="space-y-3 font-sans text-xs">
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
-                  Start Date
-                </p>
-                <p className="text-foreground font-medium">
-                  {new Date(event.startDate).toLocaleDateString(undefined, {
-                    weekday: "short",
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}{" "}
-                  at{" "}
-                  {new Date(event.startDate).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">
-                  End Date
-                </p>
-                <p className="text-foreground font-medium">
-                  {new Date(event.endDate).toLocaleDateString(undefined, {
-                    weekday: "short",
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}{" "}
-                  at{" "}
-                  {new Date(event.endDate).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-              <hr className="border-border/60" />
-              <div className="pt-1">
-                <Link
-                  to={`/dashboard/events/${eventId}`}
-                  className="text-xs text-primary hover:underline flex items-center gap-1 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-                >
-                  <span>Public tournament page</span>
-                  <ChevronRight className="w-3 h-3" aria-hidden="true" />
-                </Link>
-              </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
 
-          <div className="bg-card/70 border border-border/70 rounded-xl p-5 backdrop-blur-sm">
-            <h3 className="font-heading font-semibold text-xs uppercase tracking-wider text-emerald-500 mb-1.5 flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5" aria-hidden="true" /> Admin Notice
-            </h3>
-            <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-              Generating pairings for a round will automatically close the check-in window and mark absent users as eliminated for single-elimination formats.
-            </p>
-          </div>
-        </div>
-      </div>
+            {/* Phone: cards */}
+            <div className="md:hidden space-y-2.5">
+              {rounds.map((round) => (
+                <div key={round.id} className="ax-card flex flex-col gap-2 p-3.5">
+                  <div className="flex items-start gap-3">
+                    <span className="font-display text-3xl leading-none tabular-nums text-primary">{round.roundNumber}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="m-0 font-semibold leading-tight">{round.name}</p>
+                      <p className="m-0 mt-0.5 text-xs text-muted-foreground tabular-nums">
+                        {round.checkInStartTime ? `Check-in ${formatTimeIST(round.checkInStartTime)}–${formatTimeIST(round.checkInEndTime)} IST` : "No check-in window"}
+                      </p>
+                    </div>
+                    <RoundStateChip status={round.status} />
+                  </div>
+                  {round.motion && <p className="m-0 line-clamp-2 rounded-lg bg-muted/60 px-3 py-2 text-xs">{round.motion}</p>}
+                  <p className="m-0 text-xs text-muted-foreground">Draw {round.pairingsPublished ? "published" : "not published"} · Advance {advanceTargetLabel(round.advanceTarget)}</p>
+                  <div className="flex items-center gap-1 border-t border-border pt-2">
+                    <Link to={`/admin/rounds/${round.id}`} className="ax-ghost-btn mr-auto !min-h-11 !text-sm">Open <ChevronRight className="w-4 h-4" aria-hidden="true" /></Link>
+                    <button type="button" onClick={() => setEditingRound(round)} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted" aria-label={`Edit ${round.name}`}>
+                      <Settings className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => handleDeleteRound(round)} disabled={deletingRoundId === round.id} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted disabled:opacity-50" aria-label={`Delete ${round.name}`}>
+                      {deletingRoundId === round.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <X className="w-4 h-4" aria-hidden="true" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <p className="m-0 text-xs text-muted-foreground">
+          Generating a draw closes check-in and eliminates debaters who did not check in. Enrolment and walk-ins are in{" "}
+          <Link to="/admin/people" className="font-semibold underline underline-offset-2">People</Link>.
+        </p>
+      </section>
 
-      {/* Modal Components */}
       {showCreateRound && (
         <CreateRoundModal
           eventId={eventId}
-          roundNumber={rounds.length + 1}
+          roundNumber={nextNumber}
           onClose={() => setShowCreateRound(false)}
           onCreated={() => {
             setShowCreateRound(false);
@@ -643,10 +323,10 @@ function AdminEventPage({eventId}) {
       )}
 
       {showEditEvent && (
-        <EditEventModal
+        <EventFormModal
           event={event}
           onClose={() => setShowEditEvent(false)}
-          onUpdated={() => {
+          onSaved={() => {
             setShowEditEvent(false);
             fetchData();
           }}
@@ -656,580 +336,19 @@ function AdminEventPage({eventId}) {
       {editingRound && (
         <EditRoundModal
           round={editingRound}
-          onClose={() => setEditingRound(null)}
+          latestRound={rounds.find((r) => r.id === editingRound.id) || null}
+          remoteChanges={editingRoundChanges}
+          onClose={() => {
+            setEditingRound(null);
+            setEditingRoundChanges(0);
+          }}
           onUpdated={() => {
             setEditingRound(null);
-            fetchData();
+            setEditingRoundChanges(0);
+            refresh("rounds", "stats");
           }}
         />
       )}
-
-      {showAddParticipant && (
-        <ModalSurface onDismiss={() => setShowAddParticipant(false)}
-          aria-label="Add Participant"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-        >
-          <Motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-lg flex flex-col max-h-[80vh] shadow-xl"
-          >
-            <div className="flex items-center justify-between mb-4 border-b border-border/60 pb-3">
-              <div>
-                <h2 className="text-lg font-heading font-bold text-foreground">Add Debater to Tournament</h2>
-                <p className="text-xs text-muted-foreground font-sans">Select from registered platform accounts</p>
-              </div>
-              <button
-                onClick={() => setShowAddParticipant(false)}
-                className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="Close dialog"
-              >
-                <X className="w-4 h-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="relative mb-3">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <input
-                type="text"
-                placeholder="Search registered debaters..."
-                value={userSearchQuery}
-                onChange={(e) => setUserSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs font-sans rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {allUsers
-                .filter((u) => {
-                  const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
-                  const query = userSearchQuery.toLowerCase();
-                  return (
-                    name.includes(query) ||
-                    (u.email || "").toLowerCase().includes(query) ||
-                    (u.mobile || "").toLowerCase().includes(query) ||
-                    (u.usn || "").toLowerCase().includes(query)
-                  );
-                })
-                .map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleManualEnroll(u.id)}
-                    className="w-full flex items-center justify-between p-3 rounded-lg border border-border/70 hover:bg-muted/50 transition-all group text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <UserAvatar user={u} size="sm" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-heading font-semibold text-foreground truncate">
-                          {u.firstName} {u.lastName}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground font-sans truncate">
-                          {u.email}{u.mobile ? ` · ${u.mobile}` : ""}{u.usn ? ` · ${u.usn}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <Plus className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0 ml-2" aria-hidden="true" />
-                  </button>
-                ))}
-              {allUsers.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-xs italic font-sans">
-                  No additional registered users found to enroll.
-                </div>
-              )}
-            </div>
-          </Motion.div>
-        </ModalSurface>
-      )}
     </div>
-  );
-}
-
-function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
-  const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const toISTDateTimeString = (date) => {
-    return date
-      .toLocaleString("sv-SE", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-      .replace(" ", "T");
-  };
-
-  const [formData, setFormData] = useState(() => ({
-    eventId,
-    roundNumber,
-    name: `Preliminary Round ${roundNumber}`,
-    motion: "",
-    checkInStartTime: toISTDateTimeString(new Date()),
-    checkInEndTime: toISTDateTimeString(new Date(Date.now() + 20 * 60000)),
-    status: "UPCOMING",
-  }));
-
-  const applyDurationPreset = (minutes) => {
-    const base = formData.checkInStartTime || getCurrentISTDateTimeLocal();
-    const endStr = addMinutesToISTDateTime(base, minutes);
-    setFormData((prev) => ({
-      ...prev,
-      checkInStartTime: prev.checkInStartTime || base,
-      checkInEndTime: endStr,
-    }));
-    setError("");
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!formData.motion?.trim()) {
-      setError("Debate motion is required and cannot be empty.");
-      return;
-    }
-
-    const startIso = toISTISOString(formData.checkInStartTime);
-    const endIso = toISTISOString(formData.checkInEndTime);
-    if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
-      setError("Check-in end time must be after check-in start time.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const submitData = {
-        ...formData,
-        checkInStartTime: startIso,
-        checkInEndTime: endIso,
-      };
-
-      const response = await AdminApi.createRound(submitData, token);
-      if (response.success) {
-        onCreated();
-      } else {
-        setError(response.error || "Failed to create round");
-      }
-    } catch (err) {
-      setError(err?.message || "Error creating round");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <ModalSurface onDismiss={onClose} aria-label={`Create Round ${roundNumber}`}
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"><Motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
-    >
-      <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
-        <div>
-          <h2 className="text-lg font-heading font-bold text-foreground">Create Round {roundNumber}</h2>
-          <p className="text-xs text-muted-foreground font-sans">Set check-in timeline (20m default IST) and debate motion</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Close dialog"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </button>
-      </div>
-    
-      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
-        {error && (
-          <div className="ax-signal-loss rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-700 dark:text-rose-200 font-medium" role="alert">
-            {error}
-          </div>
-        )}
-        <div className="grid md:grid-cols-2 gap-3">
-          <label className="md:col-span-2"><span className="text-xs font-semibold mb-1 block text-foreground">Round Name</span><input type="text"
-          required
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
-          <label className="md:col-span-2"><span className="text-xs font-semibold mb-1 block text-foreground">
-            Debate Motion *
-          </span><textarea value={formData.motion}
-          required
-          onChange={(e) => setFormData({ ...formData, motion: e.target.value })}
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
-          rows={3}
-          placeholder="This house believes that... (Required)" /></label>
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in Start (IST)</span><input type="datetime-local"
-          required
-          value={formData.checkInStartTime}
-          onChange={(e) =>
-            setFormData({ ...formData, checkInStartTime: e.target.value })
-          }
-          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in End (IST)</span><input type="datetime-local"
-          required
-          value={formData.checkInEndTime}
-          onChange={(e) =>
-            setFormData({ ...formData, checkInEndTime: e.target.value })
-          }
-          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-foreground">Window length:</span>
-            {[15, 20, 30, 45, 60].map((mins) => (
-              <button
-                key={mins}
-                type="button"
-                onClick={() => applyDurationPreset(mins)}
-                className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-primary hover:text-primary-foreground text-xs font-bold text-foreground transition-all active:scale-95 shadow-xs"
-              >
-                {mins}m
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex gap-2.5 pt-4 border-t border-border/60">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 min-h-11 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 min-h-11 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
-          >
-            {loading ? "Creating..." : "Create Round"}
-          </button>
-        </div>
-      </form>
-    </Motion.div></ModalSurface>
-  );
-}
-
-function EditEventModal({ event, onClose, onUpdated }) {
-  const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-
-
-  const [formData, setFormData] = useState({
-    name: event.name || "",
-    description: event.description || "",
-    startDate: event.startDate
-      ? toLocalDateTime(event.startDate)
-      : "",
-    endDate: event.endDate
-      ? toLocalDateTime(event.endDate)
-      : "",
-    status: event.status || "UPCOMING",
-    whatsappLink: event.whatsappLink || "",
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const response = await AdminApi.updateEvent(event.id, serializeEventDates(formData, event), token);
-      if (response.success) {
-        onUpdated();
-      } else {
-        alert(response.error || "Failed to update event");
-      }
-    } catch {
-      alert("Error updating event");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <ModalSurface onDismiss={onClose} aria-label="Edit Tournament Settings"
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-foreground"><Motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
-    >
-      <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
-        <div>
-          <h2 className="text-lg font-heading font-bold text-foreground">Edit Tournament Settings</h2>
-          <p className="text-xs text-muted-foreground font-sans">Modify parameters and status</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Close dialog"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </button>
-      </div>
-    
-      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Tournament Name</span><input type="text"
-        required
-        value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
-    
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Description</span><textarea value={formData.description}
-        onChange={(e) =>
-          setFormData({ ...formData, description: e.target.value })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
-        rows={3} /></label>
-    
-        <div className="grid md:grid-cols-2 gap-3">
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Start Date (local time)</span><input type="datetime-local"
-          required
-          value={formData.startDate}
-          onChange={(e) =>
-            setFormData({ ...formData, startDate: e.target.value })
-          }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">End Date (local time)</span><input type="datetime-local"
-          value={formData.endDate}
-          onChange={(e) =>
-            setFormData({ ...formData, endDate: e.target.value })
-          }
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-        </div>
-    
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Status</span><select value={formData.status}
-        onChange={(e) =>
-          setFormData({ ...formData, status: e.target.value })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"><option value="UPCOMING">Upcoming</option>
-        <option value="ONGOING">Ongoing</option>
-        <option value="COMPLETED">Completed</option></select></label>
-    
-        <label ><span className="text-xs font-semibold mb-1 flex items-center gap-1.5 text-foreground"><MessageCircle className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
-        WhatsApp Group Link
-        <span className="text-[11px] text-muted-foreground font-normal">(Optional)</span></span><input type="url"
-        value={formData.whatsappLink}
-        onChange={(e) =>
-          setFormData({
-            ...formData,
-            whatsappLink: e.target.value,
-          })
-        }
-        className="w-full px-3 py-2 rounded-lg bg-background border border-emerald-500/30 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-xs transition-all"
-        placeholder="https://chat.whatsapp.com/..." /></label>
-    
-        <div className="flex gap-2.5 pt-4 border-t border-border/60 mt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
-          >
-            {loading ? "Updating..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
-    </Motion.div></ModalSurface>
-  );
-}
-
-function EditRoundModal({ round, onClose, onUpdated }) {
-  const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const toISTDateTimeString = (utcDate) => {
-    if (!utcDate) return "";
-    const date = new Date(utcDate);
-    if (Number.isNaN(date.getTime())) return "";
-    return date
-      .toLocaleString("sv-SE", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-      .replace(" ", "T");
-  };
-
-  const [formData, setFormData] = useState({
-    name: round.name || "",
-    motion: round.motion || "",
-    checkInStartTime: toISTDateTimeString(round.checkInStartTime),
-    checkInEndTime: toISTDateTimeString(round.checkInEndTime),
-    status: round.status || "UPCOMING",
-    pairingsPublished: round.pairingsPublished || false,
-  });
-
-  const applyWindowPreset = (minutes) => {
-    const base = formData.checkInStartTime || getCurrentISTDateTimeLocal();
-    const endStr = addMinutesToISTDateTime(base, minutes);
-    setFormData((prev) => ({
-      ...prev,
-      checkInStartTime: prev.checkInStartTime || base,
-      checkInEndTime: endStr,
-    }));
-    setError("");
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!formData.motion?.trim()) {
-      setError("Debate motion is required and cannot be empty.");
-      return;
-    }
-
-    const startIso = toISTISOString(formData.checkInStartTime);
-    const endIso = toISTISOString(formData.checkInEndTime);
-    if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
-      setError("Check-in end time must be after check-in start time.");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const submitData = {
-        ...formData,
-        checkInStartTime: startIso,
-        checkInEndTime: endIso,
-      };
-
-      const response = await AdminApi.updateRound(round.id, submitData, token);
-      if (response.success) {
-        onUpdated();
-      } else {
-        setError(response.error || "Failed to update round");
-      }
-    } catch (err) {
-      setError(err?.message || "Error updating round");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <ModalSurface onDismiss={onClose} aria-label="Edit Round"
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-foreground"><Motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-card border border-border/80 rounded-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl"
-    >
-      <div className="flex items-center justify-between mb-5 border-b border-border/60 pb-3">
-        <div>
-          <h2 className="text-lg font-heading font-bold text-foreground">Edit Round Parameters</h2>
-          <p className="text-xs text-muted-foreground font-sans">Update schedule, motion, and draw visibility</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="min-h-11 min-w-11 inline-flex items-center justify-center p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Close dialog"
-        >
-          <X className="w-4 h-4" aria-hidden="true" />
-        </button>
-      </div>
-    
-      <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
-        {error && (
-          <div className="ax-signal-loss rounded-lg border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs text-rose-700 dark:text-rose-200 font-medium" role="alert">
-            {error}
-          </div>
-        )}
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Round Name</span><input type="text"
-        required
-        value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-        className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
-    
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Debate Motion *</span><textarea value={formData.motion}
-        required
-        onChange={(e) => setFormData({ ...formData, motion: e.target.value })}
-        className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
-        rows={3}
-        placeholder="Enter debate motion (Required)" /></label>
-    
-        <div className="grid md:grid-cols-2 gap-3">
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in Start (IST)</span><input type="datetime-local"
-          required
-          value={formData.checkInStartTime}
-          onChange={(e) =>
-            setFormData({ ...formData, checkInStartTime: e.target.value })
-          }
-          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-          <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in End (IST)</span><input type="datetime-local"
-          required
-          value={formData.checkInEndTime}
-          onChange={(e) =>
-            setFormData({ ...formData, checkInEndTime: e.target.value })
-          }
-          className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-foreground">Window length:</span>
-          {[15, 20, 30, 45, 60].map((mins) => (
-            <button
-              key={mins}
-              type="button"
-              onClick={() => applyWindowPreset(mins)}
-              className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-primary hover:text-primary-foreground text-xs font-bold text-foreground transition-all active:scale-95 shadow-xs"
-            >
-              {mins}m
-            </button>
-          ))}
-        </div>
-    
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Status</span><select value={formData.status}
-        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-        className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all"><option value="UPCOMING">Upcoming</option>
-        <option value="ONGOING">Ongoing</option>
-        <option value="COMPLETED">Completed</option></select></label>
-    
-        <div className="flex items-center gap-3 p-3.5 rounded-lg bg-muted/40 border border-border/70">
-          <input
-            type="checkbox"
-            className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-            id="pairingsPublished"
-            checked={formData.pairingsPublished}
-            onChange={(e) =>
-              setFormData({ ...formData, pairingsPublished: e.target.checked })
-            }
-          />
-          <label htmlFor="pairingsPublished" className="text-xs font-medium cursor-pointer text-foreground">
-            Publish Draw (Makes matchups and room allocations visible to debaters)
-          </label>
-        </div>
-    
-        <div className="flex gap-2.5 pt-4 border-t border-border/60 mt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 min-h-11 py-2 rounded-lg border border-border/70 hover:bg-muted text-muted-foreground hover:text-foreground font-medium transition-colors text-xs"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 min-h-11 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 text-xs"
-          >
-            {loading ? "Updating..." : "Save Changes"}
-          </button>
-        </div>
-      </form>
-    </Motion.div></ModalSurface>
   );
 }

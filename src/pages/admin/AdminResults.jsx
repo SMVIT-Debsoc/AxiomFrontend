@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion as Motion } from "framer-motion";
 import {
     Trophy,
@@ -11,25 +11,28 @@ import {
     Medal,
 } from "lucide-react";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import { cn } from "../../lib/utils";
 import { useAuth } from "../../auth/client.jsx";
 import { AdminApi, EventApi, RoundApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
+import LoadError from "../../components/ui/LoadError";
+import { SocketEvents, useEventSocket, useRoundSocket, useLiveRefresh } from "../../hooks/useSocket";
+import { useDebouncedCallback, useLatestRequest, useSocketRefresh } from "../../hooks/useAdminRealtime";
+
+import { AreaHeader, AreaTabs } from "../../components/ops/AreaHeader";
+import { useAreaTab } from "../../components/ops/useAreaTab";
 
 const AdminLeaderboard = lazy(() => import("./AdminLeaderboard"));
+
+const RESULTS_TABS = [
+    { key: "results", label: "Ballots", icon: ClipboardList },
+    { key: "standings", label: "Standings", icon: Medal },
+];
 
 export default function AdminResults() {
     const { getToken } = useAuth();
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const activeTab = searchParams.get("tab") === "leaderboard" ? "leaderboard" : "results";
-
-    const setActiveTab = (tab) => {
-        const next = new URLSearchParams(searchParams);
-        if (tab === "results") next.delete("tab");
-        else next.set("tab", tab);
-        setSearchParams(next, { replace: true });
-    };
+    // ?tab=standings (legacy ?tab=leaderboard still works)
+    const [activeTab, setActiveTab] = useAreaTab(RESULTS_TABS, { aliases: { leaderboard: "standings" } });
 
     // Navigation State
     const [viewMode, setViewMode] = useState("events"); // 'events' | 'rounds' | 'results'
@@ -43,73 +46,109 @@ export default function AdminResults() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
 
+    const [loadError, setLoadError] = useState(null);
+    const latest = useLatestRequest();
+    const getTokenRef = useRef(getToken);
+    useEffect(() => {
+        getTokenRef.current = getToken;
+    }, [getToken]);
+
+    // One loader for every drill-down level. Each call supersedes (and aborts)
+    // the previous one, so clicking quickly between events/rounds can never
+    // show the rounds or ballots of a tournament that is no longer selected.
+    const loadView = useCallback(async (mode, target, { silent = false, skipCache = false } = {}) => {
+        const request = latest.begin();
+        if (!silent) setLoading(true);
+        try {
+            const token = await getTokenRef.current();
+            const options = { skipCache, signal: request.signal };
+            let response;
+            if (mode === "events") response = await EventApi.list(token, null, options);
+            else if (mode === "rounds") response = await RoundApi.listByEvent(target.id, token, options);
+            else response = await AdminApi.apiRequest(`/debates/round/${target.id}`, "GET", null, token, options);
+            if (!latest.isCurrent(request.id)) return;
+            if (response.success) {
+                if (mode === "events") setEvents(response.events || []);
+                else if (mode === "rounds") setRounds(response.rounds || []);
+                else setDebates(response.debates || []);
+            }
+            setLoadError(null);
+        } catch (error) {
+            if (!latest.isCurrent(request.id)) return;
+            console.error(`Failed to fetch ${mode}:`, error);
+            setLoadError({ mode, silent, message: error?.message || "Request failed" });
+        } finally {
+            if (latest.isCurrent(request.id)) setLoading(false);
+        }
+    }, [latest]);
+
     // --- 1. Fetch Events (Initial Load) ---
     useEffect(() => {
-        if (viewMode === "events") {
-            fetchEvents();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [viewMode]);
-
-    const fetchEvents = async () => {
-        setLoading(true);
-        try {
-            const token = await getToken();
-            const response = await EventApi.list(token);
-            if (response.success) {
-                setEvents(response.events || []);
-            }
-        } catch (error) {
-            console.error("Failed to fetch events:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+        if (viewMode === "events") loadView("events");
+    }, [viewMode, loadView]);
 
     // --- 2. Fetch Rounds (When Event Selected) ---
-    const handleSelectEvent = async (event) => {
+    const handleSelectEvent = (event) => {
         setSelectedEvent(event);
+        setRounds([]);
         setViewMode("rounds");
-        setLoading(true);
-        try {
-            const token = await getToken();
-            const response = await RoundApi.listByEvent(event.id, token);
-            if (response.success) {
-                setRounds(response.rounds || []);
-            }
-        } catch (error) {
-            console.error("Failed to fetch rounds:", error);
-        } finally {
-            setLoading(false);
-        }
+        loadView("rounds", event);
     };
 
     // --- 3. Fetch Results (When Round Selected) ---
-    const handleSelectRound = async (round) => {
+    const handleSelectRound = (round) => {
         setSelectedRound(round);
+        setDebates([]);
         setViewMode("results");
-        setLoading(true);
-        try {
-            const token = await getToken();
-            const response = await AdminApi.apiRequest(
-                `/debates/round/${round.id}`,
-                "GET",
-                null,
-                token
-            );
-            if (response.success) {
-                setDebates(response.debates || []);
-            }
-        } catch (error) {
-            console.error("Failed to fetch debates:", error);
-        } finally {
-            setLoading(false);
-        }
+        loadView("results", round);
     };
+
+    const currentTarget = viewMode === "rounds" ? selectedEvent : viewMode === "results" ? selectedRound : null;
+    const retryCurrent = () => loadView(viewMode, currentTarget, { skipCache: true });
+
+    // Live refresh of whichever level is on screen; bursts collapse into one read.
+    const refreshCurrent = useDebouncedCallback(() => {
+        if (activeTab !== "results") return;
+        loadView(viewMode, currentTarget, { silent: true, skipCache: true });
+    }, 500);
+    useSocketRefresh(
+        [SocketEvents.EVENT_CREATED, SocketEvents.EVENT_UPDATED_GLOBAL, SocketEvents.EVENT_DELETED_GLOBAL],
+        refreshCurrent,
+        { delay: 0, enabled: viewMode === "events" },
+    );
+    const roundsCallbacks = {
+        onRoundCreated: refreshCurrent,
+        onRoundUpdated: refreshCurrent,
+        onRoundDeleted: refreshCurrent,
+        onRoundStatusChange: refreshCurrent,
+        onResultsPublished: refreshCurrent,
+        onPairingsPublished: refreshCurrent,
+    };
+    useEventSocket(viewMode === "rounds" ? selectedEvent?.id : null, roundsCallbacks);
+    const resultsCallbacks = {
+        onDebateResult: refreshCurrent,
+        onDebateCreated: refreshCurrent,
+        onDebateUpdated: refreshCurrent,
+        onDebateDeleted: refreshCurrent,
+        onPairingsGenerated: refreshCurrent,
+        onRoomsAllocated: refreshCurrent,
+        onResultsPublished: refreshCurrent,
+    };
+    useRoundSocket(viewMode === "results" ? selectedRound?.id : null, resultsCallbacks);
+    useLiveRefresh(refreshCurrent, {
+        eventId: viewMode === "rounds" ? selectedEvent?.id : undefined,
+        roundId: viewMode === "results" ? selectedRound?.id : undefined,
+        jitterMs: 3000,
+        invalidateCache: false,
+    });
 
     // Back Navigation
     const handleBack = () => {
         setSearchQuery("");
+        // Drop any in-flight load for the level being left.
+        latest.begin();
+        setLoading(false);
+        setLoadError(null);
         if (viewMode === "results") {
             setViewMode("rounds");
             setSelectedRound(null);
@@ -136,7 +175,14 @@ export default function AdminResults() {
 
     // --- Render Views ---
 
-    const renderEvents = () => (
+    const renderEvents = () => filteredEvents.length === 0 ? (
+        <EmptyState
+            compact
+            icon={Trophy}
+            title={searchQuery ? "Nothing matched" : "No tournaments yet"}
+            description={searchQuery ? "No tournaments matched your search." : "Tournaments appear here once created."}
+        />
+    ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredEvents.map((event) => (
                 <Motion.button
@@ -374,93 +420,40 @@ export default function AdminResults() {
     );
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="axiom-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
-                <div className="flex items-center gap-3">
-                    {activeTab === "results" && viewMode !== "events" && (
-                        <button
-                            type="button"
-                            onClick={handleBack}
-                            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label="Navigate back"
-                        >
-                            <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-                        </button>
-                    )}
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="axiom-eyebrow text-xs uppercase font-heading font-semibold tracking-widest text-emerald-600 dark:text-emerald-400">
-                                AXIOM 4.0
-                            </span>
-                            <span className="text-muted-foreground/60">•</span>
-                            <span className="text-xs font-sans text-muted-foreground uppercase tracking-wider">
-                                {activeTab === "leaderboard"
-                                    ? "Standings & Metrics"
-                                    : viewMode === "events"
-                                    ? "Tournaments"
-                                    : viewMode === "rounds"
-                                    ? selectedEvent?.name
-                                    : `${selectedEvent?.name} • Round ${selectedRound?.roundNumber}`}
-                            </span>
-                        </div>
-                        <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
-                            {activeTab === "leaderboard"
-                                ? "Standings Leaderboard"
-                                : viewMode === "events"
-                                ? "Results & Standings"
-                                : viewMode === "rounds"
-                                ? `${selectedEvent?.name} Rounds`
-                                : `${selectedRound?.name} Matchup Results`}
-                        </h1>
-                        <p className="text-xs md:text-sm text-muted-foreground font-sans mt-0.5">
-                            {activeTab === "leaderboard"
-                                ? "Cumulative debater rankings, qualify rates, and speaker scores"
-                                : viewMode === "events"
-                                ? "Browse tournaments to inspect debater scores and final adjudications"
-                                : viewMode === "rounds"
-                                ? "Select a round to view debate scoring details"
-                                : "Review ballots, edit scores, and confirm declared winners"}
-                        </p>
-                    </div>
-                </div>
+        <div className="mx-auto max-w-[1180px] space-y-4 font-sans">
+            <AreaHeader
+                eyebrow={activeTab === "standings"
+                    ? "Standings"
+                    : viewMode === "events"
+                    ? "All events"
+                    : viewMode === "rounds"
+                    ? selectedEvent?.name
+                    : `${selectedEvent?.name} · Round ${selectedRound?.roundNumber}`}
+                title="Results"
+                description={activeTab === "standings"
+                    ? "Debater rankings across the event."
+                    : viewMode === "events"
+                    ? "Pick an event, then a round, to check or correct ballots."
+                    : viewMode === "rounds"
+                    ? "Pick a round to see its ballots."
+                    : `${selectedRound?.name || "Round"}: check ballots and correct scores.`}
+                className="!mb-3"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+                {activeTab === "results" && viewMode !== "events" && (
+                    <button
+                        type="button"
+                        onClick={handleBack}
+                        className="ax-ghost-btn mb-4 !min-h-11"
+                        aria-label="Back"
+                    >
+                        <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back
+                    </button>
+                )}
+                <AreaTabs tabs={RESULTS_TABS} active={activeTab} onChange={setActiveTab} label="Results sections" />
             </div>
 
-            {/* Unified Sub-tabs: Ballots & Results | Standings Leaderboard */}
-            <div className="inline-flex items-center gap-1 bg-muted/60 border border-border/80 p-1 rounded-xl" role="tablist" aria-label="Results and standings views">
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === "results"}
-                    onClick={() => setActiveTab("results")}
-                    className={cn(
-                        "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        activeTab === "results"
-                            ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
-                            : "text-muted-foreground hover:text-foreground"
-                    )}
-                >
-                    <ClipboardList className="w-4 h-4" aria-hidden="true" />
-                    <span>Ballots &amp; Results</span>
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === "leaderboard"}
-                    onClick={() => setActiveTab("leaderboard")}
-                    className={cn(
-                        "min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        activeTab === "leaderboard"
-                            ? "bg-card text-foreground shadow-sm font-semibold border border-border/70"
-                            : "text-muted-foreground hover:text-foreground"
-                    )}
-                >
-                    <Medal className="w-4 h-4" aria-hidden="true" />
-                    <span>Standings Leaderboard</span>
-                </button>
-            </div>
-
-            {activeTab === "leaderboard" ? (
+            {activeTab === "standings" ? (
                 <Suspense fallback={<div className="flex items-center justify-center min-h-[40vh]"><LoadingIndicator label="Loading standings leaderboard" /></div>}>
                     <AdminLeaderboard embedded />
                 </Suspense>
@@ -484,8 +477,23 @@ export default function AdminResults() {
                         <div className="flex items-center justify-center min-h-[40vh]">
                             <LoadingIndicator label="Loading tournament results" />
                         </div>
+                    ) : loadError && loadError.mode === viewMode && !loadError.silent ? (
+                        <LoadError
+                            message={
+                                viewMode === "events"
+                                    ? "Could not load tournaments."
+                                    : viewMode === "rounds"
+                                    ? "Could not load rounds for this tournament."
+                                    : "Could not load results for this round."
+                            }
+                            detail={loadError.message}
+                            onRetry={retryCurrent}
+                        />
                     ) : (
                         <>
+                            {loadError && loadError.mode === viewMode && loadError.silent && (
+                                <LoadError compact message="Could not refresh. Showing the last loaded data." onRetry={retryCurrent} />
+                            )}
                             {viewMode === "events" && renderEvents()}
                             {viewMode === "rounds" && renderRounds()}
                             {viewMode === "results" && renderResults()}

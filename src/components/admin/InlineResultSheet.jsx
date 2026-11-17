@@ -1,29 +1,69 @@
 import {useBallotSave} from "../../hooks/useBallotSave";
+import {useDirtyGuard} from "../../hooks/useDirtyGuard";
 import BallotRecovery from "./BallotRecovery";
 import { useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, Save, X, Trophy, ArrowRight, XCircle } from "lucide-react";
 import { UserAvatar } from "../ui/UserAvatar";
 import { resolveWinnerId } from "../../lib/scoring";
 
-export default function InlineResultSheet({ debate, debates = [], onSaved, onClose }) {
-    if (!debate) return null;
-    return <BallotSheet key={debate.id} debate={debate} debates={debates} onSaved={onSaved} onClose={onClose} />;
+// The ballot values this sheet was opened with (or last reconciled to).
+function ballotSnapshot(d) {
+    const s1 = d?.debater1Score?.toString() || "";
+    const s2 = d?.debater2Score?.toString() || "";
+    return {
+        updatedAt: d?.updatedAt || null,
+        s1,
+        s2,
+        winnerId: resolveWinnerId(s1, s2, d?.winnerId || "", d?.debater1Id, d?.debater2Id),
+        status: d?.status || null,
+    };
 }
 
-function BallotSheet({ debate, debates, onSaved, onClose }) {
-    const [score1, setScore1] = useState(debate?.debater1Score?.toString() || "");
-    const [score2, setScore2] = useState(debate?.debater2Score?.toString() || "");
-    const [winnerId, setWinnerId] = useState(() => resolveWinnerId(
-        debate.debater1Score?.toString() || "",
-        debate.debater2Score?.toString() || "",
-        debate.winnerId || "",
-        debate.debater1Id,
-        debate.debater2Id
-    ));
-    const {save, verify, busy, recovery, saveError, clearSaveError} = useBallotSave(onSaved);
+const sameResult = (a, b) => a.s1 === b.s1 && a.s2 === b.s2 && a.winnerId === b.winnerId && a.status === b.status;
+const personName = (u) => `${u?.firstName || ""} ${u?.lastName || ""}`.trim() || "Unknown";
+
+/**
+ * Render with `key={debate.id}` and pass the LIVE debate from page state: the
+ * sheet keeps its own draft, and notices when another admin saves meanwhile.
+ */
+export default function InlineResultSheet({ debate, debates = [], onSaved, onClose, onReplaced }) {
+    if (!debate) return null;
+    return <BallotSheet key={debate.id} debate={debate} debates={debates} onSaved={onSaved} onClose={onClose} onReplaced={onReplaced} />;
+}
+
+function BallotSheet({ debate, debates, onSaved, onClose, onReplaced }) {
+    const [base, setBase] = useState(() => ballotSnapshot(debate));
+    const [score1, setScore1] = useState(base.s1);
+    const [score2, setScore2] = useState(base.s2);
+    const [winnerId, setWinnerId] = useState(base.winnerId);
+    const {save, verify, busy, recovery, saveError, clearSaveError, clearRecovery} = useBallotSave(onSaved, {
+        onReplaced,
+        // Verify found a different stored ballot: rebase onto it (draft kept), so
+        // the next save is not reported as "another admin" overwriting us.
+        onRebase: (saved) => setBase(ballotSnapshot({...debate, ...saved})),
+    });
     const submitting = busy === "save";
     const locked = Boolean(busy) || recovery?.kind === "unconfirmed";
     const [error, setError] = useState(null);
+
+    const isDirty = score1 !== base.s1 || score2 !== base.s2 || winnerId !== base.winnerId;
+    const confirmDiscard = useDirtyGuard(isDirty, "Discard the scores you entered for this ballot?");
+
+    if (!debate) return null;
+
+    const live = ballotSnapshot(debate);
+    const form = {s1: score1, s2: score2, winnerId, status: live.status};
+    // Another admin saved a different result while this sheet was open.
+    const theirs = !submitting && !sameResult(live, base) && !sameResult(live, form) && live.status === "COMPLETED"
+        ? live
+        : null;
+    const theirsWinner = theirs
+        ? theirs.winnerId === debate.debater1Id
+            ? personName(debate.debater1)
+            : theirs.winnerId === debate.debater2Id
+            ? personName(debate.debater2)
+            : "No winner"
+        : null;
 
     const s1Num = parseFloat(score1);
     const s2Num = parseFloat(score2);
@@ -51,7 +91,22 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
         clearSaveError();
     };
 
-    const handleSave = async (andNext = false) => {
+    const loadSnapshot = (snap) => {
+        setBase(snap);
+        setScore1(snap.s1);
+        setScore2(snap.s2);
+        setWinnerId(snap.winnerId);
+        setError(null);
+        clearSaveError();
+        clearRecovery();
+    };
+
+    const handleClose = () => {
+        if (busy) return;
+        if (confirmDiscard()) onClose();
+    };
+
+    const handleSave = async (andNext = false, overrideUpdatedAt) => {
         if (locked) return;
         if (!score1 || !score2) {
             setError("Both speaker scores are required");
@@ -67,6 +122,12 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
             return;
         }
 
+        // The version this admin is overwriting. If only non-result fields (judge,
+        // room) changed since opening, the live updatedAt is safe to send; if the
+        // result changed, send the opened version so the server reports a conflict.
+        const expectedUpdatedAt = overrideUpdatedAt
+            ?? (sameResult(live, base) ? live.updatedAt || base.updatedAt : base.updatedAt);
+
         setError(null);
         await save({
             debateId: debate.id,
@@ -74,7 +135,15 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
             debater2Score: parseFloat(score2),
             winnerId: ballotWinner,
             nextDebate: andNext ? nextPending : null,
+            ...(expectedUpdatedAt ? {expectedUpdatedAt} : {}),
         });
+    };
+
+    const overwriteWith = (snap) => {
+        // Keep this admin's draft, but adopt the newer version as the base.
+        setBase(snap);
+        clearRecovery();
+        void handleSave(false, snap.updatedAt || undefined);
     };
 
     return (
@@ -98,7 +167,7 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
                     </div>
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
                         aria-label="Close ballot sheet"
                         disabled={Boolean(busy)}
                         className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -117,7 +186,32 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
                     </div>
                 )}
 
-                <BallotRecovery recovery={recovery} busy={busy} onVerify={verify} />
+                {theirs && (
+                    <div
+                        role="status"
+                        className="p-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-sm space-y-2"
+                    >
+                        <p className="font-semibold text-amber-800 dark:text-amber-200">
+                            Saved by another admin: {theirsWinner} {theirs.s1 || "—"}–{theirs.s2 || "—"}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            <button type="button" disabled={Boolean(busy)} onClick={() => loadSnapshot(theirs)} className="ax-ghost-btn">
+                                Load theirs
+                            </button>
+                            <button type="button" disabled={locked} onClick={() => overwriteWith(theirs)} className="ax-ghost-btn">
+                                Keep mine and overwrite
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <BallotRecovery
+                    recovery={recovery}
+                    busy={busy}
+                    onVerify={verify}
+                    onLoadSaved={(saved) => loadSnapshot(ballotSnapshot({...debate, ...saved}))}
+                    onOverwrite={(saved) => overwriteWith(ballotSnapshot({...debate, ...(saved || {})}))}
+                />
 
                 {isTie && (
                     <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs sm:text-sm flex items-start gap-2.5 font-medium">
@@ -299,7 +393,7 @@ function BallotSheet({ debate, debates, onSaved, onClose }) {
                 <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-3 border-t border-border/80">
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleClose}
                         disabled={Boolean(busy)}
                         className="w-full sm:w-auto min-h-11 px-5 rounded-xl border border-border bg-card text-foreground font-semibold text-sm hover:bg-muted transition-colors"
                     >

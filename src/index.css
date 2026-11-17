@@ -1012,3 +1012,18 @@ html.dark #root .axiom-workspace .ax-podium--bronze {
   .axa, .axa-body, .axa-dot-body, .axa-ring { animation: none !important; transition: none !important; }
   .axa:hover { transform: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Round-state language (stations redesign). One meaning per colour, used by
+   the room grid, tables, Display and chips. Tailwind's amber/blue are remapped
+   to greens in tailwind.config.js, so states use these explicit tokens.
+   waiting = not started / no ballot   live = debate running
+   done    = ballot in                 flag = needs a human look
+   --------------------------------------------------------------------------- */
+@layer components {
+  .ax-state-waiting { --ax-state: hsl(var(--muted-foreground)); background: hsl(var(--muted) / .55); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+  .ax-state-live    { --ax-state: var(--axiom-status-info); background: color-mix(in srgb, var(--axiom-status-info) 14%, transparent); border-color: color-mix(in srgb, var(--axiom-status-info) 45%, transparent); }
+  .ax-state-done    { --ax-state: var(--axiom-status-success); background: color-mix(in srgb, var(--axiom-status-success) 16%, transparent); border-color: color-mix(in srgb, var(--axiom-status-success) 50%, transparent); }
+  .ax-state-flag    { --ax-state: var(--axiom-status-danger); background: color-mix(in srgb, var(--axiom-status-danger) 14%, transparent); border-color: var(--axiom-status-danger); }
+  .ax-state-dot     { width: .5rem; height: .5rem; border-radius: 999px; background: var(--ax-state, currentColor); flex: none; }
+}

@@ -94,6 +94,7 @@ export function toISTISOString(dateTimeLocal) {
 export function toISTDateTimeLocal(utcDate) {
     if (!utcDate) return "";
     const date = new Date(utcDate);
+    if (Number.isNaN(date.getTime())) return "";
     return date
         .toLocaleString("sv-SE", {
             timeZone: IST_TIMEZONE,
