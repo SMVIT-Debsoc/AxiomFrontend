@@ -385,8 +385,8 @@ export const AdminApi = {
             token,
         ),
 
-    submitResult: (debateId, data, token) =>
-        apiRequest(`/debates/${debateId}/result`, "POST", data, token),
+    submitResult: (debateId, data, token, {summary = false} = {}) =>
+        apiRequest(`/debates/${debateId}/result${summary ? "?view=summary" : ""}`, "POST", data, token),
 
     getRoundPerformers: (roundId, token) =>
         apiRequest(`/admin/rounds/${roundId}/performers`, "GET", null, token),

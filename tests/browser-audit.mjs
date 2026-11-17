@@ -737,7 +737,11 @@ try {
     await input2.fill('78');
 
     await visible(page, 'Winner Auto-Selected');
+    const saveRequest = page.waitForRequest((request) =>
+      request.method() === 'POST' && new URL(request.url()).pathname === '/api/debates/d1/result'
+    );
     await page.getByRole('button', {name: 'Save Result'}).click();
+    assert.equal(new URL((await saveRequest).url()).searchParams.get('view'), 'summary');
     await page.getByRole('heading', {name: /Score Debate/}).waitFor({state: 'hidden'});
     assert.equal(state.debate.debater1Score, 92);
     assert.equal(state.debate.debater2Score, 78);

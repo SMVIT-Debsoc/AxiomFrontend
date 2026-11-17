@@ -85,7 +85,7 @@ export default function AdminResultSubmission() {
                 debater1Score: parseFloat(formData.debater1Score),
                 debater2Score: parseFloat(formData.debater2Score),
                 winnerId: formData.winnerId
-            }, token);
+            }, token, {summary: true});
 
             if (response.success) {
                 navigate(`/admin/rounds/${debate.roundId}`);

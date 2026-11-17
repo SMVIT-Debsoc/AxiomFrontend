@@ -510,15 +510,15 @@ export default function AdminLive() {
 
     const handleSaveResult = async ({debateId, debater1Score, debater2Score, winnerId, nextDebate}) => {
         const token = await getToken();
-        const res = await AdminApi.submitResult(debateId, {debater1Score, debater2Score, winnerId}, token);
+        const res = await AdminApi.submitResult(debateId, {debater1Score, debater2Score, winnerId}, token, {summary: true});
         if (!res.success) {
             throw new Error(res.error || "Failed to submit result");
         }
         setDebates((prev) => prev.map((d) => d.id === debateId ? {
             ...d,
-            debater1Score,
-            debater2Score,
-            winnerId,
+            debater1Score: res.debate?.debater1Score ?? debater1Score,
+            debater2Score: res.debate?.debater2Score ?? debater2Score,
+            winnerId: res.debate?.winnerId ?? winnerId,
             status: "COMPLETED"
         } : d));
         toast.success("Result Saved", "Ballot recorded with winner tag.");
