@@ -151,7 +151,7 @@ export function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
                 key={mins}
                 type="button"
                 onClick={() => applyDurationPreset(mins)}
-                className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-primary hover:text-primary-foreground text-xs font-bold text-foreground transition-all active:scale-95 shadow-xs"
+                className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-foreground transition-colors"
               >
                 {mins}m
               </button>
@@ -380,7 +380,7 @@ export function EditRoundModal({ round, latestRound, remoteChanges = 0, onClose,
               key={mins}
               type="button"
               onClick={() => applyWindowPreset(mins)}
-              className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-primary hover:text-primary-foreground text-xs font-bold text-foreground transition-all active:scale-95 shadow-xs"
+              className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-foreground transition-colors"
             >
               {mins}m
             </button>

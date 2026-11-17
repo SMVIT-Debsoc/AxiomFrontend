@@ -34,8 +34,7 @@
 
 /* ----- Buttons ----- */
 
-.axiom-workspace :is(button, a)[class*="bg-primary text-primary-foreground"],
-.axiom-workspace :is(button, a)[class*="bg-primary"][class*="text-primary-foreground"] {
+.axiom-workspace :is(button, a)[class~="bg-primary"][class~="text-primary-foreground"] {
   background: var(--btn-bg);
   color: var(--btn-fg);
   border: 1px solid var(--nb-line);
@@ -45,35 +44,35 @@
   transition: transform 120ms var(--axiom-ease), box-shadow 120ms var(--axiom-ease), background-color 120ms;
 }
 
-.axiom-workspace :is(button, a)[class*="text-primary-foreground"]:not(:disabled):hover {
+.axiom-workspace :is(button, a)[class~="text-primary-foreground"]:not(:disabled):hover {
   background: var(--btn-hover);
   transform: translateY(-1px);
   box-shadow: var(--nb-elev-2);
 }
 
-.axiom-workspace :is(button, a)[class*="text-primary-foreground"]:not(:disabled):active {
+.axiom-workspace :is(button, a)[class~="text-primary-foreground"]:not(:disabled):active {
   transform: translateY(1px);
   box-shadow: none;
 }
 
-.axiom-workspace :is(button, a)[class*="text-primary-foreground"]:disabled {
+.axiom-workspace :is(button, a)[class~="text-primary-foreground"]:disabled {
   box-shadow: none; opacity: .55; background: var(--nb-muted); color: hsl(var(--muted-foreground));
 }
 
 /* Outline / icon buttons */
 
-.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb),
-.axiom-workspace button[class*="border-border"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb) {
+.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class~="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb),
+.axiom-workspace button[class*="border-border"]:not([class~="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb) {
   border: 1px solid var(--nb-line);
   border-radius: .5rem;
   transition: transform 120ms var(--axiom-ease), box-shadow 120ms var(--axiom-ease), background-color 120ms;
 }
 
-.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb):not(:disabled):hover {
+.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class~="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb):not(:disabled):hover {
   transform: translateY(-1px); box-shadow: var(--nb-elev-1); background: var(--nb-green-soft); color: hsl(var(--foreground));
 }
 
-.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb):not(:disabled):active {
+.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class~="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb):not(:disabled):active {
   transform: translateY(1px); box-shadow: none;
 }
 
