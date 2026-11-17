@@ -230,7 +230,7 @@ export function AuthProvider({children}) {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
+    <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/" telemetry={false}>
       {children}
     </ClerkProvider>
   );

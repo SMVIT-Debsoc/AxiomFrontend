@@ -4,11 +4,11 @@ export default function Sculpture({
     className = "", variant = "portrait", figure = "shiva-mahadeva", eager = false, sizes = HERO_SCULPTURE_SIZES
 }) {
     const data = FIGURES[figure] || FIGURES["shiva-mahadeva"];
-    const largest = data.sources[data.sources.length - 1];
+    const fallbackSrc = data.sources[0]?.[0] || data.sources[data.sources.length - 1][0];
     return (
         <img
             className={`axiom-sculpture axiom-sculpture--${variant} ${className}`}
-            src={largest[0]}
+            src={fallbackSrc}
             srcSet={sculptureSrcSet(data.sources)}
             sizes={sizes}
             width={data.width}

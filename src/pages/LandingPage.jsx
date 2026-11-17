@@ -44,7 +44,7 @@ export default function LandingPage() {
 
     return (
         <div className="min-h-svh bg-background font-sans text-foreground">
-            <a className="axiom-skip" href="#hero-cta">Skip to registration</a>
+            <a className="axiom-skip" href="#main-content">Skip to registration</a>
 
             <header className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-4 py-4 md:px-6 md:py-5">
                 <Link to="/" aria-label="AXIOM 4.0 home" className="flex items-center gap-3 text-primary no-underline">
@@ -68,8 +68,9 @@ export default function LandingPage() {
                 </nav>
             </header>
 
-            {/* SCROLL 1: hero */}
-            <section id="top" aria-label={`${E.name} registration`} className="mx-auto grid max-w-[1280px] items-stretch gap-4 px-4 pb-6 md:grid-cols-2 md:gap-6 md:px-6 md:pb-10">
+            <main id="main-content">
+                {/* SCROLL 1: hero */}
+                <section id="top" aria-label={`${E.name} registration`} className="mx-auto grid max-w-[1280px] items-stretch gap-4 px-4 pb-6 md:grid-cols-2 md:gap-6 md:px-6 md:pb-10">
                 <div className="order-2 flex flex-col justify-center gap-6 md:order-1 md:py-8">
                     <p className="hidden items-center gap-2 self-start rounded-full bg-[#B9F5D8] px-3.5 py-2 text-[13px] font-semibold uppercase tracking-[0.04em] text-[#141510] md:inline-flex">
                         <span aria-hidden="true" className="h-2 w-2 rounded-full bg-[#1D1E18]" />
@@ -118,7 +119,7 @@ export default function LandingPage() {
                         const dark = i === 2;
                         return (
                             <li key={s.n} className={`flex gap-3.5 rounded-[18px] p-4 md:flex-col md:gap-3 md:rounded-[22px] md:p-7 ${dark ? "bg-[#4A5646] text-[#EAFBF5]" : "border border-border bg-card"}`}>
-                                <span className="w-[34px] shrink-0 font-display text-[40px] leading-[0.9] text-[#B9F5D8] md:w-auto md:text-[56px] md:leading-none">{s.n}</span>
+                                <span className={`w-[34px] shrink-0 font-display text-[40px] leading-[0.9] md:w-auto md:text-[56px] md:leading-none ${dark ? "text-[#B9F5D8]" : "text-[#1D1E18] dark:text-[#B9F5D8]"}`}>{s.n}</span>
                                 <div>
                                     <h3 className={`m-0 font-heading text-[19px] font-bold md:text-2xl ${dark ? "text-[#EAFBF5]" : "text-primary"}`}>{s.title}</h3>
                                     <p className={`m-0 mt-1 text-[15px] leading-snug md:mt-3 md:text-base md:leading-relaxed ${dark ? "text-[#BDD9CA]" : "text-muted-foreground"}`}><span className="md:hidden">{s.short}</span><span className="hidden md:inline">{s.body}</span></p>
@@ -157,6 +158,7 @@ export default function LandingPage() {
                     <div className="relative flex w-full md:w-auto"><GoogleAuthButton variant="onDark" /></div>
                 </div>
             </section>
+            </main>
 
             <footer className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-3 px-4 pb-32 pt-4 text-sm leading-normal text-muted-foreground md:px-6 md:pb-10">
                 <p className="m-0">

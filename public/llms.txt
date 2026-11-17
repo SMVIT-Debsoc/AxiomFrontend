@@ -1,0 +1,18 @@
+# AXIOM 4.0 Parliamentary Debate Tournament
+
+> AXIOM 4.0 is SMVIT DebSoc's annual collegiate debate tournament held at Sir M. Visvesvaraya Institute of Technology (Sir MVIT) in Bengaluru, India.
+
+## Tournament Details
+- **Organiser**: SMVIT Debating Society (SMVIT DebSoc)
+- **Website**: https://www.axiom4.online
+- **Official Host Society**: https://www.smvitdebsoc.com
+- **Venue**: Sir M. Visvesvaraya Institute of Technology, Krishnadevarayanagar, Hunasamaranahalli, Bengaluru, Karnataka 562157
+- **Format**: Parliamentary Debate (3v3 Asian / 2v2 BP format)
+- **Registration**: Online registration via Google Authentication on https://www.axiom4.online
+
+## Key Endpoints & Architecture
+- **Home / Registration**: https://www.axiom4.online/
+- **About the Tournament**: https://www.axiom4.online/about
+- **Participant Workspace**: https://www.axiom4.online/dashboard
+- **Live Matchups & Standings**: https://www.axiom4.online/dashboard/events
+- **Real-time Engine**: WebSockets via Socket.io with HTTP polling fallback

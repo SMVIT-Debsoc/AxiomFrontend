@@ -1,0 +1,16 @@
+{
+  "name": "AXIOM 4.0 Debate Tournament",
+  "description": "Collegiate parliamentary debate tournament platform hosted by SMVIT DebSoc at Sir MVIT Bengaluru.",
+  "url": "https://www.axiom4.online",
+  "version": "4.0.0",
+  "capabilities": [
+    "tournament-overview",
+    "participant-registration",
+    "live-pairings",
+    "results-standings"
+  ],
+  "contact": {
+    "organization": "SMVIT DebSoc",
+    "website": "https://www.smvitdebsoc.com"
+  }
+}
