@@ -41,7 +41,8 @@ function Steps({step}) {
 
 export default function CompleteProfile() {
     const {user, isLoaded} = useUser();
-    const {getToken, signOut} = useAuth();
+    const {getToken, signOut, sessionId, userId} = useAuth();
+    const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
     const navigate = useNavigate();
     const toast = useToast();
 
@@ -60,7 +61,7 @@ export default function CompleteProfile() {
             let db = null;
             try {
                 const token = await getToken();
-                db = (await UserApi.getProfile(token)).user;
+                db = (await UserApi.getProfile(token, {sessionScope})).user;
             } catch (failure) {
                 console.error("Error fetching profile:", failure);
             }
@@ -80,7 +81,7 @@ export default function CompleteProfile() {
             setLoading(false);
         })();
         return () => { cancelled = true; };
-    }, [isLoaded, user, getToken, navigate]);
+    }, [isLoaded, user, getToken, navigate, sessionScope]);
 
     const digits = form.mobile;
     const collegeOk = form.college.trim().length > 1;

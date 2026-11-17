@@ -9,7 +9,7 @@ import {EventApi} from "../../services/api";
 import {useEventSocket} from "../../hooks/useSocket";
 import {ParticipantsListSkeleton} from "../../components/ui/Skeleton";
 
-const PARTICIPANT_FIELDS = ["event", "roster"];
+const PARTICIPANT_FIELDS = ["event"];
 
 export default function Participants() {
   const {eventId} = useParams();
@@ -18,37 +18,36 @@ export default function Participants() {
 
 function ParticipantsPage({eventId}) {
   const [event, setEvent] = useState(null);
-  const [participants, setParticipants] = useState([]);
+  const [participantCount, setParticipantCount] = useState(null);
   const [eventLoading, setEventLoading] = useState(true);
-  const [rosterLoading, setRosterLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refresh = usePageRequests(PARTICIPANT_FIELDS, async (field, token, options, isCurrent) => {
+  const refresh = usePageRequests(PARTICIPANT_FIELDS, async (_field, token, options, isCurrent) => {
     try {
-      if (field === "event") {
-        const response = await EventApi.getOverview(eventId, token, options);
-        if (isCurrent() && response?.event) setEvent(response.event);
+      const response = await EventApi.getOverview(eventId, token, options);
+      if (!isCurrent()) return;
+      setEvent(response.event);
+      setEventLoading(false);
+      const count = response.event?._count?.participants;
+      if (Number.isInteger(count)) {
+        setParticipantCount(count);
       } else {
-        const response = await EventApi.getParticipants(eventId, token, options);
-        if (isCurrent() && response?.success) {
-          setParticipants(response.participants || []);
-        }
+        const roster = await EventApi.getParticipants(eventId, token, options);
+        if (isCurrent() && roster?.success) setParticipantCount(roster.total ?? roster.participants?.length ?? 0);
       }
+      if (isCurrent()) setError(null);
     } catch (error) {
       if (isCurrent() && !options.skipCache) setError(error.message);
     } finally {
-      if (isCurrent()) {
-        if (field === "event") setEventLoading(false);
-        else setRosterLoading(false);
-      }
+      if (isCurrent()) setEventLoading(false);
     }
-  });
+  }, "event");
 
   useEventSocket(eventId, {
-    onEventEnrollment: () => refresh("roster"),
+    onEventEnrollment: () => refresh("event"),
   });
 
-  if (eventLoading || rosterLoading) {
+  if (eventLoading) {
     return (
       <div className="space-y-6 max-w-4xl">
         <div className="axiom-page-header">
@@ -109,7 +108,7 @@ function ParticipantsPage({eventId}) {
               Total Registered Debaters
             </p>
             <p className="text-2xl font-heading font-bold text-foreground tabular-nums">
-              {participants.length}
+              {participantCount ?? "…"}
             </p>
           </div>
         </div>

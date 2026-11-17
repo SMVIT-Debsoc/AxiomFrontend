@@ -27,7 +27,8 @@ function getInitialUrlError() {
  */
 export function AuthRedirectHandler() {
     const {user, isLoaded} = useUser();
-    const {getToken} = useAuth();
+    const {getToken, sessionId, userId} = useAuth();
+    const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
     const navigate = useNavigate();
     const [status, setStatus] = useState("Verifying your credentials...");
     const [redirectError, setRedirectError] = useState(getInitialUrlError);
@@ -83,7 +84,7 @@ export function AuthRedirectHandler() {
                 setStatus("Opening your debate workspace...");
 
                 try {
-                    const userRes = await UserApi.getProfile(token);
+                    const userRes = await UserApi.getProfile(token, {sessionScope});
                     const u = userRes?.user;
                     if (!u?.college || !u?.mobile || !u?.usn) {
                         navigate("/complete-profile", {replace: true});
@@ -98,7 +99,7 @@ export function AuthRedirectHandler() {
 
                     try {
                         const freshToken = await getToken();
-                        const retryUser = await UserApi.getProfile(freshToken);
+                        const retryUser = await UserApi.getProfile(freshToken, {sessionScope});
                         const u = retryUser?.user;
                         if (!u?.college || !u?.mobile || !u?.usn) {
                             navigate("/complete-profile", {replace: true});
@@ -117,7 +118,7 @@ export function AuthRedirectHandler() {
         };
 
         handleRedirect();
-    }, [isLoaded, user, effectiveError, getToken, navigate]);
+    }, [isLoaded, user, effectiveError, getToken, navigate, sessionScope]);
 
     if (effectiveError) {
         return (

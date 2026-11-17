@@ -59,6 +59,31 @@ test('profile cache is isolated by the current session credential', async () => 
   assert.equal(fetchCount, 2);
 });
 
+test('navigation reuses a session across token refresh and only previews expired metadata', async (context) => {
+  let now = Date.now();
+  context.mock.method(Date, 'now', () => now);
+  const sessionScope = 'session-one/user-one';
+  const event = {id: 'e1', rounds: [{id: 'r1', motion: 'Motion', pairingsPublished: true, resultsPublished: true}]};
+  globalThis.fetch = async () => {
+    fetchCount += 1;
+    return Response.json({success: true, event});
+  };
+  await api.EventApi.getOverview('e1', 'initial-token', {sessionScope});
+  await api.EventApi.getOverview('e1', 'rotated-token', {sessionScope});
+  assert.equal(fetchCount, 1);
+
+  now += 25000;
+  let refreshes = 0;
+  const cached = await api.EventApi.getOverview('e1', 'rotated-token', {
+    sessionScope, onNavigationPreview: () => { refreshes += 1; },
+  });
+  assert.equal(fetchCount, 1);
+  assert.equal(refreshes, 1);
+  assert.deepEqual(cached.event.rounds[0], {id: 'r1', motion: null, pairingsPublished: false, resultsPublished: false});
+  await api.EventApi.getOverview('e1', 'different-account', {sessionScope: 'session-two/user-two'});
+  assert.equal(fetchCount, 2);
+});
+
 test('SocketService re-attaches tracked listeners after disconnect and reconnect, and refreshAuth re-handshakes', async () => {
   const socketRaw = (await readFile(new URL('../src/services/socket.js', import.meta.url), 'utf8'))
     .replace('import {io, Socket} from "socket.io-client";', `

@@ -1,61 +1,48 @@
-import {useState, useEffect, useCallback, useRef} from "react";
+import {useState, useEffect} from "react";
 import {motion as Motion} from "framer-motion";
 import {Trophy} from "lucide-react";
-import {useAuth} from "../../auth/client.jsx";
+import {usePageRequests} from "../../hooks/usePageRequests";
 import {EventApi} from "../../services/api";
 import {Link} from "react-router-dom";
 import {EventCardSkeleton} from "../../components/ui/Skeleton";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
-import {useSocket, SocketEvents, useLiveRefresh, invalidateRealtimeCache} from "../../hooks/useSocket";
+import {useSocket, SocketEvents, useLiveRefresh} from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
 import NeoButton from "../../components/neo/NeoButton";
 import TournamentGuide from "../../components/dashboard/TournamentGuide";
 import {RefreshCw} from "lucide-react";
 
+const EVENT_FIELDS = ["events"];
+
 export default function DashboardEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const {getToken} = useAuth();
-
-  const getTokenRef = useRef(getToken);
-  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
-
-  const fetchEvents = useCallback(async () => {
+  const refresh = usePageRequests(EVENT_FIELDS, async (_field, token, options, isCurrent) => {
     try {
-      const token = await getTokenRef.current();
-      const response = await EventApi.list(token);
-      // Handle the API response structure: { success: true, events: [...] }
-      const eventList = response.events || response.data || [];
-      setEvents(eventList);
+      const response = await EventApi.list(token, null, options);
+      if (!isCurrent()) return;
+      setEvents(response.events || response.data || []);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      if (isCurrent()) setError(err.message);
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
-  }, []);
+  }, "events");
+  const fetchEvents = () => refresh("events");
+  useLiveRefresh(fetchEvents, {jitterMs: 3000, invalidateCache: false});
 
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
-
-  useLiveRefresh(fetchEvents);
-
-  // Real-time updates
   const {subscribe} = useSocket();
   useEffect(() => {
-    const refresh = () => {
-      invalidateRealtimeCache();
-      fetchEvents();
-    };
+    const refreshEvents = () => refresh("events");
     const unsubs = [
-      subscribe(SocketEvents.EVENT_CREATED, refresh),
-      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, refresh),
-      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, refresh),
+      subscribe(SocketEvents.EVENT_CREATED, refreshEvents),
+      subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, refreshEvents),
+      subscribe(SocketEvents.EVENT_DELETED_GLOBAL, refreshEvents),
     ];
     return () => unsubs.forEach((u) => u && u());
-  }, [subscribe, fetchEvents]);
+  }, [subscribe, refresh]);
 
   if (loading) {
     return (

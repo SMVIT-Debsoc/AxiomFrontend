@@ -570,6 +570,33 @@ try {
     await visible(page, 'Presence Verified');
   });
 
+  await run('dashboard return shows cached tournament while a slow refresh runs', {signedIn: true}, async (page, state) => {
+    await page.goto(origin + '/dashboard');
+    await visible(page, 'Audit Tournament');
+    await page.getByRole('link', {name: 'Tournament Hub'}).click();
+    await page.waitForURL('**/dashboard/events/e1');
+    await page.getByRole('link', {name: 'Back to Tournaments'}).waitFor();
+    await page.clock.setFixedTime(new Date(Date.now() + 30000));
+
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    const request = page.waitForRequest(/\/api\/events\?view=dashboard/);
+    await page.route(/\/api\/events\?view=dashboard/, async route => {
+      await held;
+      return route.fallback();
+    });
+    state.event.name = 'Refreshed Tournament';
+    try {
+      await page.goBack();
+      await page.waitForURL('**/dashboard');
+      await request;
+      await visible(page, 'Audit Tournament');
+    } finally {
+      release();
+    }
+    await visible(page, 'Refreshed Tournament');
+  });
+
   await run('round title renders while personal check-in status is pending', {signedIn: true, enrolled: true}, async page => {
     let release;
     const held = new Promise(resolve => { release = resolve; });

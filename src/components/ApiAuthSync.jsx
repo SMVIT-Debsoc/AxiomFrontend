@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {useAuth, useUser} from "../auth/client.jsx";
-import {setApiAuthTokenProvider} from "../services/api";
+import {clearApiCache, setApiAuthTokenProvider} from "../services/api";
 
 function hasSecretAdminSession() {
     if (typeof window === "undefined") return false;
@@ -11,10 +11,12 @@ function hasSecretAdminSession() {
 }
 
 export default function ApiAuthSync() {
-    const {getToken} = useAuth();
+    const {getToken, sessionId, userId} = useAuth();
     const {isSignedIn} = useUser();
     const [adminSessionActive, setAdminSessionActive] = useState(hasSecretAdminSession);
     const socket = useRef(null);
+
+    useEffect(() => { clearApiCache(); }, [sessionId, userId, adminSessionActive]);
 
     useEffect(() => {
         const handleSync = () => setAdminSessionActive(hasSecretAdminSession());

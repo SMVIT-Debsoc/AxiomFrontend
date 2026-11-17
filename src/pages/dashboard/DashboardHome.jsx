@@ -428,7 +428,8 @@ export default function DashboardHome() {
 }
 
 function DashboardContent() {
-  const {getToken} = useAuth();
+  const {getToken, sessionId, userId} = useAuth();
+  const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
   const {user: authUser, isLoaded: authLoaded} = useUser();
   const toast = useToast();
   const [loading, setLoading] = useState(true);
@@ -471,7 +472,7 @@ function DashboardContent() {
       const token = await getTokenRef.current();
       if (stopped) return;
       // Bound each batch so a stalled request can't block later live updates.
-      const options = {skipCache: !initial, signal: AbortSignal.timeout(15000)};
+      const options = {skipCache: !initial, signal: AbortSignal.timeout(15000), sessionScope};
       const profile = fields.has("profile")
         ? UserApi.getProfile(token, options).then((response) => {
             if (!stopped && response.user) setUserData(response.user);
@@ -483,9 +484,17 @@ function DashboardContent() {
       const oldEvent = event?.id;
       const oldRound = round?.id;
       let eventError;
+      let showingPreview = false;
       if (fields.has("event")) {
         try {
-          const response = await EventApi.list(token, null, {...options, dashboard: true});
+          const response = await EventApi.list(token, null, {
+            ...options,
+            dashboard: true,
+            onNavigationPreview: () => {
+              showingPreview = true;
+              LIVE_FIELDS.forEach((field) => pending.add(field));
+            },
+          });
           const events = response.events || [];
           event = events.find((item) => item.status === "ONGOING")
             || events.find((item) => item.status === "UPCOMING")
@@ -516,6 +525,11 @@ function DashboardContent() {
         roundIdRef.current = round?.id ?? null;
         setCheckInStatus(null);
         setCheckInLoading(Boolean(round));
+      }
+
+      if (showingPreview) {
+        setLoading(false);
+        return;
       }
 
       if (fields.has("debates") || eventChanged) {
@@ -558,9 +572,8 @@ function DashboardContent() {
       }
 
       if (fields.has("event")) setError(eventError?.message || null);
-      await profile;
       if (initial && !stopped) setLoading(false);
-      await Promise.all(tasks);
+      await Promise.all([profile, ...tasks]);
     }
 
     async function flush(initial = false) {
@@ -600,7 +613,7 @@ function DashboardContent() {
       refreshQueue.current = null;
       window.clearTimeout(timer);
     };
-  }, [authLoaded]);
+  }, [authLoaded, sessionScope]);
 
   useLiveRefresh(() => refresh("profile", ...LIVE_FIELDS), {
     intervalMs: 12000,

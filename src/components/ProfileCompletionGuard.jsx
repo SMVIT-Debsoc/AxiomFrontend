@@ -11,7 +11,8 @@ import {ProfileHeaderSkeleton, CardSkeleton} from "./ui/Skeleton";
  */
 export function ProfileCompletionGuard({children}) {
   const {user, isLoaded} = useUser();
-  const {getToken, signOut} = useAuth();
+  const {getToken, signOut, sessionId, userId} = useAuth();
+  const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
   const location = useLocation();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
@@ -24,7 +25,7 @@ export function ProfileCompletionGuard({children}) {
       if (isLoaded && user) {
         try {
           const token = await getToken();
-          const response = await UserApi.getProfile(token);
+          const response = await UserApi.getProfile(token, {sessionScope});
 
           // Check if mandatory fields are complete
           const profileComplete = !!(
@@ -42,7 +43,7 @@ export function ProfileCompletionGuard({children}) {
     };
 
     checkProfile();
-  }, [isLoaded, user, getToken]);
+  }, [isLoaded, user, getToken, sessionScope]);
 
   if (checking || !isLoaded) {
     return (
@@ -62,7 +63,7 @@ export function ProfileCompletionGuard({children}) {
     try {
       clearApiCache("/users");
       const token = await getToken({skipCache: true});
-      const response = await UserApi.getProfile(token);
+      const response = await UserApi.getProfile(token, {sessionScope});
       setIsProfileComplete(Boolean(response.user?.college && response.user?.mobile && response.user?.usn));
     } catch (failure) {
       setError(failure.message || "Retry failed.");

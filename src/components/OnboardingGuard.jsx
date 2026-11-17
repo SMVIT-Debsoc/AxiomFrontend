@@ -10,7 +10,8 @@ import LoadingIndicator from "./ui/LoadingIndicator";
  */
 export function OnboardingGuard({children}) {
     const {user, isLoaded} = useUser();
-    const {getToken, signOut} = useAuth();
+    const {getToken, signOut, sessionId, userId} = useAuth();
+    const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
     const navigate = useNavigate();
     const [checking, setChecking] = useState(true);
     const [retrying, setRetrying] = useState(false);
@@ -22,7 +23,7 @@ export function OnboardingGuard({children}) {
                 try {
                     const token = await getToken();
                     // Sync user with backend database (creates user if doesn't exist)
-                    await UserApi.getProfile(token);
+                    await UserApi.getProfile(token, {sessionScope});
                 } catch (failure) {
                     console.error("Error syncing user profile:", failure);
                     setError(failure.message || "Your account could not be synchronized.");
@@ -36,7 +37,7 @@ export function OnboardingGuard({children}) {
         };
 
         syncUser();
-    }, [isLoaded, user, navigate, getToken]);
+    }, [isLoaded, user, navigate, getToken, sessionScope]);
 
     if (checking || !isLoaded) {
         return <LoadingIndicator fullScreen label="Synchronizing your account" />;
@@ -53,7 +54,7 @@ export function OnboardingGuard({children}) {
         try {
             clearApiCache("/users");
             const token = await getToken({skipCache: true});
-            await UserApi.getProfile(token);
+            await UserApi.getProfile(token, {sessionScope});
         } catch (failure) {
             setError(failure.message || "Retry failed.");
         } finally {

@@ -82,7 +82,7 @@ function RoundPage({eventId, roundId}) {
         if (field === "debates") setDebatesLoading(false);
       }
     }
-  });
+  }, "round");
 
   useLiveRefresh(() => refresh(...ROUND_LIVE_FIELDS), {
     enabled: Boolean(roundId), intervalMs: 12000, jitterMs: 3000, invalidateCache: false,

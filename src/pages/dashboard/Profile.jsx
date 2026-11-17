@@ -28,7 +28,8 @@ export default function Profile({isOnboarding = false}) {
 function ProfileSettings() {
   const isOnboarding = false;
   const {user, isLoaded} = useUser();
-  const {getToken} = useAuth();
+  const {getToken, sessionId, userId} = useAuth();
+  const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
   const navigate = useNavigate();
   const toast = useToast();
   const [formData, setFormData] = useState({
@@ -52,7 +53,7 @@ function ProfileSettings() {
           const token = await getToken();
 
           // Fetch profile from backend database (this also syncs/creates user if needed)
-          const response = await UserApi.getProfile(token);
+          const response = await UserApi.getProfile(token, {sessionScope});
           const dbUser = response.user;
 
           // Populate the form with saved profile and Better Auth account data
@@ -83,7 +84,7 @@ function ProfileSettings() {
     };
 
     fetchProfile();
-  }, [isLoaded, user, getToken]);
+  }, [isLoaded, user, getToken, sessionScope]);
 
   const handleChange = (e) => {
     setFormData({...formData, [e.target.name]: e.target.value});

@@ -11,6 +11,8 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL
 // In-memory request caching for smooth navigation without re-fetching
 const apiCache = new Map();
 const CACHE_TTL_MS = 20000; // 20s client cache for fast tab switching
+const RETURN_CACHE_TTL_MS = 120000;
+let cacheGeneration = 0;
 const MAX_CACHE_ENTRIES = 256;
 
 const MUTATION_CACHE_TARGETS = {
@@ -40,6 +42,7 @@ function invalidateMutationCache(endpoint) {
 }
 
 export function clearApiCache(prefix = null) {
+    cacheGeneration += 1;
     if (!prefix) {
         apiCache.clear();
         return;
@@ -47,6 +50,21 @@ export function clearApiCache(prefix = null) {
     for (const key of apiCache.keys()) {
         if (key.includes(prefix)) apiCache.delete(key);
     }
+}
+
+// Only route metadata can be shown past the normal cache lifetime. Publication
+// flags and round motions must come from a fresh response.
+function navigationPreview(data) {
+    const round = (value) => {
+        delete value.debates;
+        delete value.checkIns;
+        return {...value, motion: null, pairingsPublished: false, resultsPublished: false};
+    };
+    const event = (value) => ({...value, rounds: value.rounds?.map(round)});
+    if (data.round) return {...data, round: round(data.round)};
+    if (data.event) return {...data, event: event(data.event)};
+    if (Array.isArray(data.events)) return {...data, events: data.events.map(event)};
+    return data;
 }
 
 let authTokenProvider = null;
@@ -128,16 +146,21 @@ export async function apiRequest(
     }
 
     const isGet = method.toUpperCase() === "GET";
-    const cacheKey = JSON.stringify([endpoint, resolvedToken, adminSecretKey]);
+    const sessionScope = resolvedToken && !resolvedToken.startsWith("admin-secret:") && !adminSecretKey
+        ? options.sessionScope
+        : null;
+    const cacheKey = JSON.stringify([endpoint, sessionScope ? ["session", sessionScope] : resolvedToken, adminSecretKey]);
     const initialAuthorization = headers.Authorization;
+    const requestGeneration = cacheGeneration;
 
-    if (isBrowser && isGet) {
-        if (options.skipCache) {
-            apiCache.delete(cacheKey);
-        } else {
-            const cached = apiCache.get(cacheKey);
-            if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-                return JSON.parse(JSON.stringify(cached.data));
+    if (isBrowser && isGet && !options.skipCache) {
+        const cached = apiCache.get(cacheKey);
+        if (cached) {
+            const age = Date.now() - cached.timestamp;
+            if (age < CACHE_TTL_MS) return JSON.parse(JSON.stringify(cached.data));
+            if (sessionScope && options.onNavigationPreview && age < RETURN_CACHE_TTL_MS) {
+                options.onNavigationPreview();
+                return navigationPreview(JSON.parse(JSON.stringify(cached.data)));
             }
         }
     }
@@ -212,7 +235,7 @@ export async function apiRequest(
         }
 
         if (isGet) {
-            if (isBrowser && initialAuthorization === headers.Authorization) {
+            if (isBrowser && requestGeneration === cacheGeneration && initialAuthorization === headers.Authorization) {
                 apiCache.delete(cacheKey);
                 if (apiCache.size >= MAX_CACHE_ENTRIES) {
                     apiCache.delete(apiCache.keys().next().value);

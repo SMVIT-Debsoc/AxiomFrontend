@@ -3,8 +3,9 @@ import {useAuth} from "../auth/client.jsx";
 
 // Each section can load independently. Repeated live events for a section
 // collapse into one follow-up read if that section already has a request open.
-export function usePageRequests(initialFields, load) {
-  const {getToken} = useAuth();
+export function usePageRequests(initialFields, load, previewField) {
+  const {getToken, sessionId, userId} = useAuth();
+  const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
   const loader = useRef(null);
   useEffect(() => { loader.current = {getToken, load}; }, [getToken, load]);
 
@@ -23,7 +24,10 @@ export function usePageRequests(initialFields, load) {
       const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
       try {
         const token = await tokenRequest;
-        if (isCurrent()) await loader.current.load(field, token, {skipCache, signal}, isCurrent);
+        if (isCurrent()) {
+          const onNavigationPreview = field === previewField ? () => pending.add(field) : undefined;
+          await loader.current.load(field, token, {skipCache, signal, sessionScope, onNavigationPreview}, isCurrent);
+        }
       } finally {
         running.delete(field);
         if (pending.has(field)) schedule();
@@ -56,7 +60,7 @@ export function usePageRequests(initialFields, load) {
       window.clearTimeout(timer);
       enqueue.current = null;
     };
-  }, [initialFields]);
+  }, [initialFields, previewField, sessionScope]);
 
   return useCallback((...fields) => enqueue.current?.(fields), []);
 }

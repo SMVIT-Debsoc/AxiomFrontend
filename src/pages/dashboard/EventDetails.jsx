@@ -89,7 +89,7 @@ function EventOverview({id}) {
         }
       } else if (field === "personal") {
         const [profile, debates] = await Promise.allSettled([
-          UserApi.getProfile(token, {signal: options.signal}),
+          UserApi.getProfile(token, {...options, skipCache: false}),
           DebateApi.getMyDebates(token, options, id),
         ]);
         if (!canUpdate()) return;
@@ -105,7 +105,7 @@ function EventOverview({id}) {
         if (field === "personal") setPersonalLoading(false);
       }
     }
-  });
+  }, "overview");
 
   useLiveRefresh(() => refresh(...OVERVIEW_FIELDS), {
     enabled: Boolean(id), jitterMs: 3000, invalidateCache: false,

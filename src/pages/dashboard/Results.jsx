@@ -53,7 +53,7 @@ function ResultsPage({eventId}) {
         }
       } else if (field === "personal") {
         const [profile, debates] = await Promise.allSettled([
-          UserApi.getProfile(token, {signal: options.signal}),
+          UserApi.getProfile(token, {...options, skipCache: false}),
           DebateApi.getMyDebates(token, options, eventId),
         ]);
         if (!isCurrent()) return;
@@ -72,7 +72,7 @@ function ResultsPage({eventId}) {
         if (field === "standings") setStandingsLoaded(true);
       }
     }
-  });
+  }, "event");
 
   // Filter debates for rounds of this event
   const eventRoundIds = new Set(rounds.map((r) => r.id));
