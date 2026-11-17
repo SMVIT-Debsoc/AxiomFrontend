@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion as Motion } from "framer-motion";
 import {
   Trophy,
   Search,
@@ -29,39 +28,29 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
 
   // 1. Fetch Active Event to determine default view
   useEffect(() => {
+    let cancelled = false;
     const fetchActiveEvent = async () => {
       try {
         const token = await getTokenRef.current();
-        // Priority: ONGOING > UPCOMING > Any
-        let eventsResponse = await EventApi.list(token, "ONGOING");
-        let events = eventsResponse.events || [];
+        const eventsResponse = await EventApi.list(token);
+        const events = eventsResponse.events || [];
+        const active = events.find((e) => ["ACTIVE", "ONGOING"].includes(String(e.status).toUpperCase())) || events[0];
 
-        if (events.length === 0) {
-          eventsResponse = await EventApi.list(token, "UPCOMING");
-          events = eventsResponse.events || [];
-        }
-
-        if (events.length === 0) {
-          eventsResponse = await EventApi.list(token);
-          events = eventsResponse.events || [];
-        }
-
-        if (events.length > 0) {
-          setActiveEvent(events[0]);
+        if (!cancelled && active) {
+          setActiveEvent(active);
           setFilter("current-event");
         }
       } catch (err) {
         console.error("Failed to fetch active event:", err);
       } finally {
-        setIsEventLoading(false);
+        if (!cancelled) setIsEventLoading(false);
       }
     };
     fetchActiveEvent();
+    return () => { cancelled = true; };
   }, []); // runs once
 
   const fetchLeaderboard = useCallback(async ({silent = false} = {}) => {
-    if (isEventLoading) return;
-
     try {
       if (!silent) setLoading(true);
       const token = await getTokenRef.current();
@@ -85,7 +74,7 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filter, activeEvent, isEventLoading]); // stable - getToken via ref
+  }, [filter, activeEvent]); // stable - getToken via ref
 
   useEffect(() => {
     fetchLeaderboard();
@@ -299,11 +288,9 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
                 </tr>
               ) : (
                 filteredLeaderboard.map(({ entry, rank }) => (
-                  <Motion.tr
+                  <tr
                     key={entry.user?.id || entry.id || rank}
                     data-podium={getPodiumMedal(rank)}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
                     className="standing-row group hover:bg-muted/20 transition-colors"
                   >
                     <td className="px-6 py-4">
@@ -326,7 +313,7 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
                         {getStats(entry).totalScore?.toFixed(0) || 0}
                       </span>
                     </td>
-                  </Motion.tr>
+                  </tr>
                 ))
               )}
             </tbody>
