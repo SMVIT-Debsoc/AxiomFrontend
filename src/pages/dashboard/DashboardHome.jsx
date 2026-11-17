@@ -616,6 +616,7 @@ function DashboardContent() {
   }, [authLoaded, sessionScope]);
 
   useLiveRefresh(() => refresh("profile", ...LIVE_FIELDS), {
+    eventId: activeEvent?.id,
     intervalMs: 12000,
     jitterMs: 3000,
     invalidateCache: false,
@@ -638,6 +639,15 @@ function DashboardContent() {
     },
     onRoundUpdated: () => refresh(...LIVE_FIELDS),
     onDebateCreated: () => refresh("debates"),
+    onDebateUpdated: ({debateId}) => {
+      if (myDebates.some((debate) => debate.id === debateId)) refresh("debates");
+    },
+    onDebateDeleted: ({debateId}) => {
+      if (myDebates.some((debate) => debate.id === debateId)) refresh("debates", "checkIn");
+    },
+    onRoomsAllocated: ({roundId}) => {
+      if (myDebates.some((debate) => debate.roundId === roundId)) refresh("debates");
+    },
     onDebateResult: ({debateId}) => {
       if (myDebates.some((debate) => debate.id === debateId)) {
         refresh("profile", "debates", "checkIn");

@@ -59,6 +59,22 @@ test('profile cache is isolated by the current session credential', async () => 
   assert.equal(fetchCount, 2);
 });
 
+test('a round-specific invalidation does not discard an unrelated in-flight navigation response', async () => {
+  let finish;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Promise(resolve => { finish = resolve; });
+  };
+  const event = api.EventApi.getOverview('e1');
+  api.clearApiCache('/check-in/round/r1');
+  finish(Response.json({success: true, event: {id: 'e1'}}));
+  await event;
+  const cached = await api.EventApi.getOverview('e1');
+  assert.equal(cached.event.id, 'e1');
+  assert.equal(calls, 1);
+});
+
 test('navigation reuses a session across token refresh and only previews expired metadata', async (context) => {
   let now = Date.now();
   context.mock.method(Date, 'now', () => now);
@@ -103,7 +119,11 @@ test('SocketService re-attaches tracked listeners after disconnect and reconnect
           off(event, fn) {
             handlers.get(event)?.delete(fn);
           },
-          emit() {},
+          emitted: [],
+          emit(event, ...args) {
+            this.emitted.push([event, ...args]);
+          },
+          timeout() { return this; },
           connect() {
             this.connectCount += 1;
             this.connected = true;
@@ -150,4 +170,16 @@ test('SocketService re-attaches tracked listeners after disconnect and reconnect
   unsub();
   assert.equal(secondSock._hasListener('round:status', handler), false);
   assert.equal(calls, 0);
+
+  socketService.joinEvent('e1');
+  socketService.joinEvent('e1');
+  assert.equal(secondSock.emitted.filter(([event]) => event === 'join:event').length, 1);
+  assert.equal(socketService.isRoomReady('event', 'e1'), false);
+  secondSock.emitted.at(-1)[2](null, {joined: true});
+  assert.equal(socketService.isRoomReady('event', 'e1'), true);
+  socketService.leaveEvent('e1');
+  assert.equal(socketService.isRoomReady('event', 'e1'), true);
+  socketService.leaveEvent('e1');
+  assert.equal(socketService.isRoomReady('event', 'e1'), false);
+  assert.deepEqual(secondSock.emitted.at(-1), ['leave:event', 'e1']);
 });

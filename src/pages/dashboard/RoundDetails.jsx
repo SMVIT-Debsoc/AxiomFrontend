@@ -85,7 +85,7 @@ function RoundPage({eventId, roundId}) {
   }, "round");
 
   useLiveRefresh(() => refresh(...ROUND_LIVE_FIELDS), {
-    enabled: Boolean(roundId), intervalMs: 12000, jitterMs: 3000, invalidateCache: false,
+    enabled: Boolean(roundId), roundId, intervalMs: 12000, jitterMs: 3000, invalidateCache: false,
   });
 
   useRoundSocket(roundId, {
@@ -111,6 +111,15 @@ function RoundPage({eventId, roundId}) {
     onDebateResult: ({debateId}) => {
       if (allMyDebates.some((debate) => debate.id === debateId)) refresh("debates", "checkIn");
     },
+    onDebateCreated: () => refresh("debates"),
+    onDebateUpdated: ({debateId}) => {
+      if (myDebate?.id === debateId) refresh("debates");
+    },
+    onDebateDeleted: ({debateId}) => {
+      if (myDebate?.id === debateId) refresh("debates", "checkIn");
+    },
+    onRoomsAllocated: () => { if (myDebate) refresh("debates"); },
+    onRoundDeleted: () => refresh("round"),
     onRoundUpdated: () => refresh(...ROUND_LIVE_FIELDS),
     onCheckInUpdate: (data) => {
       if (data.userId === currentUserId) refresh("checkIn");

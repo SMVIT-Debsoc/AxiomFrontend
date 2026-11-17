@@ -108,7 +108,7 @@ export default function AdminEventDetails() {
   }, [fetchData]);
   useEffect(() => () => clearTimeout(softRefetchTimer.current), []);
 
-  useLiveRefresh(() => fetchData(true), { enabled: Boolean(eventId) });
+  useLiveRefresh(softRefetch, { enabled: Boolean(eventId), eventId, jitterMs: 3000, invalidateCache: false });
 
   // Real-time updates
   useEventSocket(eventId, {

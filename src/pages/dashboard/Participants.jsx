@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {usePageRequests} from "../../hooks/usePageRequests";
 import {EventApi} from "../../services/api";
-import {useEventSocket} from "../../hooks/useSocket";
+import {useEventSocket, useLiveRefresh} from "../../hooks/useSocket";
 import {ParticipantsListSkeleton} from "../../components/ui/Skeleton";
 
 const PARTICIPANT_FIELDS = ["event"];
@@ -46,6 +46,7 @@ function ParticipantsPage({eventId}) {
   useEventSocket(eventId, {
     onEventEnrollment: () => refresh("event"),
   });
+  useLiveRefresh(() => refresh("event"), {eventId, jitterMs: 3000, invalidateCache: false});
 
   if (eventLoading) {
     return (

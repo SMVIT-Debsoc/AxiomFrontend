@@ -11,6 +11,39 @@ export function invalidateRealtimeCache() {
   REALTIME_CACHE_PREFIXES.forEach((prefix) => clearApiCache(prefix));
 }
 
+function invalidateSocketUpdate(handler, data, eventId, roundId) {
+  if (handler === "onCheckInCount") return;
+  if (handler === "onCheckInUpdate") {
+    if (roundId) clearApiCache(`/check-in/round/${roundId}`);
+    return;
+  }
+  if (handler === "onEventEnrollment" || handler === "onEventUpdated" || handler === "onEventDeleted") {
+    if (eventId) clearApiCache(`/events/${eventId}`);
+    return;
+  }
+  if (handler === "onLeaderboardUpdate") {
+    clearApiCache((key) => key.includes("/stats/leaderboard") &&
+      (!eventId || !key.includes("eventId=") || key.includes(`eventId=${eventId}"`)));
+    return;
+  }
+  if (roundId) {
+    clearApiCache(`/rounds/${roundId}`);
+    clearApiCache(`/debates/round/${roundId}`);
+  }
+  if (eventId) {
+    clearApiCache(`/events/${eventId}`);
+    clearApiCache(`/rounds/event/${eventId}`);
+  }
+  if (handler.startsWith("onRound") || handler === "onPairingsPublished" || handler === "onResultsPublished") {
+    clearApiCache("?view=dashboard");
+  }
+  if (handler.startsWith("onDebate") || handler === "onPairingsPublished" ||
+      handler === "onRoomsAllocated" || handler === "onResultsPublished") {
+    clearApiCache(eventId ? `/debates/my-debates?eventId=${eventId}` : "/debates/my-debates");
+    if (data?.debateId) clearApiCache(`/debates/${data.debateId}`);
+  }
+}
+
 /**
  * Keeps a view live even when WebSockets are disconnected or the browser tab was backgrounded:
  * - Refreshes immediately on tab visibility return (`visible`)
@@ -22,6 +55,8 @@ export function useLiveRefresh(refreshFn, {
   intervalMs = 25000,
   jitterMs = 0,
   invalidateCache = true,
+  eventId,
+  roundId,
 } = {}) {
   const refreshRef = useRef(refreshFn);
   useEffect(() => {
@@ -32,6 +67,10 @@ export function useLiveRefresh(refreshFn, {
     if (!enabled || typeof document === "undefined") return undefined;
 
     let wasDisconnected = !socketService.isConnected();
+    let needsRoomRefresh = false;
+    const hasRooms = Boolean(eventId || roundId);
+    const roomsReady = () => socketService.isRoomReady("event", eventId) &&
+      socketService.isRoomReady("round", roundId);
 
     const triggerRefresh = () => {
       if (document.visibilityState !== "visible") return;
@@ -42,12 +81,20 @@ export function useLiveRefresh(refreshFn, {
     const unsubConnect = socketService.on(SocketEvents.CONNECTION, () => {
       if (wasDisconnected) {
         wasDisconnected = false;
-        triggerRefresh();
+        if (hasRooms) needsRoomRefresh = true;
+        else triggerRefresh();
       }
     });
 
     const unsubDisconnect = socketService.on(SocketEvents.DISCONNECT, () => {
       wasDisconnected = true;
+      needsRoomRefresh = hasRooms;
+    });
+    const unsubRoomReady = socketService.onRoomReady((type, id) => {
+      if ((type === "event" ? id === eventId : id === roundId) && needsRoomRefresh && roomsReady()) {
+        needsRoomRefresh = false;
+        triggerRefresh();
+      }
     });
 
     const handleVisibility = () => {
@@ -60,7 +107,14 @@ export function useLiveRefresh(refreshFn, {
     let timer;
     const schedulePoll = () => {
       timer = window.setTimeout(() => {
-        if (!socketService.isConnected()) triggerRefresh();
+        if (!socketService.isConnected() || !roomsReady()) {
+          if (document.visibilityState === "visible") {
+            needsRoomRefresh = hasRooms;
+            socketService.retryRoom("event", eventId);
+            socketService.retryRoom("round", roundId);
+            triggerRefresh();
+          }
+        }
         schedulePoll();
       }, intervalMs + Math.random() * jitterMs);
     };
@@ -69,10 +123,11 @@ export function useLiveRefresh(refreshFn, {
     return () => {
       unsubConnect();
       unsubDisconnect();
+      unsubRoomReady();
       document.removeEventListener("visibilitychange", handleVisibility);
       window.clearTimeout(timer);
     };
-  }, [enabled, intervalMs, jitterMs, invalidateCache]);
+  }, [enabled, intervalMs, jitterMs, invalidateCache, eventId, roundId]);
 }
 
 /**
@@ -85,8 +140,6 @@ export function useLiveRefresh(refreshFn, {
  * @returns {Object} Socket utilities
  */
 export function useSocket({eventId, roundId, autoConnect = true} = {}) {
-  const subscribedRef = useRef(new Set());
-
   // Connect on mount
   useEffect(() => {
     if (autoConnect) {
@@ -131,9 +184,7 @@ export function useSocket({eventId, roundId, autoConnect = true} = {}) {
    * @param {Function} callback - Event handler
    */
   const subscribe = useCallback((event, callback) => {
-    const unsubscribe = socketService.on(event, callback);
-    subscribedRef.current.add({event, callback, unsubscribe});
-    return unsubscribe;
+    return socketService.on(event, callback);
   }, []);
 
   /**
@@ -202,10 +253,11 @@ export function useEventSocket(eventId, callbacks = {}) {
 
     // Helper to invalidate stale cached GET responses and call current callback safely
     const callHandler = (handlerName, data) => {
-      invalidateRealtimeCache();
-      if (callbacksRef.current[handlerName]) {
-        callbacksRef.current[handlerName](data);
-      }
+      if (data?.eventId && data.eventId !== eventId) return;
+      const handler = callbacksRef.current[handlerName];
+      if (!handler) return;
+      invalidateSocketUpdate(handlerName, data, eventId, data?.roundId);
+      handler(data);
     };
 
     // Check-in count updates
@@ -316,6 +368,10 @@ export function useEventSocket(eventId, callbacks = {}) {
         callHandler("onDebateCreated", data)
       )
     );
+    unsubscribers.push(
+      subscribe(SocketEvents.DEBATE_UPDATED, (data) => callHandler("onDebateUpdated", data)),
+      subscribe(SocketEvents.DEBATE_DELETED, (data) => callHandler("onDebateDeleted", data))
+    );
 
     // Event deleted
     unsubscribers.push(
@@ -352,10 +408,11 @@ export function useRoundSocket(roundId, callbacks = {}) {
 
     // Helper to invalidate stale cached GET responses and call current callback safely
     const callHandler = (handlerName, data) => {
-      invalidateRealtimeCache();
-      if (callbacksRef.current[handlerName]) {
-        callbacksRef.current[handlerName](data);
-      }
+      if (data?.roundId && data.roundId !== roundId) return;
+      const handler = callbacksRef.current[handlerName];
+      if (!handler) return;
+      invalidateSocketUpdate(handlerName, data, data?.eventId, roundId);
+      handler(data);
     };
 
     // Check-in updates

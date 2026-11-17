@@ -108,7 +108,7 @@ function EventOverview({id}) {
   }, "overview");
 
   useLiveRefresh(() => refresh(...OVERVIEW_FIELDS), {
-    enabled: Boolean(id), jitterMs: 3000, invalidateCache: false,
+    enabled: Boolean(id), eventId: id, jitterMs: 3000, invalidateCache: false,
   });
 
   // Real-time updates via WebSocket
@@ -222,7 +222,7 @@ function EventOverview({id}) {
       );
       enrollmentVersion.current += 1;
       setIsEnrolled(true);
-      socketService.joinEvent(id);
+      socketService.retryRoom("event", id, true);
       refresh("overview", "enrollment");
     } catch (err) {
       console.error("Enrollment failed", err);

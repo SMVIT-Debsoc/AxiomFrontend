@@ -12,7 +12,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL
 const apiCache = new Map();
 const CACHE_TTL_MS = 20000; // 20s client cache for fast tab switching
 const RETURN_CACHE_TTL_MS = 120000;
-let cacheGeneration = 0;
+const pendingCacheReads = new Set();
 const MAX_CACHE_ENTRIES = 256;
 
 const MUTATION_CACHE_TARGETS = {
@@ -42,13 +42,12 @@ function invalidateMutationCache(endpoint) {
 }
 
 export function clearApiCache(prefix = null) {
-    cacheGeneration += 1;
-    if (!prefix) {
-        apiCache.clear();
-        return;
-    }
+    const matches = typeof prefix === "function" ? prefix : (key) => !prefix || key.includes(prefix);
     for (const key of apiCache.keys()) {
-        if (key.includes(prefix)) apiCache.delete(key);
+        if (matches(key)) apiCache.delete(key);
+    }
+    for (const read of pendingCacheReads) {
+        if (matches(read.key)) read.invalidated = true;
     }
 }
 
@@ -151,7 +150,6 @@ export async function apiRequest(
         : null;
     const cacheKey = JSON.stringify([endpoint, sessionScope ? ["session", sessionScope] : resolvedToken, adminSecretKey]);
     const initialAuthorization = headers.Authorization;
-    const requestGeneration = cacheGeneration;
 
     if (isBrowser && isGet && !options.skipCache) {
         const cached = apiCache.get(cacheKey);
@@ -165,6 +163,8 @@ export async function apiRequest(
         }
     }
 
+    const cacheRead = isBrowser && isGet ? {key: cacheKey, invalidated: false} : null;
+    if (cacheRead) pendingCacheReads.add(cacheRead);
     try {
         const baseUrl = API_BASE_URL.endsWith("/")
             ? API_BASE_URL.slice(0, -1)
@@ -235,7 +235,7 @@ export async function apiRequest(
         }
 
         if (isGet) {
-            if (isBrowser && requestGeneration === cacheGeneration && initialAuthorization === headers.Authorization) {
+            if (cacheRead && !cacheRead.invalidated && initialAuthorization === headers.Authorization) {
                 apiCache.delete(cacheKey);
                 if (apiCache.size >= MAX_CACHE_ENTRIES) {
                     apiCache.delete(apiCache.keys().next().value);
@@ -251,6 +251,8 @@ export async function apiRequest(
     } catch (error) {
         console.error(`API Error (${endpoint}):`, error);
         throw error;
+    } finally {
+        if (cacheRead) pendingCacheReads.delete(cacheRead);
     }
 }
 

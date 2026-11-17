@@ -113,7 +113,10 @@ export const SocketEvents = {
 class SocketService {
     socket = null;
     listeners = new Map();
-    connectedRooms = new Set();
+    rooms = new Map();
+    roomListeners = new Set();
+    authRetries = 0;
+    authRetryTimer = null;
     authProvider = null;
 
     setAuthProvider(provider) {
@@ -126,6 +129,9 @@ class SocketService {
      */
     refreshAuth() {
         if (!this.socket) return;
+        clearTimeout(this.authRetryTimer);
+        this.authRetryTimer = null;
+        this.authRetries = 0;
         this.socket.disconnect();
         this.socket.connect();
     }
@@ -140,7 +146,7 @@ class SocketService {
 
         // If we already have a socket instance that's just disconnected, don't recreate
         if (this.socket) {
-            this.socket.connect();
+            if (!this.socket.active && !this.authRetryTimer) this.socket.connect();
             return this.socket;
         }
 
@@ -165,7 +171,7 @@ class SocketService {
                 }
                 if (this.authProvider) {
                     try {
-                        const token = await this.authProvider();
+                        const token = await this.authProvider(this.authRetries ? {skipCache: true} : undefined);
                         if (token) payload.token = token;
                     } catch {
                         // Ignore auth token lookup failure for socket handshake
@@ -192,18 +198,18 @@ class SocketService {
 
         this.socket.on("connect", () => {
             console.log("[Socket] Connected:", this.socket.id);
-            // Rejoin rooms after reconnection
-            this.connectedRooms.forEach((room) => {
-                const [type, id] = room.split(":");
-                if (type === "event") {
-                    this.socket.emit(SocketEvents.JOIN_EVENT, id);
-                } else if (type === "round") {
-                    this.socket.emit(SocketEvents.JOIN_ROUND, id);
-                }
-            });
+            this.authRetries = 0;
+            clearTimeout(this.authRetryTimer);
+            this.authRetryTimer = null;
+            for (const room of this.rooms.values()) this.requestRoom(room, true);
         });
 
         this.socket.on("disconnect", (reason) => {
+            for (const room of this.rooms.values()) {
+                room.ready = false;
+                room.attempt = null;
+                room.retryWhenSettled = false;
+            }
             console.log("[Socket] Disconnected:", reason);
         });
 
@@ -215,6 +221,18 @@ class SocketService {
                 socketUrl: SOCKET_URL || "same-origin",
                 transports: SOCKET_TRANSPORTS,
             });
+            // Socket.IO retries transport failures. An auth denial needs an explicit reconnect.
+            const socket = this.socket;
+            if (socket && !socket.active && this.authProvider && this.authRetries < 3) {
+                clearTimeout(this.authRetryTimer);
+                const delay = 1000 * 2 ** this.authRetries;
+                this.authRetryTimer = setTimeout(() => {
+                    this.authRetryTimer = null;
+                    if (this.socket !== socket || socket.connected || socket.active) return;
+                    this.authRetries += 1;
+                    socket.connect();
+                }, delay);
+            }
         });
 
         return this.socket;
@@ -227,7 +245,10 @@ class SocketService {
         if (this.socket) {
             this.socket.disconnect();
             this.socket = null;
-            this.connectedRooms.clear();
+            this.rooms.clear();
+            clearTimeout(this.authRetryTimer);
+            this.authRetryTimer = null;
+            this.authRetries = 0;
         }
     }
 
@@ -245,59 +266,71 @@ class SocketService {
         return this.socket?.connected || false;
     }
 
-    /**
-     * Join an event room to receive event-specific updates
-     */
-    joinEvent(eventId) {
-        if (!eventId) return;
-
-        this.connectedRooms.add(`event:${eventId}`);
+    acquireRoom(type, id) {
+        if (!id) return;
+        const key = type + ":" + id;
+        let room = this.rooms.get(key);
+        if (!room) {
+            room = {key, type, id, subscribers: 0, ready: false, attempt: null, retryAt: 0};
+            this.rooms.set(key, room);
+        }
+        room.subscribers += 1;
         this.connect();
-        if (this.socket?.connected) {
-            this.socket.emit(SocketEvents.JOIN_EVENT, eventId);
-        }
-        console.log("[Socket] Joined event:", eventId);
+        this.requestRoom(room);
     }
 
-    /**
-     * Leave an event room
-     */
-    leaveEvent(eventId) {
-        if (!eventId) return;
-
-        this.connectedRooms.delete(`event:${eventId}`);
+    releaseRoom(type, id) {
+        const room = this.rooms.get(type + ":" + id);
+        if (!room || --room.subscribers > 0) return;
+        this.rooms.delete(room.key);
         if (this.socket?.connected) {
-            this.socket.emit(SocketEvents.LEAVE_EVENT, eventId);
+            this.socket.emit(type === "event" ? SocketEvents.LEAVE_EVENT : SocketEvents.LEAVE_ROUND, id);
         }
-        console.log("[Socket] Left event:", eventId);
     }
 
-    /**
-     * Join a round room to receive round-specific updates
-     */
-    joinRound(roundId) {
-        if (!roundId) return;
-
-        this.connectedRooms.add(`round:${roundId}`);
-        this.connect();
-        if (this.socket?.connected) {
-            this.socket.emit(SocketEvents.JOIN_ROUND, roundId);
+    requestRoom(room, force = false) {
+        const socket = this.socket;
+        if (!room || !socket?.connected || room.ready) return;
+        if (room.attempt) {
+            if (force) room.retryWhenSettled = true;
+            return;
         }
-        console.log("[Socket] Joined round:", roundId);
+        if (!force && Date.now() < room.retryAt) return;
+        const attempt = Symbol();
+        room.attempt = attempt;
+        room.retryAt = Date.now() + 20000;
+        const event = room.type === "event" ? SocketEvents.JOIN_EVENT : SocketEvents.JOIN_ROUND;
+        socket.timeout(4000).emit(event, room.id, (error, result) => {
+            if (this.socket !== socket || this.rooms.get(room.key) !== room || room.attempt !== attempt) return;
+            room.attempt = null;
+            const retry = room.retryWhenSettled;
+            room.retryWhenSettled = false;
+            if (!error && result?.joined === true) {
+                room.ready = true;
+                this.roomListeners.forEach((listener) => listener(room.type, room.id));
+            } else if (retry) {
+                this.requestRoom(room, true);
+            }
+        });
     }
 
-    /**
-     * Leave a round room
-     */
-    leaveRound(roundId) {
-        if (!roundId) return;
-
-        this.connectedRooms.delete(`round:${roundId}`);
-        if (this.socket?.connected) {
-            this.socket.emit(SocketEvents.LEAVE_ROUND, roundId);
-        }
-        console.log("[Socket] Left round:", roundId);
+    isRoomReady(type, id) {
+        return !id || Boolean(this.socket?.connected && this.rooms.get(type + ":" + id)?.ready);
     }
+
+    retryRoom(type, id, force = false) {
+        this.requestRoom(this.rooms.get(type + ":" + id), force);
+    }
+
+    onRoomReady(listener) {
+        this.roomListeners.add(listener);
+        return () => this.roomListeners.delete(listener);
+    }
+
+    joinEvent(id) { this.acquireRoom("event", id); }
+    leaveEvent(id) { this.releaseRoom("event", id); }
+    joinRound(id) { this.acquireRoom("round", id); }
+    leaveRound(id) { this.releaseRoom("round", id); }
 
     /**
      * Subscribe to a socket event

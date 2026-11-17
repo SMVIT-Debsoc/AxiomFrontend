@@ -8,7 +8,7 @@ import {
 import { cn } from "../../lib/utils";
 import { useAuth } from "../../auth/client.jsx";
 import { StatsApi, EventApi } from "../../services/api";
-import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import { useSocket, SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { LeaderboardSkeleton } from "../../components/ui/Skeleton";
 
@@ -58,14 +58,14 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
     fetchActiveEvent();
   }, []); // runs once
 
-  const fetchLeaderboard = useCallback(async () => {
+  const fetchLeaderboard = useCallback(async ({silent = false} = {}) => {
     if (isEventLoading) return;
 
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await getTokenRef.current();
       const eventId = filter === "current-event" ? activeEvent?.id : null;
-      const response = await StatsApi.getLeaderboard(token, eventId, 50);
+      const response = await StatsApi.getLeaderboard(token, eventId, 50, {skipCache: silent});
 
       let data = [];
       if (response.success && response.data?.leaderboard) {
@@ -90,14 +90,25 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
+  const updateTimer = useRef(null);
+  const refreshLeaderboard = useCallback(() => {
+    clearTimeout(updateTimer.current);
+    updateTimer.current = setTimeout(() => fetchLeaderboard({silent: true}), 150);
+  }, [fetchLeaderboard]);
+  useEffect(() => () => clearTimeout(updateTimer.current), [refreshLeaderboard]);
+
   // Subscribe to leaderboard updates
   useEffect(() => {
-    const unsubscribe = subscribe(SocketEvents.LEADERBOARD_UPDATE, () => {
-      fetchLeaderboard();
+    const unsubscribe = subscribe(SocketEvents.LEADERBOARD_UPDATE, (data) => {
+      if (filter === "current-event" && data?.eventId && data.eventId !== activeEvent?.id) return;
+      refreshLeaderboard();
     });
 
     return () => unsubscribe?.();
-  }, [subscribe, fetchLeaderboard]);
+  }, [subscribe, refreshLeaderboard, filter, activeEvent?.id]);
+  useLiveRefresh(refreshLeaderboard, {
+    enabled: !isEventLoading, eventId: activeEvent?.id, jitterMs: 3000, invalidateCache: false,
+  });
 
   const query = searchQuery.toLowerCase();
   const filteredLeaderboard = leaderboard.reduce((matches, entry, index) => {

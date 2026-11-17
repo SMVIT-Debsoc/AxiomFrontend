@@ -25,7 +25,7 @@ import {
 import { useAuth } from "../../auth/client.jsx";
 import { cn } from "../../lib/utils";
 import { AdminApi } from "../../services/api";
-import { useRoundSocket, useSocket, SocketEvents } from "../../hooks/useSocket";
+import { useRoundSocket, useSocket, SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {useToast} from "../../hooks/useToast";
 import { UserAvatar } from "../../components/ui/UserAvatar";
@@ -159,6 +159,9 @@ export default function AdminRoundManagement() {
         onRoomsAllocated: () => {
             debouncedFetch();
         },
+        onDebateCreated: debouncedFetch,
+        onDebateUpdated: debouncedFetch,
+        onDebateDeleted: debouncedFetch,
         onDebateResult: (data) => {
             setDebates((prev) =>
                 prev.map((d) =>
@@ -191,7 +194,8 @@ export default function AdminRoundManagement() {
         },
     });
 
-    const { subscribe: subscribeRound } = useSocket({ roundId, eventId: round?.eventId });
+    useLiveRefresh(debouncedFetch, { roundId, eventId: round?.eventId, jitterMs: 3000, invalidateCache: false });
+    const { subscribe: subscribeRound } = useSocket({ eventId: round?.eventId });
     useEffect(() => {
         if (!roundId) return undefined;
         return subscribeRound(SocketEvents.ROUND_CHECKIN_WINDOW, (data) => {

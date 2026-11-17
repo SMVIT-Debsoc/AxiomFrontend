@@ -143,7 +143,7 @@ export default function AdminLive() {
     }, [fetchRound]);
     useEffect(() => () => clearTimeout(refetchTimer.current), []);
 
-    useLiveRefresh(() => fetchRound(true));
+    useLiveRefresh(softRefetch, {eventId, roundId, jitterMs: 3000, invalidateCache: false});
 
     const handleRealtimeCheckIn = useCallback((data) => {
         const targetUserId = data?.userId || data?.user?.id;
@@ -197,14 +197,12 @@ export default function AdminLive() {
         onPairingsPublished: (data) => setRound((prev) => (prev ? {...prev, pairingsPublished: data.published} : prev)),
         onResultsPublished: (data) => setResultsPublished(Boolean(data.published)),
         onRoundUpdated: (data) => { if (data?.round) setRound((prev) => ({...prev, ...data.round})); },
-        onRoundDeleted: () => refreshRoundsList(true),
+        onDebateCreated: softRefetch,
+        onDebateUpdated: softRefetch,
+        onDebateDeleted: softRefetch,
     });
 
     useEventSocket(eventId, {
-        onCheckInCount: (data) => {
-            if (!data?.roundId || data.roundId === roundId) softRefetch();
-        },
-        onRoundCheckInWindow: handleRealtimeWindow,
         onRoundCreated: (data) => {
             if (data?.round) {
                 setRounds((prev) => (
@@ -241,7 +239,7 @@ export default function AdminLive() {
         },
     });
 
-    const {subscribe: subscribeLive} = useSocket({eventId, roundId});
+    const {subscribe: subscribeLive} = useSocket();
     useEffect(() => {
         if (!eventId && !roundId) return undefined;
         return subscribeLive(SocketEvents.ROUND_CHECKIN_WINDOW, handleRealtimeWindow);

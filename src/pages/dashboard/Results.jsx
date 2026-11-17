@@ -91,7 +91,7 @@ function ResultsPage({eventId}) {
   useLiveRefresh(() => {
     refresh(...RESULTS_FIELDS);
     if (hasPublishedResults) refresh("standings");
-  }, {enabled: Boolean(eventId), intervalMs: 12000, jitterMs: 3000, invalidateCache: false});
+  }, {enabled: Boolean(eventId), eventId, intervalMs: 12000, jitterMs: 3000, invalidateCache: false});
 
   useEventSocket(eventId, {
     onDebateResult: ({debateId}) => {

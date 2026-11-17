@@ -3,7 +3,7 @@ import {Link} from "react-router-dom";
 import {Search, X} from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
 import {AdminApi, EventApi} from "../../services/api";
-import {useEventSocket, useRoundSocket, useSocket, SocketEvents} from "../../hooks/useSocket";
+import {useEventSocket, useRoundSocket, useSocket, SocketEvents, useLiveRefresh} from "../../hooks/useSocket";
 import {useToast} from "../../hooks/useToast";
 import {useAdminEvent} from "../../contexts/adminEvent";
 import ModalSurface from "../../components/ui/ModalSurface";
@@ -113,7 +113,8 @@ export default function AdminPeople() {
         onRoundUpdated: scheduleReload,
     });
 
-    const {subscribe} = useSocket({eventId, roundId: round?.id});
+    useLiveRefresh(scheduleReload, {eventId, roundId: round?.id, jitterMs: 3000, invalidateCache: false});
+    const {subscribe} = useSocket();
     useEffect(() => {
         return subscribe(SocketEvents.ROUND_CHECKIN_WINDOW, scheduleReload);
     }, [subscribe, scheduleReload]);

@@ -7,7 +7,7 @@ import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useAuth } from "../../auth/client.jsx";
 import { UserApi, EventApi } from "../../services/api";
 import { UserAvatar } from "../../components/ui/UserAvatar";
-import { useSocket, SocketEvents } from "../../hooks/useSocket";
+import { useSocket, SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
 
 export default function AdminParticipants() {
@@ -24,12 +24,12 @@ export default function AdminParticipants() {
     getTokenRef.current = getToken;
   }, [getToken]);
 
-  const fetchParticipants = useCallback(async () => {
+  const fetchParticipants = useCallback(async ({silent = false} = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const token = await getTokenRef.current();
       const [response, eventResponse] = await Promise.all([
-        UserApi.list(token),
+        UserApi.list(token, 500, 0, {skipCache: silent}),
         EventApi.list(token),
       ]);
       if (response.success) {
@@ -54,14 +54,15 @@ export default function AdminParticipants() {
   useEffect(() => {
     const unsubs = [
       subscribe(SocketEvents.USER_UPDATED, () => {
-        fetchParticipants();
+        fetchParticipants({silent: true});
       }),
       subscribe(SocketEvents.USER_DELETED, () => {
-        fetchParticipants();
+        fetchParticipants({silent: true});
       }),
     ];
     return () => unsubs.forEach((u) => u && u());
   }, [subscribe, fetchParticipants]);
+  useLiveRefresh(() => fetchParticipants({silent: true}), {jitterMs: 3000, invalidateCache: false});
 
 
   const filteredParticipants = participants.filter((p) => {
