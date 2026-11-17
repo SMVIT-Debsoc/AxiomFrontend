@@ -227,7 +227,7 @@ export default function CompleteProfile() {
                         {COLLEGE_SUGGESTIONS.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                                 {COLLEGE_SUGGESTIONS.map((c) => (
-                                    <button key={c} type="button" onClick={() => set("college", c)} aria-pressed={form.college === c} className={`min-h-10 rounded-full border px-3.5 text-sm font-medium ${form.college === c ? "border-[#4A5646] bg-[#4A5646] text-[#EAFBF5]" : "border-input bg-card text-foreground"}`}>{c}</button>
+                                    <button key={c} type="button" onClick={() => set("college", c)} aria-pressed={form.college === c} className={`min-h-11 rounded-full border px-3.5 py-1.5 text-left text-sm font-medium leading-snug ${form.college === c ? "border-[#4A5646] bg-[#4A5646] text-[#EAFBF5]" : "border-input bg-card text-foreground"}`}>{c}</button>
                                 ))}
                             </div>
                         )}
@@ -258,10 +258,10 @@ export default function CompleteProfile() {
                 </div>
 
                 {/* Sticky finish bar on phones */}
-                <div className="sticky bottom-0 flex flex-col gap-2 border-t border-border bg-background px-5 pb-6 pt-4 lg:hidden">
+                <div className="sticky bottom-0 flex flex-col gap-2 border-t border-border bg-background px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 lg:hidden">
                     <button type="submit" disabled={!ready || saving} className="flex h-[58px] items-center justify-center gap-2 rounded-2xl bg-[#1D1E18] text-lg font-bold text-[#EAFBF5] disabled:cursor-not-allowed disabled:bg-[#AAC9B6] disabled:text-[#44594A] dark:bg-[#B9F5D8] dark:text-[#141510] dark:disabled:bg-muted dark:disabled:text-muted-foreground">{saving && <Loader2 className="animate-spin" size={18} aria-hidden="true" />}Finish registration</button>
                     <p className="m-0 text-center text-[13px] text-muted-foreground" aria-live="polite">{hint}</p>
-                    <button type="button" onClick={() => signOut().catch(() => navigate("/", {replace: true}))} className="min-h-10 text-[13px] font-semibold text-primary underline underline-offset-4">Not you? Sign out</button>
+                    <button type="button" onClick={() => signOut().catch(() => navigate("/", {replace: true}))} className="min-h-11 text-[13px] font-semibold text-primary underline underline-offset-4">Not you? Sign out</button>
                 </div>
             </form>
         </div>

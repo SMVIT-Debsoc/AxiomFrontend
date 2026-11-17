@@ -226,6 +226,15 @@ function ProfileSettings() {
         </div>
       )}
 
+      {!isOnboarding && (
+        <div className="lg:hidden rounded-xl border border-border bg-card p-4 space-y-2.5">
+          <div className="flex items-baseline justify-between">
+            <span className="font-heading font-bold text-sm text-foreground">Profile strength</span>
+            <span className="text-xs font-heading font-semibold text-muted-foreground">{completeness.done} of {completeness.total} complete</span>
+          </div>
+          <NeoProgressBar label="Profile strength" value={(completeness.done / completeness.total) * 100} showPercentage={false} />
+        </div>
+      )}
       <div className={isOnboarding ? "" : "grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem] items-start"}>
       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
         {/* Profile Card Header */}
@@ -241,7 +250,7 @@ function ProfileSettings() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 font-sans text-xs">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 md:p-6 space-y-4 font-sans text-xs">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label htmlFor="profile-first-name" className="text-xs font-medium text-foreground flex items-center gap-1.5">
@@ -252,7 +261,7 @@ function ProfileSettings() {
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                className="w-full min-h-11 bg-background border border-border rounded-lg px-3.5 py-2.5 text-base sm:text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 placeholder="First Name"
               />
             </div>
@@ -265,7 +274,7 @@ function ProfileSettings() {
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                className="w-full min-h-11 bg-background border border-border rounded-lg px-3.5 py-2.5 text-base sm:text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 placeholder="Last Name"
               />
             </div>
@@ -283,7 +292,7 @@ function ProfileSettings() {
               value={formData.college}
               onChange={handleChange}
               required={isOnboarding}
-              className={`w-full bg-background border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
+              className={`w-full min-h-11 bg-background border rounded-lg px-3.5 py-2.5 text-base sm:text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
                 isOnboarding && !formData.college
                   ? "border-amber-500/50"
                   : "border-border"
@@ -304,7 +313,7 @@ function ProfileSettings() {
               value={formData.mobile}
               onChange={handleChange}
               required={isOnboarding}
-              className={`w-full bg-background border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
+              className={`w-full min-h-11 bg-background border rounded-lg px-3.5 py-2.5 text-base sm:text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all ${
                 isOnboarding && !formData.mobile
                   ? "border-amber-500/50"
                   : "border-border"
@@ -328,7 +337,7 @@ function ProfileSettings() {
                 required
                 value={formData.usn}
                 onChange={handleChange}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                className="w-full min-h-11 bg-background border border-border rounded-lg px-3.5 py-2.5 text-base sm:text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 placeholder="Student Registration ID"
               />
             </div>
@@ -341,7 +350,7 @@ function ProfileSettings() {
                 id="profile-email"
                 disabled
                 value={user.primaryEmailAddress?.emailAddress || ""}
-                className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground cursor-not-allowed"
+                className="w-full min-h-11 bg-muted/40 border border-border rounded-lg px-3.5 py-2.5 text-base sm:text-sm text-muted-foreground cursor-not-allowed"
               />
             </div>
           </div>
@@ -360,7 +369,7 @@ function ProfileSettings() {
                 name="gender"
                 value={formData.gender || ""}
                 onChange={handleChange}
-                className="w-full max-w-xs bg-background border border-border rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none"
+                className="w-full sm:max-w-xs min-h-11 bg-background border border-border rounded-lg px-3.5 py-2.5 text-base sm:text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer appearance-none"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
                   backgroundRepeat: "no-repeat",
@@ -382,7 +391,7 @@ function ProfileSettings() {
                 saving ||
                 (isOnboarding && (!formData.college || !formData.mobile))
               }
-              className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-xs hover:bg-primary/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full md:w-auto min-h-11 flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm sm:text-xs hover:bg-primary/90 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {saving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />

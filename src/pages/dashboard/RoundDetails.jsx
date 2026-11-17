@@ -339,7 +339,7 @@ function RoundPage({eventId, roundId}) {
           <ArrowLeft className="w-3.5 h-3.5 mr-1" aria-hidden="true" /> Back to Tournament
         </DashboardLink>
 
-        <div className="rounded-xl bg-card border border-border p-6 md:p-8 relative">
+        <div className="rounded-xl bg-card border border-border p-4 sm:p-6 md:p-8 relative">
           <div className="axiom-page-header relative z-10">
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span

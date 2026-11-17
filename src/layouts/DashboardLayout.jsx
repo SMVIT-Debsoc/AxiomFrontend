@@ -50,11 +50,11 @@ export default function DashboardLayout() {
     }));
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex axiom-workspace">
+        <div className="min-h-svh min-h-dvh bg-background text-foreground flex axiom-workspace">
             <SidebarRail items={navItems} />
 
             {/* Content Area */}
-            <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 axiom-with-dock">
+            <div className="flex-1 flex flex-col h-svh h-dvh overflow-hidden min-w-0 axiom-with-dock">
                 {/* Top Header */}
                 <header className="h-16 bg-transparent flex items-center justify-between px-4 md:px-6 z-10 shrink-0">
                     <div className="md:hidden flex items-center gap-2">
@@ -85,7 +85,7 @@ export default function DashboardLayout() {
                 </header>
 
                 {/* Scrollable Main Content */}
-                <main data-tour-scroll className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 pb-24 md:pb-8 scroll-smooth min-w-0">
+                <main data-tour-scroll className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-4 md:p-6 lg:p-8 pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pb-8 scroll-smooth min-w-0">
                     <div key={location.pathname} className="axiom-page-stack axiom-rise">
                         <div className="axiom-page-body">
                             <Suspense fallback={<LoadingIndicator label="Opening this page" />}>

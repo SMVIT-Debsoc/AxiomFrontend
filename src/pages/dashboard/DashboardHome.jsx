@@ -929,7 +929,7 @@ function DashboardContent() {
       <div
         role="tablist"
         aria-label="Dashboard views"
-        className="grid grid-cols-3 p-1 rounded-xl bg-muted/60 border border-border text-xs font-semibold gap-1"
+        className="grid grid-cols-3 p-1 rounded-xl bg-muted/60 border border-border text-[11px] sm:text-xs font-semibold gap-1"
       >
         <button
           type="button"
@@ -938,7 +938,7 @@ function DashboardContent() {
           data-tour-anchor="tab-now"
           onClick={() => setMobileTab("now")}
           className={cn(
-            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5 px-2",
+            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-2",
             mobileTab === "now"
               ? "bg-card text-foreground font-bold shadow-xs border border-border"
               : "text-muted-foreground hover:text-foreground"
@@ -955,7 +955,7 @@ function DashboardContent() {
           data-tour-anchor="tab-rounds"
           onClick={() => setMobileTab("rounds")}
           className={cn(
-            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5 px-2",
+            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-2",
             mobileTab === "rounds"
               ? "bg-card text-foreground font-bold shadow-xs border border-border"
               : "text-muted-foreground hover:text-foreground"
@@ -974,7 +974,7 @@ function DashboardContent() {
           data-tour-anchor="tab-results"
           onClick={() => setMobileTab("results")}
           className={cn(
-            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1.5 px-2",
+            "min-h-11 rounded-lg transition-all flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-2",
             mobileTab === "results"
               ? "bg-card text-foreground font-bold shadow-xs border border-border"
               : "text-muted-foreground hover:text-foreground"
@@ -1005,7 +1005,7 @@ function DashboardContent() {
                 <DashboardLink
                   to={`/dashboard/events/${activeEvent.id}`}
                   data-tour-anchor="active-event"
-                  className="inline-flex min-h-11 items-center justify-center px-4 rounded-xl border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-colors"
+                  className="inline-flex flex-1 sm:flex-initial min-h-11 items-center justify-center px-4 rounded-xl border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition-colors"
                 >
                   Tournament Hub
                 </DashboardLink>
@@ -1014,7 +1014,7 @@ function DashboardContent() {
                     href={activeEvent.whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center justify-center px-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 transition-colors gap-1.5"
+                    className="inline-flex flex-1 sm:flex-initial min-h-11 items-center justify-center px-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 transition-colors gap-1.5"
                   >
                     <span>WhatsApp</span>
                     <ExternalLink size={12} aria-hidden="true" />
@@ -1146,7 +1146,7 @@ function DashboardContent() {
                 </div>
 
                 {isCheckedIn ? (
-                  <span className="ax-chip ax-chip--win shrink-0 font-mono uppercase">
+                  <span className="ax-chip ax-chip--win w-full sm:w-auto justify-center py-2 sm:py-1 shrink-0 font-mono uppercase">
                     <CheckCircle2 size={13} aria-hidden="true" />
                     Presence Verified
                   </span>
@@ -1155,7 +1155,7 @@ function DashboardContent() {
                     type="button"
                     onClick={handleCheckIn}
                     disabled={checkingIn || checkInStatusLoading || checkInStatusUnavailable}
-                    className="min-h-11 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full sm:w-auto min-h-11 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {checkingIn ? (
                       <>
@@ -1180,7 +1180,7 @@ function DashboardContent() {
                     type="button"
                     disabled
                     aria-disabled="true"
-                    className="min-h-11 px-4 rounded-xl bg-muted/80 text-muted-foreground text-xs font-bold border border-border opacity-70 cursor-not-allowed shrink-0"
+                    className="w-full sm:w-auto min-h-11 px-4 rounded-xl bg-muted/80 text-muted-foreground text-xs font-bold border border-border opacity-70 cursor-not-allowed shrink-0"
                   >
                     {checkInMeta.state === "UPCOMING"
                       ? "Opens Soon"
