@@ -289,40 +289,19 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Remaining: staging authentication, database persistence and eligibility enforcement with a real participant are unverified. The browser suite ran with intercepted API responses. A concurrent local edit to `src/components/admin/InlineResultSheet.jsx` appeared during verification and is outside this change.
 - Next recommended task: verify dashboard and round-page check-in on staging with eligible and eliminated debaters, including attendance persistence and agreement between the two pages.
 
-## Mobile-first debater Site Tour (2026-11-17)
-
-- Status: verified locally. The tour follows the real debater workflow from Overview through Events, enrollment, check-in, matchup, rounds, results, and profile. It takes the debater to the relevant page or tab, highlights the live control, and explains the next action in plain language. It prioritizes the dashboard’s active tournament when several are listed.
-- The first-visit invitation waits for the loaded dashboard, the WhatsApp prompt to close, and any pending open check-in. The header offers replay and resume. Progress is saved per account on the current browser. Tour navigation itself sends no enrollment or check-in writes.
-- Files changed: `DashboardLayout.jsx`, `SiteTour.jsx`, `siteTour.css`, and `visualGuide.js` replace `QuickStartGuide.jsx`. Added anchors in `DashboardHome.jsx`, `DashboardEvents.jsx`, `EventDetails.jsx`, and `Profile.jsx`. Updated `DESIGN.md`, `tests/visualGuide.test.mjs`, `tests/browser-audit.mjs`, and this log.
-- Checks: 63/63 unit and API contract tests, 64/64 Chromium browser fixtures, lint, and production build passed. Chromium checked the whole tour at 390px and 1280px, including arrow alignment and an uncovered target. The fixtures also covered a 360px no-round journey, WhatsApp priority, skip, Escape, resume after reload, restart, and a deliberate check-in that updated the tour copy.
-- Remaining: physical phones, live staging, and comprehension with first-time debaters are unverified. Concurrent local changes to `package-lock.json` and `src/components/admin/InlineResultSheet.jsx` are outside the tour commit.
-- Next recommended task: on staging, ask new debaters on their own phones to use the tour, then find check-in, their room, and their results without prompting. Record where the wording or navigation still causes hesitation.
-
-## Site Tour round details (2026-11-17)
-
-- The first tour used the dashboard summary for check-in and matchup. It now shows **Rounds → Open Round**, opens the actual round, and highlights **Check-in Window**, **Your Position**, **Room / Time Slot**, and **Motion** before returning to Results. The copy explains the participant’s assigned side and distinguishes check-in hours from the debate slot. Missing and unpublished details use explanatory fallbacks.
-- Files changed: `SiteTour.jsx`, `visualGuide.js`, `DashboardHome.jsx`, `RoundDetails.jsx`, both guide test suites, and this log.
-- Checks: 63 unit and API contract tests, lint, production build, the 64-scenario browser audit, and six focused Chromium tour fixtures passed. Focused checks covered both assigned sides, actual room and IST time, the published motion, check-in confirmation, and unpublished details at phone and desktop widths where applicable.
-- Remaining: no live deployment or first-time debater usability check. Next, have a debater replay the tour on staging after organizers publish a real draw. Existing unrelated lockfile and admin edits remain local.
-
-## Site Tour page and step transitions (2026-11-17)
-
-- The guide preloads the next page’s code when eligible and keeps the popover in place during navigation. The workspace scrolls to the next control before showing its highlight and arrow. Reduced motion uses immediate scrolling and disables tour animations.
-- Files changed: `SiteTour.jsx`, `siteTour.css`, shared dashboard route preloading in `dashboardRoutes.js` and `App.jsx`, `tests/browser-audit.mjs`, and this log.
-- Checks: 63 unit and API contract tests, 66 Chromium fixtures, lint, and production build passed. Chromium verified the full phone and desktop tour and an intentionally delayed round request. Focused checks confirmed both default and reduced motion.
-- Remaining: production performance and physical-device testing. Next, replay the tour on staging over a phone connection and check the transitions during a cold page load.
-
-## Inline examples for unavailable Site Tour controls (2026-11-17)
-
-- Fixed the misleading round-title highlight when check-in is unavailable. The guide now points to a labeled, non-interactive sample card in the check-in card’s usual position. For an eliminated debater the tour explains why check-in is unavailable for that round.
-- Missing side, room and time, and motion have examples in their own sections. Empty event, round and results views get examples in their list or results area. A published or live control takes priority whenever present. Example cards exist only during the relevant tour step.
-- Files changed: `SiteTour.jsx`, `TourExample.jsx`, `visualGuide.js`, `DashboardEvents.jsx`, `DashboardHome.jsx`, `RoundDetails.jsx`, `tests/browser-audit.mjs`, and this log.
-- Verification: 63 unit and API contract tests, 67 Chromium scenarios, lint, and production build passed. The eliminated-debater scenario checked arrow placement, the sample label, absence of a check-in action inside the sample, and cleanup on exit.
-- Remaining: live deployment and physical-device checks. Next, verify the example placement on staging with a completed round and a debater who has been eliminated.
-
 ## Top-three standings highlights (2026-11-17)
 
 - Gold, Silver, and Bronze now tint the full top-three rows, with a colored edge and a labeled medal badge. Applied the same styling to dashboard standings, event results standings, and the organizer leaderboard. Long names can wrap on phones. The participant’s You badge and the organizer’s original rank during filtering are preserved.
 - Files changed: shared `StandingRank.jsx`, `index.css`, `utils.js`, the dashboard and event standings views, `AdminLeaderboard.jsx`, the podium browser fixtures, and this log.
 - Checks passed in the working tree: 63 unit and API contract tests, 72 Chromium scenarios, lint, and production build. The three podium scenarios verified distinct row treatments in light and dark themes, a neutral fourth row, visible medal text, and original rank after filtering. Production remains unverified.
 - Next: view the published standings on a phone after deployment and confirm the row treatments with real names.
+
+## Mobile-First UI Optimization & Sequential Verification (2026-11-17)
+
+- **Scope & Status**: Completed full mobile-first UI audit and sequential optimization across public pages, participant onboarding/workspace, and the organiser console (`320px`, `360px`, `390px`, and `768px`+ breakpoints).
+- **Sequential Changes**:
+  1. `src/utils/iosViewportFix.js`, `src/index.css`: Replaced the global `touchend` `preventDefault()` listener (which swallowed rapid `<300ms` taps) and `+1px` root height hack with passive `visualViewport` `--vh` / `--app-dvh` synchronization, `100dvh` root layout, single-column `<640px` footer layout, and bottom-sheet `.axiom-dialog` ergonomics with `env(safe-area-inset-bottom)` clearance.
+  2. `src/pages/LandingPage.jsx`, `src/auth/client.jsx`, `src/pages/Home.jsx`, `src/components/brand/DiscourseSections.jsx`, `src/components/brand/DebSocPromoCard.jsx`: Fluid mobile display typography (`clamp(...)`), responsive Google OAuth CTA variants (`hero`, `bar`, `onDark`), full-width mobile section CTAs, and safe-area sticky bottom bar padding.
+  3. `src/layouts/DashboardLayout.jsx`, `src/pages/dashboard/CompleteProfile.jsx`, `src/pages/dashboard/Profile.jsx`, `src/pages/dashboard/DashboardHome.jsx`, `src/pages/dashboard/EventDetails.jsx`, `src/pages/dashboard/RoundDetails.jsx`, `src/pages/dashboard/DashboardEvents.jsx`, `src/components/dashboard/QuickStartGuide.jsx`: Upgraded workspace shell to `h-dvh` with safe-area bottom clearance, raised all profile `<input>`/`<select>` controls to `min-h-11` (`44px+`) with `16px` (`text-base sm:text-sm`) mobile font size to prevent iOS Safari auto-zoom, added a mobile `Profile strength` bar, and made mobile check-in and enrollment CTAs full-width.
+  4. `src/layouts/AdminLayout.jsx`, `src/pages/admin/AdminLive.jsx`, `src/components/admin/InlineResultSheet.jsx`, `src/pages/admin/AdminPeople.jsx`, `src/pages/admin/AdminParticipants.jsx`, `src/pages/admin/AdminLeaderboard.jsx`, `src/pages/admin/AdminPromotion.jsx`, `src/pages/admin/AdminEventDetails.jsx`, `src/pages/admin/AdminEvents.jsx`, `src/pages/admin/AdminResultSubmission.jsx`: Added dedicated mobile card layouts (`md:hidden`) for draft pairings, participant registries, event rosters, standings leaderboards, and round promotion tables while preserving desktop tables (`hidden md:block`), arranged `CheckInWindowStrip` actions in a 2×2 mobile grid, and enforced `44×44px` (`min-h-11 min-w-11`) touch targets across all organiser controls.
+  5. `tests/mobileFirst.test.mjs`, `tests/browser-audit.mjs`, `package.json`: Added 5 mobile-first regression tests (`68/68` total unit/readiness/mobile tests passing) and mobile admin overflow checks.

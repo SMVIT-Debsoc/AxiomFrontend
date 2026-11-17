@@ -1159,6 +1159,15 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   });
 
+  await run('mobile admin live, people, and leaderboard views render cards without horizontal overflow', {signedIn: true, admin: true, assigned: true, published: true}, async page => {
+    await page.setViewportSize({width: 390, height: 844});
+    for (const path of ['/admin', '/admin/people', '/admin/results?tab=leaderboard']) {
+      await page.goto(origin + path);
+      await page.locator('main').waitFor({state: 'visible'});
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `Overflow on ${path}`);
+    }
+  });
+
 } finally {
   if (browser) await browser.close();
   server.kill('SIGTERM');
