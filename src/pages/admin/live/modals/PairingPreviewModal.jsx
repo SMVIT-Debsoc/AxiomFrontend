@@ -29,7 +29,7 @@ export default function PairingPreviewModal({
                 index: idx + 1,
                 gov: pair.debater1 || pair.gov,
                 opp: pair.debater2 || pair.opp,
-                isSwing: Boolean(pair.isSwing || pair.debater2?.isSwing || pair.opp?.isSwing),
+                isSwing: Boolean(pair.usesSwing || pair.isSwing || pair.debater2?.isSwing || pair.opp?.isSwing),
             }));
         }
         const pairs = [];
@@ -38,7 +38,7 @@ export default function PairingPreviewModal({
             const opp = eligibleUsers[i + 1];
             if (opp) {
                 pairs.push({ index: Math.floor(i / 2) + 1, gov, opp, isSwing: false });
-            } else if (eligibleUsers.length >= 2) {
+            } else {
                 pairs.push({
                     index: Math.floor(i / 2) + 1,
                     gov,
@@ -50,14 +50,14 @@ export default function PairingPreviewModal({
         return pairs;
     })();
 
-    const debatesToCreate =
-        payload.possiblePairings ?? proposedPairs.filter((p) => !p.isSwing).length;
     const needsSwing = Boolean(
         payload.needsSwing ??
             payload.unpaired ??
-            (eligibleCount >= 2 && eligibleCount % 2 === 1)
+            (eligibleCount % 2 === 1)
     );
-    const insufficientEntrants = eligibleCount < 2;
+    const debatesToCreate = proposedPairs.length ||
+        ((payload.possiblePairings ?? 0) + Number(needsSwing && eligibleCount > 0));
+    const insufficientEntrants = eligibleCount === 0;
 
     const labelOf = (u) => {
         if (!u) return "TBD";
@@ -131,7 +131,7 @@ export default function PairingPreviewModal({
                 {insufficientEntrants && (
                     <div className="ax-signal-loss mt-3 flex items-center gap-2.5 rounded-lg border border-rose-500/40 bg-rose-500/15 px-3.5 py-2.5 text-xs font-medium text-rose-700 dark:text-rose-200">
                         <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                        <span>Need at least 2 present eligible debaters to generate pairings.</span>
+                        <span>No present eligible debaters are available for a new pairing.</span>
                     </div>
                 )}
 
