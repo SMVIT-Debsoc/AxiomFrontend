@@ -30,6 +30,8 @@ test('public HTML has discoverable content, distinct canonical metadata and abso
       assert.equal(meta(prefix + ':image'), SITE_ORIGIN + '/brand/social-card.png');
     }
     assert.match(html, /<h1>[^<]*AXIOM 4\.0/);
+    assert.match(html, /<div id="root"><\/div>\s*<noscript>\s*<main class="public-page-summary">/);
+    assert.match(html, /<script type="module" src="\/src\/main\.jsx"><\/script>/);
     assert.ok(html.includes(`href="${ORGANISER_URL}"`));
     if (path === '/') {
       assert.match(meta('description'), /collegiate debate tournament.*register as a debater/i);

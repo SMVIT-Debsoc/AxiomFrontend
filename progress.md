@@ -273,3 +273,10 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Checks: production build, lint and 60 frontend tests passed. Focused Chromium production-preview checks passed for mobile and desktop homepage, Google sign-in entry visibility, opening and closing the organizer dialog, About navigation and canonical metadata. Existing browser fixtures exercise account routing and onboarding. Live Google authentication and a deployed PageSpeed rerun remain pending.
 - Next: deploy and compare mobile PageSpeed results on the production URL. Inspect remaining CSS and third-party work only if the new trace shows a material bottleneck.
 - Final browser fixture run returned 42 passes and reproduced the same five check-in, published pairing and mobile dashboard timeouts from the previous baseline.
+
+## Fix public fallback flash (2026-11-17)
+
+- The earlier SEO summary was painted before React. Removing the timed homepage splash did not prevent that first paint. Restricted the homepage and About summaries to JavaScript-disabled browsing, while retaining SEO metadata and the existing About route.
+- Changed `index.html`, `about.html`, and `tests/readiness.test.mjs`. Build, lint and 60 frontend tests passed. In Chromium at 390px and 1280px, pausing the JavaScript request kept the summary hidden. Resuming opened the homepage directly, and clicking About loaded `/about`. Both static summaries and canonical tags passed with JavaScript disabled.
+- Next: publish and verify a cold load on the official domain.
+- The newer remote main commit also removed the React entry script on `/`. Restored the script and added a regression assertion for both public documents. The existing local Inter font remains in use.
