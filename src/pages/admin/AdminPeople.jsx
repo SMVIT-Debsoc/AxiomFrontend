@@ -3,7 +3,7 @@ import {lazy, Suspense, useEffect, useMemo, useState} from "react";
 import {Link} from "react-router-dom";
 import {Database, Search, Users, X} from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
-import {AdminApi, EventApi} from "../../services/api";
+import {AdminApi, EventApi, WalkInApi} from "../../services/api";
 import {useEventSocket, useRoundSocket, SocketEvents, useLiveRefresh} from "../../hooks/useSocket";
 import {useSocketRefresh} from "../../hooks/useAdminRealtime";
 import {useAdminMutation} from "../../hooks/useAdminMutation";
@@ -308,7 +308,10 @@ function QrModal({onClose}) {
     return (
         <Sheet title="Join link" onClose={onClose}>
             <p className="m-0 text-muted-foreground">Debaters scan this, sign in with Google and add three details. They're enrolled automatically.</p>
-            <div className="my-4 flex justify-center"><QrCode value={url} size={240} label="Scan to join" /></div>
+            <div className="my-4 flex flex-col items-center gap-2">
+                <QrCode value={url} size={240} label="Scan to join" />
+                <p className="m-0 max-w-xs text-center text-sm text-muted-foreground">Scan with your phone's camera app — not inside Instagram or WhatsApp.</p>
+            </div>
             <p className="mb-4 mt-0 break-all rounded-2xl bg-muted p-3 text-center font-heading text-lg font-bold text-primary">{url}</p>
             <button type="button" onClick={copy} className="ax-primary-btn w-full">{copied ? "Copied" : "Copy link"}</button>
         </Sheet>
@@ -319,6 +322,7 @@ function AddWalkInModal({users, enrolledIds, eventId, onClose, onDone}) {
     const {getToken} = useAuth();
     const {run, isBusy} = useAdminMutation();
     const [q, setQ] = useState("");
+    const [tab, setTab] = useState("search"); // "search" | "walkin"
     const candidates = users.filter((u) => !enrolledIds.has(u.id)).filter((u) => !q.trim() || `${nameOf(u)} ${u.email || ""} ${u.mobile || ""} ${u.usn || ""} ${u.college || ""}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 30);
     const enroll = (u) => run("enroll", async () => {
         const token = await getToken();
@@ -326,6 +330,12 @@ function AddWalkInModal({users, enrolledIds, eventId, onClose, onDone}) {
     }, {success: `${nameOf(u)} is enrolled`, onSuccess: () => onDone(), onConflict: () => onDone()});
     return (
         <Sheet title="Add walk-in" onClose={onClose}>
+            <div role="group" aria-label="Walk-in method" className="mb-3 grid grid-cols-2 gap-1.5 rounded-2xl bg-muted p-1">
+                {[["search", "Signed-up people"], ["walkin", "New walk-in (no phone)"]].map(([key, label]) => (
+                    <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} className={cn("min-h-11 rounded-xl px-3 text-sm font-semibold", tab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>{label}</button>
+                ))}
+            </div>
+            {tab === "search" && (<>
             <p className="m-0 mb-3 text-sm text-muted-foreground">Walk-ins sign in with Google on their own phone first. Find them here and enrol them.</p>
             <label className="block"><span className="sr-only">Search signed-up people</span><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email or college" className="mb-3 h-12 w-full rounded-xl border-[1.5px] border-input bg-card px-3 text-base" /></label>
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
@@ -337,6 +347,71 @@ function AddWalkInModal({users, enrolledIds, eventId, onClose, onDone}) {
                 ))}
             </ul>
             {candidates.length === 0 && <p className="m-0 py-4 text-center text-muted-foreground">No signed-up people left to enrol.</p>}
+            </>)}
+            {tab === "walkin" && <WalkInForm eventId={eventId} onDone={onDone} />}
         </Sheet>
+    );
+}
+
+const WALKIN_MOBILE_RE = /^[6-9]\d{9}$/;
+const walkInInput = "h-12 w-full rounded-xl border-[1.5px] border-input bg-card px-3 text-base text-foreground";
+
+function WalkInForm({eventId, onDone}) {
+    const {getToken} = useAuth();
+    const toast = useToast();
+    const [form, setForm] = useState({firstName: "", lastName: "", college: "", usn: "", mobile: "", email: ""});
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+    const set = (name, value) => { setForm((f) => ({...f, [name]: value})); setError(""); };
+
+    const submit = async (event) => {
+        event.preventDefault();
+        if (saving) return;
+        const digits = form.mobile.replace(/\D/g, "").slice(-10);
+        const problem = !form.firstName.trim() ? "Enter a first name."
+            : !form.lastName.trim() ? "Enter a last name."
+            : form.college.trim().length < 2 ? "Enter the college."
+            : !WALKIN_MOBILE_RE.test(digits) ? "Enter a 10-digit mobile number starting with 6-9."
+            : form.email.trim() && !/^\S+@\S+\.\S+$/.test(form.email.trim()) ? "Enter a valid email, or leave it blank."
+            : "";
+        if (problem) { setError(problem); return; }
+        setSaving(true);
+        setError("");
+        try {
+            const token = await getToken();
+            await WalkInApi.createWalkIn({
+                eventId,
+                firstName: form.firstName.trim(),
+                lastName: form.lastName.trim(),
+                college: form.college.trim(),
+                usn: form.usn.trim().toUpperCase(),
+                mobile: `+91${digits}`,
+                email: form.email.trim(),
+            }, token);
+            toast.success(`${form.firstName.trim()} ${form.lastName.trim()} added as a walk-in`);
+            onDone();
+        } catch (failure) {
+            setError(failure?.message || "Could not add the walk-in. Please try again.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <form onSubmit={submit} noValidate className="flex flex-col gap-3">
+            <p className="m-0 text-sm text-muted-foreground">For someone without a phone or Google account. Name, college and mobile are required.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">First name<input className={walkInInput} value={form.firstName} onChange={(e) => set("firstName", e.target.value)} autoComplete="off" /></label>
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">Last name<input className={walkInInput} value={form.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="off" /></label>
+            </div>
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">College<input className={walkInInput} value={form.college} onChange={(e) => set("college", e.target.value)} autoComplete="off" /></label>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">Mobile number<span className="flex items-center gap-2"><span className="grid h-12 place-items-center rounded-xl bg-muted px-3 text-base font-semibold text-muted-foreground">+91</span><input type="tel" inputMode="numeric" className={`${walkInInput} tracking-wider`} value={form.mobile} onChange={(e) => set("mobile", e.target.value)} autoComplete="off" /></span></label>
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">USN <span className="font-normal text-muted-foreground">(optional)</span><input className={`${walkInInput} uppercase`} value={form.usn} onChange={(e) => set("usn", e.target.value)} autoComplete="off" autoCapitalize="characters" /></label>
+            </div>
+            <label className="flex flex-col gap-1.5 text-sm font-semibold">Email <span className="font-normal text-muted-foreground">(optional)</span><input type="email" inputMode="email" className={walkInInput} value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="off" /></label>
+            {error && <p role="alert" className="m-0 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm font-medium text-destructive">{error}</p>}
+            <button type="submit" disabled={saving} className="ax-primary-btn w-full !min-h-12">{saving ? "Adding…" : "Add walk-in and enrol"}</button>
+        </form>
     );
 }

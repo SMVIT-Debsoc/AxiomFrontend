@@ -191,6 +191,9 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
 
     const softRefetch = useCallback(() => refreshRound(...LIVE_ROUND_FIELDS), [refreshRound]);
     const debouncedRefetch = useDebouncedCallback(softRefetch, 800);
+    // Ballot rushes (many results in seconds across admin tabs) collapse into one performers GET.
+    const debouncedRefreshPerformers = useDebouncedCallback(() => refreshRound("performers"), 2500);
+    const debouncedRefreshRoster = useDebouncedCallback(() => refreshSupport("roster"), 2500);
     // A socket echo of this admin's own mutation is already applied locally.
     const refetchUnlessOwn = useCallback((data) => {
         if (!isOwnEcho(data, CLIENT_ID)) softRefetch();
@@ -215,7 +218,7 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
         softRefetch();
         refreshSupport(...LIVE_SUPPORT_FIELDS);
         refreshRoundsList();
-    }, {eventId, roundId, jitterMs: 3000, invalidateCache: false});
+    }, {eventId, roundId, jitterMs: 0, invalidateCache: false});
 
     const knownUserIds = useRef(new Set());
     const handleRealtimeCheckIn = useCallback((data) => {
@@ -233,11 +236,11 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
             return [...prev, {userId: targetUserId, ...patch}];
         });
         // Unknown participant without profile data: fetch the roster, not the whole round.
-        if (!data.user && !knownUserIds.current.has(targetUserId)) refreshSupport("roster");
+        if (!data.user && !knownUserIds.current.has(targetUserId)) debouncedRefreshRoster();
         if (data.user) {
             setUsers((prev) => (prev.some((u) => u.id === targetUserId) ? prev : [...prev, data.user]));
         }
-    }, [softRefetch, patchCheckIn, refreshSupport]);
+    }, [softRefetch, patchCheckIn, debouncedRefreshRoster]);
 
     const handleRealtimeWindow = useCallback((data) => {
         if (data && data.roundId && data.roundId !== roundId) return;
@@ -282,7 +285,7 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
                     ...(data.resultSource !== undefined ? {resultSource: data.resultSource} : {}),
                     ...(data.updatedAt ? {updatedAt: data.updatedAt} : {}),
                 } : d));
-            refreshRound("performers");
+            debouncedRefreshPerformers();
         },
         onRoundStatusChange: (data) => {
             const fields = withoutMeta(data);

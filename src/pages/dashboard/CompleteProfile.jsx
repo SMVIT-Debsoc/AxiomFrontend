@@ -12,13 +12,17 @@ import {EVENT_CONFIG as E, COLLEGE_SUGGESTIONS} from "../../config/event";
 
 const inputBase = "box-border h-[52px] w-full rounded-xl border-[1.5px] border-input bg-card px-3.5 text-base text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-[#B9F5D8] lg:h-[54px] lg:px-4 lg:text-[17px]";
 
-// Keep only the 10 national digits; tolerate pasted "+91 98765 43210" / "098765..." values.
+// Keep only the 10 national digits. Tolerates "0091 98765 43210", "+91 98765 43210",
+// "098765 43210" and "9876543210" -> "9876543210".
 function nationalDigits(value) {
     let d = String(value || "").replace(/\D/g, "");
-    if (d.length > 10 && d.startsWith("91")) d = d.slice(2);
-    if (d.length > 10 && d.startsWith("0")) d = d.slice(1);
-    return d.slice(0, 10);
+    if (d.startsWith("0091")) d = d.slice(4);
+    else if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+    else if (d.startsWith("0")) d = d.slice(1);
+    return d.length > 10 ? d.slice(-10) : d;
 }
+
+const MOBILE_RE = /^[6-9]\d{9}$/;
 
 function Steps({step}) {
     const items = ["Signed in", "Three details", `Registered for ${E.name}`];
@@ -49,7 +53,7 @@ export default function CompleteProfile() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [done, setDone] = useState(null); // {event, debaterId}
+    const [done, setDone] = useState(null); // {event, debaterId, duplicate}
     const [form, setForm] = useState({firstName: "", lastName: "", college: "", usn: "", mobile: "", gender: ""});
     const [editName, setEditName] = useState(false);
     const [touched, setTouched] = useState({college: false, mobile: false, usn: false});
@@ -85,7 +89,7 @@ export default function CompleteProfile() {
 
     const digits = form.mobile;
     const collegeOk = form.college.trim().length > 1;
-    const mobileOk = digits.length === 10;
+    const mobileOk = MOBILE_RE.test(digits);
     const usnOk = form.usn.trim().length >= 4;
     const ready = collegeOk && mobileOk && usnOk;
     const firstName = form.firstName || user?.firstName || "there";
@@ -95,7 +99,7 @@ export default function CompleteProfile() {
     const hint = useMemo(() => {
         if (ready) return `You will be enrolled in ${E.name} automatically.`;
         if (!collegeOk) return "Add your college to continue.";
-        if (!mobileOk) return "Enter a 10-digit mobile number.";
+        if (!mobileOk) return "Enter a 10-digit mobile number starting with 6-9.";
         return "Add your USN / student ID.";
     }, [ready, collegeOk, mobileOk]);
 
@@ -125,15 +129,20 @@ export default function CompleteProfile() {
             } catch {
                 // Ignore storage errors in restricted environments
             }
+            const dup = response?.duplicateOf;
+            const duplicateEmail = typeof dup === "string" ? dup : dup?.email || dup?.maskedEmail || "";
             setDone({
                 event: response?.autoEnrollment || null,
                 // Only shown when the API actually returns a human-readable id.
                 debaterId: u.debaterId || u.debaterCode || u.displayId || null,
+                // Non-blocking: the debater can still continue to their dashboard.
+                duplicate: dup ? {email: duplicateEmail} : null,
             });
         } catch (failure) {
             console.error("Failed to update profile", failure);
-            setError("We couldn't save your details. Please try again.");
-            toast.error("Error", "Failed to save changes. Please try again.");
+            const message = failure?.message || "We couldn't save your details. Please try again.";
+            setError(message);
+            toast.error("Error", message);
         } finally {
             setSaving(false);
         }
@@ -165,6 +174,11 @@ export default function CompleteProfile() {
                         {ev ? <>You're registered for {ev.name}. </> : <>Your profile is saved. </>}
                         We've saved {form.college.trim() || "your college"} and your number.
                     </p>
+                    {done.duplicate && (
+                        <p role="status" className="m-0 rounded-[14px] bg-[#4A5646] px-4 py-3 text-sm leading-normal text-[#EAFBF5]">
+                            An account with the same USN/phone already exists{done.duplicate.email ? ` (${done.duplicate.email})` : ""}. If that's you, sign in with that Google account instead.
+                        </p>
+                    )}
                     {done.debaterId && (
                         <div className="flex items-center justify-between rounded-[14px] bg-[#4A5646] px-4 py-3.5">
                             <div>
@@ -240,7 +254,7 @@ export default function CompleteProfile() {
                             <span className="box-border grid h-[52px] place-items-center rounded-xl bg-muted px-3.5 text-base font-semibold text-muted-foreground lg:h-[54px]">+91</span>
                             <input id="cp-mobile" name="mobile" type="tel" inputMode="numeric" autoComplete="tel-national" className={`${inputBase} tracking-wider`} value={form.mobile} onChange={(e) => set("mobile", nationalDigits(e.target.value))} onBlur={() => setTouched((t) => ({...t, mobile: true}))} placeholder="10-digit number" aria-describedby="cp-mobile-hint" aria-invalid={touched.mobile && !mobileOk} />
                         </div>
-                        <p id="cp-mobile-hint" className={`m-0 text-[13px] ${touched.mobile && !mobileOk ? "font-medium text-destructive" : "text-muted-foreground"}`}>{touched.mobile && !mobileOk ? "Enter a 10-digit mobile number." : "Only used for event updates on the day."}</p>
+                        <p id="cp-mobile-hint" className={`m-0 text-[13px] ${touched.mobile && !mobileOk ? "font-medium text-destructive" : "text-muted-foreground"}`}>{touched.mobile && !mobileOk ? "Enter a 10-digit mobile number starting with 6-9." : "Only used for event updates on the day."}</p>
                     </div>
 
                     <div className="flex flex-col gap-2">

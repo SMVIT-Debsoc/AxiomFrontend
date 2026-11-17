@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {useAuth, useUser} from "../../auth/client.jsx";
 import {createRequestSignal} from "../../lib/requestSignal.js";
+import {IMMEDIATE_REFRESH_MS, leaderboardRefreshDelay, queueRefreshDelay, socketRefreshDelay} from "../../lib/refreshTiming.js";
 import {
   UserApi,
   EventApi,
@@ -410,6 +411,16 @@ function ResultsHubSection({
 }
 
 const LIVE_FIELDS = ["event", "debates", "checkIn", "leaderboard"];
+const ROUND_PATCH_FIELDS = ["status", "checkInStartTime", "checkInEndTime"];
+
+// Copies only the round fields a socket payload carries, so state can be patched without a refetch.
+function pickRoundFields(data) {
+  const picked = {};
+  for (const field of ROUND_PATCH_FIELDS) {
+    if (data?.[field] !== undefined) picked[field] = data[field];
+  }
+  return picked;
+}
 
 export default function DashboardHome() {
   const {sessionId, userId} = useAuth();
@@ -448,6 +459,32 @@ function DashboardContent() {
   const checkInVersion = useRef(0);
   const checkInInFlight = useRef(false);
   const refresh = useCallback((...fields) => refreshQueue.current?.(fields), []);
+  // Socket-driven refreshes wait a random 150-2650ms so clients do not refetch in lockstep.
+  const refreshSoon = useCallback(
+    (...fields) => refreshQueue.current?.(fields, socketRefreshDelay(Math.random())),
+    [],
+  );
+  const patchCurrentRound = useCallback((data) => {
+    const patch = pickRoundFields(data);
+    if (!data?.roundId || Object.keys(patch).length === 0) return;
+    setCurrentRound((round) => (round && round.id === data.roundId ? {...round, ...patch} : round));
+  }, []);
+  // Leaderboard refetches run at most once per 25s per client; a trailing fetch covers the rest.
+  const leaderboardGate = useRef({lastAt: 0, timer: null});
+  const requestLeaderboardRefresh = useCallback(() => {
+    const gate = leaderboardGate.current;
+    if (gate.timer !== null) return;
+    const delay = leaderboardRefreshDelay(Date.now(), gate.lastAt, socketRefreshDelay(Math.random()));
+    gate.timer = window.setTimeout(() => {
+      gate.timer = null;
+      gate.lastAt = Date.now();
+      refresh("leaderboard");
+    }, delay);
+  }, [refresh]);
+  useEffect(() => {
+    const gate = leaderboardGate.current;
+    return () => window.clearTimeout(gate.timer);
+  }, []);
 
   useEffect(() => {
     if (!authLoaded) return;
@@ -458,6 +495,9 @@ function DashboardContent() {
     let round = null;
     let loadedBoard = null;
     let pending = new Set(["profile", ...LIVE_FIELDS]);
+    // Delay requested for the pending batch (null = nothing queued). Immediate requests win.
+    let pendingDelay = null;
+    let timerDue = 0;
 
     async function fetchData(fields, initial, token, signal) {
       const options = {skipCache: !initial, signal, sessionScope};
@@ -583,6 +623,7 @@ function DashboardContent() {
       if (stopped || running || pending.size === 0) return;
       const fields = pending;
       pending = new Set();
+      pendingDelay = null;
       running = true;
       let request;
       try {
@@ -604,15 +645,22 @@ function DashboardContent() {
     }
 
     function schedule() {
-      if (stopped || running || timer !== undefined || pending.size === 0) return;
+      if (stopped || running || pending.size === 0) return;
+      const delay = pendingDelay ?? IMMEDIATE_REFRESH_MS;
+      const due = Date.now() + delay;
+      // Already scheduled no later than this: the batch merges into it.
+      if (timer !== undefined && due >= timerDue) return;
+      window.clearTimeout(timer);
+      timerDue = due;
       timer = window.setTimeout(() => {
         timer = undefined;
         void flush();
-      }, 150);
+      }, delay);
     }
 
-    refreshQueue.current = (fields) => {
+    refreshQueue.current = (fields, delay = IMMEDIATE_REFRESH_MS) => {
       fields.forEach((field) => pending.add(field));
+      pendingDelay = queueRefreshDelay(pendingDelay, delay);
       schedule();
     };
     void flush(true);
@@ -632,59 +680,65 @@ function DashboardContent() {
   });
 
   useEventSocket(activeEvent?.id, {
-    onRoundCreated: () => refresh("event", "checkIn"),
-    onRoundDeleted: () => refresh(...LIVE_FIELDS),
+    onRoundCreated: () => refreshSoon("event", "checkIn"),
+    onRoundDeleted: () => refreshSoon(...LIVE_FIELDS),
     onRoundStatusChange: (data) => {
       toast.info("Update", "Round status updated to " + data.status);
-      refresh("event", "checkIn");
+      patchCurrentRound(data);
+      refreshSoon("checkIn");
     },
-    onRoundCheckInWindow: () => {
+    onRoundCheckInWindow: (data) => {
       toast.info("Check-in Window Updated", "Round check-in times were updated.");
-      refresh("event", "checkIn");
+      patchCurrentRound(data);
+      refreshSoon("checkIn");
     },
     onPairingsPublished: (data) => {
       if (data.published) toast.success("Draw Released!", "Pairings have been published.");
-      refresh("event", "debates", "checkIn");
+      refreshSoon("event", "debates", "checkIn");
     },
-    onRoundUpdated: () => refresh(...LIVE_FIELDS),
-    onDebateCreated: () => refresh("debates"),
+    onRoundUpdated: () => refreshSoon(...LIVE_FIELDS),
+    onDebateCreated: () => refreshSoon("debates"),
     onDebateUpdated: ({debateId}) => {
-      if (myDebates.some((debate) => debate.id === debateId)) refresh("debates");
+      if (myDebates.some((debate) => debate.id === debateId)) refreshSoon("debates");
     },
     onDebateDeleted: ({debateId}) => {
-      if (myDebates.some((debate) => debate.id === debateId)) refresh("debates", "checkIn");
+      if (myDebates.some((debate) => debate.id === debateId)) refreshSoon("debates", "checkIn");
     },
     onRoomsAllocated: ({roundId}) => {
-      if (myDebates.some((debate) => debate.roundId === roundId)) refresh("debates");
+      if (myDebates.some((debate) => debate.roundId === roundId)) refreshSoon("debates");
     },
     onDebateResult: ({debateId}) => {
       if (myDebates.some((debate) => debate.id === debateId)) {
-        refresh("profile", "debates", "checkIn");
+        refreshSoon("profile", "debates", "checkIn");
       }
     },
-    onLeaderboardUpdate: () => refresh("leaderboard"),
+    onLeaderboardUpdate: () => {
+      // Standings only matter once the latest round has published results.
+      if (currentRound?.resultsPublished !== true) return;
+      requestLeaderboardRefresh();
+    },
     onResultsPublished: (data) => {
       if (data?.published) toast.success("Results Published!", "Round results are now available.");
-      refresh("profile", ...LIVE_FIELDS);
+      refreshSoon("profile", ...LIVE_FIELDS);
     },
   });
 
   const {subscribe} = useSocket();
   useEffect(() => {
-    const refreshEvent = () => refresh("event");
+    const refreshEvent = () => refreshSoon("event");
     const subscriptions = [
       subscribe(SocketEvents.EVENT_CREATED, refreshEvent),
       subscribe(SocketEvents.EVENT_UPDATED_GLOBAL, refreshEvent),
       subscribe(SocketEvents.EVENT_DELETED_GLOBAL, refreshEvent),
       subscribe(SocketEvents.CHECKIN_UPDATE, (data) => {
-        if (data.roundId === roundIdRef.current) refresh("checkIn");
+        if (data.roundId === roundIdRef.current) refreshSoon("checkIn");
       }),
       SocketEvents.ROUND_PROMOTIONS
-        ? subscribe(SocketEvents.ROUND_PROMOTIONS, () => refresh("debates", "checkIn"))
+        ? subscribe(SocketEvents.ROUND_PROMOTIONS, () => refreshSoon("debates", "checkIn"))
         : null,
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
-  }, [subscribe, refresh]);
+  }, [subscribe, refreshSoon]);
 
   // Live boundary timer for check-in window transitions
   const checkInStartTime = currentRound?.checkInStartTime;

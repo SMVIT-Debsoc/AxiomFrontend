@@ -33,7 +33,7 @@ export function passQrValue(pass) {
 // ---- Return-to-after-sign-in for venue check-in links --------------------
 
 export const RETURN_TO_KEY = "axiom.returnTo";
-export const RETURN_TO_TTL_MS = 15 * 60 * 1000;
+export const RETURN_TO_TTL_MS = 60 * 60 * 1000;
 
 /** Only same-origin /checkin/<id> paths (with optional query) may be resumed. */
 export function isResumablePath(path) {
