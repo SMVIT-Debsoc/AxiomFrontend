@@ -214,6 +214,7 @@ async function fixture(page, {
         state.checkedIn = true;
         return reply({success: true});
       }
+      if (path === '/debates/d1' && method === 'GET') return reply({success: true, debate: state.debate});
       if (path === '/debates/d1/result' && method === 'POST') {
         const body = req.postDataJSON() || {};
         Object.assign(state.debate, {
@@ -768,6 +769,48 @@ try {
       release();
     }
   });
+
+  for (const recorded of [true, false]) {
+    await run(`ballot recovery after a lost response when the save ${recorded ? 'was recorded' : 'did not reach the server'}`, {
+      signedIn: true, admin: true, assigned: true, published: true,
+    }, async (page, state) => {
+      Object.assign(state.debate, {status: 'SCHEDULED', winnerId: null, debater1Score: null, debater2Score: null});
+      let posts = 0;
+      await page.route(url => url.pathname === '/api/debates/d1/result', async route => {
+        posts += 1;
+        if (posts !== 1) return route.fallback();
+        if (recorded) Object.assign(state.debate, route.request().postDataJSON(), {status: 'COMPLETED'});
+        return route.abort('failed');
+      });
+
+      await page.goto(origin + '/admin/rounds/r1');
+      await page.getByRole('button', {name: /Debates/}).click();
+      await page.getByRole('button', {name: 'Enter Result'}).first().click();
+      const score = page.locator('#score-debater-1-d1');
+      await score.fill('92');
+      await page.locator('#score-debater-2-d1').fill('78');
+      const save = page.getByRole('button', {name: 'Save Result'});
+      await save.click();
+      await visible(page, 'Save not confirmed');
+      assert.equal(await score.inputValue(), '92');
+      assert.equal(await save.isDisabled(), true);
+      const lookup = page.waitForRequest(request => new URL(request.url()).searchParams.get('view') === 'ballot');
+      await page.getByRole('button', {name: 'Check saved result'}).click();
+      await lookup;
+      const sheet = page.getByRole('heading', {name: /Score Debate/});
+      if (recorded) {
+        await sheet.waitFor({state: 'hidden'});
+        assert.equal(posts, 1);
+      } else {
+        await visible(page, 'The stored ballot does not match your entry');
+        assert.equal(await score.inputValue(), '92');
+        assert.equal(posts, 1);
+        await save.click();
+        await sheet.waitFor({state: 'hidden'});
+        assert.equal(posts, 2);
+      }
+    });
+  }
 
   await run('sign-out returns to landing page', {signedIn: true}, async page => {
     await page.goto(origin + '/dashboard');

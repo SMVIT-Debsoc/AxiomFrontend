@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import {useBallotSave} from "../../hooks/useBallotSave";
+import BallotRecovery from "../../components/admin/BallotRecovery";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion as Motion } from "framer-motion";
 import {
@@ -16,12 +18,20 @@ import { resolveWinnerId } from "../../lib/scoring.js";
 
 export default function AdminResultSubmission() {
     const { id: debateId } = useParams();
+    return <BallotPage key={debateId} debateId={debateId} />;
+}
+
+function BallotPage({debateId}) {
     const { getToken } = useAuth();
     const navigate = useNavigate();
 
     const [debate, setDebate] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
+    const {save, verify, busy, recovery, saveError, clearSaveError} = useBallotSave((_, saved) => {
+        navigate("/admin/rounds/" + (saved?.roundId || debate.roundId));
+    });
+    const submitting = busy === "save";
+    const locked = Boolean(busy) || recovery?.kind === "unconfirmed";
     const [error, setError] = useState(null);
 
     const [formData, setFormData] = useState({
@@ -30,12 +40,16 @@ export default function AdminResultSubmission() {
         winnerId: ""
     });
 
+    const getTokenRef = useRef(getToken);
+    useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
+
     useEffect(() => {
+        let active = true;
         const fetchDebate = async () => {
             try {
-                const token = await getToken();
+                const token = await getTokenRef.current();
                 const response = await AdminApi.apiRequest(`/debates/${debateId}`, "GET", null, token);
-                if (response.success) {
+                if (active && response.success) {
                     setDebate(response.debate);
                     const s1 = response.debate.debater1Score?.toString() || "";
                     const s2 = response.debate.debater2Score?.toString() || "";
@@ -48,13 +62,14 @@ export default function AdminResultSubmission() {
                 }
             } catch (err) {
                 console.error("Failed to fetch debate:", err);
-                setError(err?.message || "Failed to load debate");
+                if (active) setError(err?.message || "Failed to load debate");
             } finally {
-                setLoading(false);
+                if (active) setLoading(false);
             }
         };
         fetchDebate();
-    }, [debateId, getToken]);
+        return () => { active = false; };
+    }, [debateId]);
 
     const handleScoreChange = (field, val) => {
         const newForm = { ...formData, [field]: val };
@@ -68,35 +83,27 @@ export default function AdminResultSubmission() {
         newForm.winnerId = autoWinner;
         setFormData(newForm);
         setError(null);
+        clearSaveError();
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!formData.winnerId) {
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        if (locked) return;
+        const winnerId = resolveWinnerId(
+            formData.debater1Score, formData.debater2Score, formData.winnerId,
+            debate.debater1Id, debate.debater2Id
+        );
+        if (!winnerId) {
             setError("Please select a winner (required if scores are tied)");
             return;
         }
-
-        setSubmitting(true);
         setError(null);
-        try {
-            const token = await getToken();
-            const response = await AdminApi.submitResult(debateId, {
-                debater1Score: parseFloat(formData.debater1Score),
-                debater2Score: parseFloat(formData.debater2Score),
-                winnerId: formData.winnerId
-            }, token, {summary: true});
-
-            if (response.success) {
-                navigate(`/admin/rounds/${debate.roundId}`);
-            } else {
-                setError(response.error || "Failed to submit result");
-            }
-        } catch (err) {
-            setError(err?.message || "Error submitting result");
-        } finally {
-            setSubmitting(false);
-        }
+        await save({
+            debateId,
+            debater1Score: parseFloat(formData.debater1Score),
+            debater2Score: parseFloat(formData.debater2Score),
+            winnerId,
+        });
     };
 
     if (loading) {
@@ -114,6 +121,7 @@ export default function AdminResultSubmission() {
                 <button
                     type="button"
                     onClick={() => navigate(-1)}
+                        disabled={Boolean(busy)}
                     className="mt-4 px-4 py-2 rounded-xl bg-card border border-border text-sm font-semibold hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     Go back
@@ -133,6 +141,7 @@ export default function AdminResultSubmission() {
                     <button
                         type="button"
                         onClick={() => navigate(-1)}
+                        disabled={Boolean(busy)}
                         aria-label="Go back"
                         title="Go back"
                         className="p-2.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -148,15 +157,17 @@ export default function AdminResultSubmission() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
+                {(error || saveError) && (
                     <div
                         role="alert"
                         className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 text-sm flex items-start gap-2.5"
                     >
                         <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <span>{error}</span>
+                        <span>{error || saveError}</span>
                     </div>
                 )}
+
+                <BallotRecovery recovery={recovery} busy={busy} onVerify={verify} />
 
                 <div className="grid md:grid-cols-2 gap-8">
                     {/* Debater 1 */}
@@ -193,6 +204,7 @@ export default function AdminResultSubmission() {
                                     min="0"
                                     max="100"
                                     value={formData.debater1Score}
+                                    disabled={locked}
                                     onChange={(e) => handleScoreChange("debater1Score", e.target.value)}
                                     className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
                                     placeholder="85.5"
@@ -200,6 +212,7 @@ export default function AdminResultSubmission() {
                             </div>
                             <button
                                 type="button"
+                                disabled={locked}
                                 onClick={() => setFormData({ ...formData, winnerId: debate.debater1Id })}
                                 className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                     formData.winnerId === debate.debater1Id
@@ -247,6 +260,7 @@ export default function AdminResultSubmission() {
                                     min="0"
                                     max="100"
                                     value={formData.debater2Score}
+                                    disabled={locked}
                                     onChange={(e) => handleScoreChange("debater2Score", e.target.value)}
                                     className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none text-lg font-semibold text-foreground transition-colors"
                                     placeholder="82.0"
@@ -254,6 +268,7 @@ export default function AdminResultSubmission() {
                             </div>
                             <button
                                 type="button"
+                                disabled={locked}
                                 onClick={() => setFormData({ ...formData, winnerId: debate.debater2Id })}
                                 className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                     formData.winnerId === debate.debater2Id
@@ -281,7 +296,7 @@ export default function AdminResultSubmission() {
                 <div className="flex justify-end pt-4">
                     <button
                         type="submit"
-                        disabled={submitting}
+                        disabled={locked}
                         className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                         {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}

@@ -1,13 +1,17 @@
+import {useBallotSave} from "../../hooks/useBallotSave";
+import BallotRecovery from "./BallotRecovery";
 import { useState, useEffect } from "react";
 import { Loader2, CheckCircle2, AlertCircle, Save, X, Trophy, ArrowRight } from "lucide-react";
 import { UserAvatar } from "../ui/UserAvatar";
 import { resolveWinnerId } from "../../lib/scoring";
 
-export default function InlineResultSheet({ debate, debates = [], onSave, onClose }) {
+export default function InlineResultSheet({ debate, debates = [], onSaved, onClose }) {
     const [score1, setScore1] = useState(debate?.debater1Score?.toString() || "");
     const [score2, setScore2] = useState(debate?.debater2Score?.toString() || "");
     const [winnerId, setWinnerId] = useState(debate?.winnerId || "");
-    const [submitting, setSubmitting] = useState(false);
+    const {save, verify, busy, recovery, saveError, clearSaveError} = useBallotSave(onSaved);
+    const submitting = busy === "save";
+    const locked = Boolean(busy) || recovery?.kind === "unconfirmed";
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -53,9 +57,11 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
         );
         setWinnerId(autoWinner);
         setError(null);
+        clearSaveError();
     };
 
     const handleSave = async (andNext = false) => {
+        if (locked) return;
         if (!score1 || !score2) {
             setError("Both speaker scores are required");
             return;
@@ -64,26 +70,20 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
             setError("Please enter valid numeric scores");
             return;
         }
-        if (!winnerId) {
+        const ballotWinner = resolveWinnerId(score1, score2, winnerId, debate.debater1Id, debate.debater2Id);
+        if (!ballotWinner) {
             setError("Please select a winner (required for tied scores)");
             return;
         }
 
-        setSubmitting(true);
         setError(null);
-        try {
-            await onSave({
-                debateId: debate.id,
-                debater1Score: parseFloat(score1),
-                debater2Score: parseFloat(score2),
-                winnerId,
-                nextDebate: andNext ? nextPending : null,
-            });
-        } catch (err) {
-            setError(err?.message || "Failed to save debate result");
-        } finally {
-            setSubmitting(false);
-        }
+        await save({
+            debateId: debate.id,
+            debater1Score: parseFloat(score1),
+            debater2Score: parseFloat(score2),
+            winnerId: ballotWinner,
+            nextDebate: andNext ? nextPending : null,
+        });
     };
 
     return (
@@ -109,21 +109,24 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
                         type="button"
                         onClick={onClose}
                         aria-label="Close ballot sheet"
+                        disabled={Boolean(busy)}
                         className="grid h-10 w-10 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
                         <X size={18} />
                     </button>
                 </div>
 
-                {error && (
+                {(error || saveError) && (
                     <div
                         role="alert"
                         className="p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 text-sm flex items-start gap-2.5"
                     >
                         <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <span>{error}</span>
+                        <span>{error || saveError}</span>
                     </div>
                 )}
+
+                <BallotRecovery recovery={recovery} busy={busy} onVerify={verify} />
 
                 {isTie && (
                     <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs sm:text-sm flex items-start gap-2.5 font-medium">
@@ -182,6 +185,7 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
                                     id={`score-debater-1-${debate.id}`}
                                     type="number"
                                     inputMode="decimal"
+                                    disabled={locked}
                                     step="0.5"
                                     min="0"
                                     max="100"
@@ -194,6 +198,7 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
 
                             <button
                                 type="button"
+                                disabled={locked}
                                 onClick={() => setWinnerId(debate.debater1Id)}
                                 className={`w-full min-h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
                                     winnerId === debate.debater1Id
@@ -253,6 +258,7 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
                                     id={`score-debater-2-${debate.id}`}
                                     type="number"
                                     inputMode="decimal"
+                                    disabled={locked}
                                     step="0.5"
                                     min="0"
                                     max="100"
@@ -265,6 +271,7 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
 
                             <button
                                 type="button"
+                                disabled={locked}
                                 onClick={() => setWinnerId(debate.debater2Id)}
                                 className={`w-full min-h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
                                     winnerId === debate.debater2Id
@@ -284,7 +291,7 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
                     <button
                         type="button"
                         onClick={onClose}
-                        disabled={submitting}
+                        disabled={Boolean(busy)}
                         className="w-full sm:w-auto min-h-11 px-5 rounded-xl border border-border bg-card text-foreground font-semibold text-sm hover:bg-muted transition-colors"
                     >
                         Cancel
@@ -294,7 +301,7 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
                         <button
                             type="button"
                             onClick={() => handleSave(true)}
-                            disabled={submitting}
+                            disabled={locked}
                             className="w-full sm:w-auto min-h-11 px-5 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold text-sm hover:bg-emerald-500/20 transition-all flex items-center justify-center gap-2"
                         >
                             {submitting ? (
@@ -309,7 +316,7 @@ export default function InlineResultSheet({ debate, debates = [], onSave, onClos
                     <button
                         type="button"
                         onClick={() => handleSave(false)}
-                        disabled={submitting}
+                        disabled={locked}
                         className="w-full sm:w-auto min-h-11 px-6 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-all shadow-sm flex items-center justify-center gap-2"
                     >
                         {submitting ? (

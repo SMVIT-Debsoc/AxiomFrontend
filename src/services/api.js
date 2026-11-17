@@ -324,6 +324,8 @@ export const DebateApi = {
     getByRound: (roundId, token, options = {}) =>
         apiRequest(`/debates/round/${roundId}`, "GET", null, token, options),
     getById: (id, token, options = {}) => apiRequest(`/debates/${id}`, "GET", null, token, options),
+    getSavedBallot: (id, token, signal) =>
+        apiRequest(`/debates/${id}?view=ballot`, "GET", null, token, {skipCache: true, signal}),
 };
 
 // Stats Endpoints
@@ -385,8 +387,8 @@ export const AdminApi = {
             token,
         ),
 
-    submitResult: (debateId, data, token, {summary = false} = {}) =>
-        apiRequest(`/debates/${debateId}/result${summary ? "?view=summary" : ""}`, "POST", data, token),
+    submitResult: (debateId, data, token, {summary = false, signal} = {}) =>
+        apiRequest(`/debates/${debateId}/result${summary ? "?view=summary" : ""}`, "POST", data, token, {signal}),
 
     getRoundPerformers: (roundId, token) =>
         apiRequest(`/admin/rounds/${roundId}/performers`, "GET", null, token),
