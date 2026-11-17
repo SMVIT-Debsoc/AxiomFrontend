@@ -16,14 +16,16 @@ import {
   DebateApi,
   UserApi,
   StatsApi,
+  CheckInApi,
 } from "../../services/api";
 import {cn, getPodiumMedal} from "../../lib/utils";
 import StandingRank from "../../components/ui/StandingRank";
-import {useEventSocket, useLiveRefresh} from "../../hooks/useSocket";
+import {useEventSocket, useLiveRefresh, useSocket, SocketEvents} from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {ResultsSkeleton} from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
 import SectionRetry from "../../components/ui/SectionRetry";
+import GameOverCard from "../../components/dashboard/GameOverCard";
 
 const RESULTS_FIELDS = ["event", "personal"];
 
@@ -47,6 +49,12 @@ function ResultsPage({eventId}) {
   const [standingsFailed, setStandingsFailed] = useState(false);
   const [standingsRetrying, setStandingsRetrying] = useState(false);
   const [personalFailed, setPersonalFailed] = useState(false);
+  const [eliminationStatus, setEliminationStatus] = useState(null);
+
+  const latestPublishedRound = [...rounds]
+    .filter((r) => Boolean(r.resultsPublished))
+    .sort((a, b) => (b.roundNumber || 0) - (a.roundNumber || 0))[0] || null;
+  const latestPublishedRoundId = latestPublishedRound?.id || null;
 
   const refresh = usePageRequests(RESULTS_FIELDS, async (field, token, options, isCurrent) => {
     try {
@@ -70,6 +78,15 @@ function ResultsPage({eventId}) {
         if (isCurrent()) {
           setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
           setStandingsFailed(false);
+        }
+      } else if (field === "elimination") {
+        if (!latestPublishedRoundId) {
+          if (isCurrent()) setEliminationStatus(null);
+          return;
+        }
+        const statusRes = await CheckInApi.getMyStatus(latestPublishedRoundId, token, options);
+        if (isCurrent()) {
+          setEliminationStatus(statusRes?.success ? statusRes : null);
         }
       }
     } catch (error) {
@@ -103,9 +120,14 @@ function ResultsPage({eventId}) {
     if (hasPublishedResults) refresh("standings");
   }, [hasPublishedResults, refresh]);
 
+  useEffect(() => {
+    if (latestPublishedRoundId) refresh("elimination");
+  }, [latestPublishedRoundId, refresh]);
+
   useLiveRefresh(() => {
     refresh(...RESULTS_FIELDS);
     if (hasPublishedResults) refresh("standings");
+    if (latestPublishedRoundId) refresh("elimination");
   }, {enabled: Boolean(eventId), eventId, intervalMs: 12000, jitterMs: 3000, invalidateCache: false});
 
   useEventSocket(eventId, {
@@ -113,7 +135,7 @@ function ResultsPage({eventId}) {
       if (myDebates.some((debate) => debate.id === debateId)) refresh("personal");
     },
     onResultsPublished: () => {
-      refresh(...RESULTS_FIELDS);
+      refresh(...RESULTS_FIELDS, "elimination");
       if (hasPublishedResults) refresh("standings");
     },
     onLeaderboardUpdate: () => {
@@ -121,12 +143,55 @@ function ResultsPage({eventId}) {
     },
     onPairingsPublished: () => refresh(...RESULTS_FIELDS),
     onRoundStatusChange: () => refresh("event"),
-    onRoundUpdated: () => refresh(...RESULTS_FIELDS),
+    onRoundUpdated: () => refresh(...RESULTS_FIELDS, "elimination"),
   });
+
+  const {subscribe} = useSocket();
+  useEffect(() => {
+    if (!SocketEvents.ROUND_PROMOTIONS) return undefined;
+    return subscribe(SocketEvents.ROUND_PROMOTIONS, () => {
+      refresh("personal", "elimination");
+    });
+  }, [subscribe, refresh]);
 
   const myLeaderboardEntry = hasPublishedResults
     ? leaderboard.find((entry) => entry.user?.id === currentUser?.id)
     : null;
+
+  const completedPublished = [...myEventDebates]
+    .filter(
+      (d) =>
+        d.status === "COMPLETED" &&
+        Boolean(d.resultsPublished || d.round?.resultsPublished)
+    )
+    .sort((a, b) => (b.round?.roundNumber || 0) - (a.round?.roundNumber || 0));
+  const latestPubDebate = completedPublished[0] || null;
+  const latestPubRoundNum = latestPubDebate?.round?.roundNumber || 0;
+  const hasLaterOverride = Boolean(
+    latestPubDebate &&
+      myEventDebates.some(
+        (d) =>
+          (d.round?.roundNumber || 0) > latestPubRoundNum &&
+          (d.status === "SCHEDULED" || Boolean(d.isPromoted))
+      )
+  );
+  const eliminatedByDebate = Boolean(
+    latestPubDebate && !latestPubDebate.isPromoted && !hasLaterOverride
+  );
+  const eliminatedByRoundStatus = Boolean(
+    latestPublishedRoundId && eliminationStatus?.isEliminated && !hasLaterOverride
+  );
+  const isEliminatedInEvent = Boolean(
+    hasPublishedResults && (eliminatedByDebate || eliminatedByRoundStatus)
+  );
+  const eventWins = completedPublished.filter((d) =>
+    Boolean(d.didWin ?? (currentUser?.id && d.winnerId === currentUser.id))
+  ).length;
+  const eliminatedRoundLabel =
+    latestPubDebate?.round?.name ||
+    (latestPubRoundNum ? `Round ${latestPubRoundNum}` : null) ||
+    latestPublishedRound?.name ||
+    (latestPublishedRound?.roundNumber ? `Round ${latestPublishedRound.roundNumber}` : null);
 
   const qualifiedCount = myEventDebates.filter(
     (d) =>
@@ -255,6 +320,15 @@ function ResultsPage({eventId}) {
           animate={{opacity: 1}}
           className="space-y-3"
         >
+          {isEliminatedInEvent && (
+            <GameOverCard
+              eventName={event?.name || "AXIOM 4.0"}
+              roundsDebated={myEventDebates.filter((d) => d.status === "COMPLETED").length || myEventDebates.length}
+              wins={eventWins}
+              roundLabel={eliminatedRoundLabel}
+              compact
+            />
+          )}
           {personalFailed && (
             <SectionRetry message="Could not refresh your results." busy={personalLoading} onRetry={() => {
               setPersonalLoading(true);

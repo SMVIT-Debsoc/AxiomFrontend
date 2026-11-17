@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseStation, parsePanel, defaultStation, surname, flagsOf, flagLabel, drawPublishedAt, isSilent,
+  parseStation, parsePanel, defaultStation, firstName, surname, flagsOf, flagLabel, drawPublishedAt, isSilent,
   debateState, roundCounters, sortDebates, findDebateByRoom, missingBallots, normalizeBallotLinks,
   absoluteUrl, commandContext, pipelineStep, ballotAgeMinutes, debateMatches,
 } from '../src/lib/liveStations.js';
@@ -19,7 +19,10 @@ test('station and panel parsing', () => {
   assert.equal(defaultStation(390), 'desk');
 });
 
-test('surname falls back sensibly', () => {
+test('firstName and surname fall back sensibly', () => {
+  assert.equal(firstName({firstName: 'Riya', lastName: 'Shah'}), 'Riya');
+  assert.equal(firstName({name: 'Arjun Mehta'}), 'Arjun');
+  assert.equal(firstName(null), 'TBD');
   assert.equal(surname({firstName: 'Riya', lastName: 'Shah'}), 'Shah');
   assert.equal(surname({firstName: 'Arjun Mehta'}), 'Mehta');
   assert.equal(surname(null), 'TBD');

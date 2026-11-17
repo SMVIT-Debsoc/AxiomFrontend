@@ -59,6 +59,18 @@ test('normalize the real backend proposal shape (cutIndex / needed / promoted)',
   assert.equal(p.candidates[1].roomName, 'R2');
   // cutIndex beyond the candidate list is clamped.
   assert.equal(normalizeProposal({data: {cutIndex: 9, needed: 9, candidates: [{userId: 'x'}]}}).suggestedCut, 1);
+
+  const withWinners = normalizeProposal({success: true, data: {
+    winnersCount: 2, targetSize: 4, cutIndex: 2, hasExplicitPromotions: true, promotedIds: ['w1', 'm1'],
+    winners: [{userId: 'w1', name: 'Asha Rao', score: 84, margin: 4, promoted: true}],
+    otherPromoted: [{userId: 'm1', name: 'Kiran S', college: 'RVCE'}],
+    candidates: [{userId: 'l1', name: 'Bala N', score: 79, margin: 5, cumulativeWins: 1, promoted: false}],
+  }});
+  assert.equal(withWinners.winners, 1);
+  assert.equal(withWinners.winnerRows[0].name, 'Asha Rao');
+  assert.equal(withWinners.otherPromoted[0].userId, 'm1');
+  assert.equal(withWinners.hasExplicitPromotions, true);
+  assert.equal(withWinners.candidates[0].cumulativeWins, 1);
 });
 
 test('delta adds above the line and removes below', () => {

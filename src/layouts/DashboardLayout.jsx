@@ -15,7 +15,7 @@ import LoadingIndicator from "../components/ui/LoadingIndicator";
 const SiteTour = lazy(() => import("../components/dashboard/SiteTour"));
 
 const sidebarItems = [
-    {icon: "LayoutIcon", label: "Overview", path: "/dashboard"},
+    {icon: "HomeIcon", label: "Home", path: "/dashboard"},
     {icon: "EventsIcon", label: "Events", path: "/dashboard/events"},
     {icon: "PortraitIcon", label: "Profile", path: "/dashboard/profile"},
 ];
@@ -94,7 +94,7 @@ export default function DashboardLayout() {
                         </div>
                         <WorkspaceFooter
                             line="Clarity under pressure."
-                            links={[{to: "/dashboard", label: "Overview"}, {to: "/dashboard/events", label: "Tournaments"}, {to: "/dashboard/profile", label: "Profile"}]}
+                            links={[{to: "/dashboard", label: "Home"}, {to: "/dashboard/events", label: "Tournaments"}, {to: "/dashboard/profile", label: "Profile"}]}
                         />
                     </div>
                 </main>

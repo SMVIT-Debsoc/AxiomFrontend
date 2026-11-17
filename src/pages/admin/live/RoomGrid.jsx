@@ -4,7 +4,7 @@ import SoftLockBadge from "../../../components/ops/SoftLockBadge";
 import {othersFocusedOn} from "../../../hooks/usePresence";
 import {cn} from "../../../lib/utils";
 import {
-    debateState, flagsOf, flagLabel, fullName, judgeOf, roomNameOf, STATE_LABELS, surname,
+    debateState, firstName, flagsOf, flagLabel, fullName, judgeOf, roomNameOf, STATE_LABELS,
 } from "../../../lib/liveStations";
 import {StateDot} from "./ui";
 
@@ -64,7 +64,7 @@ const RoomTile = memo(function RoomTile({debate, state, flags, lockAdmins, highl
                     </span>
                 </span>
                 <span className="truncate text-xs font-semibold">
-                    {surname(debate.debater1)} <span className="text-muted-foreground">v</span> {surname(debate.debater2)}
+                    {firstName(debate.debater1)} <span className="text-muted-foreground">v</span> {firstName(debate.debater2)}
                 </span>
                 <span className="truncate text-[11px] text-muted-foreground">{judge || "No judge"}</span>
                 <span className="mt-auto flex items-center justify-between gap-1">

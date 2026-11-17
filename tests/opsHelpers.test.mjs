@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {fuzzyScore, fuzzyFilter} from '../src/lib/fuzzy.js';
-import {drawRows, paginate, sortBySurname, surnameFirst, rowsThatFit, wrapPage, secondsUntil, pickDisplayRound} from '../src/lib/displayBoard.js';
+import {drawRows, paginate, sortByFirstName, sortBySurname, surnameFirst, rowsThatFit, wrapPage, secondsUntil, pickDisplayRound} from '../src/lib/displayBoard.js';
 import {ballotUrl, venueCheckInUrl, formatShortCode, passQrValue, isResumablePath, encodeReturnTo, decodeReturnTo, RETURN_TO_TTL_MS} from '../src/lib/opsLinks.js';
 import {relativeTime, initialsOf, mergeFeed} from '../src/lib/relativeTime.js';
 
@@ -23,25 +23,26 @@ test('fuzzyFilter ranks and keeps order on ties, uses best key, honours limit', 
   assert.equal(fuzzyFilter(people, 'kapoor', (p) => [p.name, p.alt]).length, 1);
 });
 
-test('drawRows: one row per debater, GOV/OPP sides, swing slot, surname order', () => {
+test('drawRows: one row per debater, GOV/OPP sides, swing slot, first-name order', () => {
   const debates = [
     {id: 'd1', room: {name: 'Room 12'}, debater1: {firstName: 'Riya', lastName: 'Zed'}, debater2: {firstName: 'Arjun', lastName: 'Bose'}},
     {id: 'd2', roomName: 'Room 3', debater1: {firstName: 'Mia', lastName: 'adams'}, debater2: null},
   ];
   const rows = drawRows(debates);
-  assert.deepEqual(rows.map((r) => r.name), ['adams, Mia', 'Bose, Arjun', 'Zed, Riya']);
-  assert.equal(rows[0].opponent, '—');
-  assert.equal(rows[1].side, 'OPP');
-  assert.equal(rows[1].opponent, 'Riya Zed');
+  assert.deepEqual(rows.map((r) => r.name), ['Arjun Bose', 'Mia adams', 'Riya Zed']);
+  assert.equal(rows[0].side, 'OPP');
+  assert.equal(rows[0].opponent, 'Riya Zed');
+  assert.equal(rows[1].opponent, '—');
   assert.equal(rows[2].room, 'Room 12');
   assert.equal(drawRows([{id: 'x', debater1: {name: 'Solo'}}])[0].room, 'Room TBA');
 });
 
-test('surname helpers', () => {
+test('surname and first-name helpers', () => {
   assert.equal(surnameFirst({name: 'Ada Lovelace'}), 'Lovelace, Ada');
   assert.equal(surnameFirst({firstName: 'Cher'}), 'Cher');
   assert.equal(surnameFirst(null), 'TBD');
   assert.deepEqual(sortBySurname([{lastName: 'b'}, {lastName: 'A'}]).map((p) => p.lastName), ['A', 'b']);
+  assert.deepEqual(sortByFirstName([{firstName: 'Zara', lastName: 'A'}, {firstName: 'Arjun', lastName: 'Z'}]).map((p) => p.firstName), ['Arjun', 'Zara']);
 });
 
 test('pagination helpers', () => {

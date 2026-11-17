@@ -30,6 +30,7 @@ export default function PairingPreviewModal({
                 gov: pair.debater1 || pair.gov,
                 opp: pair.debater2 || pair.opp,
                 isSwing: Boolean(pair.usesSwing || pair.isSwing || pair.debater2?.isSwing || pair.opp?.isSwing),
+                isRematch: Boolean(pair.isRematch),
             }));
         }
         const pairs = [];
@@ -151,9 +152,19 @@ export default function PairingPreviewModal({
                                         : "border-border/70 bg-muted/20"
                                 )}
                             >
-                                <span className="font-mono font-bold text-muted-foreground w-8 shrink-0">
-                                    #{pair.index}
-                                </span>
+                                <div className="flex items-center gap-1.5 w-14 shrink-0">
+                                    <span className="font-mono font-bold text-muted-foreground">
+                                        #{pair.index}
+                                    </span>
+                                    {pair.isRematch && (
+                                        <span
+                                            title="Unavoidable rematch based on prior pairings"
+                                            className="ax-chip ax-chip--warn text-[9px] font-bold uppercase"
+                                        >
+                                            RM
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="flex-1 min-w-0 flex items-center gap-2">
                                     <span className="ax-chip ax-chip--gov shrink-0 text-[10px] font-bold">
                                         GOV
@@ -162,6 +173,7 @@ export default function PairingPreviewModal({
                                         <p className="font-semibold text-foreground truncate">{labelOf(pair.gov)}</p>
                                         <p className="text-[11px] text-muted-foreground truncate">
                                             {pair.gov?.college || "—"}
+                                            {typeof pair.gov?.wins === "number" ? ` · ${pair.gov.wins}W` : ""}
                                             {typeof pair.gov?.avgScore === "number" ? ` · Avg ${pair.gov.avgScore.toFixed(1)}` : ""}
                                         </p>
                                     </div>
@@ -180,7 +192,8 @@ export default function PairingPreviewModal({
                                         <p className="font-semibold text-foreground truncate">{labelOf(pair.opp)}</p>
                                         <p className="text-[11px] text-muted-foreground truncate">
                                             {pair.opp?.college || "—"}
-                                            {typeof pair.opp?.avgScore === "number" ? ` · Avg ${pair.opp.avgScore.toFixed(1)}` : ""}
+                                            {!pair.isSwing && typeof pair.opp?.wins === "number" ? ` · ${pair.opp.wins}W` : ""}
+                                            {!pair.isSwing && typeof pair.opp?.avgScore === "number" ? ` · Avg ${pair.opp.avgScore.toFixed(1)}` : ""}
                                         </p>
                                     </div>
                                 </div>

@@ -679,6 +679,9 @@ function DashboardContent() {
       subscribe(SocketEvents.CHECKIN_UPDATE, (data) => {
         if (data.roundId === roundIdRef.current) refresh("checkIn");
       }),
+      SocketEvents.ROUND_PROMOTIONS
+        ? subscribe(SocketEvents.ROUND_PROMOTIONS, () => refresh("debates", "checkIn"))
+        : null,
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe?.());
   }, [subscribe, refresh]);
