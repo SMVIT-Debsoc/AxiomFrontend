@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useRef} from "react";
 import {useAuth} from "../auth/client.jsx";
+import {createRequestSignal} from "../lib/requestSignal.js";
 
 // Each section can load independently. Repeated live events for a section
 // collapse into one follow-up read if that section already has a request open.
@@ -21,7 +22,7 @@ export function usePageRequests(initialFields, load, previewField, requestKey) {
 
     async function run(field, skipCache, tokenRequest) {
       running.add(field);
-      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
+      const {signal, dispose} = createRequestSignal(15000, controller.signal);
       try {
         const token = await tokenRequest;
         if (isCurrent()) {
@@ -29,6 +30,7 @@ export function usePageRequests(initialFields, load, previewField, requestKey) {
           await loader.current.load(field, token, {skipCache, signal, sessionScope, onNavigationPreview}, isCurrent);
         }
       } finally {
+        dispose?.();
         running.delete(field);
         if (pending.has(field)) schedule();
       }

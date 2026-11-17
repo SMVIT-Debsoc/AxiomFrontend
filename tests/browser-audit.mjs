@@ -678,6 +678,22 @@ try {
     await page.getByRole('button', {name: 'Enrolled'}).waitFor();
   });
 
+  for (const missingTimeout of [false, true]) {
+    await run(`debater dashboard and event load without AbortSignal.any${missingTimeout ? ' or timeout' : ''}`, {
+      signedIn: true, enrolled: true,
+    }, async page => {
+      await page.addInitScript(missingTimeout => {
+        delete AbortSignal.any;
+        if (missingTimeout) delete AbortSignal.timeout;
+      }, missingTimeout);
+      await page.goto(origin + '/dashboard');
+      await visible(page, 'Audit Tournament');
+      await page.goto(origin + '/dashboard/events/e1');
+      await visible(page, 'Audit Round');
+      await page.getByRole('button', {name: 'Enrolled'}).waitFor();
+    });
+  }
+
   await run('tournament list preview survives an overview failure and retry', {signedIn: true, enrolled: true}, async page => {
     let release;
     const held = new Promise(resolve => { release = resolve; });
@@ -1076,10 +1092,16 @@ try {
     }
   });
 
-  for (const recorded of [true, false]) {
-    await run(`ballot recovery after a lost response when the save ${recorded ? 'was recorded' : 'did not reach the server'}`, {
+  for (const {recorded, legacy} of [{recorded: true}, {recorded: false}, {recorded: true, legacy: true}]) {
+    const outcome = recorded ? 'was recorded' : 'did not reach the server';
+    await run(`ballot recovery after a lost response when the save ${outcome}${legacy ? ' without modern AbortSignal methods' : ''}`, {
       signedIn: true, admin: true, assigned: true, published: true,
     }, async (page, state) => {
+      if (legacy) await page.addInitScript(() => {
+        delete AbortSignal.any;
+        delete AbortSignal.timeout;
+        delete AbortSignal.prototype.throwIfAborted;
+      });
       Object.assign(state.debate, {status: 'SCHEDULED', winnerId: null, debater1Score: null, debater2Score: null});
       let posts = 0;
       await page.route(url => url.pathname === '/api/debates/d1/result', async route => {

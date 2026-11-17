@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {useAuth} from "../auth/client.jsx";
 import {AdminApi, DebateApi} from "../services/api";
+import {createRequestSignal} from "../lib/requestSignal.js";
 
 const SAVE_TIMEOUT_MS = 12000;
 const VERIFY_TIMEOUT_MS = 8000;
@@ -24,9 +25,11 @@ export function useBallotSave(onConfirmed) {
     operation.current = controller;
     setBusy(kind);
     const isCurrent = () => operation.current === controller;
+    const request = createRequestSignal(timeout, controller.signal);
     try {
-      await action(AbortSignal.any([controller.signal, AbortSignal.timeout(timeout)]), isCurrent);
+      await action(request.signal, isCurrent);
     } finally {
+      request.dispose?.();
       if (isCurrent()) {
         operation.current = null;
         setBusy(null);
@@ -45,7 +48,9 @@ export function useBallotSave(onConfirmed) {
       try {
         const token = await getToken();
         if (!isCurrent()) return;
-        signal.throwIfAborted();
+        if (signal.aborted) {
+          throw signal.reason ?? new DOMException("The request was cancelled.", "AbortError");
+        }
         requestStarted = true;
         response = await AdminApi.submitResult(debateId, scores, token, {summary: true, signal});
       } catch (error) {

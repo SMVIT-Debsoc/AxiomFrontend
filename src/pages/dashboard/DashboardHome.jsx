@@ -14,6 +14,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import {useAuth, useUser} from "../../auth/client.jsx";
+import {createRequestSignal} from "../../lib/requestSignal.js";
 import {
   UserApi,
   EventApi,
@@ -457,11 +458,8 @@ function DashboardContent() {
     let loadedBoard = null;
     let pending = new Set(["profile", ...LIVE_FIELDS]);
 
-    async function fetchData(fields, initial) {
-      const token = await getTokenRef.current();
-      if (stopped) return;
-      // Bound each batch so a stalled request can't block later live updates.
-      const options = {skipCache: !initial, signal: AbortSignal.timeout(15000), sessionScope};
+    async function fetchData(fields, initial, token, signal) {
+      const options = {skipCache: !initial, signal, sessionScope};
       const profile = fields.has("profile")
         ? UserApi.getProfile(token, options).then((response) => {
             if (!stopped && response.user) setUserData(response.user);
@@ -585,14 +583,20 @@ function DashboardContent() {
       const fields = pending;
       pending = new Set();
       running = true;
+      let request;
       try {
-        await fetchData(fields, initial);
+        const token = await getTokenRef.current();
+        if (stopped) return;
+        // Bound each batch so a stalled request can't block later live updates.
+        request = createRequestSignal(15000);
+        await fetchData(fields, initial, token, request.signal);
       } catch (failure) {
         if (!stopped) {
           setError(failure.message);
           setLoading(false);
         }
       } finally {
+        request?.dispose?.();
         running = false;
         schedule();
       }
