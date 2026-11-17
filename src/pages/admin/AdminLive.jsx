@@ -1,3 +1,4 @@
+import {usePageRequests} from "../../hooks/usePageRequests";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Link} from "react-router-dom";
 import {Loader2, Search, X, Edit3, Trophy, Plus, Clock, ShieldCheck, DoorOpen} from "lucide-react";
@@ -25,6 +26,9 @@ const STEPS = [
 const fullName = (u) => `${u?.firstName || ""} ${u?.lastName || ""}`.trim() || u?.email || "Unknown";
 const roundWord = (status) => ({ONGOING: "live", COMPLETED: "done"}[String(status).toUpperCase()] || "upcoming");
 const judgeOf = (d) => d.judgeName || (d.adjudicator ? fullName(d.adjudicator) : "");
+
+const LIVE_ROUND_FIELDS = ["round", "performers"];
+const LIVE_SUPPORT_FIELDS = ["rooms", "roster"];
 
 export default function AdminLive() {
     const {getToken} = useAuth();
@@ -56,14 +60,16 @@ export default function AdminLive() {
     useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
     const activeRound = useRef(roundId);
     useEffect(() => { activeRound.current = roundId; }, [roundId]);
-    const fetchGenRef = useRef(0);
+    const selectedEvent = useRef(eventId);
+    useEffect(() => { selectedEvent.current = eventId; }, [eventId]);
 
     // Rounds of the selected event
     const refreshRoundsList = useCallback(async (selectPreferred = false) => {
         if (!eventId) return;
         try {
             const token = await getTokenRef.current();
-            const res = await AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, {skipCache: true});
+            const res = await AdminApi.apiRequest(`/rounds/event/${eventId}?view=summary`, "GET", null, token, {skipCache: true});
+            if (selectedEvent.current !== eventId) return;
             const list = (res.success ? res.rounds || [] : []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
             setRounds(list);
             if (selectPreferred || (activeRound.current && !list.some((r) => r.id === activeRound.current))) {
@@ -80,12 +86,15 @@ export default function AdminLive() {
     }, [eventId, toast]);
 
     useEffect(() => {
+        setRounds([]);
+        setRoundId(null);
+        setLoading(Boolean(eventId));
         if (!eventId) return undefined;
         let cancelled = false;
         (async () => {
             try {
                 const token = await getTokenRef.current();
-                const res = await AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, {skipCache: true});
+                const res = await AdminApi.apiRequest(`/rounds/event/${eventId}?view=summary`, "GET", null, token);
                 if (cancelled) return;
                 const list = (res.success ? res.rounds || [] : []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
                 setRounds(list);
@@ -101,49 +110,51 @@ export default function AdminLive() {
         return () => { cancelled = true; };
     }, [eventId, toast]);
 
-    const fetchRound = useCallback(async (background = false) => {
+    useEffect(() => {
+        setViewStep(null);
+        setRound(null);
+        setPerformers([]);
+        setResultsPublished(false);
+    }, [roundId]);
+
+    const refreshRound = usePageRequests(LIVE_ROUND_FIELDS, async (field, token, options, isCurrent) => {
         if (!roundId) return;
-        const id = roundId;
-        const gen = ++fetchGenRef.current;
-        if (!background) setLoading(true);
+        if (field === "round" && !options.skipCache) setLoading(true);
         try {
-            const token = await getTokenRef.current();
-            const opts = {skipCache: true};
-            const res = await AdminApi.apiRequest(`/rounds/${id}`, "GET", null, token, opts);
-            if (gen !== fetchGenRef.current || activeRound.current !== id || !res.success) return;
-            const r = res.round;
-            const [roomsRes, partsRes, perfRes] = await Promise.all([
-                AdminApi.apiRequest("/rooms", "GET", null, token, opts),
-                AdminApi.apiRequest(`/events/${r.eventId}/participants`, "GET", null, token, opts),
-                AdminApi.apiRequest(`/admin/rounds/${id}/performers`, "GET", null, token, opts).catch(() => null),
-            ]);
-            if (gen !== fetchGenRef.current || activeRound.current !== id) return;
-            setRound(r);
-            setCheckIns(r.checkIns || []);
-            setDebates(r.debates || []);
-            setRooms(roomsRes.success ? roomsRes.rooms || [] : []);
-            setUsers(partsRes.success ? partsRes.participants || [] : []);
-            setPerformers(perfRes?.success ? perfRes.performers || [] : []);
-            setResultsPublished(Boolean(perfRes?.resultsPublished));
-        } catch {
-            if (gen === fetchGenRef.current && !background) {
-                toast.error("Error", "Failed to load round data");
+            const url = field === "round" ? `/rounds/${roundId}` : `/admin/rounds/${roundId}/performers`;
+            const response = await AdminApi.apiRequest(url, "GET", null, token, options);
+            if (!isCurrent() || !response.success) return;
+            if (field === "round" && response.round.eventId === eventId) {
+                setRound(response.round);
+                setCheckIns(response.round.checkIns || []);
+                setDebates(response.round.debates || []);
+                setResultsPublished(Boolean(response.round.resultsPublished));
+            } else if (field === "performers") {
+                setPerformers(response.performers || []);
             }
+        } catch {
+            if (isCurrent() && field === "round" && !options.skipCache) toast.error("Error", "Failed to load round data");
         } finally {
-            if (gen === fetchGenRef.current && activeRound.current === id) setLoading(false);
+            if (isCurrent() && field === "round") setLoading(false);
         }
-    }, [roundId, toast]);
+    }, undefined, eventId + "/" + roundId);
 
-    useEffect(() => { setViewStep(null); setRound(null); fetchRound(); }, [fetchRound]);
+    useEffect(() => { setUsers([]); }, [eventId]);
+    const refreshSupport = usePageRequests(LIVE_SUPPORT_FIELDS, async (field, token, options, isCurrent) => {
+        if (!eventId) return;
+        const url = field === "rooms" ? "/rooms" : `/events/${eventId}/participants`;
+        const response = await AdminApi.apiRequest(url, "GET", null, token, options);
+        if (!isCurrent() || !response.success) return;
+        if (field === "rooms") setRooms(response.rooms || []);
+        else setUsers(response.participants || []);
+    }, undefined, eventId);
 
-    const refetchTimer = useRef(null);
-    const softRefetch = useCallback(() => {
-        clearTimeout(refetchTimer.current);
-        refetchTimer.current = setTimeout(() => fetchRound(true), 60);
-    }, [fetchRound]);
-    useEffect(() => () => clearTimeout(refetchTimer.current), []);
-
-    useLiveRefresh(softRefetch, {eventId, roundId, jitterMs: 3000, invalidateCache: false});
+    const softRefetch = useCallback(() => refreshRound(...LIVE_ROUND_FIELDS), [refreshRound]);
+    useLiveRefresh(() => {
+        softRefetch();
+        refreshSupport(...LIVE_SUPPORT_FIELDS);
+        refreshRoundsList();
+    }, {eventId, roundId, jitterMs: 3000, invalidateCache: false});
 
     const handleRealtimeCheckIn = useCallback((data) => {
         const targetUserId = data?.userId || data?.user?.id;
@@ -188,7 +199,7 @@ export default function AdminLive() {
         onDebateResult: (data) => {
             setDebates((prev) => prev.map((d) => d.id === data.debateId
                 ? {...d, winnerId: data.winnerId, debater1Score: data.debater1Score, debater2Score: data.debater2Score, status: "COMPLETED"} : d));
-            softRefetch();
+            refreshRound("performers");
         },
         onRoundStatusChange: (data) => {
             setRound((prev) => (prev ? {...prev, ...data} : prev));
@@ -227,7 +238,7 @@ export default function AdminLive() {
             if (data?.user?.id) {
                 setUsers((prev) => (prev.some((u) => u.id === data.user.id) ? prev : [...prev, data.user]));
             }
-            softRefetch();
+            refreshSupport("roster");
         },
         onRoundStatusChange: (data) => {
             if (data?.roundId === roundId) {
@@ -248,7 +259,12 @@ export default function AdminLive() {
     // ----- derived round state -----
     const people = useMemo(() => {
         const merged = [...users];
-        checkIns.forEach((ci) => { if (ci.user && !merged.find((u) => u.id === ci.userId)) merged.push(ci.user); });
+        const known = new Set(users.map((user) => user.id));
+        for (const checkIn of checkIns) {
+            if (!checkIn.user || known.has(checkIn.userId)) continue;
+            merged.push(checkIn.user);
+            known.add(checkIn.userId);
+        }
         return merged;
     }, [users, checkIns]);
     const presentIds = useMemo(() => new Set(checkIns.filter((c) => c.status === "PRESENT").map((c) => c.userId)), [checkIns]);
@@ -447,7 +463,7 @@ export default function AdminLive() {
             const res = isRound1 ? await AdminApi.generateRound1Pairings(roundId, token) : await AdminApi.generatePowerMatchPairings(roundId, token);
             if (res.success) {
                 toast.success("Pairings generated", `Created ${res.data?.pairingsCreated ?? 0} pairings.`);
-                await fetchRound(true);
+                softRefetch();
                 setViewStep(null);
             } else toast.error("Generation failed", res.error || "Failed to generate pairings");
         } catch { toast.error("Error", "Error generating pairings"); } finally { setBusy(""); }
@@ -460,7 +476,7 @@ export default function AdminLive() {
             const res = await AdminApi.apiRequest(`/pairing/${roundId}/allocate-rooms`, "POST", formData, token);
             if (res.success) {
                 toast.success("Rooms allocated", `Allocated rooms for ${res.data?.debatesAllocated || 0} debates.`);
-                if (res.data?.debates) setDebates(res.data.debates); else await fetchRound(true);
+                if (res.data?.debates) setDebates(res.data.debates); else softRefetch();
                 setShowAllocate(false);
                 setViewStep(null);
             } else toast.error("Allocation failed", res.error || "Failed to allocate rooms");
@@ -527,7 +543,9 @@ export default function AdminLive() {
         } else {
             setScoringDebate(null);
         }
-        softRefetch();
+        const hasOtherPending = debates.some((debate) => debate.id !== debateId && debate.status !== "COMPLETED");
+        if (hasOtherPending) refreshRound("performers");
+        else softRefetch();
     };
 
     const handleRoundCreated = (newRound) => {
@@ -581,7 +599,7 @@ export default function AdminLive() {
     })();
 
     // ----- render -----
-    if (eventsLoading || (loading && !round && roundId)) return <div className="grid min-h-[50vh] place-items-center"><LoadingIndicator label="Loading live round" /></div>;
+    if (eventsLoading || (loading && !round)) return <div className="grid min-h-[50vh] place-items-center"><LoadingIndicator label="Loading live round" /></div>;
     if (!event) return <EmptyBlock title="No event yet" body="Create an event and its rounds to run it from here." to="/admin/events" cta="Set up an event" />;
     if (!rounds.length || !round) return (
         <div className="ax-card mx-auto mt-10 max-w-lg p-8 text-center space-y-4">
@@ -920,7 +938,7 @@ export default function AdminLive() {
                     onCreated={(newRoom) => {
                         setShowQuickRoom(false);
                         if (newRoom) setRooms((prev) => [...prev, newRoom]);
-                        softRefetch();
+                        refreshSupport("rooms");
                     }}
                 />
             )}

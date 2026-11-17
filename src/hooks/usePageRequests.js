@@ -3,7 +3,7 @@ import {useAuth} from "../auth/client.jsx";
 
 // Each section can load independently. Repeated live events for a section
 // collapse into one follow-up read if that section already has a request open.
-export function usePageRequests(initialFields, load, previewField) {
+export function usePageRequests(initialFields, load, previewField, requestKey) {
   const {getToken, sessionId, userId} = useAuth();
   const sessionScope = sessionId && userId ? sessionId + "/" + userId : null;
   const loader = useRef(null);
@@ -60,7 +60,7 @@ export function usePageRequests(initialFields, load, previewField) {
       window.clearTimeout(timer);
       enqueue.current = null;
     };
-  }, [initialFields, previewField, sessionScope]);
+  }, [initialFields, previewField, sessionScope, requestKey]);
 
   return useCallback((...fields) => enqueue.current?.(fields), []);
 }

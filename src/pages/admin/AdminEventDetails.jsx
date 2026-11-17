@@ -1,5 +1,6 @@
+import {usePageRequests} from "../../hooks/usePageRequests";
 import ModalSurface from "../../components/ui/ModalSurface";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
@@ -27,14 +28,22 @@ import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import { useEventSocket, useLiveRefresh } from "../../hooks/useSocket";
 import EmptyState from "../../components/ui/EmptyState";
 
+const ADMIN_EVENT_FIELDS = ["event", "rounds", "stats", "roster"];
+
 export default function AdminEventDetails() {
-  const { id: eventId } = useParams();
+  const {id: eventId} = useParams();
+  return <AdminEventPage key={eventId} eventId={eventId} />;
+}
+
+function AdminEventPage({eventId}) {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [rounds, setRounds] = useState([]);
+  const [roundsLoading, setRoundsLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [participants, setParticipants] = useState([]);
+  const [rosterLoading, setRosterLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showCreateRound, setShowCreateRound] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
@@ -45,82 +54,44 @@ export default function AdminEventDetails() {
   const [allUsers, setAllUsers] = useState([]);
   const [userSearchQuery, setUserSearchQuery] = useState("");
 
-  const getTokenRef = useRef(getToken);
-  const fetchGenRef = useRef(0);
-  useEffect(() => {
-    getTokenRef.current = getToken;
-  }, [getToken]);
-
-  const fetchData = useCallback(async (isBackground = false) => {
-    const gen = ++fetchGenRef.current;
+  const refresh = usePageRequests(ADMIN_EVENT_FIELDS, async (field, token, options, isCurrent) => {
+    if (field === "event" && !options.skipCache) setLoading(true);
     try {
-      const token = await getTokenRef.current();
-      const opts = isBackground ? { skipCache: true } : { skipCache: true };
-      const results = await Promise.allSettled([
-        AdminApi.apiRequest(`/events/${eventId}`, "GET", null, token, opts),
-        AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, opts),
-        AdminApi.apiRequest(`/stats/event/${eventId}`, "GET", null, token, opts),
-        AdminApi.apiRequest(`/events/${eventId}/participants`, "GET", null, token, opts),
-      ]);
-
-      if (gen !== fetchGenRef.current) return;
-      const [eventRes, roundsRes, statsRes, participantsRes] = results;
-
-      if (eventRes.status === "fulfilled" && eventRes.value.success) {
-        setEvent(eventRes.value.event);
-      } else if (eventRes.status === "fulfilled") {
-        console.error("Event fetch failed:", eventRes.value);
-      } else {
-        console.error("Event fetch failed:", eventRes);
-      }
-
-      if (roundsRes.status === "fulfilled" && roundsRes.value.success) {
-        setRounds(roundsRes.value.rounds || []);
-      }
-
-      if (statsRes.status === "fulfilled" && statsRes.value.success) {
-        setStats(statsRes.value.data);
-      }
-
-      if (
-        participantsRes.status === "fulfilled" &&
-        participantsRes.value.success
-      ) {
-        setParticipants(participantsRes.value.participants || []);
-      }
+      const url = {
+        event: `/events/${eventId}?view=metadata`,
+        rounds: `/rounds/event/${eventId}?view=summary`,
+        stats: `/stats/event/${eventId}`,
+        roster: `/events/${eventId}/participants`,
+      }[field];
+      const response = await AdminApi.apiRequest(url, "GET", null, token, options);
+      if (!isCurrent() || !response.success) return;
+      if (field === "event") setEvent(response.event);
+      if (field === "rounds") setRounds(response.rounds || []);
+      if (field === "stats") setStats(response.data);
+      if (field === "roster") setParticipants(response.participants || []);
     } catch (error) {
-      console.error("Failed to fetch event data:", error);
+      if (isCurrent()) console.error("Failed to fetch event data:", error);
     } finally {
-      if (gen === fetchGenRef.current && !isBackground) {
-        setLoading(false);
-      }
+      if (isCurrent() && field === "event") setLoading(false);
+      if (isCurrent() && field === "rounds") setRoundsLoading(false);
+      if (isCurrent() && field === "roster") setRosterLoading(false);
     }
-  }, [eventId]); // stable - getToken via ref
+  }, undefined, eventId);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const softRefetchTimer = useRef(null);
-  const softRefetch = useCallback(() => {
-    clearTimeout(softRefetchTimer.current);
-    softRefetchTimer.current = setTimeout(() => fetchData(true), 60);
-  }, [fetchData]);
-  useEffect(() => () => clearTimeout(softRefetchTimer.current), []);
-
-  useLiveRefresh(softRefetch, { enabled: Boolean(eventId), eventId, jitterMs: 3000, invalidateCache: false });
-
-  // Real-time updates
+  const fetchData = () => refresh(...ADMIN_EVENT_FIELDS);
+  useLiveRefresh(fetchData, {enabled: Boolean(eventId), eventId, jitterMs: 3000, invalidateCache: false});
   useEventSocket(eventId, {
-    onEventUpdated: softRefetch,
-    onRoundCreated: softRefetch,
-    onRoundUpdated: softRefetch,
-    onRoundDeleted: softRefetch,
-    onEventEnrollment: softRefetch,
-    onRoundStatusChange: softRefetch,
-    onPairingsPublished: softRefetch,
-    onCheckInCount: softRefetch,
-    onRoundCheckInWindow: softRefetch,
+    onEventUpdated: () => refresh("event"),
+    onRoundCreated: () => refresh("rounds", "stats"),
+    onRoundUpdated: () => refresh("rounds", "stats"),
+    onRoundDeleted: () => refresh("rounds", "stats"),
+    onEventEnrollment: () => refresh("roster", "stats"),
+    onRoundStatusChange: () => refresh("rounds", "stats"),
+    onPairingsPublished: () => refresh("rounds"),
+    onRoundCheckInWindow: () => refresh("rounds"),
+    onDebateResult: () => refresh("stats"),
+    onDebateCreated: () => refresh("stats"),
+    onDebateDeleted: () => refresh("stats"),
   });
 
   const handleDeleteRound = async (id) => {
@@ -165,7 +136,7 @@ export default function AdminEventDetails() {
       const token = await getToken();
       const response = await EventApi.enrollUserManual(eventId, userId, token);
       if (response.success) {
-        fetchData(); // Refresh participants
+        refresh("roster", "stats");
         setShowAddParticipant(false);
       } else {
         alert(response.error || "Failed to enroll user");
@@ -264,6 +235,7 @@ export default function AdminEventDetails() {
           </button>
           <button
             onClick={() => setShowCreateRound(true)}
+            disabled={roundsLoading}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
@@ -336,7 +308,7 @@ export default function AdminEventDetails() {
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Participants ({participants.length})
+          Participants ({rosterLoading ? "…" : participants.length})
           {activeTab === "participants" && (
             <Motion.div
               layoutId="activeAdminTab"
@@ -364,7 +336,9 @@ export default function AdminEventDetails() {
                   <h2 className="text-base font-heading font-bold text-foreground">Round Sequence</h2>
                 </div>
 
-                {rounds.length === 0 ? (
+                {roundsLoading ? (
+                  <LoadingIndicator label="Loading rounds" />
+                ) : rounds.length === 0 ? (
                   <EmptyState
                     compact
                     icon={Activity}
@@ -482,6 +456,7 @@ export default function AdminEventDetails() {
                   <h2 className="text-base font-heading font-bold text-foreground">Enrolled Debaters</h2>
                   <button
                     onClick={() => setShowAddParticipant(true)}
+                    disabled={rosterLoading}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-sans font-medium hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Plus className="w-3.5 h-3.5" aria-hidden="true" />
@@ -489,7 +464,9 @@ export default function AdminEventDetails() {
                   </button>
                 </div>
 
-                {participants.length === 0 ? (
+                {rosterLoading ? (
+                  <LoadingIndicator label="Loading participants" />
+                ) : participants.length === 0 ? (
                   <EmptyState
                     compact
                     icon={Users}

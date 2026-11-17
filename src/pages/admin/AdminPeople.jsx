@@ -1,4 +1,5 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {usePageRequests} from "../../hooks/usePageRequests";
+import {useEffect, useMemo, useState} from "react";
 import {Link} from "react-router-dom";
 import {Search, X} from "lucide-react";
 import {useAuth} from "../../auth/client.jsx";
@@ -30,94 +31,103 @@ const incomplete = (u) => !u.college || !u.mobile;
 
 const FILTERS = [["all", "All"], ["incomplete", "Incomplete"], ["absent", "Not checked in"]];
 
+const PEOPLE_FIELDS = ["users", "roster", "rounds"];
+const ATTENDANCE_FIELDS = ["attendance"];
+
 export default function AdminPeople() {
-    const {getToken} = useAuth();
-    const toast = useToast();
     const {event, eventId, loading: eventsLoading} = useAdminEvent();
+    return <AdminPeoplePage key={eventId} event={event} eventId={eventId} eventsLoading={eventsLoading} />;
+}
+
+function AdminPeoplePage({event, eventId, eventsLoading}) {
+    const toast = useToast();
     const [users, setUsers] = useState([]);
     const [enrolledIds, setEnrolledIds] = useState(new Set());
     const [round, setRound] = useState(null);
     const [presentIds, setPresentIds] = useState(new Set());
     const [loading, setLoading] = useState(true);
+    const [rosterLoading, setRosterLoading] = useState(Boolean(eventId));
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("all");
     const [modal, setModal] = useState(null); // "qr" | "add"
     const [live, setLive] = useState([]);
-    const getTokenRef = useRef(getToken);
-    const fetchGenRef = useRef(0);
-    useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
-
-    const load = useCallback(async (isBackground = false) => {
-        const gen = ++fetchGenRef.current;
+    const refreshPeople = usePageRequests(PEOPLE_FIELDS, async (field, token, options, isCurrent) => {
         try {
-            const token = await getTokenRef.current();
-            const opts = { skipCache: true };
-            const [usersRes, partsRes, roundsRes] = await Promise.all([
-                AdminApi.apiRequest("/users?limit=500", "GET", null, token, opts),
-                eventId ? AdminApi.apiRequest(`/events/${eventId}/participants`, "GET", null, token, opts) : Promise.resolve(null),
-                eventId ? AdminApi.apiRequest(`/rounds/event/${eventId}`, "GET", null, token, opts) : Promise.resolve(null),
-            ]);
-            if (gen !== fetchGenRef.current) return;
-            setUsers(usersRes.success ? usersRes.users || [] : []);
-            setEnrolledIds(new Set(partsRes?.success ? (partsRes.participants || []).map((p) => p.id) : []));
-            const list = (roundsRes?.success ? roundsRes.rounds || [] : []).slice().sort((a, b) => a.roundNumber - b.roundNumber);
-            const cur = list.find((r) => String(r.status).toUpperCase() === "ONGOING") || list.find((r) => String(r.status).toUpperCase() !== "COMPLETED") || list[list.length - 1];
-            if (cur) {
-                const detail = await AdminApi.apiRequest(`/rounds/${cur.id}`, "GET", null, token, opts);
-                if (gen !== fetchGenRef.current) return;
-                setRound(cur);
-                setPresentIds(new Set(detail.success ? (detail.round.checkIns || []).filter((c) => c.status === "PRESENT").map((c) => c.userId) : []));
-            } else { setRound(null); setPresentIds(new Set()); }
+            if (!eventId && field !== "users") return;
+            const url = {
+                users: "/users?limit=500&view=registry",
+                roster: `/events/${eventId}/participants`,
+                rounds: `/rounds/event/${eventId}?view=summary`,
+            }[field];
+            const response = await AdminApi.apiRequest(url, "GET", null, token, options);
+            if (!isCurrent() || !response.success) return;
+            if (field === "users") setUsers(response.users || []);
+            if (field === "roster") setEnrolledIds(new Set((response.participants || []).map((p) => p.id)));
+            if (field === "rounds") {
+                const list = response.rounds || [];
+                setRound(list.find((r) => r.status === "ONGOING")
+                    || list.find((r) => r.status !== "COMPLETED") || list.at(-1) || null);
+            }
         } catch (failure) {
+            if (isCurrent() && !options.skipCache && field === "users") toast.error("Error", "Failed to load people");
             console.error("Failed to load people", failure);
-            if (!isBackground) toast.error("Error", "Failed to load people");
         } finally {
-            if (gen === fetchGenRef.current && !isBackground) setLoading(false);
+            if (isCurrent() && field === "users") setLoading(false);
+            if (isCurrent() && field === "roster") setRosterLoading(false);
         }
-    }, [eventId, toast]);
+    });
 
-    useEffect(() => { setLoading(true); load(); }, [load]);
-
-    // Live registrations and check-ins: debounce refreshes to 100ms with cache bypass.
-    const timer = useRef(null);
-    useEffect(() => () => clearTimeout(timer.current), []);
-    const scheduleReload = useCallback(() => {
-        clearTimeout(timer.current);
-        timer.current = setTimeout(() => load(true), 100);
-    }, [load]);
+    useEffect(() => { setPresentIds(new Set()); }, [round?.id]);
+    const refreshAttendance = usePageRequests(ATTENDANCE_FIELDS, async (_field, token, options, isCurrent) => {
+        if (!round?.id) return;
+        const response = await AdminApi.apiRequest(`/check-in/round/${round.id}?view=attendance`, "GET", null, token, options);
+        if (isCurrent() && response.success) {
+            setPresentIds(new Set((response.checkIns || []).filter((ci) => ci.status === "PRESENT").map((ci) => ci.userId)));
+        }
+    }, undefined, round?.id);
 
     useEventSocket(eventId, {
         onEventEnrollment: (data) => {
             setLive((prev) => [{key: `${Date.now()}`, name: data?.userName || data?.name || "New debater", college: data?.college || "", at: new Date().toISOString()}, ...prev].slice(0, 6));
-            scheduleReload();
+            refreshPeople("users", "roster");
         },
-        onCheckInCount: scheduleReload,
-        onRoundCreated: scheduleReload,
-        onRoundStatusChange: scheduleReload,
+        onCheckInCount: (data) => {
+            if (data.roundId === round?.id) refreshAttendance("attendance");
+        },
+        onRoundCreated: () => refreshPeople("rounds"),
+        onRoundStatusChange: () => refreshPeople("rounds"),
+        onRoundUpdated: () => refreshPeople("rounds"),
+        onRoundDeleted: () => refreshPeople("rounds"),
     });
 
     useRoundSocket(round?.id, {
         onCheckInUpdate: (data) => {
             const uid = data?.userId || data?.user?.id;
-            if (uid && data?.status) {
-                setPresentIds((prev) => {
-                    const next = new Set(prev);
-                    if (data.status === "PRESENT") next.add(uid);
-                    else next.delete(uid);
-                    return next;
-                });
+            if (!uid || !data?.status) {
+                refreshAttendance("attendance");
+                return;
             }
-            scheduleReload();
+            setPresentIds((prev) => {
+                const next = new Set(prev);
+                if (data.status === "PRESENT") next.add(uid);
+                else next.delete(uid);
+                return next;
+            });
         },
-        onRoundStatusChange: scheduleReload,
-        onRoundUpdated: scheduleReload,
     });
-
-    useLiveRefresh(scheduleReload, {eventId, roundId: round?.id, jitterMs: 3000, invalidateCache: false});
+    useLiveRefresh(() => {
+        refreshPeople(...PEOPLE_FIELDS);
+        refreshAttendance("attendance");
+    }, {eventId, roundId: round?.id, jitterMs: 3000, invalidateCache: false});
     const {subscribe} = useSocket();
     useEffect(() => {
-        return subscribe(SocketEvents.ROUND_CHECKIN_WINDOW, scheduleReload);
-    }, [subscribe, scheduleReload]);
+        const refreshRegistry = () => refreshPeople("users", "roster");
+        const unsubscribe = [
+            subscribe(SocketEvents.USER_UPDATED, refreshRegistry),
+            subscribe(SocketEvents.USER_DELETED, refreshRegistry),
+        ];
+        return () => unsubscribe.forEach((stop) => stop());
+    }, [subscribe, refreshPeople]);
 
     // Event participants plus anyone whose profile is still incomplete
     const rows = useMemo(() => users.filter((u) => enrolledIds.has(u.id) || incomplete(u)).map((u) => ({
@@ -136,8 +146,8 @@ export default function AdminPeople() {
     const lastHour = users.filter((u) => enrolledIds.has(u.id) && u.createdAt && Date.now() - new Date(u.createdAt).getTime() < 3600000).length;
     const recent = users.filter((u) => enrolledIds.has(u.id) && u.createdAt).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 6);
     const stats = [
-        ["Registered", enrolledIds.size],
-        ["Joined last hour", `+${lastHour}`],
+        ["Registered", rosterLoading ? "…" : enrolledIds.size],
+        ["Joined last hour", rosterLoading ? "…" : `+${lastHour}`],
         ["Profile incomplete", users.filter(incomplete).length],
         [`Checked in${round ? ` · R${round.roundNumber}` : ""}`, round ? presentIds.size : "—"],
     ];
@@ -154,7 +164,7 @@ export default function AdminPeople() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={() => setModal("qr")} className="ax-ghost-btn">Show join QR</button>
-                    <button type="button" onClick={() => setModal("add")} disabled={!eventId} className="ax-primary-btn !min-h-11 !text-sm">+ Add walk-in</button>
+                    <button type="button" onClick={() => setModal("add")} disabled={!eventId || rosterLoading} className="ax-primary-btn !min-h-11 !text-sm">+ Add walk-in</button>
                 </div>
             </div>
 
@@ -242,7 +252,7 @@ export default function AdminPeople() {
             </div>
 
             {modal === "qr" && <QrModal onClose={() => setModal(null)} />}
-            {modal === "add" && <AddWalkInModal users={users} enrolledIds={enrolledIds} eventId={eventId} onClose={() => setModal(null)} onDone={() => { setModal(null); load(); }} />}
+            {modal === "add" && <AddWalkInModal users={users} enrolledIds={enrolledIds} eventId={eventId} onClose={() => setModal(null)} onDone={() => { setModal(null); refreshPeople("users", "roster"); }} />}
         </div>
     );
 }

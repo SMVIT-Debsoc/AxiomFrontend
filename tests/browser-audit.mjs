@@ -748,6 +748,27 @@ try {
     assert.equal(state.debate.winnerId, 'u1');
   });
 
+  await run('admin live round renders while roster, rooms and performers are pending', {signedIn: true, admin: true}, async page => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    const supportPaths = ['/api/rooms', '/api/events/e1/participants', '/api/admin/rounds/r1/performers'];
+    await page.route(url => supportPaths.includes(url.pathname), async route => {
+      await held;
+      return route.fallback();
+    });
+    const indexRequest = page.waitForRequest(request =>
+      new URL(request.url()).pathname === '/api/rounds/event/e1'
+    );
+    try {
+      await page.goto(origin + '/admin');
+      assert.equal(new URL((await indexRequest).url()).searchParams.get('view'), 'summary');
+      await page.getByRole('tab', {name: /Round 1/}).waitFor();
+      await page.getByPlaceholder('Find debater or room').waitFor();
+    } finally {
+      release();
+    }
+  });
+
   await run('sign-out returns to landing page', {signedIn: true}, async page => {
     await page.goto(origin + '/dashboard');
     await page.getByRole('button', {name: /Account menu for/}).click();

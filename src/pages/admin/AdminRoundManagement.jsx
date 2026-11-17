@@ -1,3 +1,4 @@
+import {usePageRequests} from "../../hooks/usePageRequests";
 import ModalSurface from "../../components/ui/ModalSurface";
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -25,12 +26,15 @@ import {
 import { useAuth } from "../../auth/client.jsx";
 import { cn } from "../../lib/utils";
 import { AdminApi } from "../../services/api";
-import { useRoundSocket, useSocket, SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
+import { useRoundSocket, useEventSocket, useLiveRefresh } from "../../hooks/useSocket";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import {useToast} from "../../hooks/useToast";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import {toLocalDateTime} from "../../lib/datetime";
 import InlineResultSheet from "../../components/admin/InlineResultSheet";
+
+const ROUND_FIELDS = ["round", "rooms"];
+const ROSTER_FIELDS = ["roster"];
 
 export default function AdminRoundManagement() {
     const { id: roundId } = useParams();
@@ -65,68 +69,53 @@ export default function AdminRoundManagement() {
     const getTokenRef = useRef(getToken);
     useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
 
-    const fetchGeneration = useRef(0);
     const activeRoundId = useRef(roundId);
 
     useLayoutEffect(() => {
         activeRoundId.current = roundId;
     }, [roundId]);
 
-    // fetchRoundData uses a ref for getToken so it's never a dependency
-    const fetchRoundData = useCallback(async (isBackground = false) => {
-        if (activeRoundId.current !== roundId) return;
-        const generation = ++fetchGeneration.current;
-        if (!isBackground) setLoading(true);
+    const refreshRound = usePageRequests(ROUND_FIELDS, async (field, token, options, isCurrent) => {
+        if (field === "round" && !options.skipCache) setLoading(true);
         try {
-            const token = await getTokenRef.current();
-            if (generation !== fetchGeneration.current) return;
-            const opts = { skipCache: true };
-            const roundRes = await AdminApi.apiRequest(`/rounds/${roundId}`, "GET", null, token, opts);
-            if (generation !== fetchGeneration.current) return;
-            if (roundRes.success) {
-                const fetchedRound = roundRes.round;
-                const [roomsRes, participantsRes] = await Promise.all([
-                    AdminApi.apiRequest("/rooms", "GET", null, token, opts),
-                    AdminApi.apiRequest(`/events/${fetchedRound.eventId}/participants`, "GET", null, token, opts),
-                ]);
-                if (generation !== fetchGeneration.current) return;
-                setRound(fetchedRound);
-                setCheckIns(fetchedRound.checkIns || []);
-                setDebates(fetchedRound.debates || []);
-                setRooms(roomsRes.success ? roomsRes.rooms || [] : []);
-                setUsers(participantsRes.success ? participantsRes.participants || [] : []);
+            const url = field === "round" ? `/rounds/${roundId}` : "/rooms";
+            const response = await AdminApi.apiRequest(url, "GET", null, token, options);
+            if (!isCurrent() || !response.success) return;
+            if (field === "round") {
+                setRound(response.round);
+                setCheckIns(response.round.checkIns || []);
+                setDebates(response.round.debates || []);
+            } else {
+                setRooms(response.rooms || []);
             }
         } catch {
-            if (generation === fetchGeneration.current) toast.error("Error", "Failed to load round data");
+            if (isCurrent() && field === "round" && !options.skipCache) toast.error("Error", "Failed to load round data");
         } finally {
-            if (generation === fetchGeneration.current) {
+            if (isCurrent() && field === "round") {
                 setLoadedRoundId(roundId);
                 setLoading(false);
             }
         }
-    }, [roundId, toast]);
+    }, undefined, roundId);
 
-    useEffect(() => {
-        const generationRef = fetchGeneration;
-        const timeoutRef = fetchTimeoutRef;
-        fetchRoundData();
-        return () => {
-            ++generationRef.current;
-            clearTimeout(timeoutRef.current);
-        };
-    }, [fetchRoundData]);
-
-    // Debounced fetch for socket updates to prevent spam
-    const fetchTimeoutRef = useRef(null);
-    const debouncedFetch = useCallback(() => {
-        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
-        fetchTimeoutRef.current = setTimeout(() => {
-            fetchRoundData(true);
-        }, 60);
-    }, [fetchRoundData]);
+    const rosterEventId = round?.id === roundId ? round.eventId : null;
+    useEffect(() => { setUsers([]); }, [rosterEventId]);
+    const refreshRoster = usePageRequests(ROSTER_FIELDS, async (_field, token, options, isCurrent) => {
+        if (!rosterEventId) return;
+        const response = await AdminApi.apiRequest(`/events/${rosterEventId}/participants`, "GET", null, token, options);
+        if (isCurrent() && response.success) setUsers(response.participants || []);
+    }, undefined, rosterEventId);
+    const debouncedFetch = useCallback(() => refreshRound("round"), [refreshRound]);
 
     // Real-time updates via WebSocket
     useRoundSocket(roundId, {
+        onRoundCheckInWindow: (data) => {
+            setRound((previous) => previous ? {
+                ...previous,
+                checkInStartTime: data.checkInStartTime,
+                checkInEndTime: data.checkInEndTime,
+            } : previous);
+        },
         onCheckInUpdate: (data) => {
             const targetUserId = data?.userId || data?.user?.id;
             if (!targetUserId) {
@@ -194,24 +183,13 @@ export default function AdminRoundManagement() {
         },
     });
 
-    useLiveRefresh(debouncedFetch, { roundId, eventId: round?.eventId, jitterMs: 3000, invalidateCache: false });
-    const { subscribe: subscribeRound } = useSocket({ eventId: round?.eventId });
-    useEffect(() => {
-        if (!roundId) return undefined;
-        return subscribeRound(SocketEvents.ROUND_CHECKIN_WINDOW, (data) => {
-            if (!data || (data.roundId && data.roundId !== roundId)) return;
-            setRound((prev) =>
-                prev
-                    ? {
-                        ...prev,
-                        checkInStartTime: data.checkInStartTime ?? prev.checkInStartTime,
-                        checkInEndTime: data.checkInEndTime ?? prev.checkInEndTime,
-                    }
-                    : prev
-            );
-            debouncedFetch();
-        });
-    }, [subscribeRound, roundId, debouncedFetch]);
+    useEventSocket(rosterEventId, {
+        onEventEnrollment: () => refreshRoster("roster"),
+    });
+    useLiveRefresh(() => {
+        refreshRound(...ROUND_FIELDS);
+        refreshRoster("roster");
+    }, {roundId, eventId: rosterEventId, jitterMs: 3000, invalidateCache: false});
 
     const handleSaveResult = async ({ debateId, debater1Score, debater2Score, winnerId, nextDebate }) => {
         const token = await getTokenRef.current();
@@ -260,7 +238,7 @@ export default function AdminRoundManagement() {
                     "Pairings Generated",
                     `Successfully generated ${response.data.pairingsCreated} pairings!${eliminatedMsg}`
                 );
-                await fetchRoundData();
+                debouncedFetch();
                 setActiveTab("debates");
             } else {
                 toast.error(
@@ -296,7 +274,7 @@ export default function AdminRoundManagement() {
                 if (response.data?.debates) {
                     setDebates(response.data.debates);
                 } else {
-                    fetchRoundData(true);
+                    debouncedFetch();
                 }
 
                 setAllocationRoundId(null);
@@ -513,7 +491,7 @@ export default function AdminRoundManagement() {
 
                 <div className="flex flex-wrap items-center gap-2.5">
                     <button
-                        onClick={() => fetchRoundData()}
+                        onClick={() => debouncedFetch()}
                         disabled={loading}
                         className="p-2.5 rounded-lg border border-border/70 bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         title="Refresh Data"
