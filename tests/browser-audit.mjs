@@ -678,6 +678,35 @@ try {
     await page.getByRole('button', {name: 'Enrolled'}).waitFor();
   });
 
+  await run('tournament list preview survives an overview failure and retry', {signedIn: true, enrolled: true}, async page => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await page.route(/\/api\/events\/e1\?view=overview$/, async route => {
+      await held;
+      await route.fulfill({status: 503, json: {success: false, error: 'Unavailable'}});
+    }, {times: 1});
+    try {
+      await page.goto(origin + '/dashboard/events');
+      await page.getByRole('link', {name: 'View Details'}).first().click();
+      await visible(page, 'Loading event details…');
+      await visible(page, 'Audit Tournament');
+      assert.equal(await page.getByText('No rounds have been scheduled yet.').count(), 0);
+    } finally {
+      release();
+    }
+    await visible(page, 'Could not refresh the event details. Please try again.');
+    await page.getByRole('button', {name: 'Retry', exact: true}).click();
+    await visible(page, 'Audit Round');
+  });
+
+  await run('tournament direct link shows not found for a 404', {signedIn: true}, async page => {
+    await page.route(/\/api\/events\/e1\?view=overview$/, route =>
+      route.fulfill({status: 404, json: {success: false, error: 'Event not found'}}));
+    await page.goto(origin + '/dashboard/events/e1');
+    await visible(page, 'Event Not Found');
+    assert.equal(await page.getByRole('button', {name: 'Retry', exact: true}).count(), 0);
+  });
+
   await run('personal results render before standings finish', {
     signedIn: true, assigned: true, resultsPublished: true,
   }, async page => {

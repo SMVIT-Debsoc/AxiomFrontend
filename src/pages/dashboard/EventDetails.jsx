@@ -1,7 +1,7 @@
 import DashboardLink from "../../components/dashboard/DashboardLink";
 import SectionRetry from "../../components/ui/SectionRetry";
 import { lazy, Suspense, useState, useRef } from "react";
-import {useParams} from "react-router-dom";
+import {useLocation, useParams} from "react-router-dom";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -36,13 +36,16 @@ const OVERVIEW_FIELDS = ["overview", "enrollment", "personal"];
 
 export default function EventDetails() {
   const {id} = useParams();
-  return <EventOverview key={id} id={id} />;
+  const {state} = useLocation();
+  const preview = state?.eventPreview;
+  return <EventOverview key={id} id={id} preview={preview?.id === id ? preview : null} />;
 }
 
-function EventOverview({id}) {
+function EventOverview({id, preview}) {
   const { getToken } = useAuth();
   const toast = useToast();
-  const [event, setEvent] = useState(null);
+  const [event, setEvent] = useState(preview);
+  const [overviewReady, setOverviewReady] = useState(false);
   const [rounds, setRounds] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
@@ -69,11 +72,12 @@ function EventOverview({id}) {
         const response = await EventApi.getOverview(id, token, options);
         if (!canUpdate()) return;
         if (!response?.event) {
-          setError("Event not found");
+          setError({message: "The server did not return the event details."});
           return;
         }
         setEvent(response.event);
         setRounds(response.event.rounds || []);
+        setOverviewReady(true);
         setError(null);
         setLoading(false);
 
@@ -104,7 +108,16 @@ function EventOverview({id}) {
         if (debates.status === "fulfilled" && debates.value?.success) setMyDebates(debates.value.debates || []);
       }
     } catch (error) {
-      if (canUpdate() && field === "overview" && !options.skipCache) setError(error.message);
+      if (canUpdate() && field === "overview") {
+        setError({
+          missing: error.status === 404,
+          message: error.status === 404
+            ? "The event you are looking for does not exist."
+            : options.signal.reason?.name === "TimeoutError"
+              ? "The request took too long. Please try again."
+              : "Could not refresh the event details. Please try again.",
+        });
+      }
       if (canUpdate() && field === "enrollment" && version === enrollmentVersion.current) setEnrollmentFailed(true);
     } finally {
       if (canUpdate()) {
@@ -213,7 +226,7 @@ function EventOverview({id}) {
       setLoading(false);
       toast.error("Event Deleted", "This event has been cancelled or removed.");
       // Redirect to dashboard logic could be added here, but for now just show toast/error state
-      setError("Event has been deleted.");
+      setError({missing: true, message: "Event has been deleted."});
     },
   });
 
@@ -241,18 +254,30 @@ function EventOverview({id}) {
     }
   };
 
-  if (loading) {
+  const retryOverview = () => {
+    setLoading(true);
+    refresh("overview");
+  };
+
+  if (loading && !event && !error) {
     return <EventDetailsSkeleton />;
   }
 
-  if (error || !event) {
+  if (error?.missing || !event) {
     return (
       <div className="max-w-2xl mx-auto text-center py-16">
         <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-        <h2 className="text-2xl font-bold mb-2">Event Not Found</h2>
+        <h2 className="text-2xl font-bold mb-2">
+          {error?.missing ? "Event Not Found" : "Couldn’t Load This Event"}
+        </h2>
         <p className="text-muted-foreground mb-6">
-          {error || "The event you are looking for does not exist."}
+          {error?.message || "The event details are unavailable."}
         </p>
+        {!error?.missing && (
+          <div className="mb-4 inline-block">
+            <SectionRetry message="Try loading the event again." busy={loading} onRetry={retryOverview} />
+          </div>
+        )}
         <DashboardLink
           to="/dashboard/events"
           className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium"
@@ -265,9 +290,9 @@ function EventOverview({id}) {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
-      <Suspense fallback={null}>
+      {overviewReady && <Suspense fallback={null}>
         <WhatsAppFirstLoginModal event={event} />
-      </Suspense>
+      </Suspense>}
       {/* Header / Breadcrumb */}
       <div>
         <DashboardLink
@@ -310,7 +335,7 @@ function EventOverview({id}) {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
+              {overviewReady && <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
                 <button
                   onClick={handleEnroll}
                   data-tour-anchor="enrollment"
@@ -354,13 +379,21 @@ function EventOverview({id}) {
                     Join WhatsApp
                   </a>
                 )}
-              </div>
+              </div>}
             </div>
           </div>
         </div>
       </div>
 
+      {error && <SectionRetry message={error.message} busy={loading} onRetry={retryOverview} />}
+      {!overviewReady && !error && (
+        <p role="status" className="py-8 text-center text-sm text-muted-foreground">
+          Loading event details…
+        </p>
+      )}
+
       {/* Tabs Navigation */}
+      {overviewReady && <>
       <div className="no-scrollbar flex items-center gap-4 md:gap-6 border-b border-border overflow-x-auto pb-px -mx-4 px-4 md:mx-0 md:px-0">
         {["overview", "rounds", "results"].map((tab) => (
           <button
@@ -779,6 +812,7 @@ function EventOverview({id}) {
           )}
         </AnimatePresence>
       </div>
+      </>}
     </div>
   );
 }
