@@ -519,22 +519,22 @@ try {
 
   await run('admin event creation sends dates and updates list', {signedIn: true, admin: true}, async (page, state) => {
     await page.goto(origin + '/admin/events');
-    await page.getByRole('button', {name: 'Create Event', exact: true}).click();
-    await page.getByLabel('Tournament Name').fill('New Audit Tournament');
-    await page.getByLabel('Start Date (local time)').fill('2026-10-12T10:00');
-    await page.getByLabel('End Date (local time)').fill('2026-10-12T18:00');
-    await page.getByRole('button', {name: 'Create Event', exact: true}).last().click();
+    await page.getByRole('button', {name: 'New event', exact: true}).click();
+    await page.getByLabel('Event name').fill('New Audit Tournament');
+    await page.getByLabel('Start (local time)').fill('2026-10-12T10:00');
+    await page.getByLabel('End (local time)').fill('2026-10-12T18:00');
+    await page.getByRole('button', {name: 'Create event', exact: true}).click();
     await visible(page, 'New Audit Tournament');
     assert.equal(state.events.at(-1).startDate, '2026-10-12T04:30:00.000Z');
   });
 
   await run('create event modal surfaces server error inline when POST /events fails', {signedIn: true, admin: true, createEventError: true}, async page => {
     await page.goto(origin + '/admin/events');
-    await page.getByRole('button', {name: 'Create Event', exact: true}).click();
-    await page.getByLabel('Tournament Name').fill('Failing Tournament');
-    await page.getByLabel('Start Date (local time)').fill('2026-10-12T10:00');
-    await page.getByLabel('End Date (local time)').fill('2026-10-12T18:00');
-    await page.getByRole('button', {name: 'Create Event', exact: true}).last().click();
+    await page.getByRole('button', {name: 'New event', exact: true}).click();
+    await page.getByLabel('Event name').fill('Failing Tournament');
+    await page.getByLabel('Start (local time)').fill('2026-10-12T10:00');
+    await page.getByLabel('End (local time)').fill('2026-10-12T18:00');
+    await page.getByRole('button', {name: 'Create event', exact: true}).click();
     await visible(page, 'Invalid Admin Secret Key');
   });
 
@@ -553,9 +553,9 @@ try {
 
   await run('admin event edit persists across reload', {signedIn: true, admin: true}, async (page, state) => {
     await page.goto(origin + '/admin/events');
-    await page.getByRole('button', {name: 'Edit tournament Audit Tournament', exact: true}).click();
-    await page.getByLabel('Tournament Name').fill('Updated Audit Tournament');
-    await page.getByRole('button', {name: 'Save Changes', exact: true}).click();
+    await page.getByRole('button', {name: 'Edit Audit Tournament', exact: true}).first().click();
+    await page.getByLabel('Event name').fill('Updated Audit Tournament');
+    await page.getByRole('button', {name: 'Save changes', exact: true}).click();
     await page.locator('main').getByText('Updated Audit Tournament', {exact: true}).first().waitFor({state: 'visible'});
     assert.equal(state.event.name, 'Updated Audit Tournament');
     await page.reload();
@@ -565,11 +565,11 @@ try {
   await run('admin event delete persists across reload', {signedIn: true, admin: true}, async (page, state) => {
     page.on('dialog', dialog => dialog.accept());
     await page.goto(origin + '/admin/events');
-    await page.getByRole('button', {name: 'Delete tournament Audit Tournament', exact: true}).click();
-    await visible(page, 'Event deleted successfully');
+    await page.getByRole('button', {name: 'Delete Audit Tournament', exact: true}).first().click();
+    await visible(page, 'Event deleted');
     assert.equal(state.events.length, 0);
     await page.reload();
-    await page.getByRole('button', {name: 'Create Event', exact: true}).waitFor();
+    await page.getByRole('button', {name: 'New event', exact: true}).first().waitFor();
     assert.equal(await page.getByText('Audit Tournament', {exact: true}).count(), 0);
   });
 
@@ -814,7 +814,7 @@ try {
         assert.match(await gold.innerText(), /you/i);
       } else {
         await page.getByPlaceholder('Search debater by name or college...').fill('Fourth');
-        await visible(page, 'Fourth Fixture Debater');
+        await page.getByRole('table', {name: 'Tournament leaderboard'}).getByText('Fourth Fixture Debater', {exact: true}).waitFor({state: 'visible'});
         assert.equal(await page.locator('[data-podium]').count(), 0);
       }
       if (tab === 'Standings') await page.screenshot({path: 'audit-artifacts/standings-podium-mobile.png'});
@@ -1050,8 +1050,8 @@ try {
     state.debate.debater1Score = null;
     state.debate.debater2Score = null;
     await page.goto(origin + '/admin/rounds/r1');
-    await page.getByRole('button', {name: /Debates/}).click();
-    await page.getByRole('button', {name: 'Enter Result'}).first().click();
+    await page.getByRole('tab', {name: 'Results', exact: true}).click();
+    await page.getByRole('button', {name: 'Paper ballot', exact: true}).first().click();
     await page.getByRole('heading', {name: /Score Debate/}).waitFor({state: 'visible'});
 
     const input1 = page.locator('#score-debater-1-d1');
@@ -1086,7 +1086,7 @@ try {
       await page.goto(origin + '/admin');
       assert.equal(new URL((await indexRequest).url()).searchParams.get('view'), 'summary');
       await page.getByRole('tab', {name: /Round 1/}).waitFor();
-      await page.getByPlaceholder('Find debater or room').waitFor();
+      await page.getByPlaceholder('Find debater, room, judge').waitFor();
     } finally {
       release();
     }
@@ -1112,8 +1112,8 @@ try {
       });
 
       await page.goto(origin + '/admin/rounds/r1');
-      await page.getByRole('button', {name: /Debates/}).click();
-      await page.getByRole('button', {name: 'Enter Result'}).first().click();
+      await page.getByRole('tab', {name: 'Results', exact: true}).click();
+      await page.getByRole('button', {name: 'Paper ballot', exact: true}).first().click();
       const score = page.locator('#score-debater-1-d1');
       await score.fill('92');
       await page.locator('#score-debater-2-d1').fill('78');
