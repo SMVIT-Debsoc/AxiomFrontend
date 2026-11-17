@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef, useCallback, useMemo} from "react";
+import {useState, useEffect, useRef, useMemo} from "react";
 import {useParams, Link} from "react-router-dom";
 import {motion as Motion} from "framer-motion";
 import {
@@ -18,19 +18,26 @@ import {
 import {useAuth} from "../../auth/client.jsx";
 import {RoundApi, CheckInApi, DebateApi, UserApi} from "../../services/api";
 import {useRoundSocket, useLiveRefresh} from "../../hooks/useSocket";
+import {usePageRequests} from "../../hooks/usePageRequests";
 import {useToast} from "../../hooks/useToast";
 import {cn, formatTimeIST} from "../../lib/utils";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {RoundDetailsSkeleton} from "../../components/ui/Skeleton";
 import GameOverCard from "../../components/dashboard/GameOverCard";
 
+const ROUND_FIELDS = ["round", "profile", "checkIn", "debates"];
+const ROUND_LIVE_FIELDS = ["round", "checkIn", "debates"];
+
 export default function RoundDetails() {
   const {eventId, roundId} = useParams();
+  return <RoundPage key={eventId + "/" + roundId} eventId={eventId} roundId={roundId} />;
+}
+
+function RoundPage({eventId, roundId}) {
   const {getToken} = useAuth();
   const toast = useToast();
 
   const [round, setRound] = useState(null);
-  const [myDebate, setMyDebate] = useState(null);
   const [allMyDebates, setAllMyDebates] = useState([]);
   const [checkInStatus, setCheckInStatus] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -39,115 +46,74 @@ export default function RoundDetails() {
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [error, setError] = useState(null);
 
-  const getTokenRef = useRef(getToken);
-  useEffect(() => {
-    getTokenRef.current = getToken;
-  }, [getToken]);
-
-  const fetchData = useCallback(
-    async ({silent = false} = {}) => {
-      try {
-        if (!silent) setLoading(true);
-        const token = await getTokenRef.current();
-        const reqOptions = silent ? {skipCache: true} : {};
-
-        const [roundResponse, userResponse, checkInRes, debatesResponse] =
-          await Promise.all([
-            RoundApi.get(roundId, token, reqOptions),
-            UserApi.getProfile(token, reqOptions).catch(() => ({success: false})),
-            CheckInApi.getMyStatus(roundId, token, reqOptions).catch(() => ({
-              success: false,
-            })),
-            DebateApi.getMyDebates(token, reqOptions).catch(() => ({
-              success: false,
-              debates: [],
-            })),
-          ]);
-
-        if (roundResponse?.success && roundResponse.round) {
-          setRound(roundResponse.round);
-        }
-
-        if (userResponse?.success) {
-          setCurrentUser(userResponse.user);
-        }
-
-        if (checkInRes?.success) {
-          setCheckInStatus(checkInRes);
-        }
-
-        if (debatesResponse?.success) {
-          const debates = debatesResponse.debates || [];
-          setAllMyDebates(debates);
-          const myRoundDebate = debates.find((d) => d.roundId === roundId);
-          setMyDebate(myRoundDebate || null);
-        }
-
-        setError(null);
-      } catch (err) {
-        console.error("Failed to fetch round details", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [roundId]
-  );
-
+  const [checkInLoading, setCheckInLoading] = useState(true);
+  const [debatesLoading, setDebatesLoading] = useState(true);
+  const checkInVersion = useRef(0);
   const currentUserId = currentUser?.id;
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const myDebate = allMyDebates.find((debate) => debate.roundId === roundId) || null;
 
-  const softRefetch = useCallback(() => fetchData({silent: true}), [fetchData]);
-  useLiveRefresh(softRefetch, {enabled: Boolean(roundId), intervalMs: 12000});
+  const refresh = usePageRequests(ROUND_FIELDS, async (field, token, options, isCurrent) => {
+    const checkInVersionAtStart = checkInVersion.current;
+    try {
+      if (field === "round") {
+        const response = await RoundApi.getSummary(roundId, token, options);
+        if (isCurrent()) {
+          setRound(response.round);
+          setError(null);
+        }
+      } else if (field === "profile") {
+        const response = await UserApi.getProfile(token, options);
+        if (isCurrent() && response?.success) setCurrentUser(response.user);
+      } else if (field === "checkIn") {
+        const response = await CheckInApi.getMyStatus(roundId, token, options);
+        if (isCurrent() && checkInVersionAtStart === checkInVersion.current && response?.success) {
+          setCheckInStatus(response);
+        }
+      } else if (field === "debates") {
+        const response = await DebateApi.getMyDebates(token, options, eventId);
+        if (isCurrent() && response?.success) setAllMyDebates(response.debates || []);
+      }
+    } catch (failure) {
+      if (isCurrent() && field === "round") setError(failure.message);
+    } finally {
+      if (isCurrent()) {
+        if (field === "round") setLoading(false);
+        if (field === "checkIn") setCheckInLoading(false);
+        if (field === "debates") setDebatesLoading(false);
+      }
+    }
+  });
+
+  useLiveRefresh(() => refresh(...ROUND_LIVE_FIELDS), {
+    enabled: Boolean(roundId), intervalMs: 12000, jitterMs: 3000, invalidateCache: false,
+  });
 
   useRoundSocket(roundId, {
     onRoundStatusChange: (data) => {
-      setRound((prev) => (prev ? {...prev, ...data} : prev));
+      refresh("round", "checkIn");
       if (data.pairingsPublished || data.status === "COMPLETED") {
-        softRefetch();
+        refresh("debates");
         toast.success("Round Updated", "Round status has changed.");
       }
     },
-    onRoundCheckInWindow: (data) => {
-      setRound((prev) =>
-        prev
-          ? {
-              ...prev,
-              checkInStartTime: data.checkInStartTime,
-              checkInEndTime: data.checkInEndTime,
-            }
-          : prev
-      );
+    onRoundCheckInWindow: () => {
       toast.info("Check-in Window Updated", "Check-in times were updated.");
-      softRefetch();
+      refresh("round", "checkIn");
     },
     onPairingsPublished: (data) => {
-      if (data.published) {
-        toast.success("Draw Released!", "Pairings have been published.");
-      }
-      softRefetch();
+      if (data.published) toast.success("Draw Released!", "Pairings have been published.");
+      refresh(...ROUND_LIVE_FIELDS);
     },
     onResultsPublished: (data) => {
-      if (data.published) {
-        toast.success("Results Published!", "Round results are now visible.");
-      }
-      softRefetch();
+      if (data.published) toast.success("Results Published!", "Round results are now visible.");
+      refresh(...ROUND_LIVE_FIELDS);
     },
-    onDebateResult: () => {
-      softRefetch();
+    onDebateResult: ({debateId}) => {
+      if (allMyDebates.some((debate) => debate.id === debateId)) refresh("debates", "checkIn");
     },
-    onRoundUpdated: (data) => {
-      if (data.round) {
-        setRound((prev) => (prev ? {...prev, ...data.round} : data.round));
-      }
-      softRefetch();
-    },
+    onRoundUpdated: () => refresh(...ROUND_LIVE_FIELDS),
     onCheckInUpdate: (data) => {
-      if (data.userId === currentUserId) {
-        softRefetch();
-      }
+      if (data.userId === currentUserId) refresh("checkIn");
     },
   });
 
@@ -155,14 +121,17 @@ export default function RoundDetails() {
     try {
       setCheckingIn(true);
       const token = await getToken();
-      await CheckInApi.checkIn(roundId, token);
+      const response = await CheckInApi.checkIn(roundId, token);
+      checkInVersion.current += 1;
+      setCheckInStatus({checkIn: response.checkIn, isCheckedIn: true});
+      setCheckInLoading(false);
 
       toast.success(
         "Checked In!",
         "You have been marked as present for this round."
       );
 
-      await fetchData({silent: true});
+      refresh("checkIn");
     } catch (err) {
       console.error("Check-in failed", err);
       toast.error("Check-in Failed", err.message);
@@ -462,7 +431,7 @@ export default function RoundDetails() {
               <button
                 type="button"
                 onClick={handleCheckIn}
-                disabled={checkingIn}
+                disabled={checkingIn || checkInLoading || debatesLoading}
                 className="w-full min-h-11 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-xs hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {checkingIn ? (
@@ -470,7 +439,7 @@ export default function RoundDetails() {
                 ) : (
                   <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
                 )}
-                <span>{checkingIn ? "Checking In..." : "Check In Now"}</span>
+                <span>{checkingIn ? "Checking In..." : checkInLoading || debatesLoading ? "Loading status…" : "Check In Now"}</span>
               </button>
             ) : (
               <div
@@ -675,7 +644,7 @@ export default function RoundDetails() {
         )}
 
         {/* No Debate Found (only when not already showing GameOverCard or clarify cleanly) */}
-        {round.pairingsPublished && !myDebate && !isEliminated && (
+        {round.pairingsPublished && !debatesLoading && !myDebate && !isEliminated && (
           <div className="bg-card border border-border rounded-xl p-6 text-center">
             <XCircle
               className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50"

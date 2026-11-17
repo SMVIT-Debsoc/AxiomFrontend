@@ -276,6 +276,8 @@ export const EventApi = {
 
 // Round Endpoints
 export const RoundApi = {
+    getSummary: (id, token, options = {}) =>
+        apiRequest(`/rounds/${id}?view=summary`, "GET", null, token, options),
     listByEvent: (eventId, token, options = {}) =>
         apiRequest(`/rounds/event/${eventId}`, "GET", null, token, options),
     get: (id, token, options = {}) => apiRequest(`/rounds/${id}`, "GET", null, token, options),

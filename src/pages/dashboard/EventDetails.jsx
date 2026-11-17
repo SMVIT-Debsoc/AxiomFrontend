@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { lazy, Suspense, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,6 +18,7 @@ import {EventApi, DebateApi, UserApi} from "../../services/api";
 import {useToast} from "../../hooks/useToast"
 import { cn } from "../../lib/utils";
 import { useEventSocket, useLiveRefresh } from "../../hooks/useSocket";
+import {usePageRequests} from "../../hooks/usePageRequests";
 import { socketService } from "../../services/socket";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { EventDetailsSkeleton } from "../../components/ui/Skeleton";
@@ -28,6 +29,8 @@ const WhatsAppFirstLoginModal = lazy(() =>
     default: m.WhatsAppFirstLoginModal,
   }))
 );
+
+const OVERVIEW_FIELDS = ["overview", "enrollment", "personal"];
 
 export default function EventDetails() {
   const {id} = useParams();
@@ -44,87 +47,76 @@ function EventOverview({id}) {
   const [error, setError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [enrollmentLoading, setEnrollmentLoading] = useState(true);
 
   const [participantCount, setParticipantCount] = useState(null);
   const [myDebates, setMyDebates] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [personalLoading, setPersonalLoading] = useState(true);
 
-  const getTokenRef = useRef(getToken);
-  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
-
-  const fetchVersion = useRef(0);
-  const updateParticipantCount = useCallback(async (response, token, options, isCurrent) => {
-    const count = response?.event?._count?.participants;
-    if (Number.isInteger(count)) {
-      if (isCurrent()) setParticipantCount(count);
-      return;
-    }
-
-    // Older API deployments may not include the count on an event overview.
-    const roster = await EventApi.getParticipants(id, token, options).catch(() => null);
-    if (isCurrent() && roster?.success) {
-      setParticipantCount(roster.total ?? roster.participants?.length ?? 0);
-    }
-  }, [id]);
-
-  // Fetch data in parallel to minimize loading latency
-  const fetchData = useCallback(async ({ silent = false } = {}) => {
-    const version = ++fetchVersion.current;
-    const isCurrent = () => version === fetchVersion.current;
+  const deleted = useRef(false);
+  const enrollmentVersion = useRef(0);
+  const refresh = usePageRequests(OVERVIEW_FIELDS, async (field, token, options, isCurrent) => {
+    const canUpdate = () => isCurrent() && !deleted.current;
+    const version = enrollmentVersion.current;
     try {
-      if (!silent) setLoading(true);
-      const token = await getTokenRef.current();
-      if (!isCurrent()) return;
-      const reqOptions = silent ? {skipCache: true} : {};
+      if (field === "overview") {
+        const response = await EventApi.getOverview(id, token, options);
+        if (!canUpdate()) return;
+        if (!response?.event) {
+          setError("Event not found");
+          return;
+        }
+        setEvent(response.event);
+        setRounds(response.event.rounds || []);
+        setError(null);
+        setLoading(false);
 
-      // Personal results can arrive after the event and enrollment controls.
-      void Promise.allSettled([
-        UserApi.getProfile(token),
-        DebateApi.getMyDebates(token, reqOptions, id),
-      ]).then(([profile, debates]) => {
-        if (!isCurrent()) return;
+        const count = response.event._count?.participants;
+        if (Number.isInteger(count)) {
+          setParticipantCount(count);
+        } else {
+          // Older API deployments may omit the count.
+          const roster = await EventApi.getParticipants(id, token, options).catch(() => null);
+          if (canUpdate() && roster?.success) {
+            setParticipantCount(roster.total ?? roster.participants?.length ?? 0);
+          }
+        }
+      } else if (field === "enrollment") {
+        const response = await EventApi.getEnrollmentStatus(id, token, options);
+        if (canUpdate() && version === enrollmentVersion.current && response?.success) {
+          setIsEnrolled(response.isEnrolled);
+        }
+      } else if (field === "personal") {
+        const [profile, debates] = await Promise.allSettled([
+          UserApi.getProfile(token, {signal: options.signal}),
+          DebateApi.getMyDebates(token, options, id),
+        ]);
+        if (!canUpdate()) return;
         if (profile.status === "fulfilled" && profile.value?.success) setCurrentUser(profile.value.user);
         if (debates.status === "fulfilled" && debates.value?.success) setMyDebates(debates.value.debates || []);
-        setPersonalLoading(false);
-      });
-
-      const [eventResponse, enrollmentResponse] = await Promise.all([
-        EventApi.getOverview(id, token, reqOptions),
-        EventApi.getEnrollmentStatus(id, token, reqOptions).catch(() => null),
-      ]);
-      if (!isCurrent()) return;
-
-      if (!eventResponse?.success || !eventResponse.event) {
-        setError("Event not found");
-        return;
       }
-      setEvent(eventResponse.event);
-      setRounds(eventResponse.event.rounds || []);
-      setError(null);
-      if (enrollmentResponse?.success) setIsEnrolled(enrollmentResponse.isEnrolled);
-      void updateParticipantCount(eventResponse, token, reqOptions, isCurrent);
-    } catch (err) {
-      if (isCurrent() && !silent) setError(err.message);
+    } catch (error) {
+      if (canUpdate() && field === "overview" && !options.skipCache) setError(error.message);
     } finally {
-      if (isCurrent()) setLoading(false);
+      if (canUpdate()) {
+        if (field === "overview") setLoading(false);
+        if (field === "enrollment") setEnrollmentLoading(false);
+        if (field === "personal") setPersonalLoading(false);
+      }
     }
-  }, [id, updateParticipantCount]);
+  });
 
-  useEffect(() => {
-    fetchData();
-    return () => { fetchVersion.current += 1; };
-  }, [fetchData]);
-
-  const softRefetch = useCallback(() => fetchData({ silent: true }), [fetchData]);
-  useLiveRefresh(softRefetch, { enabled: Boolean(id), jitterMs: 3000 });
+  useLiveRefresh(() => refresh(...OVERVIEW_FIELDS), {
+    enabled: Boolean(id), jitterMs: 3000, invalidateCache: false,
+  });
 
   // Real-time updates via WebSocket
   useEventSocket(id, {
     onRoundCreated: (data) => {
       console.log("[Socket] Round created:", data);
       toast.info("New Round!", "A new round has been added to this event.");
-      softRefetch();
+      refresh("overview");
     },
     onRoundStatusChange: (data) => {
       console.log("[Socket] Round status changed:", data);
@@ -162,7 +154,7 @@ function EventOverview({id}) {
         );
       }
       toast.info("Check-in Window Updated", "Round check-in hours were updated.");
-      softRefetch();
+      refresh("overview");
     },
     onPairingsPublished: (data) => {
       console.log("[Socket] Pairings published:", data);
@@ -177,7 +169,7 @@ function EventOverview({id}) {
           "Check your assigned debate room."
         );
       }
-      softRefetch();
+      refresh("overview", "personal");
     },
     onDebateResult: (data) => {
       console.log("[Socket] Debate result:", data);
@@ -191,13 +183,13 @@ function EventOverview({id}) {
 
       toast.info("Result Submitted", "A debate result has been submitted.");
       // The overview only needs a fresh result when this participant was involved.
-      if (myDebates.some((debate) => debate.id === data.debateId)) softRefetch();
+      if (myDebates.some((debate) => debate.id === data.debateId)) refresh("personal");
     },
     onResultsPublished: (data) => {
       if (data?.published) {
         toast.success("Results Published!", "Round results and standings are now visible.");
       }
-      softRefetch();
+      refresh("overview", "personal");
     },
     onEventUpdated: (data) => {
       console.log("[Socket] Event updated:", data);
@@ -205,11 +197,11 @@ function EventOverview({id}) {
         setEvent((prev) => ({ ...prev, ...data.event }));
         toast.info("Event Updated", "Event details have been modified.");
       } else {
-        softRefetch();
+        refresh("overview");
       }
     },
     onEventDeleted: () => {
-      fetchVersion.current += 1;
+      deleted.current = true;
       setLoading(false);
       toast.error("Event Deleted", "This event has been cancelled or removed.");
       // Redirect to dashboard logic could be added here, but for now just show toast/error state
@@ -218,6 +210,7 @@ function EventOverview({id}) {
   });
 
   const handleEnroll = async () => {
+    if (enrollmentLoading) return;
     try {
       setEnrolling(true);
       const token = await getToken();
@@ -227,9 +220,10 @@ function EventOverview({id}) {
         "Enrolled Successfully!",
         "You have been registered for this event."
       );
+      enrollmentVersion.current += 1;
       setIsEnrolled(true);
       socketService.joinEvent(id);
-      void softRefetch();
+      refresh("overview", "enrollment");
     } catch (err) {
       console.error("Enrollment failed", err);
       toast.error("Enrollment Failed", err.message);
@@ -310,7 +304,7 @@ function EventOverview({id}) {
               <div className="flex flex-col sm:flex-row md:flex-col gap-2.5 flex-shrink-0">
                 <button
                   onClick={handleEnroll}
-                  disabled={isEnrolled || enrolling}
+                  disabled={isEnrolled || enrolling || enrollmentLoading}
                   className={cn(
                     "px-5 py-2.5 rounded-lg font-heading font-semibold text-xs transition-colors min-w-[140px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isEnrolled
@@ -329,7 +323,7 @@ function EventOverview({id}) {
                       Enrolling...
                     </span>
                   ) : (
-                    "Enroll Now"
+                    enrollmentLoading ? "Checking enrollment…" : "Enroll Now"
                   )}
                 </button>
                 {event.whatsappLink && (
@@ -531,7 +525,7 @@ function EventOverview({id}) {
                         Your Status
                       </span>
                       <span className="font-medium text-foreground">
-                        {isEnrolled ? "Enrolled" : "Not enrolled"}
+                        {enrollmentLoading ? "Checking…" : isEnrolled ? "Enrolled" : "Not enrolled"}
                       </span>
                     </div>
                   </div>

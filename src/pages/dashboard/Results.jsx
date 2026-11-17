@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback, useRef} from "react";
+import {useState, useEffect} from "react";
 import {useParams, Link} from "react-router-dom";
 import {motion as Motion} from "framer-motion";
 import {
@@ -10,7 +10,7 @@ import {
   Lock,
   Medal,
 } from "lucide-react";
-import {useAuth} from "../../auth/client.jsx";
+import {usePageRequests} from "../../hooks/usePageRequests";
 import {
   EventApi,
   DebateApi,
@@ -23,9 +23,14 @@ import {UserAvatar} from "../../components/ui/UserAvatar";
 import {ResultsSkeleton} from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
 
+const RESULTS_FIELDS = ["event", "personal"];
+
 export default function Results() {
   const {eventId} = useParams();
-  const {getToken} = useAuth();
+  return <ResultsPage key={eventId} eventId={eventId} />;
+}
+
+function ResultsPage({eventId}) {
 
   const [event, setEvent] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -35,81 +40,38 @@ export default function Results() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("my-results");
 
-  const getTokenRef = useRef(getToken);
-  useEffect(() => {
-    getTokenRef.current = getToken;
-  }, [getToken]);
+  const [personalLoading, setPersonalLoading] = useState(true);
+  const [standingsLoaded, setStandingsLoaded] = useState(false);
 
-  const fetchData = useCallback(
-    async ({silent = false} = {}) => {
-      try {
-        if (!silent) setLoading(true);
-        const token = await getTokenRef.current();
-        const reqOptions = silent ? {skipCache: true} : {};
-
-        const [
-          eventResponse,
-          userResponse,
-          debatesResponse,
-          leaderboardResponse,
-        ] = await Promise.all([
-          EventApi.get(eventId, token, reqOptions),
-          UserApi.getProfile(token, reqOptions).catch(() => ({success: false})),
-          DebateApi.getMyDebates(token, reqOptions).catch(() => ({
-            success: false,
-            debates: [],
-          })),
-          StatsApi.getLeaderboard(token, eventId, 100, reqOptions).catch(
-            () => ({success: false})
-          ),
+  const refresh = usePageRequests(RESULTS_FIELDS, async (field, token, options, isCurrent) => {
+    try {
+      if (field === "event") {
+        const response = await EventApi.getOverview(eventId, token, options);
+        if (isCurrent() && response?.event) {
+          setEvent(response.event);
+          setRounds(response.event.rounds || []);
+        }
+      } else if (field === "personal") {
+        const [profile, debates] = await Promise.allSettled([
+          UserApi.getProfile(token, {signal: options.signal}),
+          DebateApi.getMyDebates(token, options, eventId),
         ]);
-
-        if (eventResponse?.success && eventResponse.event) {
-          setEvent(eventResponse.event);
-          setRounds(eventResponse.event.rounds || []);
-        }
-
-        if (userResponse?.success) {
-          setCurrentUser(userResponse.user);
-        }
-
-        if (debatesResponse?.success) {
-          setMyDebates(debatesResponse.debates || []);
-        }
-
-        if (
-          leaderboardResponse?.success &&
-          leaderboardResponse.data?.leaderboard
-        ) {
-          setLeaderboard(leaderboardResponse.data.leaderboard);
-        } else if (Array.isArray(leaderboardResponse?.leaderboard)) {
-          setLeaderboard(leaderboardResponse.leaderboard);
-        } else {
-          setLeaderboard([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch results", err);
-      } finally {
-        setLoading(false);
+        if (!isCurrent()) return;
+        if (profile.status === "fulfilled" && profile.value?.success) setCurrentUser(profile.value.user);
+        if (debates.status === "fulfilled" && debates.value?.success) setMyDebates(debates.value.debates || []);
+      } else if (field === "standings") {
+        const response = await StatsApi.getLeaderboard(token, eventId, 100, options);
+        if (isCurrent()) setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
       }
-    },
-    [eventId]
-  );
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const softRefetch = useCallback(() => fetchData({silent: true}), [fetchData]);
-  useLiveRefresh(softRefetch, {enabled: Boolean(eventId), intervalMs: 12000});
-
-  // Real-time updates via WebSocket
-  useEventSocket(eventId, {
-    onDebateResult: softRefetch,
-    onResultsPublished: softRefetch,
-    onLeaderboardUpdate: softRefetch,
-    onRoundStatusChange: softRefetch,
-    onRoundUpdated: softRefetch,
+    } catch (error) {
+      if (isCurrent()) console.error("Failed to fetch results", error);
+    } finally {
+      if (isCurrent()) {
+        if (field === "event") setLoading(false);
+        if (field === "personal") setPersonalLoading(false);
+        if (field === "standings") setStandingsLoaded(true);
+      }
+    }
   });
 
   // Filter debates for rounds of this event
@@ -122,6 +84,31 @@ export default function Results() {
     rounds.some((r) => r.resultsPublished) ||
       myEventDebates.some((d) => d.resultsPublished || d.round?.resultsPublished)
   );
+  useEffect(() => {
+    if (hasPublishedResults) refresh("standings");
+  }, [hasPublishedResults, refresh]);
+
+  useLiveRefresh(() => {
+    refresh(...RESULTS_FIELDS);
+    if (hasPublishedResults) refresh("standings");
+  }, {enabled: Boolean(eventId), intervalMs: 12000, jitterMs: 3000, invalidateCache: false});
+
+  useEventSocket(eventId, {
+    onDebateResult: ({debateId}) => {
+      if (myDebates.some((debate) => debate.id === debateId)) refresh("personal");
+    },
+    onResultsPublished: () => {
+      refresh(...RESULTS_FIELDS);
+      if (hasPublishedResults) refresh("standings");
+    },
+    onLeaderboardUpdate: () => {
+      if (hasPublishedResults) refresh("standings");
+    },
+    onPairingsPublished: () => refresh(...RESULTS_FIELDS),
+    onRoundStatusChange: () => refresh("event"),
+    onRoundUpdated: () => refresh(...RESULTS_FIELDS),
+  });
+
   const myLeaderboardEntry = hasPublishedResults
     ? leaderboard.find((entry) => entry.user?.id === currentUser?.id)
     : null;
@@ -185,7 +172,7 @@ export default function Results() {
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="rounded-xl bg-muted/40 border border-border/70 px-3 py-3">
             <p className="text-2xl sm:text-3xl font-heading font-bold tabular-nums text-foreground">
-              {myEventDebates.length}
+              {personalLoading ? "…" : myEventDebates.length}
             </p>
             <p className="text-[11px] text-muted-foreground font-mono uppercase tracking-wider mt-1">
               Debates
@@ -193,7 +180,7 @@ export default function Results() {
           </div>
           <div className="ax-signal-win rounded-xl px-3 py-3">
             <p className="ax-signal-ink text-2xl sm:text-3xl font-heading font-bold tabular-nums">
-              {qualifiedCount}
+              {personalLoading ? "…" : qualifiedCount}
             </p>
             <p className="text-[11px] opacity-85 font-mono uppercase tracking-wider mt-1">
               Qualified
@@ -201,7 +188,7 @@ export default function Results() {
           </div>
           <div className="ax-signal-loss rounded-xl px-3 py-3">
             <p className="ax-signal-ink text-2xl sm:text-3xl font-heading font-bold tabular-nums">
-              {eliminatedCount}
+              {personalLoading ? "…" : eliminatedCount}
             </p>
             <p className="text-[11px] opacity-85 font-mono uppercase tracking-wider mt-1">
               Eliminated
@@ -253,7 +240,9 @@ export default function Results() {
           animate={{opacity: 1}}
           className="space-y-3"
         >
-          {myEventDebates.length === 0 ? (
+          {personalLoading ? (
+            <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading your results…</p>
+          ) : myEventDebates.length === 0 ? (
             <EmptyState
               compact
               icon={Trophy}
@@ -373,6 +362,8 @@ export default function Results() {
               title="Standings not published yet"
               description="Official tournament standings unlock once round results are published by the adjudication desk."
             />
+          ) : !standingsLoaded ? (
+            <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading standings…</p>
           ) : leaderboard.length === 0 ? (
             <EmptyState
               compact

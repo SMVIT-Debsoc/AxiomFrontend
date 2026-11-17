@@ -1,78 +1,54 @@
-import {useState, useEffect, useRef} from "react";
+import {useState} from "react";
 import {useParams, Link} from "react-router-dom";
 import {
   Users,
   ArrowLeft,
 } from "lucide-react";
-import {useAuth} from "../../auth/client.jsx";
+import {usePageRequests} from "../../hooks/usePageRequests";
 import {EventApi} from "../../services/api";
 import {useEventSocket} from "../../hooks/useSocket";
 import {ParticipantsListSkeleton} from "../../components/ui/Skeleton";
 
+const PARTICIPANT_FIELDS = ["event", "roster"];
+
 export default function Participants() {
   const {eventId} = useParams();
-  const {getToken} = useAuth();
+  return <ParticipantsPage key={eventId} eventId={eventId} />;
+}
+
+function ParticipantsPage({eventId}) {
   const [event, setEvent] = useState(null);
   const [participants, setParticipants] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [eventLoading, setEventLoading] = useState(true);
+  const [rosterLoading, setRosterLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const getTokenRef = useRef(getToken);
-  useEffect(() => { getTokenRef.current = getToken; }, [getToken]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const token = await getTokenRef.current();
-
-        // Fetch event details
-        const eventResponse = await EventApi.get(eventId, token);
-        if (eventResponse.success && eventResponse.event) {
-          setEvent(eventResponse.event);
+  const refresh = usePageRequests(PARTICIPANT_FIELDS, async (field, token, options, isCurrent) => {
+    try {
+      if (field === "event") {
+        const response = await EventApi.getOverview(eventId, token, options);
+        if (isCurrent() && response?.event) setEvent(response.event);
+      } else {
+        const response = await EventApi.getParticipants(eventId, token, options);
+        if (isCurrent() && response?.success) {
+          setParticipants(response.participants || []);
         }
-
-        // Fetch event participants (users who have checked in)
-        const participantsResponse = await EventApi.getParticipants(
-          eventId,
-          token
-        );
-        if (participantsResponse.success) {
-          setParticipants(participantsResponse.participants || []);
-        }
-      } catch (err) {
-        console.error("Failed to fetch participants", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchData();
-  }, [eventId]); // getToken via ref; eventId is the real trigger
-
-  // Real-time updates
-  useEventSocket(eventId, {
-    onEventEnrollment: () => {
-      const fetchPars = async () => {
-        try {
-          const token = await getToken();
-          const participantsResponse = await EventApi.getParticipants(
-            eventId,
-            token
-          );
-          if (participantsResponse.success) {
-            setParticipants(participantsResponse.participants || []);
-          }
-        } catch {
-          // Socket refresh failed
-        }
-      };
-      fetchPars();
-    },
+    } catch (error) {
+      if (isCurrent() && !options.skipCache) setError(error.message);
+    } finally {
+      if (isCurrent()) {
+        if (field === "event") setEventLoading(false);
+        else setRosterLoading(false);
+      }
+    }
   });
 
-  if (loading) {
+  useEventSocket(eventId, {
+    onEventEnrollment: () => refresh("roster"),
+  });
+
+  if (eventLoading || rosterLoading) {
     return (
       <div className="space-y-6 max-w-4xl">
         <div className="axiom-page-header">

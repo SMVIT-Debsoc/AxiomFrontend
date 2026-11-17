@@ -570,6 +570,59 @@ try {
     await visible(page, 'Presence Verified');
   });
 
+  await run('round title renders while personal check-in status is pending', {signedIn: true, enrolled: true}, async page => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/check-in/round/r1/me', async route => {
+      await held;
+      return route.fallback();
+    });
+    try {
+      await page.goto(origin + '/dashboard/events/e1/rounds/r1');
+      await visible(page, 'Audit Round');
+      assert.ok(await page.getByRole('button', {name: 'Loading status…'}).isDisabled());
+    } finally {
+      release();
+    }
+    await page.getByRole('button', {name: 'Check In Now'}).waitFor();
+  });
+
+  await run('tournament overview renders before enrollment verification', {signedIn: true, enrolled: true}, async page => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await page.route('**/api/events/e1/enrollment-status', async route => {
+      await held;
+      return route.fallback();
+    });
+    try {
+      await page.goto(origin + '/dashboard/events/e1');
+      await visible(page, 'Audit Tournament');
+      assert.ok(await page.getByRole('button', {name: 'Checking enrollment…'}).isDisabled());
+    } finally {
+      release();
+    }
+    await page.getByRole('button', {name: 'Enrolled'}).waitFor();
+  });
+
+  await run('personal results render before standings finish', {
+    signedIn: true, assigned: true, resultsPublished: true,
+  }, async page => {
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    await page.route(/\/api\/stats\/leaderboard\?/, async route => {
+      await held;
+      return route.fallback();
+    });
+    try {
+      await page.goto(origin + '/dashboard/events/e1/results');
+      await visible(page, 'QUALIFIED');
+      await page.getByRole('tab', {name: /Leaderboard|Standings/}).click();
+      await visible(page, 'Loading standings…');
+    } finally {
+      release();
+    }
+  });
+
   await run('first-time login shows visual navigation guide strip, advances steps, and persists dismissal across reload', {signedIn: true}, async page => {
     await page.goto(origin + '/dashboard');
     const guideRegion = page.getByRole('region', {name: 'First-time login visual guide'});
