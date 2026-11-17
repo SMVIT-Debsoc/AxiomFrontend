@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {createPortal} from "react-dom";
 import {matchPath, useLocation, useNavigate} from "react-router-dom";
+import {preloadDashboardRoute} from "../../lib/dashboardRoutes";
 import {GUIDE_STEPS, getStepCopy, readTourProgress, writeTourProgress} from "../../lib/visualGuide";
 import "./siteTour.css";
 
@@ -38,7 +39,7 @@ export default function SiteTour({userId, requested, launcher}) {
     if (link) eventPath.current = link.pathname;
     const currentRound = next.round && matchPath("/dashboard/events/:eventId/rounds/:roundId", pathname);
     const path = (next.id === "enrollment" && eventPath.current) || (currentRound && pathname) || next.path;
-    setPosition(null);
+    setPosition((previous) => previous && {...previous, settled: false});
     setIndex(nextIndex);
     setDestination(path);
     setHandledRequest(requested);
@@ -90,10 +91,15 @@ export default function SiteTour({userId, requested, launcher}) {
     if (screen !== "step") return;
     let lastTarget;
     let lastPosition;
+    let scrollGoal;
+    let scrollDeadline;
+    let preloadedPath;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const started = Date.now();
     const measure = () => {
       if (document.getElementById("whatsapp-community-modal-title")) {
-        setPosition(null);
+        setPosition((previous) => previous?.settled ? {...previous, settled: false} : previous);
+        lastPosition = null;
         return;
       }
       const onDestination = pathname === destination;
@@ -113,7 +119,6 @@ export default function SiteTour({userId, requested, launcher}) {
       const roundLink = tab && step.round && anchor("rounds");
       if (roundLink) {
         const path = roundLink.pathname;
-        setPosition(null);
         setDestination(path);
         navigate(path);
         return;
@@ -126,11 +131,18 @@ export default function SiteTour({userId, requested, launcher}) {
       if (!exact && roundHeader?.dataset?.tourLoading === "true" && Date.now() - started < 3500) return;
       const target = exact || tab || roundHeader || (onDestination && step.id === "enrollment" ? anchor("events") : null);
       const scroller = document.querySelector("[data-tour-scroll]");
-      if (target && target !== lastTarget) {
-        target.scrollIntoView({block: "center", inline: "nearest", behavior: "instant"});
+      if (scroller && target && target !== lastTarget) {
+        const bounds = target.getBoundingClientRect();
+        const viewport = scroller.getBoundingClientRect();
+        const centered = scroller.scrollTop + bounds.top - viewport.top - (scroller.clientHeight - bounds.height) / 2;
+        scrollGoal = Math.max(0, Math.min(centered, scroller.scrollHeight - scroller.clientHeight));
+        scrollDeadline = Date.now() + 650;
+        scroller.scrollTo({top: scrollGoal, behavior: reducedMotion.matches ? "instant" : "smooth"});
+        setPosition((previous) => previous?.settled ? {...previous, settled: false} : previous);
         lastTarget = target;
       }
-      if (!target && onDestination && Date.now() - started < 4000) return;
+      if (!target && Date.now() - started < 3500) return;
+      if (scroller && target && Math.abs(scroller.scrollTop - scrollGoal) > 2 && Date.now() < scrollDeadline) return;
       const bounds = target?.getBoundingClientRect();
       const scrollBounds = scroller?.getBoundingClientRect();
       const narrow = innerWidth < 768;
@@ -149,6 +161,9 @@ export default function SiteTour({userId, requested, launcher}) {
       const center = left + width / 2;
       const panelLeft = narrow ? 12 : Math.max(16, Math.min(center - panelWidth / 2, innerWidth - panelWidth - 16));
       const value = {
+        settled: true,
+        path: pathname,
+        stepId: step.id,
         target: visible ? {top: Math.round(top), height: Math.round(end - top), left, width} : null,
         exact: Boolean(exact && exact.dataset.tourState !== "unassigned"),
         state: exact?.dataset.tourState,
@@ -158,9 +173,17 @@ export default function SiteTour({userId, requested, launcher}) {
         above: placeAbove,
       };
       const signature = JSON.stringify(value);
-      if (signature !== lastPosition) {
-        lastPosition = signature;
+      if (signature !== lastPosition?.signature || target !== lastPosition?.target) {
+        lastPosition = {signature, target};
         setPosition(value);
+      }
+      const next = GUIDE_STEPS[index + 1];
+      const nextPath = next && ((next.id === "enrollment" && (tournamentLink(eventPath.current)?.pathname || eventPath.current))
+        || (next.round && (anchor("rounds")?.pathname || (step.round && pathname)))
+        || next.path);
+      if (nextPath && nextPath !== preloadedPath) {
+        preloadDashboardRoute(nextPath);
+        preloadedPath = nextPath;
       }
     };
     measure();
@@ -171,16 +194,18 @@ export default function SiteTour({userId, requested, launcher}) {
       resize.disconnect();
       window.clearInterval(timer);
     };
-  }, [screen, pathname, destination, step, navigate]);
+  }, [screen, pathname, destination, step, index, navigate]);
 
   if (!screen) return null;
   const active = screen === "step";
   const last = index === GUIDE_STEPS.length - 1;
   const resume = GUIDE_STEPS.findIndex(({id}) => id === saved);
-  const target = position?.target;
+  const placed = position?.settled && position.stepId === step.id && position.path === pathname;
+  const target = placed && position.target;
   return createPortal(
     <>
-      {target && active && <div className="site-tour-highlight" style={target} aria-hidden="true" data-testid="tour-highlight" />}
+      {active && position?.target && <div className="site-tour-highlight" style={position.target}
+        data-visible={Boolean(target)} aria-hidden="true" data-testid="tour-highlight" />}
       <section
         ref={panel}
         role={active ? "dialog" : "region"}
@@ -198,9 +223,9 @@ export default function SiteTour({userId, requested, launcher}) {
           <h2 id="site-tour-title" ref={heading} tabIndex={-1} className="text-lg font-heading font-bold">
             {active ? step.title : "Take a tour of AXIOM"}
           </h2>
-          <p className="text-sm leading-snug" aria-live="polite">
+          <p className="text-sm leading-snug" aria-live="polite" aria-busy={active && !placed}>
             {active
-              ? position ? getStepCopy(step, position.state, position.exact) : "Finding this part of the page…"
+              ? placed ? getStepCopy(step, position.state, position.exact) : "Finding this part of the page…"
               : "Learn how to join a tournament, check in, find your debate room, and see your results."}
           </p>
           <div className="site-tour-actions">
@@ -208,7 +233,7 @@ export default function SiteTour({userId, requested, launcher}) {
               <>
                 <button type="button" onClick={() => close()}>Exit tour</button>
                 {index > 0 && <button type="button" onClick={() => goTo(index - 1)}>Back</button>}
-                <button type="button" className="site-tour-primary" disabled={!position} onClick={() => last ? close("finished") : goTo(index + 1)}>
+                <button type="button" className="site-tour-primary" disabled={!placed} onClick={() => last ? close("finished") : goTo(index + 1)}>
                   {last ? "Finish" : "Next"}
                 </button>
               </>

@@ -6,6 +6,12 @@
   outline: 3px solid hsl(var(--primary));
   outline-offset: 3px;
   box-shadow: 0 0 0 125vmax rgb(0 0 0 / 55%);
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+
+.site-tour-highlight[data-visible="true"] {
+  opacity: 1;
 }
 
 .site-tour-panel {
@@ -19,6 +25,7 @@
   border: 1px solid hsl(var(--primary));
   border-radius: 0.875rem;
   box-shadow: 0 12px 30px rgb(0 0 0 / 30%);
+  transition: top 180ms var(--axiom-ease), left 180ms var(--axiom-ease);
 }
 
 .site-tour-body {
@@ -38,6 +45,12 @@
   border-inline: 8px solid transparent;
   border-bottom: 8px solid hsl(var(--primary));
   pointer-events: none;
+  animation: site-tour-arrow-in 120ms ease-out 140ms both;
+}
+
+@keyframes site-tour-arrow-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .site-tour-arrow-down {
@@ -81,5 +94,14 @@
     inset-inline: auto 1rem;
     bottom: 1rem;
     width: 24rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-tour-panel,
+  .site-tour-highlight,
+  .site-tour-arrow {
+    animation: none;
+    transition: none;
   }
 }

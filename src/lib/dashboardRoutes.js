@@ -5,6 +5,7 @@ export const dashboardRoutes = {
   round: () => import("../pages/dashboard/RoundDetails"),
   results: () => import("../pages/dashboard/Results"),
   participants: () => import("../pages/dashboard/Participants"),
+  profile: () => import("../pages/dashboard/Profile"),
 };
 
 const prefetched = new Set();
@@ -18,6 +19,7 @@ export function preloadDashboardRoute(to) {
   let route;
   if (path === "/dashboard") route = "home";
   else if (path === "/dashboard/events") route = "events";
+  else if (path === "/dashboard/profile") route = "profile";
   else if (/^\/dashboard\/events\/[^/]+$/.test(path)) route = "event";
   else if (/^\/dashboard\/events\/[^/]+\/rounds\/[^/]+$/.test(path)) route = "round";
   else if (/^\/dashboard\/events\/[^/]+\/results$/.test(path)) route = "results";

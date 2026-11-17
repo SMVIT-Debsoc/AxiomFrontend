@@ -835,7 +835,26 @@ try {
             await visible(dialog, 'You’re Checked In means the organizers have marked you as present for this round.');
           }
         }
-        if (index < steps.length - 1) await next.click();
+        if (anchor === 'rounds' && viewport.width === 390) {
+          let release;
+          const delayedRound = new Promise(resolve => { release = resolve; });
+          const isRoundApi = url => url.pathname === '/api/rounds/r1';
+          await page.route(isRoundApi, async route => {
+            await delayedRound;
+            return route.fallback();
+          });
+          try {
+            const roundRequest = page.waitForRequest(request => isRoundApi(new URL(request.url())));
+            await next.click();
+            await roundRequest;
+            await dialog.getByRole('heading', {name: 'Check in before you debate'}).waitFor();
+            await visible(dialog, 'Finding this part of the page…');
+            assert.ok(await next.isDisabled());
+            assert.equal(await dialog.locator('.site-tour-arrow').count(), 0);
+          } finally {
+            release();
+          }
+        } else if (index < steps.length - 1) await next.click();
       }
       await dialog.getByRole('button', {name: 'Finish'}).click();
       await dialog.waitFor({state: 'hidden'});
@@ -883,6 +902,29 @@ try {
     await visible(tour, 'Once organizers release the topic, open the round and look for Motion near the top.');
     assert.equal(await page.getByText('Audit Hall', {exact: true}).count(), 0);
     assert.equal(await page.getByText(state.round.motion, {exact: true}).count(), 0);
+  });
+
+  await run('site tour respects reduced motion when scrolling to a round control', {signedIn: true}, async page => {
+    await page.emulateMedia({reducedMotion: 'reduce'});
+    await page.addInitScript(() => {
+      localStorage.setItem('axiom.site-tour.v1.u1', 'check-in');
+      const scrollTo = Element.prototype.scrollTo;
+      Element.prototype.scrollTo = function (...args) {
+        if (this.hasAttribute('data-tour-scroll')) {
+          window.tourScrollBehavior = args[0].behavior;
+        }
+        return scrollTo.apply(this, args);
+      };
+    });
+    await page.goto(origin + '/dashboard/events/e1/rounds/r1');
+    await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
+    await page.getByRole('button', {name: 'Resume tour'}).click();
+    const tour = page.getByRole('dialog', {name: 'Check in before you debate'});
+    await tour.getByRole('button', {name: 'Next', exact: true}).waitFor();
+    await tour.locator('.site-tour-arrow').waitFor();
+    assert.equal(await page.evaluate(() => window.tourScrollBehavior), 'instant');
+    assert.equal(await tour.evaluate(el => getComputedStyle(el).transitionProperty), 'none');
+    assert.equal(await tour.locator('.site-tour-arrow').evaluate(el => getComputedStyle(el).animationName), 'none');
   });
 
   await run('admin inline result entry automatically tags higher score as winner', {signedIn: true, admin: true, assigned: true, published: true}, async (page, state) => {

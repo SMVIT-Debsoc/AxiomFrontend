@@ -304,3 +304,10 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Files changed: `SiteTour.jsx`, `visualGuide.js`, `DashboardHome.jsx`, `RoundDetails.jsx`, both guide test suites, and this log.
 - Checks: 63 unit and API contract tests, lint, production build, the 64-scenario browser audit, and six focused Chromium tour fixtures passed. Focused checks covered both assigned sides, actual room and IST time, the published motion, check-in confirmation, and unpublished details at phone and desktop widths where applicable.
 - Remaining: no live deployment or first-time debater usability check. Next, have a debater replay the tour on staging after organizers publish a real draw. Existing unrelated lockfile and admin edits remain local.
+
+## Site Tour page and step transitions (2026-11-17)
+
+- The guide preloads the next page’s code when eligible and keeps the popover in place during navigation. The workspace scrolls to the next control before showing its highlight and arrow. Reduced motion uses immediate scrolling and disables tour animations.
+- Files changed: `SiteTour.jsx`, `siteTour.css`, shared dashboard route preloading in `dashboardRoutes.js` and `App.jsx`, `tests/browser-audit.mjs`, and this log.
+- Checks: 63 unit and API contract tests, 66 Chromium fixtures, lint, and production build passed. Chromium verified the full phone and desktop tour and an intentionally delayed round request. Focused checks confirmed both default and reduced motion.
+- Remaining: production performance and physical-device testing. Next, replay the tour on staging over a phone connection and check the transitions during a cold page load.

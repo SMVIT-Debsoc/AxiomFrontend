@@ -9,7 +9,7 @@ const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"));
 const DashboardHome = lazy(dashboardRoutes.home);
 const DashboardEvents = lazy(dashboardRoutes.events);
 const EventDetails = lazy(dashboardRoutes.event);
-const Profile = lazy(() => import("./pages/dashboard/Profile"));
+const Profile = lazy(dashboardRoutes.profile);
 const Participants = lazy(dashboardRoutes.participants);
 const RoundDetails = lazy(dashboardRoutes.round);
 const Results = lazy(dashboardRoutes.results);
