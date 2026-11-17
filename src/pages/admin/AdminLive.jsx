@@ -9,7 +9,7 @@ import {useToast} from "../../hooks/useToast";
 import {useAdminEvent} from "../../contexts/adminEvent";
 import LoadingIndicator from "../../components/ui/LoadingIndicator";
 import InlineResultSheet from "../../components/admin/InlineResultSheet";
-import {cn, formatTimeIST, toISTDateTimeLocal, toISTISOString} from "../../lib/utils";
+import {cn, formatTimeIST, toISTDateTimeLocal, toISTISOString, addMinutesToISTDateTime, getCurrentISTDateTimeLocal} from "../../lib/utils";
 
 const AllocateRoomsModal = lazy(() => import("./AdminRoundManagement").then((m) => ({default: m.AllocateRoomsModal})));
 const PairingPreviewModal = lazy(() => import("./AdminRoundManagement").then((m) => ({default: m.PairingPreviewModal})));
@@ -43,6 +43,7 @@ export default function AdminLive() {
     const [rooms, setRooms] = useState([]);
     const [users, setUsers] = useState([]);
     const [performers, setPerformers] = useState([]);
+    const [eliminatedIds, setEliminatedIds] = useState(() => new Set());
     const [resultsPublished, setResultsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(""); // generating | allocating | publishing | results | preview | window | status
@@ -114,6 +115,7 @@ export default function AdminLive() {
         setViewStep(null);
         setRound(null);
         setPerformers([]);
+        setEliminatedIds(new Set());
         setResultsPublished(false);
     }, [roundId]);
 
@@ -128,6 +130,7 @@ export default function AdminLive() {
                 setRound(response.round);
                 setCheckIns(response.round.checkIns || []);
                 setDebates(response.round.debates || []);
+                setEliminatedIds(new Set(response.round.eliminatedUserIds || []));
                 setResultsPublished(Boolean(response.round.resultsPublished));
             } else if (field === "performers") {
                 setPerformers(response.performers || []);
@@ -268,6 +271,13 @@ export default function AdminLive() {
         return merged;
     }, [users, checkIns]);
     const presentIds = useMemo(() => new Set(checkIns.filter((c) => c.status === "PRESENT").map((c) => c.userId)), [checkIns]);
+    const eliminatedSet = useMemo(() => {
+        const set = new Set(eliminatedIds);
+        for (const p of performers) {
+            if (p.won === false && !p.isPromoted) set.add(p.userId);
+        }
+        return set;
+    }, [eliminatedIds, performers]);
     const checkedInUsers = useMemo(() => people.filter((u) => presentIds.has(u.id)), [people, presentIds]);
     const absent = useMemo(() => people.filter((u) => !presentIds.has(u.id)), [people, presentIds]);
     const present = presentIds.size;
@@ -290,6 +300,12 @@ export default function AdminLive() {
     // ----- actions (same endpoints and rules as AdminRoundManagement) -----
     const toggleCheckIn = async (userId, nextStatus = "PRESENT") => {
         if (pendingCheckIns.has(userId)) return;
+
+        if (nextStatus === "PRESENT" && eliminatedSet.has(userId)) {
+            toast.error("Participant Eliminated", "Eliminated debaters cannot check in for subsequent rounds.");
+            return;
+        }
+
         setPendingCheckIns((prev) => new Set(prev).add(userId));
 
         let rollback = null;
@@ -783,6 +799,7 @@ export default function AdminLive() {
                             total={total}
                             absent={absent.filter((u) => match(fullName(u), u.college, u.mobile, u.usn, u.email))}
                             checkedInUsers={checkedInUsers.filter((u) => match(fullName(u), u.college, u.mobile, u.usn, u.email))}
+                            eliminatedSet={eliminatedSet}
                             busy={busy}
                             pendingCheckIns={pendingCheckIns}
                             onToggleCheckIn={toggleCheckIn}
@@ -1166,22 +1183,47 @@ function CheckInWindowStrip({round, busy, onUpdateWindow}) {
                     >
                         {windowBusy ? "Saving…" : "Save Window"}
                     </button>
+                    <div className="sm:col-span-3 flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-muted-foreground text-[11px] font-medium mr-1">Window duration:</span>
+                        {[15, 20, 30, 45, 60].map((mins) => (
+                            <button
+                                key={mins}
+                                type="button"
+                                onClick={() => {
+                                    const baseStart = startVal || getCurrentISTDateTimeLocal();
+                                    if (!startVal) setStartVal(baseStart);
+                                    setEndVal(addMinutesToISTDateTime(baseStart, mins));
+                                    setErr(null);
+                                }}
+                                className="min-h-9 px-2.5 py-1 rounded-md border border-border bg-muted/40 hover:bg-muted text-foreground font-semibold text-[11px] transition-colors"
+                            >
+                                {mins}m
+                            </button>
+                        ))}
+                    </div>
                 </form>
             )}
         </div>
     );
 }
 
-function CheckInPanel({present, total, absent, checkedInUsers, busy, pendingCheckIns, onToggleCheckIn, onPreview}) {
+function CheckInPanel({present, total, absent, checkedInUsers, eliminatedSet = new Set(), busy, pendingCheckIns, onToggleCheckIn, onPreview}) {
     const [tab, setTab] = useState("absent"); // "absent" | "present"
-    const visibleList = tab === "absent" ? absent : checkedInUsers;
+    const [hideEliminated, setHideEliminated] = useState(true);
+
+    const eliminatedCount = eliminatedSet?.size || 0;
+    const eligibleAbsent = useMemo(() => absent.filter((u) => !eliminatedSet.has(u.id)), [absent, eliminatedSet]);
+    const visibleAbsent = hideEliminated ? eligibleAbsent : absent;
+    const visibleList = tab === "absent" ? visibleAbsent : checkedInUsers;
+    const eligibleTotal = Math.max(total - eliminatedCount, present);
 
     return (
         <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-3 gap-2.5">
-                <Stat label="Present" value={present} of={total} />
-                <Stat label="Not checked in" value={Math.max(total - present, 0)} />
-                <Stat label="Registered" value={total} />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <Stat label="Present" value={present} of={eligibleTotal} />
+                <Stat label="To check in" value={Math.max(eligibleTotal - present, 0)} />
+                <Stat label="Eligible debaters" value={eligibleTotal} />
+                <Stat label="Eliminated" value={eliminatedCount} />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
@@ -1196,7 +1238,7 @@ function CheckInPanel({present, total, absent, checkedInUsers, busy, pendingChec
                             tab === "absent" ? "bg-card text-foreground shadow-xs border border-border/70" : "text-muted-foreground hover:text-foreground"
                         )}
                     >
-                        Still to check in ({absent.length})
+                        Still to check in ({visibleAbsent.length})
                     </button>
                     <button
                         type="button"
@@ -1212,14 +1254,31 @@ function CheckInPanel({present, total, absent, checkedInUsers, busy, pendingChec
                     </button>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={onPreview}
-                    disabled={busy === "preview"}
-                    className="ax-ghost-btn min-h-11 !text-xs"
-                >
-                    {busy === "preview" ? "Previewing…" : "Preview pairings"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    {eliminatedCount > 0 && tab === "absent" && (
+                        <button
+                            type="button"
+                            onClick={() => setHideEliminated((prev) => !prev)}
+                            className={cn(
+                                "min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors",
+                                hideEliminated
+                                    ? "border-border bg-card text-foreground hover:bg-muted"
+                                    : "ax-signal-loss border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-200"
+                            )}
+                        >
+                            {hideEliminated ? `Hiding ${eliminatedCount} Eliminated (Show)` : `Showing Eliminated (${eliminatedCount} - Hide)`}
+                        </button>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={onPreview}
+                        disabled={busy === "preview"}
+                        className="ax-ghost-btn min-h-11 !text-xs font-bold"
+                    >
+                        {busy === "preview" ? "Previewing…" : "Preview pairings"}
+                    </button>
+                </div>
             </div>
 
             {visibleList.length === 0 ? (
@@ -1233,12 +1292,17 @@ function CheckInPanel({present, total, absent, checkedInUsers, busy, pendingChec
                     {visibleList.map((u) => {
                         const isPending = pendingCheckIns.has(u.id);
                         const isPresentTab = tab === "present";
+                        const isEliminated = eliminatedSet.has(u.id);
                         return (
                             <li
                                 key={u.id}
                                 className={cn(
-                                    "flex items-center gap-3 rounded-xl border px-3 py-2.5 bg-card/60",
-                                    isPresentTab ? "border-emerald-500/35" : "border-border"
+                                    "flex items-center gap-3 rounded-xl border px-3 py-2.5 bg-card/60 transition-colors",
+                                    isPresentTab
+                                        ? "border-emerald-500/35"
+                                        : isEliminated
+                                        ? "border-rose-500/35 bg-rose-500/5 opacity-85"
+                                        : "border-border"
                                 )}
                             >
                                 <div className="min-w-0 flex-1">
@@ -1247,6 +1311,11 @@ function CheckInPanel({present, total, absent, checkedInUsers, busy, pendingChec
                                         {isPresentTab && (
                                             <span className="ax-signal-win inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200">
                                                 Present
+                                            </span>
+                                        )}
+                                        {isEliminated && (
+                                            <span className="ax-signal-loss inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-200">
+                                                Eliminated
                                             </span>
                                         )}
                                     </div>
@@ -1259,15 +1328,17 @@ function CheckInPanel({present, total, absent, checkedInUsers, busy, pendingChec
                                 <button
                                     type="button"
                                     onClick={() => onToggleCheckIn(u.id, isPresentTab ? "ABSENT" : "PRESENT")}
-                                    disabled={isPending}
+                                    disabled={isPending || (!isPresentTab && isEliminated)}
                                     className={cn(
                                         "min-h-11 px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0 border transition-colors disabled:opacity-50",
                                         isPresentTab
                                             ? "ax-signal-loss border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-200 hover:bg-rose-500/20"
+                                            : isEliminated
+                                            ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed"
                                             : "border-border bg-card text-foreground hover:bg-muted"
                                     )}
                                 >
-                                    {isPending ? "Saving…" : isPresentTab ? "Mark absent" : "Mark present"}
+                                    {isPending ? "Saving…" : isPresentTab ? "Mark absent" : isEliminated ? "Check-in Off" : "Mark present"}
                                 </button>
                             </li>
                         );
@@ -1659,17 +1730,26 @@ function ResultsPanel({
                     </p>
                     <ul className="m-0 flex list-none flex-col gap-1.5 p-0 max-h-[200px] overflow-y-auto">
                         {completed.slice(0, 40).map((d) => {
+                            const hasWinner = Boolean(d.winnerId);
                             const w1 = d.winnerId === d.debater1Id;
                             const w2 = d.winnerId === d.debater2Id;
                             return (
                                 <li key={d.id} className="flex items-center justify-between gap-3 text-xs p-2 rounded-lg bg-muted/20 border border-border/40">
-                                    <div className="min-w-0 flex-1 truncate">
-                                        <span className={w1 ? "ax-chip--win px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
-                                            {fullName(d.debater1)} ({d.debater1Score})
+                                    <div className="min-w-0 flex-1 truncate flex items-center gap-2">
+                                        <span className={cn(
+                                            "px-2 py-0.5 rounded-md transition-colors",
+                                            hasWinner && w1 && "ax-signal-win bg-emerald-500/25 border border-emerald-500/50 text-emerald-800 dark:text-emerald-100 font-bold",
+                                            hasWinner && !w1 && "ax-signal-loss bg-rose-500/25 border border-rose-500/50 text-rose-800 dark:text-rose-100 font-semibold"
+                                        )}>
+                                            {fullName(d.debater1)} ({d.debater1Score}) {hasWinner && (w1 ? "✓ WIN" : "✗ LOSS")}
                                         </span>
-                                        {" vs "}
-                                        <span className={w2 ? "ax-chip--win px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
-                                            {fullName(d.debater2)} ({d.debater2Score})
+                                        <span className="text-muted-foreground font-semibold text-[11px]">vs</span>
+                                        <span className={cn(
+                                            "px-2 py-0.5 rounded-md transition-colors",
+                                            hasWinner && w2 && "ax-signal-win bg-emerald-500/25 border border-emerald-500/50 text-emerald-800 dark:text-emerald-100 font-bold",
+                                            hasWinner && !w2 && "ax-signal-loss bg-rose-500/25 border border-rose-500/50 text-rose-800 dark:text-rose-100 font-semibold"
+                                        )}>
+                                            {fullName(d.debater2)} ({d.debater2Score}) {hasWinner && (w2 ? "✓ WIN" : "✗ LOSS")}
                                         </span>
                                     </div>
                                     <button
@@ -1726,7 +1806,7 @@ function ResultsPanel({
                                 <span>Qualifiers &amp; Promotion ({promotedCount}/{sortedPerformers.length})</span>
                             </h3>
                             <p className="text-xs text-muted-foreground m-0">
-                                Toggle qualifiers directly without leaving Live Round.
+                                Toggle qualifiers directly without leaving Live Round. Winners are highlighted in green, defeated debaters in red.
                             </p>
                         </div>
                         <button
@@ -1744,20 +1824,25 @@ function ResultsPanel({
                             return (
                                 <li
                                     key={p.userId}
-                                    className="flex items-center justify-between gap-2.5 rounded-xl border border-border/70 px-3 py-2 bg-card/60 text-xs"
+                                    className={cn(
+                                        "flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-xs transition-colors",
+                                        p.won
+                                            ? "ax-signal-win border-emerald-500/50 bg-emerald-500/20 text-foreground"
+                                            : "ax-signal-loss border-rose-500/40 bg-rose-500/15 text-foreground"
+                                    )}
                                 >
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-1.5">
                                             <span className="font-semibold text-foreground truncate">{fullName(p)}</span>
                                             <span
                                                 className={cn(
-                                                    "px-1.5 py-0.5 rounded border text-[10px] font-bold uppercase",
+                                                    "px-2 py-0.5 rounded border text-[10px] font-bold uppercase",
                                                     p.won
-                                                        ? "ax-chip--win border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200"
-                                                        : "ax-chip--loss border-rose-500/35 bg-rose-500/12 text-rose-700 dark:text-rose-200"
+                                                        ? "border-emerald-500/50 bg-emerald-500/30 text-emerald-800 dark:text-emerald-100"
+                                                        : "border-rose-500/50 bg-rose-500/30 text-rose-800 dark:text-rose-100"
                                                 )}
                                             >
-                                                {p.won ? "Win" : "Loss"}
+                                                {p.won ? "✓ Winner" : "✗ Lost"}
                                             </span>
                                             <span className="font-mono font-bold text-muted-foreground">
                                                 {p.score ?? 0} pts
@@ -1873,16 +1958,19 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
     const [error, setError] = useState(null);
 
     const applyPreset = (mins) => {
-        const parsedStart = checkInStartTime ? new Date(`${checkInStartTime}:00+05:30`).getTime() : Date.now();
-        const baseMs = Number.isFinite(parsedStart) ? parsedStart : Date.now();
-        if (!checkInStartTime) setCheckInStartTime(toISTDateTimeString(new Date(baseMs)));
-        setCheckInEndTime(toISTDateTimeString(new Date(baseMs + mins * 60000)));
+        const baseStart = checkInStartTime || getCurrentISTDateTimeLocal();
+        if (!checkInStartTime) setCheckInStartTime(baseStart);
+        setCheckInEndTime(addMinutesToISTDateTime(baseStart, mins));
         setError(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
+        if (!motion.trim()) {
+            setError("Debate motion is required. Motion cannot be left blank.");
+            return;
+        }
         const startIso = toISTISOString(checkInStartTime);
         const endIso = toISTISOString(checkInEndTime);
         if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
@@ -1896,7 +1984,7 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
                 eventId,
                 roundNumber: Number(roundNumber),
                 name: name.trim() || `Round ${roundNumber}`,
-                motion: motion.trim() || null,
+                motion: motion.trim(),
                 checkInStartTime: startIso,
                 checkInEndTime: endIso,
             }, token);
@@ -1981,7 +2069,7 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
 
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="text-muted-foreground font-medium">Window duration:</span>
-                        {[15, 20, 30].map((mins) => (
+                        {[15, 20, 30, 45, 60].map((mins) => (
                             <button
                                 key={mins}
                                 type="button"
@@ -1994,11 +2082,14 @@ function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onCreated}
                     </div>
 
                     <div>
-                        <label className="font-semibold block mb-1 text-foreground">Motion (Optional)</label>
+                        <label className="font-semibold block mb-1 text-foreground">
+                            Debate Motion <span className="text-rose-500 font-bold">*</span>
+                        </label>
                         <textarea
+                            required
                             value={motion}
                             onChange={(e) => setMotion(e.target.value)}
-                            placeholder="Enter the debate motion or topic..."
+                            placeholder="Enter the required debate motion or topic..."
                             rows={3}
                             className="w-full p-2.5 rounded-lg border border-input bg-background text-foreground font-medium"
                         />

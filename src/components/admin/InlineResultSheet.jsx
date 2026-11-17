@@ -1,7 +1,7 @@
 import {useBallotSave} from "../../hooks/useBallotSave";
 import BallotRecovery from "./BallotRecovery";
 import { useState, useEffect } from "react";
-import { Loader2, CheckCircle2, AlertCircle, Save, X, Trophy, ArrowRight } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Save, X, Trophy, ArrowRight, XCircle } from "lucide-react";
 import { UserAvatar } from "../ui/UserAvatar";
 import { resolveWinnerId } from "../../lib/scoring";
 
@@ -18,6 +18,7 @@ export default function InlineResultSheet({ debate, debates = [], onSaved, onClo
         if (!debate) return;
         const initialS1 = debate.debater1Score?.toString() || "";
         const initialS2 = debate.debater2Score?.toString() || "";
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setScore1(initialS1);
         setScore2(initialS2);
         setWinnerId(
@@ -143,7 +144,9 @@ export default function InlineResultSheet({ debate, debates = [], onSaved, onClo
                     <div
                         className={`p-4 sm:p-5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-4 ${
                             winnerId === debate.debater1Id
-                                ? "border-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/15 ring-2 ring-emerald-500/30"
+                                ? "border-emerald-500 bg-emerald-500/20 dark:bg-emerald-500/25 ring-2 ring-emerald-500/40"
+                                : winnerId === debate.debater2Id
+                                ? "border-rose-500/60 bg-rose-500/15 dark:bg-rose-500/20 ring-1 ring-rose-500/30"
                                 : "border-border bg-card/60"
                         }`}
                     >
@@ -154,13 +157,18 @@ export default function InlineResultSheet({ debate, debates = [], onSaved, onClo
                                 size="lg"
                             />
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                         Government
                                     </span>
                                     {winnerId === debate.debater1Id && (
-                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-600 text-white shadow-xs">
                                             <Trophy size={10} /> Winner
+                                        </span>
+                                    )}
+                                    {winnerId === debate.debater2Id && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-600/80 text-white shadow-xs">
+                                            <XCircle size={10} /> Defeated
                                         </span>
                                     )}
                                 </div>
@@ -203,6 +211,8 @@ export default function InlineResultSheet({ debate, debates = [], onSaved, onClo
                                 className={`w-full min-h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
                                     winnerId === debate.debater1Id
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                        : winnerId === debate.debater2Id
+                                        ? "bg-rose-500/10 text-rose-700 dark:text-rose-200 border-rose-500/30 hover:bg-rose-500/20"
                                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground"
                                 }`}
                             >
@@ -216,7 +226,9 @@ export default function InlineResultSheet({ debate, debates = [], onSaved, onClo
                     <div
                         className={`p-4 sm:p-5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-4 ${
                             winnerId === debate.debater2Id
-                                ? "border-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/15 ring-2 ring-emerald-500/30"
+                                ? "border-emerald-500 bg-emerald-500/20 dark:bg-emerald-500/25 ring-2 ring-emerald-500/40"
+                                : winnerId === debate.debater1Id
+                                ? "border-rose-500/60 bg-rose-500/15 dark:bg-rose-500/20 ring-1 ring-rose-500/30"
                                 : "border-border bg-card/60"
                         }`}
                     >
@@ -227,13 +239,18 @@ export default function InlineResultSheet({ debate, debates = [], onSaved, onClo
                                 size="lg"
                             />
                             <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                         Opposition
                                     </span>
                                     {winnerId === debate.debater2Id && (
-                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-600 text-white shadow-xs">
                                             <Trophy size={10} /> Winner
+                                        </span>
+                                    )}
+                                    {winnerId === debate.debater1Id && (
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-600/80 text-white shadow-xs">
+                                            <XCircle size={10} /> Defeated
                                         </span>
                                     )}
                                 </div>
@@ -276,6 +293,8 @@ export default function InlineResultSheet({ debate, debates = [], onSaved, onClo
                                 className={`w-full min-h-11 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
                                     winnerId === debate.debater2Id
                                         ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                        : winnerId === debate.debater1Id
+                                        ? "bg-rose-500/10 text-rose-700 dark:text-rose-200 border-rose-500/30 hover:bg-rose-500/20"
                                         : "bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground"
                                 }`}
                             >

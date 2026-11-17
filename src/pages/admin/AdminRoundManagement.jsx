@@ -1108,27 +1108,31 @@ export default function AdminRoundManagement() {
                                                     className="hover:bg-muted/30 transition-colors"
                                                 >
                                                     <td className="px-5 py-3.5">
-                                                        <div className="text-sm font-sans font-medium text-foreground">
+                                                        <div className="text-sm font-sans font-medium text-foreground flex items-center gap-1.5 flex-wrap">
                                                             <span
                                                                 className={
-                                                                    debate.winnerId === debate.debater1Id
-                                                                        ? "text-emerald-500 font-bold"
+                                                                    debate.winnerId
+                                                                        ? debate.winnerId === debate.debater1Id
+                                                                            ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-200 font-bold border border-emerald-500/40"
+                                                                            : "ax-chip--loss px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-700 dark:text-rose-200 font-semibold border border-rose-500/35"
                                                                         : ""
                                                                 }
                                                             >
-                                                                {debate.debater1.firstName}
+                                                                {debate.debater1.firstName} {debate.debater1.lastName || ""}
                                                             </span>
-                                                            <span className="text-muted-foreground mx-1.5 font-normal text-xs">
+                                                            <span className="text-muted-foreground mx-1 font-normal text-xs">
                                                                 vs
                                                             </span>
                                                             <span
                                                                 className={
-                                                                    debate.winnerId === debate.debater2Id
-                                                                        ? "text-emerald-500 font-bold"
+                                                                    debate.winnerId
+                                                                        ? debate.winnerId === debate.debater2Id
+                                                                            ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-200 font-bold border border-emerald-500/40"
+                                                                            : "ax-chip--loss px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-700 dark:text-rose-200 font-semibold border border-rose-500/35"
                                                                         : ""
                                                                 }
                                                             >
-                                                                {debate.debater2.firstName}
+                                                                {debate.debater2.firstName} {debate.debater2.lastName || ""}
                                                             </span>
                                                         </div>
                                                     </td>
@@ -1230,15 +1234,18 @@ export default function AdminRoundManagement() {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between gap-2">
                                         <div
-                                            className={`flex-1 text-center ${debate.winnerId === debate.debater1Id
-                                                    ? "text-emerald-500 font-bold"
+                                            className={`flex-1 text-center p-2 rounded-lg transition-colors ${
+                                                debate.winnerId
+                                                    ? debate.winnerId === debate.debater1Id
+                                                        ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-700 dark:text-emerald-200 font-bold"
+                                                        : "bg-rose-500/15 border border-rose-500/35 text-rose-700 dark:text-rose-200 font-medium"
                                                     : "text-foreground"
-                                                }`}
+                                            }`}
                                         >
                                             <p className="text-xs font-sans truncate font-medium">
-                                                {debate.debater1.firstName}
+                                                {debate.debater1.firstName} {debate.winnerId && (debate.winnerId === debate.debater1Id ? "✓" : "✗")}
                                             </p>
                                             {debate.status === "COMPLETED" && (
                                                 <p className="text-base font-mono font-bold mt-0.5">
@@ -1247,18 +1254,21 @@ export default function AdminRoundManagement() {
                                             )}
                                         </div>
 
-                                        <div className="px-3 text-muted-foreground text-xs font-bold italic">
+                                        <div className="px-2 text-muted-foreground text-xs font-bold italic shrink-0">
                                             VS
                                         </div>
 
                                         <div
-                                            className={`flex-1 text-center ${debate.winnerId === debate.debater2Id
-                                                    ? "text-emerald-500 font-bold"
+                                            className={`flex-1 text-center p-2 rounded-lg transition-colors ${
+                                                debate.winnerId
+                                                    ? debate.winnerId === debate.debater2Id
+                                                        ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-700 dark:text-emerald-200 font-bold"
+                                                        : "bg-rose-500/15 border border-rose-500/35 text-rose-700 dark:text-rose-200 font-medium"
                                                     : "text-foreground"
-                                                }`}
+                                            }`}
                                         >
                                             <p className="text-xs font-sans truncate font-medium">
-                                                {debate.debater2.firstName}
+                                                {debate.debater2.firstName} {debate.winnerId && (debate.winnerId === debate.debater2Id ? "✓" : "✗")}
                                             </p>
                                             {debate.status === "COMPLETED" && (
                                                 <p className="text-base font-mono font-bold mt-0.5">

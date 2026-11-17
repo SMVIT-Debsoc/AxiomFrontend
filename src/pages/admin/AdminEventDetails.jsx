@@ -3,7 +3,7 @@ import ModalSurface from "../../components/ui/ModalSurface";
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion as Motion, AnimatePresence } from "framer-motion";
-import { cn } from "../../lib/utils";
+import { cn, addMinutesToISTDateTime, toISTISOString, getCurrentISTDateTimeLocal } from "../../lib/utils";
 import {
   Clock,
   Plus,
@@ -754,14 +754,12 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
   }));
 
   const applyDurationPreset = (minutes) => {
-    const startMs = formData.checkInStartTime
-      ? new Date(formData.checkInStartTime + ":00+05:30").getTime()
-      : Date.now();
-    const baseMs = Number.isFinite(startMs) ? startMs : Date.now();
+    const base = formData.checkInStartTime || getCurrentISTDateTimeLocal();
+    const endStr = addMinutesToISTDateTime(base, minutes);
     setFormData((prev) => ({
       ...prev,
-      checkInStartTime: prev.checkInStartTime || toISTDateTimeString(new Date(baseMs)),
-      checkInEndTime: toISTDateTimeString(new Date(baseMs + minutes * 60000)),
+      checkInStartTime: prev.checkInStartTime || base,
+      checkInEndTime: endStr,
     }));
     setError("");
   };
@@ -769,10 +767,12 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    const toISTISOString = (dateTimeLocal) => {
-      if (!dateTimeLocal) return null;
-      return new Date(dateTimeLocal + ":00+05:30").toISOString();
-    };
+
+    if (!formData.motion?.trim()) {
+      setError("Debate motion is required and cannot be empty.");
+      return;
+    }
+
     const startIso = toISTISOString(formData.checkInStartTime);
     const endIso = toISTISOString(formData.checkInEndTime);
     if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
@@ -837,12 +837,13 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
           <label className="md:col-span-2"><span className="text-xs font-semibold mb-1 block text-foreground">
-            Debate Motion (Optional)
+            Debate Motion *
           </span><textarea value={formData.motion}
+          required
           onChange={(e) => setFormData({ ...formData, motion: e.target.value })}
           className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
           rows={3}
-          placeholder="This house believes that..." /></label>
+          placeholder="This house believes that... (Required)" /></label>
           <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in Start (IST)</span><input type="datetime-local"
           required
           value={formData.checkInStartTime}
@@ -858,13 +859,13 @@ function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
           }
           className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
           <div className="md:col-span-2 flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">Window length:</span>
-            {[15, 20, 30].map((mins) => (
+            <span className="text-xs font-semibold text-foreground">Window length:</span>
+            {[15, 20, 30, 45, 60].map((mins) => (
               <button
                 key={mins}
                 type="button"
                 onClick={() => applyDurationPreset(mins)}
-                className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium text-foreground transition-colors"
+                className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-primary hover:text-primary-foreground text-xs font-bold text-foreground transition-all active:scale-95 shadow-xs"
               >
                 {mins}m
               </button>
@@ -1052,11 +1053,12 @@ function EditRoundModal({ round, onClose, onUpdated }) {
   });
 
   const applyWindowPreset = (minutes) => {
-    const now = new Date();
+    const base = formData.checkInStartTime || getCurrentISTDateTimeLocal();
+    const endStr = addMinutesToISTDateTime(base, minutes);
     setFormData((prev) => ({
       ...prev,
-      checkInStartTime: toISTDateTimeString(now),
-      checkInEndTime: toISTDateTimeString(new Date(now.getTime() + minutes * 60000)),
+      checkInStartTime: prev.checkInStartTime || base,
+      checkInEndTime: endStr,
     }));
     setError("");
   };
@@ -1064,10 +1066,12 @@ function EditRoundModal({ round, onClose, onUpdated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    const toISTISOString = (dateTimeLocal) => {
-      if (!dateTimeLocal) return null;
-      return new Date(dateTimeLocal + ":00+05:30").toISOString();
-    };
+
+    if (!formData.motion?.trim()) {
+      setError("Debate motion is required and cannot be empty.");
+      return;
+    }
+
     const startIso = toISTISOString(formData.checkInStartTime);
     const endIso = toISTISOString(formData.checkInEndTime);
     if (!startIso || !endIso || new Date(endIso) <= new Date(startIso)) {
@@ -1131,10 +1135,12 @@ function EditRoundModal({ round, onClose, onUpdated }) {
         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" /></label>
     
-        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Debate Motion</span><textarea value={formData.motion}
+        <label ><span className="text-xs font-semibold mb-1 block text-foreground">Debate Motion *</span><textarea value={formData.motion}
+        required
         onChange={(e) => setFormData({ ...formData, motion: e.target.value })}
         className="w-full px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none transition-all"
-        rows={3} /></label>
+        rows={3}
+        placeholder="Enter debate motion (Required)" /></label>
     
         <div className="grid md:grid-cols-2 gap-3">
           <label ><span className="text-xs font-semibold mb-1 block text-foreground">Check-in Start (IST)</span><input type="datetime-local"
@@ -1154,15 +1160,15 @@ function EditRoundModal({ round, onClose, onUpdated }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Quick open from now:</span>
-          {[15, 20, 30].map((mins) => (
+          <span className="text-xs font-semibold text-foreground">Window length:</span>
+          {[15, 20, 30, 45, 60].map((mins) => (
             <button
               key={mins}
               type="button"
               onClick={() => applyWindowPreset(mins)}
-              className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-medium text-foreground transition-colors"
+              className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-primary hover:text-primary-foreground text-xs font-bold text-foreground transition-all active:scale-95 shadow-xs"
             >
-              Open {mins}m
+              {mins}m
             </button>
           ))}
         </div>

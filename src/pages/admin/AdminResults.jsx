@@ -246,11 +246,23 @@ export default function AdminResults() {
                                     <tr key={debate.id} className="hover:bg-muted/20 transition-colors">
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2.5 text-sm font-sans font-medium text-foreground">
-                                                <span className={debate.winnerId === debate.debater1Id ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
+                                                <span className={
+                                                    debate.winnerId
+                                                        ? debate.winnerId === debate.debater1Id
+                                                            ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-200 font-bold border border-emerald-500/40"
+                                                            : "ax-chip--loss px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-700 dark:text-rose-200 font-semibold border border-rose-500/35"
+                                                        : ""
+                                                }>
                                                     {debate.debater1.firstName} {debate.debater1.lastName}
                                                 </span>
                                                 <span className="text-muted-foreground text-xs font-normal">vs</span>
-                                                <span className={debate.winnerId === debate.debater2Id ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 font-bold" : ""}>
+                                                <span className={
+                                                    debate.winnerId
+                                                        ? debate.winnerId === debate.debater2Id
+                                                            ? "ax-chip--win px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-200 font-bold border border-emerald-500/40"
+                                                            : "ax-chip--loss px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-700 dark:text-rose-200 font-semibold border border-rose-500/35"
+                                                        : ""
+                                                }>
                                                     {debate.debater2.firstName} {debate.debater2.lastName}
                                                 </span>
                                             </div>
@@ -315,19 +327,31 @@ export default function AdminResults() {
                                 </span>
                             </div>
 
-                            <div className="flex justify-between items-center font-sans">
-                                <div className="flex-1 text-center">
-                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater1Id ? "text-emerald-600 dark:text-emerald-300 font-bold" : "text-foreground"}`}>
-                                        {debate.debater1.firstName}
+                            <div className="flex justify-between items-center font-sans gap-2">
+                                <div className={`flex-1 text-center p-2 rounded-lg transition-colors ${
+                                    debate.winnerId
+                                        ? debate.winnerId === debate.debater1Id
+                                            ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-700 dark:text-emerald-200 font-bold"
+                                            : "bg-rose-500/15 border border-rose-500/35 text-rose-700 dark:text-rose-200 font-medium"
+                                        : "text-foreground"
+                                }`}>
+                                    <p className="text-xs truncate font-medium">
+                                        {debate.debater1.firstName} {debate.winnerId && (debate.winnerId === debate.debater1Id ? "✓" : "✗")}
                                     </p>
                                     {debate.status === 'COMPLETED' && (
                                         <p className="text-base font-mono font-bold mt-0.5">{debate.debater1Score}</p>
                                     )}
                                 </div>
-                                <div className="px-3 text-[10px] text-muted-foreground font-bold italic">VS</div>
-                                <div className="flex-1 text-center">
-                                    <p className={`text-xs font-medium truncate ${debate.winnerId === debate.debater2Id ? "text-emerald-600 dark:text-emerald-300 font-bold" : "text-foreground"}`}>
-                                        {debate.debater2.firstName}
+                                <div className="px-1 text-[10px] text-muted-foreground font-bold italic shrink-0">VS</div>
+                                <div className={`flex-1 text-center p-2 rounded-lg transition-colors ${
+                                    debate.winnerId
+                                        ? debate.winnerId === debate.debater2Id
+                                            ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-700 dark:text-emerald-200 font-bold"
+                                            : "bg-rose-500/15 border border-rose-500/35 text-rose-700 dark:text-rose-200 font-medium"
+                                        : "text-foreground"
+                                }`}>
+                                    <p className="text-xs truncate font-medium">
+                                        {debate.debater2.firstName} {debate.winnerId && (debate.winnerId === debate.debater2Id ? "✓" : "✗")}
                                     </p>
                                     {debate.status === 'COMPLETED' && (
                                         <p className="text-base font-mono font-bold mt-0.5">{debate.debater2Score}</p>
