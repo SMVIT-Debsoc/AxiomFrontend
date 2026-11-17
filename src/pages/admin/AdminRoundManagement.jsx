@@ -963,25 +963,28 @@ export default function AdminRoundManagement() {
                                     key={debate.id}
                                     className="bg-card/70 border border-border/70 rounded-xl p-4 md:p-5 hover:border-primary/40 transition-all flex flex-col justify-between backdrop-blur-sm"
                                 >
-                                    <div className="flex items-center justify-between mb-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                                         <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground font-sans">
                                             Matchup #{debate.id.substring(0, 4)}
                                         </span>
-                                        {debate.status === "COMPLETED" ? (
-                                            <div className="ax-signal-win flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border border-emerald-500/35 text-[10px] font-bold uppercase tracking-wider font-sans">
-                                                <CheckCircle2 className="w-3 h-3" />
-                                                <span>Submitted</span>
-                                            </div>
-                                        ) : debate.room ? (
-                                            <div className="ax-signal-info flex items-center gap-1.5 px-2 py-0.5 rounded border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 text-xs font-sans font-medium">
-                                                <MapPin className="w-3 h-3" />
-                                                <span>{debate.room.name}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="ax-signal-warn text-[11px] px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 font-sans font-medium">
-                                                Room Unallocated
-                                            </span>
-                                        )}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {debate.room?.name ? (
+                                                <div className="ax-signal-info flex items-center gap-1.5 px-2 py-0.5 rounded border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200 text-xs font-sans font-medium">
+                                                    <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
+                                                    <span>Room: {debate.room.name}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="ax-signal-warn text-[11px] px-2 py-0.5 rounded border border-orange-500/40 bg-orange-500/15 text-orange-800 dark:text-orange-200 font-sans font-medium">
+                                                    Room Unallocated
+                                                </span>
+                                            )}
+                                            {debate.status === "COMPLETED" && (
+                                                <div className="ax-signal-win flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 border border-emerald-500/35 text-[10px] font-bold uppercase tracking-wider font-sans">
+                                                    <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                                                    <span>Submitted</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {debate.startTime && (
