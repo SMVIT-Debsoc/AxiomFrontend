@@ -48,13 +48,40 @@ export function surname(u) {
 export const judgeOf = (d) => d?.judgeName || (d?.adjudicator ? fullName(d.adjudicator) : "");
 export const roomNameOf = (d) => d?.room?.name || "";
 
-export function flagsOf(debate) {
-  const flags = debate?.ballotFlags;
-  if (!flags) return [];
+// Same ballotFlags value -> same array identity, so memoized tiles (RoomTile) keep their props stable.
+const NO_FLAGS = Object.freeze([]);
+const flagsByRef = new WeakMap();
+const flagsByText = new Map();
+const FLAGS_TEXT_CACHE_MAX = 500;
+
+function parseFlags(flags) {
   if (Array.isArray(flags)) return flags.filter(Boolean).map(String);
   if (typeof flags === "string") return flags.split(",").map((f) => f.trim()).filter(Boolean);
   if (typeof flags === "object") return Object.keys(flags).filter((k) => flags[k]);
   return [];
+}
+
+export function flagsOf(debate) {
+  const flags = debate?.ballotFlags;
+  if (!flags) return NO_FLAGS;
+  if (typeof flags === "object") {
+    let parsed = flagsByRef.get(flags);
+    if (!parsed) {
+      parsed = parseFlags(flags);
+      flagsByRef.set(flags, parsed);
+    }
+    return parsed;
+  }
+  if (typeof flags === "string") {
+    let parsed = flagsByText.get(flags);
+    if (!parsed) {
+      if (flagsByText.size >= FLAGS_TEXT_CACHE_MAX) flagsByText.clear();
+      parsed = Object.freeze(parseFlags(flags));
+      flagsByText.set(flags, parsed);
+    }
+    return parsed;
+  }
+  return NO_FLAGS;
 }
 
 export const FLAG_LABELS = {

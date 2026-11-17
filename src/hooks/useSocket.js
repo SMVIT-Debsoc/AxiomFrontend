@@ -1,6 +1,7 @@
 import {useEffect, useCallback, useRef, useSyncExternalStore} from "react";
 import socketService, {SocketEvents} from "../services/socket";
 import {clearApiCache} from "../services/api";
+import {nextPollBackoff, pollDelay, resyncDelay} from "../lib/refreshTiming";
 
 // Re-export SocketEvents for convenience
 export {SocketEvents};
@@ -50,7 +51,10 @@ function invalidateSocketUpdate(handler, data, eventId, roundId) {
  * - Refreshes on tab visibility return when hidden > 30s or the socket dropped meanwhile
  * - Refreshes once after the first room join (events between initial GET and join ack)
  * - Refreshes on socket reconnect after a disconnection
- * - Polls every `intervalMs` ONLY when the socket is disconnected and tab is visible
+ * - Resyncs from the room/reconnect/visibility triggers after a random delay up to `jitterMs`
+ *   so clients do not refetch in lockstep. Defaults to 0 (immediate); participant pages pass 3000.
+ * - Polls while the socket is disconnected or rooms are not ready and the tab is visible:
+ *   starts at `intervalMs`, doubles per poll up to 60s, +/-30% jitter, resets once live
  */
 export function useLiveRefresh(refreshFn, {
   enabled = true,
@@ -84,11 +88,26 @@ export function useLiveRefresh(refreshFn, {
       refreshRef.current?.();
     };
 
+    // Resyncs after reconnects and room joins are spread out randomly across
+    // clients. Repeated requests within the delay merge into one.
+    let resyncTimer;
+    const scheduleResync = () => {
+      if (jitterMs <= 0) {
+        triggerRefresh();
+        return;
+      }
+      if (resyncTimer !== undefined) return;
+      resyncTimer = window.setTimeout(() => {
+        resyncTimer = undefined;
+        triggerRefresh();
+      }, resyncDelay(Math.random(), jitterMs));
+    };
+
     const unsubConnect = socketService.on(SocketEvents.CONNECTION, () => {
       if (wasDisconnected) {
         wasDisconnected = false;
         if (hasRooms) needsRoomRefresh = true;
-        else triggerRefresh();
+        else scheduleResync();
       }
     });
 
@@ -100,7 +119,7 @@ export function useLiveRefresh(refreshFn, {
     const unsubRoomReady = socketService.onRoomReady((type, id) => {
       if ((type === "event" ? id === eventId : id === roundId) && needsRoomRefresh && roomsReady()) {
         needsRoomRefresh = false;
-        triggerRefresh();
+        scheduleResync();
       }
     });
 
@@ -117,11 +136,12 @@ export function useLiveRefresh(refreshFn, {
       const missed = disconnectedWhileHidden || !socketService.isConnected() || !roomsReady();
       hiddenAt = null;
       disconnectedWhileHidden = false;
-      if (hiddenFor > VISIBILITY_RESYNC_MS || missed) triggerRefresh();
+      if (hiddenFor > VISIBILITY_RESYNC_MS || missed) scheduleResync();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
     let timer;
+    let backoffMs = intervalMs;
     const schedulePoll = () => {
       timer = window.setTimeout(() => {
         if (!socketService.isConnected() || !roomsReady()) {
@@ -130,10 +150,13 @@ export function useLiveRefresh(refreshFn, {
             socketService.retryRoom("event", eventId);
             socketService.retryRoom("round", roundId);
             triggerRefresh();
+            backoffMs = nextPollBackoff(backoffMs, intervalMs);
           }
+        } else {
+          backoffMs = intervalMs;
         }
         schedulePoll();
-      }, intervalMs + Math.random() * jitterMs);
+      }, pollDelay(backoffMs, Math.random()));
     };
     schedulePoll();
 
@@ -143,6 +166,7 @@ export function useLiveRefresh(refreshFn, {
       unsubRoomReady();
       document.removeEventListener("visibilitychange", handleVisibility);
       window.clearTimeout(timer);
+      window.clearTimeout(resyncTimer);
     };
   }, [enabled, intervalMs, jitterMs, invalidateCache, eventId, roundId]);
 }

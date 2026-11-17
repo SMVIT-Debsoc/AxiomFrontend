@@ -13,6 +13,7 @@ import {
   RedirectToSignIn as ClerkRedirectToSignIn,
   AuthenticateWithRedirectCallback as ClerkAuthenticateWithRedirectCallback
 } from "@clerk/clerk-react";
+import {isInAppBrowser} from "../lib/inAppBrowser.js";
 
 export const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
 const isMockAuth = import.meta.env.VITE_AUTH_MOCK === "true";
@@ -293,15 +294,48 @@ export function isSessionExistsError(failure) {
   return /session.*already.*exists|already.*signed.*in/i.test(String(failure?.message || ""));
 }
 
+// Google blocks OAuth inside social-app webviews, so explain and offer a way out instead.
+function InAppBrowserNotice() {
+  const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent || "");
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setCopyFailed(false);
+    } catch {
+      setCopied(false);
+      setCopyFailed(true);
+    }
+  };
+  const {host, pathname, search} = window.location;
+  const chromeIntent = `intent://${host}${pathname}${search}#Intent;scheme=https;package=com.android.chrome;end`;
+  const linkClass = "flex min-h-11 w-full items-center justify-center rounded-xl bg-[#1D1E18] px-4 text-base font-bold text-[#EAFBF5] no-underline transition hover:bg-[#4A5646] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2]";
+  return (
+    <div role="region" aria-label="Open in your browser" className="flex w-full flex-col gap-3 rounded-2xl border border-[#AAD2BA] bg-[#E6F8F1] p-4 text-[#3F5E45]">
+      <p className="m-0 text-base font-bold text-[#1D1E18]">Google sign-in doesn't work inside Instagram/WhatsApp. Open this page in Chrome or Safari.</p>
+      <button type="button" onClick={copyLink} className={`${linkClass} border-0`}>
+        {copied ? "Link copied" : "Copy link"}
+      </button>
+      {copyFailed && <p role="alert" className="m-0 text-sm font-medium text-[#a51818]">Could not copy. Select the address bar and copy the link manually.</p>}
+      {isAndroid && (
+        <a href={chromeIntent} className={linkClass}>Open in Chrome</a>
+      )}
+    </div>
+  );
+}
+
 export function GoogleAuthButton({variant = "default", label = "Register with Google", busyLabel = "Connecting to Google…"}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [inApp] = useState(() => typeof navigator !== "undefined" && isInAppBrowser(navigator.userAgent));
   const {isSignedIn, isLoaded: authLoaded, signOut} = useAuth();
   const {signIn, isLoaded} = useSignIn();
   const v = GOOGLE_VARIANTS[variant] || GOOGLE_VARIANTS.default;
 
   useEffect(() => {
-    if (!isLoaded || !authLoaded || isSignedIn || !signIn) return;
+    if (!isLoaded || !authLoaded || isSignedIn || !signIn || inApp) return;
     let shouldSwitch = false;
     try {
       shouldSwitch = sessionStorage.getItem("axiom_switch_google_account") === "1";
@@ -324,7 +358,7 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
         console.error("Clerk Google account switch failed:", failure);
         setError(failure.errors?.[0]?.message || failure.message || "Google sign-in could not start.");
       });
-  }, [authLoaded, isLoaded, isSignedIn, signIn]);
+  }, [authLoaded, isLoaded, isSignedIn, signIn, inApp]);
 
   if (!clerkPublishableKey && !isMockAuth) {
     return (
@@ -332,6 +366,10 @@ export function GoogleAuthButton({variant = "default", label = "Register with Go
         Sign-in is unavailable right now. Please set VITE_CLERK_PUBLISHABLE_KEY in .env.
       </p>
     );
+  }
+
+  if (inApp && !isSignedIn) {
+    return <div className={v.wrap}><InAppBrowserNotice /></div>;
   }
 
   const signInWithGoogle = async () => {

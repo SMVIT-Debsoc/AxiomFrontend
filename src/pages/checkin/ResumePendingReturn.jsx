@@ -13,8 +13,12 @@ export default function ResumePendingReturn() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // /complete-profile is not resumed here: completion is not visible from this route, so
+  // the return happens once the debater lands on the dashboard (trailing slash tolerated).
+  const onDashboard = location.pathname.replace(/\/+$/, "") === "/dashboard";
+
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || location.pathname !== "/dashboard") return;
+    if (!isLoaded || !isSignedIn || !onDashboard) return;
     let path = null;
     try {
       path = decodeReturnTo(window.localStorage.getItem(RETURN_TO_KEY));
@@ -23,7 +27,7 @@ export default function ResumePendingReturn() {
       path = null;
     }
     if (path) navigate(path, {replace: true});
-  }, [isLoaded, isSignedIn, location.pathname, navigate]);
+  }, [isLoaded, isSignedIn, onDashboard, navigate]);
 
   return null;
 }

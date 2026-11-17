@@ -552,3 +552,8 @@ export const OpsApi = {
         return apiRequest(`/admin/activity?${q.toString()}`, "GET", null, token, {skipCache: true});
     },
 };
+
+// Walk-ins: create a participant without Google sign-in (name, college, mobile, optional USN/email).
+export const WalkInApi = {
+    createWalkIn: (data, token) => apiRequest("/users/walk-in", "POST", data, token),
+};
