@@ -12,7 +12,6 @@ import {
   Award,
   Clock,
   ExternalLink,
-  Medal,
 } from "lucide-react";
 import {useAuth, useUser} from "../../auth/client.jsx";
 import {
@@ -36,7 +35,8 @@ import SectionRetry from "../../components/ui/SectionRetry";
 import CountUp from "../../components/ui/CountUp";
 import NeoButton from "../../components/neo/NeoButton";
 import GameOverCard from "../../components/dashboard/GameOverCard";
-import {cn, formatTimeIST} from "../../lib/utils";
+import {cn, formatTimeIST, getPodiumMedal} from "../../lib/utils";
+import StandingRank from "../../components/ui/StandingRank";
 
 const WhatsAppGroupBanner = lazy(() =>
   import("../../components/dashboard/WhatsAppGroupPrompt").then((m) => ({
@@ -359,40 +359,24 @@ function ResultsHubSection({
               <div className="divide-y divide-border/60">
                 {leaderboard.map((entry) => {
                   const isMe = entry.user?.id === currentUserId;
-                  const podiumClass =
-                    entry.rank === 1
-                      ? "ax-podium--gold"
-                      : entry.rank === 2
-                      ? "ax-podium--silver"
-                      : entry.rank === 3
-                      ? "ax-podium--bronze"
-                      : "bg-muted text-muted-foreground border border-border";
+                  const medal = getPodiumMedal(entry.rank);
 
                   return (
                     <div
                       key={entry.user?.id || entry.rank}
+                      data-podium={medal}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 text-sm",
-                        isMe && "ax-signal-info"
+                        "standing-row flex items-center gap-3 px-4 py-3 text-sm",
+                        isMe && !medal && "ax-signal-info"
                       )}
                     >
-                      <span
-                        className={cn(
-                          "inline-flex items-center justify-center gap-1 min-w-10 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold shrink-0",
-                          podiumClass
-                        )}
-                      >
-                        {entry.rank <= 3 && (
-                          <Medal className="w-3 h-3 shrink-0" aria-hidden="true" />
-                        )}
-                        #{entry.rank}
-                      </span>
+                      <StandingRank rank={entry.rank} medal={medal} />
 
                       <UserAvatar user={entry.user} size="sm" className="shrink-0" />
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="font-heading font-semibold text-foreground truncate">
+                          <p className="min-w-0 break-words font-heading font-semibold text-foreground">
                             {entry.user?.firstName} {entry.user?.lastName}
                           </p>
                           {isMe && (

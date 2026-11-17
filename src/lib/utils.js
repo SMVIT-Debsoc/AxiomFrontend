@@ -5,6 +5,10 @@ export function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
 
+export function getPodiumMedal(rank) {
+    return ["gold", "silver", "bronze"][rank - 1];
+}
+
 // IST Timezone utilities - all times displayed in India Standard Time
 const IST_TIMEZONE = "Asia/Kolkata";
 

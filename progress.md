@@ -319,3 +319,10 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Files changed: `SiteTour.jsx`, `TourExample.jsx`, `visualGuide.js`, `DashboardEvents.jsx`, `DashboardHome.jsx`, `RoundDetails.jsx`, `tests/browser-audit.mjs`, and this log.
 - Verification: 63 unit and API contract tests, 67 Chromium scenarios, lint, and production build passed. The eliminated-debater scenario checked arrow placement, the sample label, absence of a check-in action inside the sample, and cleanup on exit.
 - Remaining: live deployment and physical-device checks. Next, verify the example placement on staging with a completed round and a debater who has been eliminated.
+
+## Top-three standings highlights (2026-11-17)
+
+- Gold, Silver, and Bronze now tint the full top-three rows, with a colored edge and a labeled medal badge. Applied the same styling to dashboard standings, event results standings, and the organizer leaderboard. Long names can wrap on phones. The participant’s You badge and the organizer’s original rank during filtering are preserved.
+- Files changed: shared `StandingRank.jsx`, `index.css`, `utils.js`, the dashboard and event standings views, `AdminLeaderboard.jsx`, the podium browser fixtures, and this log.
+- Checks passed in the working tree: 63 unit and API contract tests, 72 Chromium scenarios, lint, and production build. The three podium scenarios verified distinct row treatments in light and dark themes, a neutral fourth row, visible medal text, and original rank after filtering. Production remains unverified.
+- Next: view the published standings on a phone after deployment and confirm the row treatments with real names.

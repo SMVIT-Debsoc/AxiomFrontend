@@ -5,7 +5,8 @@ import {
   Search,
   RotateCcw,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, getPodiumMedal } from "../../lib/utils";
+import StandingRank from "../../components/ui/StandingRank";
 import { useAuth } from "../../auth/client.jsx";
 import { StatsApi, EventApi } from "../../services/api";
 import { useSocket, SocketEvents, useLiveRefresh } from "../../hooks/useSocket";
@@ -266,17 +267,13 @@ export default function AdminLeaderboard({ embedded = false } = {}) {
                 filteredLeaderboard.map(({ entry, rank }) => (
                   <Motion.tr
                     key={entry.user?.id || entry.id || rank}
+                    data-podium={getPodiumMedal(rank)}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="group hover:bg-muted/20 transition-colors"
+                    className="standing-row group hover:bg-muted/20 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border",
-                        rank <= 3 ? "ax-signal-win bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/35" : "border-transparent text-muted-foreground font-mono"
-                      )}>
-                        #{rank}
-                      </div>
+                      <StandingRank rank={rank} medal={getPodiumMedal(rank)} />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">

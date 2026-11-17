@@ -735,6 +735,47 @@ try {
     await visible(page, 'QUALIFIED');
   });
 
+  for (const {path, tab, theme, width} of [
+    {path: '/dashboard', tab: 'Results', theme: 'light', width: 390},
+    {path: '/dashboard/events/e1/results', tab: 'Standings', theme: 'dark', width: 390},
+    {path: '/admin/leaderboard', theme: 'dark', width: 1280},
+  ]) {
+    await run(`podium highlights the top three rows on ${path}`, {
+      signedIn: true, admin: path.startsWith('/admin'), assigned: true, resultsPublished: true,
+    }, async (page, state) => {
+      await page.setViewportSize({width, height: 800});
+      await page.addInitScript(theme => localStorage.setItem('axiom-theme', theme), theme);
+      const leaderboard = ['First', 'Second', 'Third', 'Fourth'].map((firstName, index) => ({
+        rank: index + 1,
+        user: {...state.user, id: index ? `rank-${index}` : state.user.id, firstName, lastName: 'Fixture Debater'},
+        stats: {wins: 3 - index, winRate: 75 - index * 25, totalScore: 300 - index * 50},
+      }));
+      await page.route(url => url.pathname === '/api/stats/leaderboard', route =>
+        route.fulfill({json: {success: true, leaderboard}}));
+      await page.goto(origin + path);
+      if (tab) await page.getByRole('tab', {name: tab, exact: true}).click();
+      const gold = page.locator('[data-podium="gold"]');
+      await visible(gold, 'gold');
+      const colors = await page.locator('[data-podium]').evaluateAll(rows => rows.map(row => {
+        const style = getComputedStyle(row);
+        return {medal: row.dataset.podium, background: style.backgroundImage, edge: style.boxShadow};
+      }));
+      assert.deepEqual(colors.map(({medal}) => medal), ['gold', 'silver', 'bronze']);
+      assert.equal(new Set(colors.map(({background}) => background)).size, 3);
+      assert.ok(colors.every(({background, edge}) => background.startsWith('linear-gradient') && edge.includes('inset')));
+      assert.equal(await page.locator('[data-podium]').filter({hasText: 'Fourth Fixture Debater'}).count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      if (tab) {
+        assert.match(await gold.innerText(), /you/i);
+      } else {
+        await page.getByPlaceholder('Search debater by name or college...').fill('Fourth');
+        await visible(page, 'Fourth Fixture Debater');
+        assert.equal(await page.locator('[data-podium]').count(), 0);
+      }
+      if (tab === 'Standings') await page.screenshot({path: 'audit-artifacts/standings-podium-mobile.png'});
+    });
+  }
+
   await run('first visit offers the site tour and remembers Skip after reload', {signedIn: true, window: 'closed'}, async page => {
     await page.goto(origin + '/dashboard');
     const invitation = page.getByRole('region', {name: 'Take a tour of AXIOM'});

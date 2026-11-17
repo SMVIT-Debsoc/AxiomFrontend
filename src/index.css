@@ -945,6 +945,21 @@ html.dark #root .axiom-workspace .ax-podium--bronze {
   border: 1px solid rgb(251 146 60 / .6);
 }
 
+/* A full-row tint and edge carry the medal color beyond the rank badge. */
+[data-podium="gold"] { --podium-accent: #b77b0b; }
+[data-podium="silver"] { --podium-accent: #74869e; }
+[data-podium="bronze"] { --podium-accent: #b55424; }
+.dark [data-podium="gold"] { --podium-accent: #fbbf24; }
+.dark [data-podium="silver"] { --podium-accent: #cbd5e1; }
+.dark [data-podium="bronze"] { --podium-accent: #fb923c; }
+
+.axiom-workspace .standing-row[data-podium] {
+  background-image: linear-gradient(90deg,
+    color-mix(in srgb, var(--podium-accent) 26%, transparent),
+    color-mix(in srgb, var(--podium-accent) 12%, transparent));
+  box-shadow: inset 4px 0 0 var(--podium-accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ax-signal-win, .ax-signal-loss, .ax-signal-warn, .ax-signal-info,
   .ax-chip--win, .ax-chip--loss, .ax-chip--warn, .ax-chip--info, .ax-chip--gov, .ax-chip--opp,
