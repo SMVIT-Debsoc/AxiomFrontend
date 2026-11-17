@@ -1,0 +1,414 @@
+.axiom-workspace { --radius: .5rem; }
+
+/* ----- Cards and panels ----- */
+
+.axiom-workspace [class~="bg-card"][class*="rounded-"],
+.axiom-workspace [class*="bg-card/"][class*="rounded-"] {
+  background: var(--nb-fill);
+  border: 1px solid var(--nb-line);
+  border-radius: .75rem;
+  backdrop-filter: none;
+}
+
+.axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { box-shadow: var(--nb-elev-2); }
+
+.axiom-workspace .neo-card { border-color: var(--nb-line); }
+
+.axiom-workspace a[class~="bg-card"][class*="rounded-"]:hover,
+.axiom-workspace [class~="bg-card"][class*="hover:border-primary"]:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--nb-elev-3);
+}
+
+/* Cards nested in cards stay flat so shadows do not stack. */
+
+.axiom-workspace [class~="bg-card"] [class~="bg-card"][class*="rounded-"] { box-shadow: none; }
+
+.axiom-workspace .axiom-dialog [class~="bg-card"][class*="rounded-"] { box-shadow: var(--nb-elev-3); }
+
+.axiom-workspace .axiom-dialog { background: transparent; }
+
+.axiom-workspace .axiom-dialog--drawer { border-right: 1px solid var(--nb-line); box-shadow: 10px 0 32px -14px rgb(29 30 24 / .28); }
+
+.axiom-workspace [class*="bg-muted"][class*="rounded-"][class*="border"] { border-width: 1px; border-color: var(--nb-line); }
+
+/* ----- Buttons ----- */
+
+.axiom-workspace :is(button, a)[class*="bg-primary text-primary-foreground"],
+.axiom-workspace :is(button, a)[class*="bg-primary"][class*="text-primary-foreground"] {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border: 1px solid var(--nb-line);
+  border-radius: .5rem;
+  font-weight: 700;
+  box-shadow: var(--nb-elev-1);
+  transition: transform 120ms var(--axiom-ease), box-shadow 120ms var(--axiom-ease), background-color 120ms;
+}
+
+.axiom-workspace :is(button, a)[class*="text-primary-foreground"]:not(:disabled):hover {
+  background: var(--btn-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--nb-elev-2);
+}
+
+.axiom-workspace :is(button, a)[class*="text-primary-foreground"]:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.axiom-workspace :is(button, a)[class*="text-primary-foreground"]:disabled {
+  box-shadow: none; opacity: .55; background: var(--nb-muted); color: hsl(var(--muted-foreground));
+}
+
+/* Outline / icon buttons */
+
+.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb),
+.axiom-workspace button[class*="border-border"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb) {
+  border: 1px solid var(--nb-line);
+  border-radius: .5rem;
+  transition: transform 120ms var(--axiom-ease), box-shadow 120ms var(--axiom-ease), background-color 120ms;
+}
+
+.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb):not(:disabled):hover {
+  transform: translateY(-1px); box-shadow: var(--nb-elev-1); background: var(--nb-green-soft); color: hsl(var(--foreground));
+}
+
+.axiom-workspace :is(button, a)[class*="hover:bg-muted"]:not([class*="text-primary-foreground"]):not(.neo-tile):not(.theme-bulb):not(:disabled):active {
+  transform: translateY(1px); box-shadow: none;
+}
+
+/* Destructive */
+
+.axiom-workspace button[class*="bg-destructive"][class*="text-"],
+.axiom-workspace button[class*="bg-red-"][class*="text-white"] {
+  background: #e0566a; color: #fff; border: 1px solid var(--nb-line); border-radius: .5rem; font-weight: 700; box-shadow: var(--nb-elev-1);
+}
+
+.axiom-workspace button[class*="hover:bg-destructive/10"]:hover { background: var(--nb-danger); color: #141510; }
+
+.dark .axiom-workspace button[class*="hover:bg-destructive/10"]:hover { color: var(--axiom-paper); }
+
+/* Page-level icon buttons keep a visible shape */
+
+.axiom-workspace main button[class*="p-1.5"][class*="rounded"] { border: 2px solid transparent; }
+
+.axiom-workspace main button[class*="p-1.5"][class*="rounded"]:hover { border-color: var(--nb-line); }
+
+/* ----- Tags / badges ----- */
+
+.axiom-workspace span[class*="uppercase"][class*="border"],
+.axiom-workspace span[class*="uppercase"][class*="rounded"][class*="bg-"] {
+  border: 1px solid var(--nb-line);
+  border-radius: .4rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1.2;
+  padding: .12rem .45rem;
+  box-shadow: var(--nb-elev-1);
+  color: #141510;
+}
+
+.dark .axiom-workspace span[class*="uppercase"][class*="border"],
+.dark .axiom-workspace span[class*="uppercase"][class*="rounded"][class*="bg-"] { color: var(--axiom-paper); }
+
+.axiom-workspace :is(span, div)[class*="bg-emerald-500/10"][class*="border"],
+.axiom-workspace :is(span, div)[class*="bg-primary/10"][class*="border"] { background: var(--nb-green-soft); }
+
+.axiom-workspace :is(span, div)[class*="bg-amber-500/10"][class*="border"],
+.axiom-workspace :is(span, div)[class*="bg-amber-500/15"][class*="border"],
+.axiom-workspace :is(span, div)[class*="bg-yellow-500/10"][class*="border"] { background: var(--nb-warn); }
+
+.axiom-workspace :is(span, div)[class*="bg-blue-500/10"][class*="border"],
+.axiom-workspace :is(span, div)[class*="bg-blue-500/15"][class*="border"] { background: var(--nb-info); }
+
+.axiom-workspace :is(span, div)[class*="bg-destructive/10"][class*="border"],
+.axiom-workspace :is(span, div)[class*="bg-rose-500/10"][class*="border"] { background: var(--nb-danger); color: var(--axiom-status-danger); }
+
+.axiom-workspace span[class*="bg-muted"][class*="border"][class*="uppercase"] { background: var(--nb-muted); }
+
+/* Banners (alerts) */
+
+.axiom-workspace div[class*="bg-destructive/10"][class*="border"],
+.axiom-workspace div[class*="bg-emerald-500/10"][class*="border"],
+.axiom-workspace div[class*="bg-amber-500/10"][class*="border"] {
+  border: 1px solid var(--nb-line); border-radius: .6rem; box-shadow: var(--nb-elev-1); color: #141510;
+}
+
+.dark .axiom-workspace div[class*="bg-destructive/10"][class*="border"],
+.dark .axiom-workspace div[class*="bg-emerald-500/10"][class*="border"],
+.dark .axiom-workspace div[class*="bg-amber-500/10"][class*="border"] { color: var(--axiom-paper); }
+
+/* ----- Inputs, selects, textareas, checkboxes ----- */
+
+.axiom-workspace :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea) {
+  background: var(--nb-fill);
+  border: 1px solid var(--nb-line-strong);
+  border-radius: .5rem;
+  color: hsl(var(--foreground));
+  transition: box-shadow 120ms var(--axiom-ease), transform 120ms var(--axiom-ease), background-color 120ms;
+}
+
+.axiom-workspace :is(input, select, textarea):hover:not(:disabled) { background: hsl(var(--primary) / .08); }
+
+.axiom-workspace :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  transform: translateY(-1px);
+  box-shadow: var(--nb-elev-1);
+  background: var(--nb-fill);
+  outline: none;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+.axiom-workspace :is(input, select, textarea):focus-visible { outline: 3px solid var(--axiom-focus, var(--axiom-brand-text)); outline-offset: 2px; }
+
+.axiom-workspace :is(input, select, textarea):disabled { background: var(--nb-muted); opacity: .7; cursor: not-allowed; }
+
+.axiom-workspace input[type="checkbox"], .axiom-workspace input[type="radio"] {
+  appearance: none; -webkit-appearance: none; flex-shrink: 0; position: relative;
+  width: 1.25rem; height: 1.25rem; border: 1px solid var(--nb-line-strong); border-radius: .3rem; background: var(--nb-fill);
+  cursor: pointer; box-shadow: var(--nb-elev-1); transition: box-shadow 100ms, transform 100ms, background-color 100ms;
+}
+
+.axiom-workspace input[type="radio"] { border-radius: 9999px; }
+
+.axiom-workspace input[type="checkbox"]:checked, .axiom-workspace input[type="radio"]:checked { background: var(--nb-green); box-shadow: none; transform: translateY(1px); }
+
+.axiom-workspace input[type="checkbox"]:checked::after {
+  content: ""; position: absolute; left: .32rem; top: .06rem; width: .35rem; height: .7rem;
+  border: solid #141510; border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
+
+.axiom-workspace input[type="radio"]:checked::after { content: ""; position: absolute; inset: .22rem; border-radius: 9999px; background: #141510; }
+
+/* ----- Tables ----- */
+
+.axiom-workspace table { border-collapse: separate; border-spacing: 0; }
+
+.axiom-workspace thead th, .axiom-workspace thead td {
+  background: var(--nb-green-soft); color: hsl(var(--foreground)); border-bottom: 1px solid var(--nb-line); font-weight: 700;
+}
+
+.axiom-workspace tbody tr { transition: background-color 120ms ease-out; }
+
+.axiom-workspace tbody tr:hover { background: hsl(var(--primary) / .1); }
+
+.axiom-workspace tbody td, .axiom-workspace tbody th { border-bottom: 1px solid hsl(var(--border)); }
+
+.axiom-workspace tbody tr:last-child td { border-bottom: 0; }
+
+.axiom-workspace div[class*="overflow-x-auto"] { border-radius: .4rem; }
+
+/* ----- Misc small parts ----- */
+
+.axiom-workspace hr { border-color: var(--nb-line); border-top-width: 1px; }
+
+.axiom-workspace .axiom-page-header { border-bottom: 1px solid var(--nb-line); }
+
+.axiom-workspace .axiom-page-header .axiom-eyebrow {
+  display: inline-block; width: fit-content; flex-basis: auto; padding: .1rem .5rem; margin-bottom: .35rem; background: var(--nb-green);
+  color: #141510; border: 1px solid var(--nb-line); border-radius: .35rem; box-shadow: var(--nb-elev-1);
+}
+
+.axiom-workspace [class*="rounded-full"][class*="bg-primary"]:not(button):not(a):not(input) { border: 1px solid var(--nb-line); }
+
+.axiom-workspace .axiom-userchip { border: 1px solid var(--nb-line); background: var(--nb-fill); box-shadow: var(--nb-elev-1); }
+
+@media (max-width: 639px) { .axiom-workspace .axiom-userchip { border: 0; box-shadow: none; background: none; } }
+
+.axiom-workspace [role="status"][class*="rounded"] { border-width: 1px; border-color: var(--nb-line); }
+
+/* Avatars */
+
+.axiom-workspace .ring-border { --tw-ring-shadow: 0 0 #0000; box-shadow: none; border: 1px solid var(--nb-line); }
+
+/* Tabs: pill buttons, the sliding underline is replaced by the filled state */
+
+.axiom-workspace button[class*="relative pb-3"] { padding: .4rem .9rem; margin-bottom: .5rem; border: 2px solid transparent; border-radius: .5rem; font-weight: 700; transition: transform 120ms var(--axiom-ease), box-shadow 120ms var(--axiom-ease), background-color 120ms; }
+
+.axiom-workspace button[class*="relative pb-3"] > div[class*="absolute"] { display: none; }
+
+.axiom-workspace button[class*="relative pb-3"][class*="text-primary font-semibold"] { background: var(--nb-green); color: #141510; border-color: var(--nb-line); box-shadow: var(--nb-elev-1); }
+
+.axiom-workspace button[class*="relative pb-3"][class*="text-muted-foreground"]:hover { border-color: var(--nb-line); background: var(--nb-green-soft); color: hsl(var(--foreground)); transform: translateY(-1px); box-shadow: var(--nb-elev-1); }
+
+.axiom-workspace a[class*="bg-emerald-500/10"][class*="border"] { background: var(--nb-green-soft); border: 1px solid var(--nb-line); border-radius: .5rem; font-weight: 700; color: #141510; box-shadow: var(--nb-elev-1); transition: transform 120ms var(--axiom-ease), box-shadow 120ms var(--axiom-ease); }
+
+.dark .axiom-workspace a[class*="bg-emerald-500/10"][class*="border"] { color: var(--axiom-paper); }
+
+.axiom-workspace a[class*="bg-emerald-500/10"][class*="border"]:hover { transform: translateY(-1px); box-shadow: var(--nb-elev-2); }
+
+/* Cards and panels */
+
+html .axiom-workspace [class~="bg-card"][class*="rounded-"],
+html .axiom-workspace [class*="bg-card/"][class*="rounded-"] { border: 0; box-shadow: var(--float-shadow); }
+
+html .axiom-workspace [class*="bg-card/"][class*="rounded-"] { box-shadow: none; background: hsl(var(--muted) / .45); }
+
+html .axiom-workspace a[class~="bg-card"][class*="rounded-"]:hover,
+html .axiom-workspace [class~="bg-card"][class*="hover:border-primary"]:hover { transform: translateY(-3px); box-shadow: var(--float-shadow-hover); }
+
+html .axiom-workspace .axiom-dialog [class~="bg-card"][class*="rounded-"] { box-shadow: 0 30px 80px -20px rgb(0 0 0 / .55); }
+
+html .axiom-workspace .axiom-dialog--drawer { border: 0; box-shadow: 18px 0 50px -20px rgb(0 0 0 / .45); }
+
+html .axiom-workspace [class*="bg-muted"][class*="border"],
+html .axiom-workspace [class*="bg-background"][class*="border"],
+html .axiom-workspace [class*="bg-muted"][class*="rounded-"][class*="border"] { border-width: 0; }
+
+html .axiom-workspace [class*="bg-muted"][class*="rounded-"]:not(button):not(a):not(input) { background: hsl(var(--muted) / .5); }
+
+.axiom-workspace .neo-card { border: 0; box-shadow: var(--float-shadow); }
+
+.axiom-workspace .neo-card:hover { box-shadow: var(--float-shadow-hover); }
+
+/* Divider rules, dashed boxes and row separators */
+
+.axiom-workspace [class~="border-t"], .axiom-workspace [class~="border-b"],
+.axiom-workspace [class~="border-l"], .axiom-workspace [class~="border-r"],
+.axiom-workspace [class*="last:border-0"] { border-width: 0; }
+
+.axiom-workspace .divide-y > * + *, .axiom-workspace .divide-x > * + * { border-width: 0; }
+
+.axiom-workspace [class*="border-dashed"] { border-style: solid; border-color: transparent; }
+
+.axiom-workspace hr { display: none; }
+
+.axiom-workspace tbody td, .axiom-workspace tbody th, .axiom-workspace thead th, .axiom-workspace thead td { border: 0; }
+
+.axiom-workspace tbody tr { border: 0; }
+
+.axiom-workspace tbody tr:nth-child(even) { background: hsl(var(--muted) / .3); }
+
+.axiom-workspace thead th:first-child { border-top-left-radius: .6rem; border-bottom-left-radius: .6rem; }
+
+.axiom-workspace thead th:last-child { border-top-right-radius: .6rem; border-bottom-right-radius: .6rem; }
+
+.axiom-workspace .axiom-page-header { border: 0; padding-bottom: 0; margin-bottom: 1.25rem; }
+
+.axiom-workspace [role="status"][class*="rounded"] { border-width: 0; }
+
+/* Banners and notices float as tinted pills */
+
+html .axiom-workspace div[class*="bg-destructive/10"][class*="border"],
+html .axiom-workspace div[class*="bg-emerald-500/10"][class*="border"],
+html .axiom-workspace div[class*="bg-amber-500/10"][class*="border"] { border: 0; box-shadow: var(--float-shadow); background: var(--nb-danger); }
+
+html .axiom-workspace div[class*="bg-emerald-500/10"][class*="border"] { background: var(--nb-green-soft); }
+
+html .axiom-workspace div[class*="bg-amber-500/10"][class*="border"] { background: var(--nb-warn); }
+
+html .axiom-workspace .axiom-userchip { border: 0; box-shadow: var(--float-shadow); }
+
+html .axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { border: 1px solid var(--nb-line); box-shadow: var(--float-shadow); }
+
+html .axiom-workspace [class~="bg-card"] [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { box-shadow: none; border: 0; background: hsl(var(--muted) / .45); }
+
+html .axiom-workspace a[class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]):hover { box-shadow: var(--float-shadow-hover); }
+
+html .axiom-workspace .axiom-dialog [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { box-shadow: 0 30px 80px -20px rgb(0 0 0 / .55); }
+
+/* =====================================================================
+ * Neumorphic surface and living background
+ * ===================================================================== */
+
+.axiom-workspace {
+  --nm-base: #EAFBF5;
+  --nm-dark: rgb(29 30 24 / .16);
+  --nm-light: transparent;
+  --float-shadow: var(--nb-elev-2);
+  --float-shadow-hover: var(--nb-elev-3);
+  --nm-inset: inset 0 0 0 1px rgb(20 21 16 / .05);
+}
+
+.dark .axiom-workspace {
+  --nm-base: #161710;
+  --nm-dark: rgb(0 0 0 / .4);
+  --nm-light: transparent;
+  --float-shadow: var(--nb-elev-2);
+  --float-shadow-hover: var(--nb-elev-3);
+  --nm-inset: inset 0 0 0 1px rgb(234 251 245 / .05);
+}
+
+.axiom-workspace.bg-background { background: var(--nm-base); isolation: isolate; position: relative; }
+
+/* Aurora: oversized gradient layer drifts slowly (transform only), dotted grid fades in behind the content. */
+
+.axiom-workspace.bg-background::before {
+  content: ""; position: fixed; inset: -25%; z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(38% 34% at 22% 28%, rgb(185 245 216 / .30), transparent 70%),
+    radial-gradient(34% 30% at 82% 18%, rgb(170 210 186 / .22), transparent 72%),
+    radial-gradient(40% 36% at 70% 82%, rgb(29 30 24 / .08), transparent 72%),
+    radial-gradient(30% 28% at 12% 86%, rgb(255 255 255 / .55), transparent 70%);
+}
+
+.dark .axiom-workspace.bg-background::before {
+  background:
+    radial-gradient(38% 34% at 22% 28%, rgb(185 245 216 / .20), transparent 70%),
+    radial-gradient(34% 30% at 82% 18%, rgb(29 30 24 / .60), transparent 72%),
+    radial-gradient(40% 36% at 70% 82%, rgb(185 245 216 / .08), transparent 72%),
+    radial-gradient(30% 28% at 12% 86%, rgb(185 245 216 / .10), transparent 70%);
+}
+
+.axiom-workspace.bg-background::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(circle, rgb(20 21 16 / .13) 1.1px, transparent 1.5px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 62% 40%, #000 15%, transparent 78%);
+  mask-image: radial-gradient(ellipse 85% 75% at 62% 40%, #000 15%, transparent 78%);
+}
+
+.dark .axiom-workspace.bg-background::after { background-image: radial-gradient(circle, rgb(234 251 245 / .10) 1.1px, transparent 1.5px); }
+
+@media (prefers-reduced-motion: reduce) { .axiom-workspace.bg-background::before, .axiom-workspace.bg-background::after { animation: none; } }
+
+/* Raised cards use the dual shadow; nested blocks are pressed in. */
+
+html .axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { background: var(--nb-fill); }
+
+html.dark .axiom-workspace [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { background: var(--nb-fill); }
+
+html .axiom-workspace div[class*="bg-muted"][class*="rounded-"]:not([class*="animate-pulse"]):not([class*="bg-muted-foreground"]):not(.axiom-skeleton) { background: hsl(var(--muted) / .45); box-shadow: none; }
+
+html .axiom-workspace [class~="bg-card"] [class~="bg-card"][class*="rounded-"]:not([class*="bg-card/"]) { background: hsl(var(--muted) / .45); box-shadow: none; }
+
+html .axiom-workspace .axiom-userchip { background: var(--nb-fill); box-shadow: var(--nb-elev-1); }
+
+.axiom-workspace .neo-card { background: var(--nb-fill); border: 1px solid var(--nb-line); box-shadow: var(--float-shadow); }
+
+.dark .axiom-workspace .neo-card { background: var(--nb-fill); }
+
+.axiom-workspace .neo-card:hover { box-shadow: var(--float-shadow-hover); }
+
+.axiom-workspace .neo-tile { box-shadow: var(--nb-elev-1); }
+
+.axiom-workspace .neo-tile:hover, .axiom-workspace .neo-tile:focus-visible { box-shadow: var(--nb-elev-2); }
+
+.axiom-workspace .neo-tile[aria-current="page"] { box-shadow: var(--nb-elev-1), inset 0 0 0 1px hsl(var(--primary) / .45); }
+
+.axiom-workspace tbody tr:nth-child(even) { background: transparent; box-shadow: inset 0 0 0 999px hsl(var(--muted) / .35); }
+
+html .axiom-workspace [class*="bg-card/"][class*="rounded-"] { background: hsl(var(--muted) / .45); box-shadow: none; }
+
+html .axiom-workspace input:not([type="checkbox"]):not([type="radio"]), html .axiom-workspace select, html .axiom-workspace textarea { background: var(--nb-fill); box-shadow: none; }
+
+html .axiom-workspace :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus { box-shadow: var(--nm-inset), var(--nb-elev-1); transform: none; }
+
+/* Dashboard overview "between rounds" panel gets the same treatment */
+
+.axiom-workspace aside[aria-label="Quick links"],
+.axiom-workspace .axiom-rounds-banner { background: var(--axiom-green-primary); color: #141510; box-shadow: var(--float-shadow); }
+
+/* Inputs: hairline border, focus ring on focus. */
+
+html .axiom-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), html .axiom-workspace select, html .axiom-workspace textarea { border: 1px solid var(--nb-line-strong); border-radius: .7rem; }
+
+html .axiom-workspace :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus { box-shadow: var(--nm-inset), 0 0 0 3px hsl(var(--primary) / .75); }
+
+html .axiom-workspace .axiom-rounds-banner { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+
+html .axiom-workspace .axiom-rounds-banner .axiom-sculpture { height: 9rem; margin-right: 1.5rem; }
+@media (max-width: 479px) {
+  html .axiom-workspace .axiom-rounds-banner .axiom-sculpture { height: 7rem; margin-right: .75rem; }
+}
+
+.axiom-workspace .neo-progress-text { color: hsl(var(--foreground)); }

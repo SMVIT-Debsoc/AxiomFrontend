@@ -1,6 +1,7 @@
 import {MotionConfig} from "framer-motion";
 import {Outlet} from "react-router-dom";
 import {ToastProvider} from "./ui/Toast";
+import "../workspace.css";
 
 export default function WorkspaceProviders() {
     return (
