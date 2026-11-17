@@ -1,39 +1,29 @@
 import {useBallotSave} from "../../hooks/useBallotSave";
 import BallotRecovery from "./BallotRecovery";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, Save, X, Trophy, ArrowRight, XCircle } from "lucide-react";
 import { UserAvatar } from "../ui/UserAvatar";
 import { resolveWinnerId } from "../../lib/scoring";
 
 export default function InlineResultSheet({ debate, debates = [], onSaved, onClose }) {
+    if (!debate) return null;
+    return <BallotSheet key={debate.id} debate={debate} debates={debates} onSaved={onSaved} onClose={onClose} />;
+}
+
+function BallotSheet({ debate, debates, onSaved, onClose }) {
     const [score1, setScore1] = useState(debate?.debater1Score?.toString() || "");
     const [score2, setScore2] = useState(debate?.debater2Score?.toString() || "");
-    const [winnerId, setWinnerId] = useState(debate?.winnerId || "");
+    const [winnerId, setWinnerId] = useState(() => resolveWinnerId(
+        debate.debater1Score?.toString() || "",
+        debate.debater2Score?.toString() || "",
+        debate.winnerId || "",
+        debate.debater1Id,
+        debate.debater2Id
+    ));
     const {save, verify, busy, recovery, saveError, clearSaveError} = useBallotSave(onSaved);
     const submitting = busy === "save";
     const locked = Boolean(busy) || recovery?.kind === "unconfirmed";
     const [error, setError] = useState(null);
-
-    useEffect(() => {
-        if (!debate) return;
-        const initialS1 = debate.debater1Score?.toString() || "";
-        const initialS2 = debate.debater2Score?.toString() || "";
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setScore1(initialS1);
-        setScore2(initialS2);
-        setWinnerId(
-            resolveWinnerId(
-                initialS1,
-                initialS2,
-                debate.winnerId || "",
-                debate.debater1Id,
-                debate.debater2Id
-            )
-        );
-        setError(null);
-    }, [debate]);
-
-    if (!debate) return null;
 
     const s1Num = parseFloat(score1);
     const s2Num = parseFloat(score2);
