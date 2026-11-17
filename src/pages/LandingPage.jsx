@@ -87,14 +87,14 @@ export default function LandingPage() {
                 </div>
 
                 {/* Panel: on phones this holds headline + CTA; on desktop it is the sculpture + facts */}
-                <div className="relative order-1 flex min-h-[560px] flex-col justify-between overflow-hidden rounded-[28px] bg-[#1D1E18] p-5 text-[#EAFBF5] md:order-2 md:min-h-[520px] md:justify-end md:p-0">
+                <div className="relative order-1 flex min-h-[520px] sm:min-h-[560px] flex-col justify-between overflow-hidden rounded-[24px] sm:rounded-[28px] bg-[#1D1E18] p-4 sm:p-5 text-[#EAFBF5] md:order-2 md:min-h-[520px] md:justify-end md:p-0">
                     <div aria-hidden="true" className="absolute inset-0 opacity-50 md:opacity-[0.55]" style={{backgroundImage: "linear-gradient(#4A5646 1px, transparent 1px), linear-gradient(90deg, #4A5646 1px, transparent 1px)", backgroundSize: "40px 40px"}} />
-                    <Sculpture figure="shiva-music" eager className="!absolute -right-10 top-2.5 !h-[420px] !w-auto opacity-55 mix-blend-luminosity md:right-[6%] md:top-auto md:bottom-0 md:!h-full md:max-w-[70%] md:opacity-90 md:object-bottom" />
+                    <Sculpture figure="shiva-music" eager className="!absolute -right-10 top-2.5 !h-[380px] sm:!h-[420px] !w-auto opacity-55 mix-blend-luminosity md:right-[6%] md:top-auto md:bottom-0 md:!h-full md:max-w-[70%] md:opacity-90 md:object-bottom" />
 
                     <div className="relative flex flex-col gap-3.5 md:hidden">
                         <p className="inline-flex items-center gap-2 self-start rounded-full bg-[#B9F5D8] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-[#141510]"><span aria-hidden="true" className="h-[7px] w-[7px] rounded-full bg-[#1D1E18]" />Registrations open</p>
-                        <h1 className="font-display text-[72px] font-normal leading-[0.86] text-[#EAFBF5]">Ancient<br />thought.<br /><span className="text-[#B9F5D8]">New<br />arguments.</span></h1>
-                        <p className="m-0 max-w-[250px] text-base leading-normal text-[#BDD9CA]">{E.organiser}'s collegiate debate tournament at {E.venue}. Register with Google.</p>
+                        <h1 className="font-display text-[clamp(3.25rem,14vw,4.5rem)] font-normal leading-[0.86] text-[#EAFBF5]">Ancient<br />thought.<br /><span className="text-[#B9F5D8]">New<br />arguments.</span></h1>
+                        <p className="m-0 max-w-[240px] sm:max-w-[260px] text-[15px] sm:text-base leading-normal text-[#BDD9CA]">{E.organiser}'s collegiate debate tournament at {E.venue}. Register with Google.</p>
                     </div>
 
                     <div className="relative mt-6 flex flex-col gap-2.5 md:hidden">
@@ -110,7 +110,7 @@ export default function LandingPage() {
             <section id="how" aria-labelledby="how-title" className="mx-auto max-w-[1280px] px-4 py-8 md:px-6 md:py-14">
                 <p className="mb-3.5 text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground md:hidden">How it works</p>
                 <div className="mb-5 flex flex-wrap items-end justify-between gap-4 md:mb-8">
-                    <h2 id="how-title" className="font-display text-[52px] font-normal leading-[0.9] text-primary md:text-[clamp(48px,6vw,80px)]">Three steps.<br />About sixty seconds.</h2>
+                    <h2 id="how-title" className="font-display text-[clamp(2.6rem,11vw,3.25rem)] font-normal leading-[0.9] text-primary md:text-[clamp(48px,6vw,80px)]">Three steps.<br />About sixty seconds.</h2>
                     <p className="hidden max-w-[380px] text-base leading-relaxed text-muted-foreground md:block">No passwords to make, no long forms. Google fills in your name and email for you.</p>
                 </div>
                 <ol className="m-0 grid list-none gap-2.5 p-0 md:grid-cols-3 md:gap-4">
@@ -136,7 +136,7 @@ export default function LandingPage() {
 
             {/* SCROLL 3: FAQ + CTA */}
             <section id="faq" aria-labelledby="faq-title" className="mx-auto grid max-w-[1280px] gap-4 px-4 pb-6 pt-2 md:grid-cols-2 md:gap-10 md:px-6 md:pb-14 md:pt-6">
-                <h2 id="faq-title" className="font-display text-[44px] font-normal leading-[0.95] text-primary md:text-[clamp(44px,5vw,64px)]">Quick answers</h2>
+                <h2 id="faq-title" className="font-display text-[clamp(2.35rem,10vw,2.75rem)] font-normal leading-[0.95] text-primary md:text-[clamp(44px,5vw,64px)]">Quick answers</h2>
                 <dl className="m-0 flex flex-col">
                     {FAQ.map((f, i) => (
                         <div key={f.q} className={`border-t border-border py-3.5 md:py-[18px] ${i === FAQ.length - 1 ? "border-b" : ""}`}>
@@ -152,7 +152,7 @@ export default function LandingPage() {
                     <Sculpture figure="vishnu" sizes="(min-width: 768px) 145px, 92px" className="!absolute -right-5 -top-2.5 !h-[260px] !w-auto opacity-20 mix-blend-luminosity md:right-[26%] md:top-auto md:bottom-0 md:!h-full md:opacity-[0.18]" />
                     <div className="relative flex flex-col gap-2 md:gap-3">
                         <p className="m-0 text-xs font-bold uppercase tracking-[0.08em] text-[#9FE3C2] md:text-[13px]">The floor is yours</p>
-                        <h2 id="cta-title" className="font-display text-[64px] font-normal leading-[0.88] text-[#EAFBF5] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>
+                        <h2 id="cta-title" className="font-display text-[clamp(3.25rem,13vw,4rem)] font-normal leading-[0.88] text-[#EAFBF5] md:text-[clamp(64px,9vw,120px)]">Make your<br className="md:hidden" /> case.</h2>
                     </div>
                     <div className="relative flex w-full md:w-auto"><GoogleAuthButton variant="onDark" /></div>
                 </div>
@@ -183,7 +183,7 @@ export default function LandingPage() {
             {/* Sticky Google bar, phones only, once the hero button has scrolled away */}
             <div
                 aria-hidden={!showBar}
-                className={`fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pb-6 pt-3 shadow-[0_-10px_24px_rgba(30,59,47,.16)] transition-transform duration-200 md:hidden ${showBar ? "translate-y-0" : "translate-y-full"}`}
+                className={`fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_24px_rgba(30,59,47,.16)] transition-transform duration-200 md:hidden ${showBar ? "translate-y-0" : "translate-y-full"}`}
             >
                 <div className={showBar ? "flex" : "pointer-events-none invisible"}>
                     <GoogleAuthButton variant="bar" label="Continue with Google" />

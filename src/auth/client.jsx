@@ -240,28 +240,28 @@ const GOOGLE_VARIANTS = {
   // Large hero button on the dark-green panel, moss ring
   hero: {
     wrap: "w-full",
-    button: "flex h-[68px] w-full items-center justify-center gap-3.5 rounded-[18px] bg-[#EAFBF5] px-5 text-[19px] font-extrabold text-[#1D1E18] shadow-[0_0_0_5px_#B9F5D8,0_16px_30px_rgba(0,0,0,.33)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2] disabled:opacity-70 md:h-[72px] md:text-[21px]",
-    icon: "h-[42px] w-[42px] border border-[#B8D5C5]",
-    svg: 26,
+    button: "flex min-h-[60px] sm:h-[68px] w-full items-center justify-center gap-2.5 sm:gap-3.5 rounded-[18px] bg-[#EAFBF5] px-4 sm:px-5 text-[16px] sm:text-[19px] font-extrabold text-[#1D1E18] shadow-[0_0_0_5px_#B9F5D8,0_16px_30px_rgba(0,0,0,.33)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2] disabled:opacity-70 md:h-[72px] md:text-[21px]",
+    icon: "h-9 w-9 sm:h-[42px] sm:w-[42px] border border-[#B8D5C5]",
+    svg: 24,
   },
   // Compact pill in the header
   header: {
     wrap: "",
-    button: "inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-[#1D1E18] py-0 pl-1.5 pr-4 text-sm font-bold text-[#EAFBF5] transition hover:shadow-[0_0_0_3px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B9F5D8] disabled:opacity-70",
+    button: "inline-flex min-h-[44px] items-center gap-2 sm:gap-2.5 rounded-full bg-[#1D1E18] py-0 pl-1.5 pr-3.5 sm:pr-4 text-sm font-bold text-[#EAFBF5] transition hover:shadow-[0_0_0_3px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B9F5D8] disabled:opacity-70",
     icon: "h-8 w-8",
     svg: 18,
   },
   // Sticky bottom bar on phones
   bar: {
     wrap: "w-full",
-    button: "flex h-[60px] w-full items-center justify-center gap-3 rounded-2xl bg-[#1D1E18] text-lg font-extrabold text-[#EAFBF5] shadow-[0_0_0_4px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2] disabled:opacity-70",
-    icon: "h-[38px] w-[38px]",
+    button: "flex min-h-[56px] sm:h-[60px] w-full items-center justify-center gap-2.5 sm:gap-3 rounded-2xl bg-[#1D1E18] px-4 text-base sm:text-lg font-extrabold text-[#EAFBF5] shadow-[0_0_0_4px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2] disabled:opacity-70",
+    icon: "h-9 w-9 sm:h-[38px] sm:w-[38px]",
     svg: 22,
   },
   // On a dark jungle panel
   onDark: {
-    wrap: "",
-    button: "inline-flex min-h-[60px] items-center gap-3.5 rounded-[14px] bg-[#EAFBF5] px-6 text-lg font-bold text-[#1D1E18] transition hover:bg-white hover:shadow-[0_0_0_3px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B9F5D8] disabled:opacity-70",
+    wrap: "w-full md:w-auto",
+    button: "flex w-full md:w-auto min-h-[56px] sm:min-h-[60px] items-center justify-center gap-3 sm:gap-3.5 rounded-[14px] bg-[#EAFBF5] px-5 sm:px-6 text-base sm:text-lg font-bold text-[#1D1E18] transition hover:bg-white hover:shadow-[0_0_0_3px_#B9F5D8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B9F5D8] disabled:opacity-70",
     icon: "h-9 w-9 border border-[#B8D5C5]",
     svg: 22,
   },

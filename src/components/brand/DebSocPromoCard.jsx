@@ -60,7 +60,7 @@ export default function DebSocPromoCard() {
                         href="https://www.smvitdebsoc.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#B9F5D8] px-5 py-3 text-sm md:text-base font-extrabold text-[#141510] transition hover:bg-[#EAFBF5] hover:shadow-[0_0_0_3px_#9FE3C2] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2]"
+                        className="inline-flex w-full sm:w-auto min-h-12 items-center justify-center gap-2 rounded-xl bg-[#B9F5D8] px-5 py-3 text-sm md:text-base font-extrabold text-[#141510] transition hover:bg-[#EAFBF5] hover:shadow-[0_0_0_3px_#9FE3C2] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#9FE3C2]"
                     >
                         <Globe size={18} aria-hidden="true" />
                         Explore smvitdebsoc.com
