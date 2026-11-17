@@ -33,10 +33,12 @@ export function nextStep({step, present, total, debates, withRoom, noJudge, pend
         cta: "Enter next ballot", run: actions.nextBallot,
     };
     return {
-        title: resultsPublished ? "Advance debaters" : "Publish results",
-        body: resultsPublished ? "Results are public. Set the cut line and advance best losers." : "All ballots are in. Make results public, then advance.",
-        cta: resultsPublished ? "Open Advance" : "Publish results",
-        run: resultsPublished ? actions.advance : actions.publishResults,
-        working: busy === "results",
+        title: resultsPublished ? "Round completed · results live" : "Select promotions & publish",
+        body: resultsPublished
+            ? "Advancing roster and results are published. Edit promotions or revoke anytime."
+            : "All ballots are in. Choose who gets promoted, review the result, then publish. Nobody is eliminated until you publish.",
+        cta: resultsPublished ? "Manage Advance" : "Review & Advance",
+        run: actions.advance,
+        working: busy === "promoting" || busy === "results",
     };
 }

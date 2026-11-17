@@ -394,11 +394,19 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
     const presentIds = useMemo(() => new Set(checkIns.filter((c) => c.status === "PRESENT").map((c) => c.userId)), [checkIns]);
     const eliminatedSet = useMemo(() => {
         const set = new Set(eliminatedIds);
-        for (const p of performers) {
-            if (p.won === false && !p.isPromoted) set.add(p.userId);
+        // Never eliminate debaters in the current round until Advance & Results are published.
+        if (resultsPublished) {
+            const hasExplicit = performers.some((p) => p.won === true && p.isPromoted);
+            for (const p of performers) {
+                if (hasExplicit) {
+                    if (!p.isPromoted) set.add(p.userId);
+                } else if (p.won === false && !p.isPromoted) {
+                    set.add(p.userId);
+                }
+            }
         }
         return set;
-    }, [eliminatedIds, performers]);
+    }, [eliminatedIds, performers, resultsPublished]);
 
     const promotionsAt = useRef(0);
     const applyPromotedIds = (promotedIds, updatedAt) => {
@@ -732,12 +740,20 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
             const token = await getToken();
             return AdminApi.publishResults(roundId, nextVal, token);
         }, {
-            confirm: nextVal ? undefined : "Revoke published results? Debaters will no longer see this round's results or elimination status.",
-            success: nextVal ? "Results are now public." : "Results revoked and hidden from debaters.",
-            onSuccess: () => {
+            confirm: nextVal ? undefined : "Revoke published results? The round will reopen as ONGOING and debaters will no longer see results or elimination status.",
+            success: nextVal ? "Results published and round marked COMPLETED." : "Results revoked and round reopened as ONGOING.",
+            onSuccess: (r) => {
+                const nextStatus = r?.round?.status || (nextVal ? "COMPLETED" : round?.status === "COMPLETED" ? "ONGOING" : undefined);
                 patchLog.mark("round", "resultsPublished");
                 setResultsPublished(nextVal);
-                patchRound(["resultsPublished"], (prev) => ({...prev, resultsPublished: nextVal}));
+                patchRound(nextStatus ? ["resultsPublished", "status"] : ["resultsPublished"], (prev) => ({
+                    ...prev,
+                    resultsPublished: nextVal,
+                    ...(nextStatus ? {status: nextStatus} : {}),
+                }));
+                if (nextStatus) {
+                    setRounds((prev) => prev.map((item) => (item.id === roundId ? {...item, status: nextStatus, resultsPublished: nextVal} : item)));
+                }
             },
             onConflict: softRefetch,
         });

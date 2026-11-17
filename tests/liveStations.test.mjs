@@ -5,6 +5,7 @@ import {
   debateState, roundCounters, sortDebates, findDebateByRoom, missingBallots, normalizeBallotLinks,
   absoluteUrl, commandContext, pipelineStep, ballotAgeMinutes, debateMatches,
 } from '../src/lib/liveStations.js';
+import {nextStep} from '../src/lib/roundNextStep.js';
 
 const NOW = Date.parse('2026-11-17T10:00:00Z');
 const MIN = 60000;
@@ -114,4 +115,15 @@ test('command context and pipeline step', () => {
   assert.equal(pipelineStep({debates: [{roomId: 1, room: {}}], round: {pairingsPublished: true}}), 4);
   assert.equal(pipelineStep({debates: [{roomId: 1, room: {}, status: 'COMPLETED'}], round: {pairingsPublished: true}}), 5);
   assert.equal(debateMatches({debater1: {firstName: 'Riya'}, room: {name: 'X'}}, 'riy'), true);
+
+  // Pipeline enforces: Enter scores -> Who gets promoted -> Review Result -> Publish (never blind publish before Advance)
+  let called = null;
+  const step5Draft = nextStep({
+    step: 5, present: 4, total: 4, debates: 2, withRoom: 2, noJudge: 0, pending: 0,
+    resultsPublished: false, isRound1: true, busy: '',
+    actions: {advance: () => { called = 'advance'; }, publishResults: () => { called = 'publish'; }},
+  });
+  step5Draft.run();
+  assert.equal(called, 'advance');
+  assert.match(step5Draft.body, /Nobody is eliminated until you publish/i);
 });
