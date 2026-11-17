@@ -1459,9 +1459,16 @@ function DashboardContent() {
               );
             })
           ) : (
-            <div className="p-8 text-center text-xs text-muted-foreground bg-card border border-border rounded-xl">
-              No rounds created yet for this tournament.
-            </div>
+            <>
+              <div data-tour-slot="rounds" className="empty:hidden" />
+              <div data-tour-slot="check-in" className="empty:hidden" />
+              <div data-tour-slot="side" className="empty:hidden" />
+              <div data-tour-slot="room" className="empty:hidden" />
+              <div data-tour-slot="motion" className="empty:hidden" />
+              <div className="p-8 text-center text-xs text-muted-foreground bg-card border border-border rounded-xl">
+                No rounds created yet for this tournament.
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1497,12 +1504,15 @@ function DashboardContent() {
               />
             </>
           ) : (
-            <EmptyState
-              compact
-              icon={Trophy}
-              title="No active tournament"
-              description="Enrol in a tournament to track your debate outcomes and standings."
-            />
+            <>
+              <div data-tour-slot="results" className="empty:hidden" />
+              <EmptyState
+                compact
+                icon={Trophy}
+                title="No active tournament"
+                description="Enrol in a tournament to track your debate outcomes and standings."
+              />
+            </>
           )}
         </div>
       )}

@@ -288,6 +288,7 @@ function RoundPage({eventId, roundId}) {
   };
 
   const userPosition = getUserPosition();
+  const showAssignment = round?.pairingsPublished && myDebate && userPosition;
 
   if (loading) {
     return <RoundDetailsSkeleton />;
@@ -394,7 +395,7 @@ function RoundPage({eventId, roundId}) {
         )}
 
         {/* Motion Display */}
-        {round.motion && round.pairingsPublished && (
+        {round.motion && round.pairingsPublished ? (
           <Motion.div
             data-tour-anchor="motion"
             initial={{opacity: 0, y: 10}}
@@ -412,10 +413,10 @@ function RoundPage({eventId, roundId}) {
               {round.motion}
             </p>
           </Motion.div>
-        )}
+        ) : <div data-tour-slot="motion" className="empty:hidden" />}
 
         {/* Check-in Section (Hidden when eliminated) */}
-        {!isEliminated && round.checkInStartTime && round.checkInEndTime && (
+        {!isEliminated && round.checkInStartTime && round.checkInEndTime ? (
           <Motion.div
             data-tour-anchor="check-in"
             data-tour-state={isCheckedIn ? "present" : windowUpcoming ? "upcoming" : !windowOpen ? "closed"
@@ -519,6 +520,8 @@ function RoundPage({eventId, roundId}) {
               </div>
             )}
           </Motion.div>
+        ) : (
+          <div data-tour-slot="check-in" data-tour-unavailable={isEliminated ? "eliminated-example" : "example"} className="empty:hidden" />
         )}
 
         {/* Waiting for Draws */}
@@ -542,7 +545,7 @@ function RoundPage({eventId, roundId}) {
         )}
 
         {/* Pairing / Debate Details */}
-        {round.pairingsPublished && myDebate && userPosition && (
+        {showAssignment ? (
           <Motion.div
             initial={{opacity: 0, y: 10}}
             animate={{opacity: 1, y: 0}}
@@ -690,14 +693,20 @@ function RoundPage({eventId, roundId}) {
                   </div>
                 )}
                 </div>
+                {!myDebate.room && !myDebate.startTime && !myDebate.endTime && <div data-tour-slot="room" className="empty:hidden" />}
               </div>
             </div>
           </Motion.div>
+        ) : (
+          <>
+            <div data-tour-slot="side" data-tour-unavailable={round.pairingsPublished && !myDebate && !isEliminated ? "unassigned" : "example"} className="empty:hidden" />
+            <div data-tour-slot="room" className="empty:hidden" />
+          </>
         )}
 
         {/* No Debate Found (only when not already showing GameOverCard or clarify cleanly) */}
         {round.pairingsPublished && !debatesLoading && !sectionFailed.debates && !myDebate && !isEliminated && (
-          <div data-tour-anchor="side" data-tour-state="unassigned" className="bg-card border border-border rounded-xl p-6 text-center">
+          <div className="bg-card border border-border rounded-xl p-6 text-center">
             <XCircle
               className="w-10 h-10 mx-auto mb-2 text-muted-foreground opacity-50"
               aria-hidden="true"

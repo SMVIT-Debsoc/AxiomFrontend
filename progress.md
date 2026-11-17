@@ -311,3 +311,11 @@ Backend (`/home/rosso/Projects/Axiom26`):
 - Files changed: `SiteTour.jsx`, `siteTour.css`, shared dashboard route preloading in `dashboardRoutes.js` and `App.jsx`, `tests/browser-audit.mjs`, and this log.
 - Checks: 63 unit and API contract tests, 66 Chromium fixtures, lint, and production build passed. Chromium verified the full phone and desktop tour and an intentionally delayed round request. Focused checks confirmed both default and reduced motion.
 - Remaining: production performance and physical-device testing. Next, replay the tour on staging over a phone connection and check the transitions during a cold page load.
+
+## Inline examples for unavailable Site Tour controls (2026-11-17)
+
+- Fixed the misleading round-title highlight when check-in is unavailable. The guide now points to a labeled, non-interactive sample card in the check-in card’s usual position. For an eliminated debater the tour explains why check-in is unavailable for that round.
+- Missing side, room and time, and motion have examples in their own sections. Empty event, round and results views get examples in their list or results area. A published or live control takes priority whenever present. Example cards exist only during the relevant tour step.
+- Files changed: `SiteTour.jsx`, `TourExample.jsx`, `visualGuide.js`, `DashboardEvents.jsx`, `DashboardHome.jsx`, `RoundDetails.jsx`, `tests/browser-audit.mjs`, and this log.
+- Verification: 63 unit and API contract tests, 67 Chromium scenarios, lint, and production build passed. The eliminated-debater scenario checked arrow placement, the sample label, absence of a check-in action inside the sample, and cleanup on exit.
+- Remaining: live deployment and physical-device checks. Next, verify the example placement on staging with a completed round and a debater who has been eliminated.

@@ -877,7 +877,8 @@ try {
     for (let step = 0; step < 3; step++) await next.click();
     await visible(dialog, 'When the organizers add rounds, they’ll appear here with their check-in times.');
     await next.click();
-    await visible(dialog, 'Once a round appears here, tap Open Round and look for Check-in Window. Its opening and closing times tell you when you can check in.');
+    await visible(dialog, 'This example shows where check-in normally appears. Use the opening and closing times on your real card to know when you can check in.');
+    await page.getByRole('region', {name: 'Site Tour example: Check-in Window'}).waitFor();
     await next.click();
     await visible(dialog, 'After organizers publish who debates whom, open the round and look for Your Position and Your Opponent.');
     await dialog.getByRole('button', {name: 'Back', exact: true}).click();
@@ -896,12 +897,42 @@ try {
     const tour = page.getByRole('dialog');
     const next = tour.getByRole('button', {name: 'Next', exact: true});
     await visible(tour, 'After organizers publish who debates whom, open the round and look for Your Position and Your Opponent.');
+    await page.getByRole('region', {name: 'Site Tour example: Your Position'}).waitFor();
     await next.click();
     await visible(tour, 'After organizers assign your room and time, open the round and look for Room and Time Slot.');
+    await page.getByRole('region', {name: 'Site Tour example: Room and Time Slot'}).waitFor();
     await next.click();
     await visible(tour, 'Once organizers release the topic, open the round and look for Motion near the top.');
+    await page.getByRole('region', {name: 'Site Tour example: Motion'}).waitFor();
     assert.equal(await page.getByText('Audit Hall', {exact: true}).count(), 0);
     assert.equal(await page.getByText(state.round.motion, {exact: true}).count(), 0);
+  });
+
+  await run('site tour points to an inline check-in example for an eliminated debater', {signedIn: true, enrolled: true}, async (page, state) => {
+    state.round.status = 'COMPLETED';
+    await page.setViewportSize({width: 390, height: 740});
+    await page.route('**/api/check-in/round/r1/me', route => route.fulfill({json: {success: true, isEliminated: true}}));
+    await page.addInitScript(() => localStorage.setItem('axiom.site-tour.v1.u1', 'check-in'));
+    await page.goto(origin + '/dashboard/events/e1/rounds/r1');
+    const slot = page.locator('[data-tour-slot="check-in"]');
+    await slot.waitFor({state: 'attached'});
+    assert.equal(await page.locator('[data-tour-example]').count(), 0);
+    await page.getByRole('button', {name: 'Site Tour', exact: true}).click();
+    await page.getByRole('button', {name: 'Resume tour'}).click();
+    const example = slot.getByRole('region', {name: 'Site Tour example: Check-in Window'});
+    await visible(example, 'Site Tour example · Sample only');
+    await visible(example, 'Check In Now');
+    assert.equal(await example.getByRole('button').count(), 0);
+    await visible(page.getByRole('dialog'), 'Check-in isn’t available for this round because your tournament run has ended. This example shows where the window and Check In Now appear when you’re eligible.');
+    await page.waitForFunction(() => {
+      const sample = document.querySelector('[data-tour-slot="check-in"] > [data-tour-example]')?.getBoundingClientRect();
+      const spotlight = document.querySelector('[data-testid="tour-highlight"][data-visible="true"]')?.getBoundingClientRect();
+      const arrow = document.querySelector('.site-tour-arrow')?.getBoundingClientRect();
+      return sample && spotlight && arrow && Math.abs(sample.top - spotlight.top) < 4 &&
+        Math.abs(sample.left - spotlight.left) < 4 && arrow.left >= sample.left && arrow.right <= sample.right;
+    });
+    await page.getByRole('button', {name: 'Exit tour'}).click();
+    assert.equal(await example.count(), 0);
   });
 
   await run('site tour respects reduced motion when scrolling to a round control', {signedIn: true}, async page => {

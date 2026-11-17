@@ -37,6 +37,8 @@ const checkInCopy = {
 };
 
 export function getStepCopy(step, state, targetAvailable) {
+  if (step.id === "check-in" && state === "eliminated-example") return "Check-in isn’t available for this round because your tournament run has ended. This example shows where the window and Check In Now appear when you’re eligible.";
+  if (step.id === "check-in" && state === "example") return "This example shows where check-in normally appears. Use the opening and closing times on your real card to know when you can check in.";
   if (step.id === "check-in" && Object.hasOwn(checkInCopy, state)) return checkInCopy[state];
   if (step.id === "enrollment" && state === "enrolled") return "Enrolled means you’ve joined this tournament. You’ll still need to check in for each round.";
   if (step.id === "side" && state === "gov") return "You’re Government (GOV) in this round. Your job is to argue for the topic. Your opponent is listed below.";

@@ -3,6 +3,7 @@ import {createPortal} from "react-dom";
 import {matchPath, useLocation, useNavigate} from "react-router-dom";
 import {preloadDashboardRoute} from "../../lib/dashboardRoutes";
 import {GUIDE_STEPS, getStepCopy, readTourProgress, writeTourProgress} from "../../lib/visualGuide";
+import TourExample from "./TourExample";
 import "./siteTour.css";
 
 const anchor = (id) => document.querySelector(`[data-tour-anchor="${id}"]`);
@@ -18,6 +19,7 @@ export default function SiteTour({userId, requested, launcher}) {
   const [handledRequest, setHandledRequest] = useState(0);
   const [index, setIndex] = useState(0);
   const [position, setPosition] = useState(null);
+  const [exampleHost, setExampleHost] = useState(null);
   const [ready, setReady] = useState(false);
   const [destination, setDestination] = useState("/dashboard");
   const eventPath = useRef(null);
@@ -40,6 +42,7 @@ export default function SiteTour({userId, requested, launcher}) {
     const currentRound = next.round && matchPath("/dashboard/events/:eventId/rounds/:roundId", pathname);
     const path = (next.id === "enrollment" && eventPath.current) || (currentRound && pathname) || next.path;
     setPosition((previous) => previous && {...previous, settled: false});
+    setExampleHost(null);
     setIndex(nextIndex);
     setDestination(path);
     setHandledRequest(requested);
@@ -124,12 +127,19 @@ export default function SiteTour({userId, requested, launcher}) {
         return;
       }
       const exact = onDestination
-        ? step.id === "events" ? tournamentLink(eventPath.current) || anchor("events")
+        ? step.id === "events" ? tournamentLink(eventPath.current)
           : step.round && pathname === step.path ? null : anchor(step.id)
         : null;
       const roundHeader = onDestination && step.round && anchor("round-header");
       if (!exact && roundHeader?.dataset?.tourLoading === "true" && Date.now() - started < 3500) return;
-      const target = exact || tab || roundHeader || (onDestination && step.id === "enrollment" ? anchor("events") : null);
+      const host = !exact && onDestination ? document.querySelector(`[data-tour-slot="${step.id}"]`) : null;
+      setExampleHost(host);
+      const example = host?.firstElementChild;
+      if (host && !example) {
+        setPosition((previous) => previous?.settled ? {...previous, settled: false} : previous);
+        return;
+      }
+      const target = exact || example;
       const scroller = document.querySelector("[data-tour-scroll]");
       if (scroller && target && target !== lastTarget) {
         const bounds = target.getBoundingClientRect();
@@ -166,7 +176,7 @@ export default function SiteTour({userId, requested, launcher}) {
         stepId: step.id,
         target: visible ? {top: Math.round(top), height: Math.round(end - top), left, width} : null,
         exact: Boolean(exact && exact.dataset.tourState !== "unassigned"),
-        state: exact?.dataset.tourState,
+        state: example ? host.dataset.tourUnavailable || "example" : exact?.dataset.tourState,
         top: Math.max(8, Math.round(panelTop)),
         left: Math.round(panelLeft),
         arrowX: Math.round(Math.max(20, Math.min(center - panelLeft, panelWidth - 20))),
@@ -204,6 +214,7 @@ export default function SiteTour({userId, requested, launcher}) {
   const target = placed && position.target;
   return createPortal(
     <>
+      {active && exampleHost?.dataset.tourSlot === step.id && createPortal(<TourExample stepId={step.id} />, exampleHost)}
       {active && position?.target && <div className="site-tour-highlight" style={position.target}
         data-visible={Boolean(target)} aria-hidden="true" data-testid="tour-highlight" />}
       <section

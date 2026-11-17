@@ -95,6 +95,8 @@ export default function DashboardEvents() {
         />
       )}
 
+      {events.length === 0 && <div data-tour-slot="events" className="empty:hidden" />}
+      {events.length === 0 && <div data-tour-slot="enrollment" className="empty:hidden" />}
       {events.length === 0 && !error ? (
         <EmptyState
           title="No events yet"
