@@ -173,8 +173,10 @@ export default function Director({live, nowMs, admins, eventId, panel, setPanel,
                 {panel === "ballot-links" && <BallotLinksPanel roundId={round.id} roundLabel={round.name || `Round ${round.roundNumber}`} onClose={closePanel} />}
                 {panel === "advance" && (
                     <AdvancePanel
-                        roundId={round.id} performers={live.performers} promotionsVersion={live.promotionsVersion} busy={busy}
-                        resultsPublished={resultsPublished} onApply={live.applyPromotionDelta} onPromoteWinners={live.promoteAllWinners} onClose={closePanel}
+                        key={round.id}
+                        roundId={round.id} performers={live.performers} people={people} promotionsVersion={live.promotionsVersion} busy={busy}
+                        resultsPublished={resultsPublished} onApply={live.applyPromotionDelta} onPromoteWinners={live.promoteAllWinners}
+                        onPublishResults={live.publishResults} onClose={closePanel}
                     />
                 )}
                 {allocateMode && (

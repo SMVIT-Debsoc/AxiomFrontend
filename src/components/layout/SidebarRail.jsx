@@ -3,14 +3,12 @@ import NeoIconButton from "../neo/NeoIconButton";
 import NeoIcon from "../icons/NeoIcons";
 
 /**
- * Floating icon dock used by the participant and admin workspaces: a back-to-landing tile on top, one tile per destination,
+ * Floating icon dock used by the participant workspace: one tile per destination,
  * optional footer. Items: {label, path, icon, active}. Hidden below md, where MobileTabs takes over.
  */
 export function SidebarRail({items, footer}) {
   return (
     <aside className="neo-rail" aria-label="Workspace">
-      <NeoIconButton to="/" icon="BackIcon" label="Back to landing page" />
-      <span className="neo-rail-divider" aria-hidden="true" />
       <nav className="neo-rail-nav" aria-label="Primary">
         {items.map((item) => (
           <NeoIconButton key={item.path} to={item.path} icon={item.icon} label={item.label} active={item.active} />

@@ -32,10 +32,19 @@ export function sortBySurname(list, pick = (item) => item) {
   });
 }
 
+/** Sort people by first name, then surname (case/accent-insensitive). Returns a new array. */
+export function sortByFirstName(list, pick = (item) => item) {
+  return [...(list || [])].sort((a, b) => {
+    const pa = splitName(pick(a));
+    const pb = splitName(pick(b));
+    return compare(pa.first || pa.last, pb.first || pb.last) || compare(pa.last, pb.last);
+  });
+}
+
 /**
  * One row per debater: debater1 is GOV, debater2 is OPP. A debate without a
  * second debater (swing slot / bye) still lists its debater, opponent "—".
- * Sorted by surname so debaters find themselves alphabetically.
+ * Sorted by first name so debaters find themselves naturally.
  */
 export function drawRows(debates) {
   const rows = [];
@@ -52,14 +61,14 @@ export function drawRows(debates) {
         key: `${debate.id}:${side}`,
         debateId: debate.id,
         person: self,
-        name: surnameFirst(self),
+        name: fullName(self),
         room,
         side,
         opponent: opponent ? fullName(opponent) : "—",
       });
     }
   }
-  return sortBySurname(rows, (row) => row.person);
+  return sortByFirstName(rows, (row) => row.person);
 }
 
 export function fullName(person) {

@@ -611,8 +611,18 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
             const token = await getToken();
             return AdminApi.updatePromotions(roundId, {add, remove}, token);
         }, {
-            success: `Advanced ${add.length}${remove.length ? `, removed ${remove.length}` : ""}`,
-            onSuccess: (r) => { if (Array.isArray(r?.promotedIds)) applyPromotedIds(r.promotedIds, r.updatedAt); },
+            success: add.length && remove.length
+                ? `Advanced ${add.length}, revoked ${remove.length}`
+                : add.length
+                    ? `Advanced ${add.length}`
+                    : `Revoked ${remove.length}`,
+            onSuccess: (r) => {
+                if (Array.isArray(r?.promotedIds)) applyPromotedIds(r.promotedIds, r.updatedAt);
+                setPromotionsVersion((v) => v + 1);
+                if (add.some((id) => !performers.some((p) => p.userId === id))) {
+                    refreshRound("performers");
+                }
+            },
             onError: () => patchPerformers(touched, (prev) => prev.map((p) => (
                 addSet.has(p.userId) && p.isPromoted ? {...p, isPromoted: false} : removeSet.has(p.userId) && !p.isPromoted ? {...p, isPromoted: true} : p
             ))),
@@ -698,31 +708,40 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
         }, {
             confirm: nextVal ? undefined : "Unpublish the draw? Debaters will stop seeing their rooms and opponents.",
             success: nextVal ? "The draw is now visible to debaters." : "The draw is now hidden from debaters.",
-            onSuccess: (r) => patchRound(["pairingsPublished"], (prev) => ({
-                ...prev,
-                pairingsPublished: nextVal,
-                ...(r?.round?.pairingsPublishedAt !== undefined ? {pairingsPublishedAt: r.round.pairingsPublishedAt} : {}),
-                ...(r?.round?.updatedAt ? {updatedAt: r.round.updatedAt} : {}),
-            })),
+            onSuccess: (r) => {
+                const nextStatus = r?.round?.status || (nextVal && round?.status === "UPCOMING" ? "ONGOING" : undefined);
+                patchRound(nextStatus ? ["pairingsPublished", "status"] : ["pairingsPublished"], (prev) => ({
+                    ...prev,
+                    pairingsPublished: nextVal,
+                    ...(nextStatus ? {status: nextStatus} : {}),
+                    ...(r?.round?.pairingsPublishedAt !== undefined ? {pairingsPublishedAt: r.round.pairingsPublishedAt} : {}),
+                    ...(r?.round?.updatedAt ? {updatedAt: r.round.updatedAt} : {}),
+                }));
+                if (nextStatus) {
+                    setRounds((prev) => prev.map((item) => (item.id === roundId ? {...item, status: nextStatus, pairingsPublished: nextVal} : item)));
+                }
+            },
             onConflict: softRefetch,
         });
         return Boolean(res);
     });
 
-    const publishResults = useStableHandler(async () => {
-        const nextVal = !resultsPublished;
-        await run("results", async () => {
+    const publishResults = useStableHandler(async (explicitPublished) => {
+        const nextVal = typeof explicitPublished === "boolean" ? explicitPublished : !resultsPublished;
+        const res = await run("results", async () => {
             const token = await getToken();
             return AdminApi.publishResults(roundId, nextVal, token);
         }, {
-            confirm: nextVal ? undefined : "Hide results? Debaters will no longer see this round's results.",
-            success: nextVal ? "Results are now public." : "Results are hidden again.",
+            confirm: nextVal ? undefined : "Revoke published results? Debaters will no longer see this round's results or elimination status.",
+            success: nextVal ? "Results are now public." : "Results revoked and hidden from debaters.",
             onSuccess: () => {
                 patchLog.mark("round", "resultsPublished");
                 setResultsPublished(nextVal);
+                patchRound(["resultsPublished"], (prev) => ({...prev, resultsPublished: nextVal}));
             },
             onConflict: softRefetch,
         });
+        return Boolean(res);
     });
 
     // Resolves true only when the motion was saved, so editors close on success only.

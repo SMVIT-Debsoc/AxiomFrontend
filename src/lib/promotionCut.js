@@ -54,14 +54,44 @@ export function normalizeProposal(res) {
       roomName: c.roomName || "",
       debateId: c.debateId || null,
       opponentScore: c.opponentScore ?? null,
+      cumulativeWins: c.cumulativeWins ?? null,
+      cumulativeScore: c.cumulativeScore ?? null,
+      cumulativeMargin: c.cumulativeMargin ?? null,
     };
   }).filter((c) => c.userId);
+  const winnerRows = Array.isArray(p.winners)
+    ? p.winners.map((w) => {
+        const user = w.user || w;
+        return {
+          userId: w.userId || user.id,
+          name: w.name || fullName(user),
+          college: w.college || user.college || "",
+          score: w.score ?? w.totalScore ?? null,
+          margin: w.margin ?? null,
+          isPromoted: Boolean(w.isPromoted ?? w.promoted),
+          roomName: w.roomName || "",
+          debateId: w.debateId || null,
+          opponentScore: w.opponentScore ?? null,
+          cumulativeWins: w.cumulativeWins ?? null,
+          cumulativeScore: w.cumulativeScore ?? null,
+        };
+      }).filter((w) => w.userId)
+    : [];
+  const otherPromoted = Array.isArray(p.otherPromoted)
+    ? p.otherPromoted.map((o) => ({
+        userId: o.userId || o.id,
+        name: o.name || fullName(o),
+        college: o.college || "",
+      })).filter((o) => o.userId)
+    : [];
   const winners = Array.isArray(p.winners) ? p.winners.length : Number(p.winnersCount ?? p.winners ?? 0) || 0;
   const targetSize = Number(p.targetSize ?? p.target ?? 0) || null;
   // Backend: cutIndex (= needed) is the number of candidates above the line; clamped below.
   const suggested = p.cutIndex ?? p.needed ?? p.suggestedCount ?? p.cut ?? p.promoteCount ?? p.slots;
   return {
     candidates,
+    winnerRows,
+    otherPromoted,
     winners,
     targetSize,
     autoTargetSize: Number(p.autoTargetSize ?? 0) || null,
@@ -70,6 +100,7 @@ export function normalizeProposal(res) {
     targetMode: p.targetMode || (p.autoTarget || p.advanceTarget === null ? "auto" : p.advanceTarget != null ? "fixed" : null),
     suggestedCut: Number.isFinite(Number(suggested)) ? clampCut(suggested, candidates.length) : null,
     promotedIds: Array.isArray(p.promotedIds) ? p.promotedIds : candidates.filter((c) => c.isPromoted).map((c) => c.userId),
+    hasExplicitPromotions: Boolean(p.hasExplicitPromotions),
   };
 }
 

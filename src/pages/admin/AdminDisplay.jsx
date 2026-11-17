@@ -14,7 +14,7 @@ import {cn} from "../../lib/utils";
 
 // /admin/display — the projector in the main hall. Read-only, no admin chrome,
 // readable from 15 m: black background, white Bebas Neue, colour only for state.
-// Modes: 1 Check-in (rotating venue QR) · 2 Draw (auto-paginating, by surname) · 3 Motion.
+// Modes: 1 Check-in (rotating venue QR) · 2 Draw (auto-paginating, by first name) · 3 Motion.
 // Keys: 1/2/3 switch mode, F fullscreen, R reveal motion, ←/→ page the draw.
 
 const MODES = [

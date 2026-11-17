@@ -123,8 +123,17 @@ const ExitIcon = () => (
   </g>
 );
 
+const HomeIcon = () => (
+  <g>
+    <path d="M12 34L34 14L56 34" stroke="currentColor" strokeWidth="8" strokeLinejoin="miter" fill="none" />
+    <path d="M18 30V54H50V30L34 16L18 30Z" fill="currentColor" />
+    <rect x="29" y="38" width="10" height="16" fill="var(--neo-cut, #D4EDE1)" />
+  </g>
+);
+
 const NEO_GLYPHS = {
   BackIcon,
+  HomeIcon,
   LayoutIcon,
   EventsIcon,
   PortraitIcon,

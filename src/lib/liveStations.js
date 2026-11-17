@@ -25,6 +25,16 @@ export function defaultStation(viewportWidth) {
 
 export const fullName = (u) => `${u?.firstName || ""} ${u?.lastName || ""}`.trim() || u?.name || u?.email || "Unknown";
 
+/** First name for compact tiles; falls back to the first token of fullName. */
+export function firstName(u) {
+  if (!u) return "TBD";
+  const first = String(u.firstName || "").trim();
+  if (first) return first;
+  const full = fullName(u);
+  const parts = full.split(/\s+/);
+  return parts[0] || full;
+}
+
 /** Surname for compact tiles; falls back to the only name we have. */
 export function surname(u) {
   if (!u) return "TBD";
