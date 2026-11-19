@@ -1,3 +1,6 @@
+import { startOpsBeacon } from "./utils/opsBeacon";
+startOpsBeacon();
+
 import {StrictMode} from "react";
 import {createRoot} from "react-dom/client";
 import {ThemeProvider} from "./contexts/ThemeContext";

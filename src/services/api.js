@@ -1,4 +1,6 @@
 
+import { opsClientMetrics } from "../utils/opsBeacon";
+
 const isBrowser = typeof window !== "undefined";
 const isLocalhost =
     isBrowser && ["localhost", "127.0.0.1"].includes(window.location.hostname);
@@ -227,7 +229,10 @@ export async function apiRequest(
         const cached = apiCache.get(cacheKey);
         if (cached) {
             const age = Date.now() - cached.timestamp;
-            if (age < CACHE_TTL_MS) return JSON.parse(JSON.stringify(cached.data));
+            if (age < CACHE_TTL_MS) {
+                opsClientMetrics.cacheHits++;
+                return JSON.parse(JSON.stringify(cached.data));
+            }
             if (sessionScope && options.onNavigationPreview && age < RETURN_CACHE_TTL_MS) {
                 options.onNavigationPreview();
                 return navigationPreview(JSON.parse(JSON.stringify(cached.data)));
@@ -259,6 +264,9 @@ export async function apiRequest(
 }
 
 async function executeRequest(endpoint, method, config, {isGet, cacheKey, initialAuthorization, headers, retryAuthFailure}) {
+    if (isBrowser && isGet) {
+        opsClientMetrics.cacheMisses++;
+    }
     const cacheRead = isBrowser && isGet ? {key: cacheKey, invalidated: false} : null;
     if (cacheRead) pendingCacheReads.add(cacheRead);
     try {
