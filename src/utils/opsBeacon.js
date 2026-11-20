@@ -5,11 +5,15 @@ const sessionId =
   (typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID()) ||
   `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-export const opsClientMetrics = {
+export const opsClientMetrics = (typeof window !== "undefined" && window.__opsClientMetrics) || {
   cacheHits: 0,
   cacheMisses: 0,
   lcpSec: undefined
 };
+
+if (typeof window !== "undefined") {
+  window.__opsClientMetrics = opsClientMetrics;
+}
 
 export function startOpsBeacon() {
   if (typeof window === "undefined") return;
