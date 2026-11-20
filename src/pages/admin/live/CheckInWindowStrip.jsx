@@ -69,6 +69,14 @@ const CheckInWindowStrip = memo(function CheckInWindowStrip({round, busy, onUpda
         if (ok) setEditing(false);
     };
 
+    const currentDurationMins = (() => {
+        if (!startVal || !endVal) return null;
+        const s = new Date(startVal).getTime();
+        const e = new Date(endVal).getTime();
+        if (Number.isNaN(s) || Number.isNaN(e) || e <= s) return null;
+        return Math.round((e - s) / 60000);
+    })();
+
     const windowBusy = busy === "window";
 
     return (
@@ -190,23 +198,33 @@ const CheckInWindowStrip = memo(function CheckInWindowStrip({round, busy, onUpda
                     >
                         {windowBusy ? "Saving…" : "Save Window"}
                     </button>
-                    <div className="sm:col-span-3 flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-muted-foreground text-[11px] font-medium mr-1">Window duration:</span>
-                        {[15, 20, 30, 45, 60].map((mins) => (
-                            <button
-                                key={mins}
-                                type="button"
-                                onClick={() => {
-                                    const baseStart = startVal || getCurrentISTDateTimeLocal();
-                                    if (!startVal) setStartVal(baseStart);
-                                    setEndVal(addMinutesToISTDateTime(baseStart, mins));
-                                    setErr(null);
-                                }}
-                                className="min-h-9 px-2.5 py-1 rounded-md border border-border bg-muted/40 hover:bg-muted text-foreground font-semibold text-[11px] transition-colors"
-                            >
-                                {mins}m
-                            </button>
-                        ))}
+                    <div className="sm:col-span-3 space-y-1.5 pt-1">
+                        <span className="text-muted-foreground text-[11px] font-medium block">Window duration:</span>
+                        <div className="grid grid-cols-5 gap-1.5">
+                            {[15, 20, 30, 45, 60].map((mins) => {
+                                const isActive = currentDurationMins === mins;
+                                return (
+                                    <button
+                                        key={mins}
+                                        type="button"
+                                        onClick={() => {
+                                            const baseStart = startVal || getCurrentISTDateTimeLocal();
+                                            if (!startVal) setStartVal(baseStart);
+                                            setEndVal(addMinutesToISTDateTime(baseStart, mins));
+                                            setErr("");
+                                        }}
+                                        className={cn(
+                                            "min-h-9 py-1 px-1 text-center rounded-lg font-heading font-bold text-xs tracking-wide transition-all border-2",
+                                            isActive
+                                                ? "bg-[#1D1E18] text-[#EAFBF5] border-[#1D1E18] dark:bg-[#B9F5D8] dark:text-[#141510] dark:border-[#B9F5D8] shadow-sm ring-1 ring-primary/40"
+                                                : "bg-muted/40 hover:bg-muted text-foreground border-border hover:border-foreground/30"
+                                        )}
+                                    >
+                                        {mins}m
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </form>
             )}
