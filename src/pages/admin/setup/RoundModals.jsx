@@ -152,18 +152,28 @@ export function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
             updateForm({ checkInEndTime: e.target.value })
           }
           className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
-          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-foreground">Window length:</span>
-            {[15, 20, 30, 45, 60].map((mins) => (
-              <button
-                key={mins}
-                type="button"
-                onClick={() => applyDurationPreset(mins)}
-                className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-foreground transition-colors"
-              >
-                {mins}m
-              </button>
-            ))}
+          <div className="md:col-span-2 space-y-1.5">
+            <span className="text-xs font-semibold text-foreground block">Window length:</span>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[15, 20, 30, 45, 60].map((mins) => {
+                const isActive = currentDurationMins === mins;
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => applyDurationPreset(mins)}
+                    className={cn(
+                      "min-h-11 py-2 px-1 text-center rounded-lg font-heading font-bold text-xs tracking-wide transition-all border-2",
+                      isActive
+                        ? "bg-[#1D1E18] text-[#EAFBF5] border-[#1D1E18] dark:bg-[#B9F5D8] dark:text-[#141510] dark:border-[#B9F5D8] shadow-sm ring-1 ring-primary/40"
+                        : "bg-muted/40 hover:bg-muted text-foreground border-border hover:border-foreground/30"
+                    )}
+                  >
+                    {mins}m
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="md:col-span-2">
             <AdvanceTargetField value={formData.advanceTarget} onChange={(advanceTarget) => updateForm({ advanceTarget })} />
@@ -257,6 +267,14 @@ export function EditRoundModal({ round, latestRound, remoteChanges = 0, onClose,
     }));
     setError("");
   };
+
+  const editDurationMins = (() => {
+    if (!formData.checkInStartTime || !formData.checkInEndTime) return null;
+    const startMs = new Date(formData.checkInStartTime).getTime();
+    const endMs = new Date(formData.checkInEndTime).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return null;
+    return Math.round((endMs - startMs) / 60000);
+  })();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -381,18 +399,28 @@ export function EditRoundModal({ round, latestRound, remoteChanges = 0, onClose,
           className="w-full min-h-11 px-3 py-2 rounded-lg bg-background border border-border/70 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-xs transition-all" /></label>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-foreground">Open window from now:</span>
-          {[15, 20, 30, 45, 60].map((mins) => (
-            <button
-              key={mins}
-              type="button"
-              onClick={() => applyWindowPreset(mins)}
-              className="min-h-11 px-3.5 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-bold text-foreground transition-colors"
-            >
-              {mins}m
-            </button>
-          ))}
+        <div className="space-y-1.5">
+          <span className="text-xs font-semibold text-foreground block">Open window from now:</span>
+          <div className="grid grid-cols-5 gap-1.5">
+            {[15, 20, 30, 45, 60].map((mins) => {
+              const isActive = editDurationMins === mins;
+              return (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => applyWindowPreset(mins)}
+                  className={cn(
+                    "min-h-11 py-2 px-1 text-center rounded-lg font-heading font-bold text-xs tracking-wide transition-all border-2",
+                    isActive
+                      ? "bg-[#1D1E18] text-[#EAFBF5] border-[#1D1E18] dark:bg-[#B9F5D8] dark:text-[#141510] dark:border-[#B9F5D8] shadow-sm ring-1 ring-primary/40"
+                      : "bg-muted/40 hover:bg-muted text-foreground border-border hover:border-foreground/30"
+                  )}
+                >
+                  {mins}m
+                </button>
+              );
+            })}
+          </div>
         </div>
     
         <label ><span className="text-xs font-semibold mb-1 block text-foreground">Status</span><select value={formData.status}
