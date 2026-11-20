@@ -6,7 +6,7 @@ import { useAuth } from "../../../auth/client.jsx";
 import { AdminApi } from "../../../services/api";
 import { useAdminMutation } from "../../../hooks/useAdminMutation";
 import { useDirtyGuard } from "../../../hooks/useDirtyGuard";
-import { addMinutesToISTDateTime, toISTISOString, toISTDateTimeLocal, getCurrentISTDateTimeLocal } from "../../../lib/utils";
+import { cn, addMinutesToISTDateTime, toISTISOString, toISTDateTimeLocal, getCurrentISTDateTimeLocal } from "../../../lib/utils";
 import AdvanceTargetField from "./AdvanceTargetField";
 import { advanceTargetError, advanceTargetToPayload, advanceTargetToForm } from "../../../lib/advanceTarget";
 
@@ -44,6 +44,14 @@ export function CreateRoundModal({ eventId, roundNumber, onClose, onCreated }) {
     updateForm({ checkInStartTime: base, checkInEndTime: addMinutesToISTDateTime(base, minutes) });
     setError("");
   };
+
+  const currentDurationMins = (() => {
+    if (!formData.checkInStartTime || !formData.checkInEndTime) return null;
+    const startMs = new Date(formData.checkInStartTime).getTime();
+    const endMs = new Date(formData.checkInEndTime).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return null;
+    return Math.round((endMs - startMs) / 60000);
+  })();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

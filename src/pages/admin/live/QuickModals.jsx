@@ -4,7 +4,9 @@ import {Loader2, X} from "lucide-react";
 import {useAuth} from "../../../auth/client.jsx";
 import {AdminApi} from "../../../services/api";
 import {useToast} from "../../../hooks/useToast";
-import {toISTDateTimeLocal, toISTISOString, addMinutesToISTDateTime, getCurrentISTDateTimeLocal} from "../../../lib/utils";
+import {toISTDateTimeLocal, toISTISOString, addMinutesToISTDateTime, getCurrentISTDateTimeLocal, cn} from "../../../lib/utils";
+import AdvanceTargetField from "../setup/AdvanceTargetField";
+import { advanceTargetError, advanceTargetToPayload } from "../../../lib/advanceTarget";
 
 const toISTDateTimeString = toISTDateTimeLocal;
 
@@ -87,6 +89,7 @@ export function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onC
     const [roundNumber, setRoundNumber] = useState(defaultRoundNumber);
     const [name, setName] = useState(`Round ${defaultRoundNumber}`);
     const [motion, setMotion] = useState("");
+    const [advanceTarget, setAdvanceTarget] = useState("");
     const [checkInStartTime, setCheckInStartTime] = useState(() => toISTDateTimeString(new Date()));
     const [checkInEndTime, setCheckInEndTime] = useState(() => toISTDateTimeString(new Date(Date.now() + 20 * 60000)));
     const [submitting, setSubmitting] = useState(false);
@@ -99,11 +102,24 @@ export function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onC
         setError(null);
     };
 
+    const currentDurationMins = (() => {
+        if (!checkInStartTime || !checkInEndTime) return null;
+        const s = new Date(checkInStartTime).getTime();
+        const e = new Date(checkInEndTime).getTime();
+        if (Number.isNaN(s) || Number.isNaN(e) || e <= s) return null;
+        return Math.round((e - s) / 60000);
+    })();
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
         if (!motion.trim()) {
             setError("Debate motion is required. Motion cannot be left blank.");
+            return;
+        }
+        const targetErr = advanceTargetError(advanceTarget);
+        if (targetErr) {
+            setError(targetErr);
             return;
         }
         const startIso = toISTISOString(checkInStartTime);
@@ -115,14 +131,19 @@ export function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onC
         setSubmitting(true);
         try {
             const token = await getToken();
-            const res = await AdminApi.createRound({
+            const payload = {
                 eventId,
                 roundNumber: Number(roundNumber),
                 name: name.trim() || `Round ${roundNumber}`,
                 motion: motion.trim(),
                 checkInStartTime: startIso,
                 checkInEndTime: endIso,
-            }, token);
+            };
+            const parsedTarget = advanceTargetToPayload(advanceTarget);
+            if (parsedTarget !== undefined) {
+                payload.advanceTarget = parsedTarget;
+            }
+            const res = await AdminApi.createRound(payload, token);
 
             if (res.success && res.round) {
                 onCreated(res.round);
@@ -204,19 +225,29 @@ export function QuickCreateRoundModal({eventId, defaultRoundNumber, onClose, onC
 
                     <div className="space-y-1.5">
                         <span className="block text-muted-foreground font-medium">Window duration</span>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            {[15, 20, 30, 45, 60].map((mins) => (
-                                <button
-                                    key={mins}
-                                    type="button"
-                                    onClick={() => applyPreset(mins)}
-                                    className="min-h-11 px-3 py-1 rounded-lg border border-border bg-muted/40 hover:bg-muted text-foreground font-semibold transition-colors"
-                                >
-                                    {mins}m
-                                </button>
-                            ))}
+                        <div className="grid grid-cols-5 gap-1.5">
+                            {[15, 20, 30, 45, 60].map((mins) => {
+                                const isActive = currentDurationMins === mins;
+                                return (
+                                    <button
+                                        key={mins}
+                                        type="button"
+                                        onClick={() => applyPreset(mins)}
+                                        className={cn(
+                                            "min-h-11 py-2 px-1 text-center rounded-lg font-heading font-bold text-xs tracking-wide transition-all border-2",
+                                            isActive
+                                                ? "bg-[#1D1E18] text-[#EAFBF5] border-[#1D1E18] dark:bg-[#B9F5D8] dark:text-[#141510] dark:border-[#B9F5D8] shadow-sm ring-1 ring-primary/40"
+                                                : "bg-muted/40 hover:bg-muted text-foreground border-border hover:border-foreground/30"
+                                        )}
+                                    >
+                                        {mins}m
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
+
+                    <AdvanceTargetField value={advanceTarget} onChange={setAdvanceTarget} />
 
                     <div>
                         <label className="font-semibold block mb-1 text-foreground">
