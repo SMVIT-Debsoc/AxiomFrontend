@@ -505,11 +505,6 @@ function ResultsPage({eventId}) {
                           {entry.user?.college || "Affiliation unlisted"}
                         </p>
                       </div>
-                      <div className="text-right shrink-0 font-mono text-xs tabular-nums">
-                        <p className="font-bold text-foreground">
-                          {entry.stats?.wins || 0}W
-                        </p>
-                      </div>
                     </div>
                   );
                 })}

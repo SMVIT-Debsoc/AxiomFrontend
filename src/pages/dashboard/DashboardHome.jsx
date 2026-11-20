@@ -393,11 +393,6 @@ function ResultsHubSection({
                         </p>
                       </div>
 
-                      <div className="text-right shrink-0 font-mono text-xs tabular-nums">
-                        <span className="font-bold text-foreground">
-                          {entry.stats?.wins || 0}W
-                        </span>
-                      </div>
                     </div>
                   );
                 })}
