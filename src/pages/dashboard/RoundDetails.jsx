@@ -800,7 +800,7 @@ function RoundPage({eventId, roundId}) {
             to={`/dashboard/events/${eventId}/results`}
             className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            View Full Results &amp; Standings
+            View My Results
           </DashboardLink>
         )}
       </div>

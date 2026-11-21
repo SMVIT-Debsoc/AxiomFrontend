@@ -15,13 +15,12 @@ import {
 } from "lucide-react";
 import {useAuth, useUser} from "../../auth/client.jsx";
 import {createRequestSignal} from "../../lib/requestSignal.js";
-import {IMMEDIATE_REFRESH_MS, leaderboardRefreshDelay, queueRefreshDelay, socketRefreshDelay} from "../../lib/refreshTiming.js";
+import {IMMEDIATE_REFRESH_MS, queueRefreshDelay, socketRefreshDelay} from "../../lib/refreshTiming.js";
 import {
   UserApi,
   EventApi,
   DebateApi,
   CheckInApi,
-  StatsApi,
 } from "../../services/api";
 import {useToast} from "../../hooks/useToast";
 import {DashboardHomeSkeleton} from "../../components/ui/Skeleton";
@@ -37,8 +36,7 @@ import SectionRetry from "../../components/ui/SectionRetry";
 import CountUp from "../../components/ui/CountUp";
 import NeoButton from "../../components/neo/NeoButton";
 import GameOverCard from "../../components/dashboard/GameOverCard";
-import {cn, formatTimeIST, getPodiumMedal} from "../../lib/utils";
-import StandingRank from "../../components/ui/StandingRank";
+import {cn, formatTimeIST} from "../../lib/utils";
 import CheckInPassCard from "../../components/dashboard/CheckInPassCard";
 
 const WhatsAppGroupBanner = lazy(() =>
@@ -104,10 +102,6 @@ function ResultsHubSection({
   activeEvent,
   eventDebates,
   rounds,
-  leaderboard,
-  leaderboardLoading,
-  leaderboardFailed,
-  retryLeaderboard,
   currentUserId,
 }) {
   const hasPublishedResults = Boolean(
@@ -129,10 +123,6 @@ function ResultsHubSection({
       !d.isPromoted
   ).length;
 
-  const myLeaderboardEntry = hasPublishedResults
-    ? leaderboard.find((entry) => entry.user?.id === currentUserId)
-    : null;
-
   const orderedDebates = [...eventDebates].sort(
     (a, b) => (a.round?.roundNumber || 0) - (b.round?.roundNumber || 0)
   );
@@ -150,19 +140,13 @@ function ResultsHubSection({
               data-tour-state={hasPublishedResults ? "published" : "waiting"}
               className="text-base sm:text-lg font-heading font-bold text-foreground"
             >
-              All Results &amp; Event Standings
+              My Results
             </h2>
           </div>
 
-          {hasPublishedResults && myLeaderboardEntry ? (
-            <span className="ax-chip ax-chip--info font-mono">
-              Rank #{myLeaderboardEntry.rank}
-            </span>
-          ) : (
-            <span className="ax-chip ax-chip--idle font-mono">
-              {activeEvent?.name || "Tournament"}
-            </span>
-          )}
+          <span className="ax-chip ax-chip--idle font-mono">
+            {activeEvent?.name || "Tournament"}
+          </span>
         </div>
 
         <div className="grid grid-cols-3 gap-2.5">
@@ -195,10 +179,10 @@ function ResultsHubSection({
         </div>
       </div>
 
-      {/* Results & Standings Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      {/* Round Results */}
+      <div className="space-y-4">
         {/* All Rounds Results List */}
-        <div className="lg:col-span-7 space-y-3">
+        <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">
               Your Round Outcomes ({orderedDebates.length})
@@ -317,95 +301,12 @@ function ResultsHubSection({
             </div>
           )}
         </div>
-
-        {/* Inline Event Standings */}
-        <div className="lg:col-span-5 space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-muted-foreground">
-              Event Standings
-            </h3>
-            {hasPublishedResults && leaderboard.length > 0 && (
-              <span className="text-[11px] font-mono text-muted-foreground">
-                Top {leaderboard.length}
-              </span>
-            )}
-          </div>
-
-          {hasPublishedResults && leaderboardFailed && (
-            <SectionRetry message="Could not refresh standings." busy={leaderboardLoading} onRetry={retryLeaderboard} />
-          )}
-          {!hasPublishedResults ? (
-            <div className="bg-card border border-border rounded-2xl p-5 text-center space-y-2.5">
-              <div className="w-10 h-10 mx-auto rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
-                <Lock className="w-4 h-4" aria-hidden="true" />
-              </div>
-              <h4 className="font-heading font-bold text-sm text-foreground">
-                Standings Locked Until Publication
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Official tournament standings unlock once round results are published by the adjudication desk.
-              </p>
-            </div>
-          ) : leaderboardLoading && leaderboard.length === 0 ? (
-            <p role="status" className="p-5 text-center text-xs text-muted-foreground">
-              Loading standings…
-            </p>
-          ) : leaderboardFailed && leaderboard.length === 0 ? null : leaderboard.length === 0 ? (
-            <EmptyState
-              compact
-              icon={Trophy}
-              title="No standings yet"
-              description="Standings will appear as completed ballots are recorded."
-            />
-          ) : (
-            <div className="bg-card border border-border rounded-2xl overflow-hidden max-h-[460px] overflow-y-auto">
-              <div className="divide-y divide-border/60">
-                {leaderboard.map((entry) => {
-                  const isMe = entry.user?.id === currentUserId;
-                  const medal = getPodiumMedal(entry.rank);
-
-                  return (
-                    <div
-                      key={entry.user?.id || entry.rank}
-                      data-podium={medal}
-                      className={cn(
-                        "standing-row flex items-center gap-3 px-4 py-3 text-sm",
-                        isMe && !medal && "ax-signal-info"
-                      )}
-                    >
-                      <StandingRank rank={entry.rank} medal={medal} />
-
-                      <UserAvatar user={entry.user} size="sm" className="shrink-0" />
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="min-w-0 break-words font-heading font-semibold text-foreground">
-                            {entry.user?.firstName} {entry.user?.lastName}
-                          </p>
-                          {isMe && (
-                            <span className="ax-chip ax-chip--info font-mono uppercase shrink-0">
-                              YOU
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {entry.user?.college || "Affiliation unlisted"}
-                        </p>
-                      </div>
-
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </section>
   );
 }
 
-const LIVE_FIELDS = ["event", "debates", "checkIn", "leaderboard"];
+const LIVE_FIELDS = ["event", "debates", "checkIn"];
 const ROUND_PATCH_FIELDS = ["status", "checkInStartTime", "checkInEndTime"];
 
 // Copies only the round fields a socket payload carries, so state can be patched without a refetch.
@@ -432,10 +333,8 @@ function DashboardContent() {
   const [userData, setUserData] = useState(null);
   const [activeEvent, setActiveEvent] = useState(null);
   const [myDebates, setMyDebates] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
   const [debatesLoading, setDebatesLoading] = useState(true);
   const [checkInLoading, setCheckInLoading] = useState(false);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [sectionFailed, setSectionFailed] = useState({});
   const [checkInStatus, setCheckInStatus] = useState(null);
   const [currentRound, setCurrentRound] = useState(null);
@@ -464,23 +363,6 @@ function DashboardContent() {
     if (!data?.roundId || Object.keys(patch).length === 0) return;
     setCurrentRound((round) => (round && round.id === data.roundId ? {...round, ...patch} : round));
   }, []);
-  // Leaderboard refetches run at most once per 25s per client; a trailing fetch covers the rest.
-  const leaderboardGate = useRef({lastAt: 0, timer: null});
-  const requestLeaderboardRefresh = useCallback(() => {
-    const gate = leaderboardGate.current;
-    if (gate.timer !== null) return;
-    const delay = leaderboardRefreshDelay(Date.now(), gate.lastAt, socketRefreshDelay(Math.random()));
-    gate.timer = window.setTimeout(() => {
-      gate.timer = null;
-      gate.lastAt = Date.now();
-      refresh("leaderboard");
-    }, delay);
-  }, [refresh]);
-  useEffect(() => {
-    const gate = leaderboardGate.current;
-    return () => window.clearTimeout(gate.timer);
-  }, []);
-
   useEffect(() => {
     if (!authLoaded) return;
     let stopped = false;
@@ -488,7 +370,6 @@ function DashboardContent() {
     let timer;
     let event = null;
     let round = null;
-    let loadedBoard = null;
     let pending = new Set(["profile", ...LIVE_FIELDS]);
     // Delay requested for the pending batch (null = nothing queued). Immediate requests win.
     let pendingDelay = null;
@@ -545,11 +426,8 @@ function DashboardContent() {
 
       if (eventChanged) {
         markFailure("debates", false);
-        markFailure("leaderboard", false);
         setMyDebates([]);
         setDebatesLoading(true);
-        setLeaderboard([]);
-        loadedBoard = null;
       }
       if (roundChanged) {
         markFailure("checkIn", false);
@@ -593,20 +471,6 @@ function DashboardContent() {
             if (checkInVersion.current === version) markFailure("checkIn", true);
           })
           .finally(() => { if (!stopped) setCheckInLoading(false); }));
-      }
-
-      if (event?.rounds?.some((item) => item.resultsPublished)
-          && (fields.has("leaderboard") || loadedBoard !== event.id)) {
-        if (loadedBoard !== event.id) setLeaderboardLoading(true);
-        tasks.push(StatsApi.getLeaderboard(token, event.id, 100, options)
-          .then((response) => {
-            if (stopped || !response?.success) return;
-            loadedBoard = event.id;
-            markFailure("leaderboard", false);
-            setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
-          })
-          .catch(() => markFailure("leaderboard", true))
-          .finally(() => { if (!stopped) setLeaderboardLoading(false); }));
       }
 
       if (fields.has("event")) setError(eventError?.message || null);
@@ -706,11 +570,6 @@ function DashboardContent() {
       if (myDebates.some((debate) => debate.id === debateId)) {
         refreshSoon("profile", "debates", "checkIn");
       }
-    },
-    onLeaderboardUpdate: () => {
-      // Standings only matter once the latest round has published results.
-      if (currentRound?.resultsPublished !== true) return;
-      requestLeaderboardRefresh();
     },
     onResultsPublished: (data) => {
       if (data?.published) toast.success("Results Published!", "Round results are now available.");
@@ -1427,24 +1286,20 @@ function DashboardContent() {
                     onClick={jumpToInlineResults}
                     className="inline-flex min-h-11 items-center gap-1.5 text-xs font-bold ax-signal-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
                   >
-                    <span>See All Results &amp; Event Standings</span>
+                    <span>See My Results</span>
                     <ArrowRight size={13} aria-hidden="true" />
                   </button>
                 </div>
               );
             })()}
 
-          {/* Embedded Inline Results & Standings on Desktop Overview */}
+          {/* Embedded Personal Results on Desktop Overview */}
           {activeEvent && (
             <div id="inline-results-desktop" className="hidden md:block pt-2">
               <ResultsHubSection
                 activeEvent={activeEvent}
                 eventDebates={eventDebates}
                 rounds={roundsList}
-                leaderboard={leaderboard}
-                leaderboardLoading={leaderboardLoading}
-                leaderboardFailed={sectionFailed.leaderboard}
-                retryLeaderboard={() => { setLeaderboardLoading(true); refresh("leaderboard"); }}
                 currentUserId={userData?.id}
               />
             </div>
@@ -1516,7 +1371,7 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Tab: RESULTS (Full Inline Results & Event Standings — Zero Redirects) */}
+      {/* Tab: RESULTS (Personal Results) */}
       {mobileTab === "results" && (
         <div className="space-y-4">
           {activeEvent ? (
@@ -1539,10 +1394,6 @@ function DashboardContent() {
                 activeEvent={activeEvent}
                 eventDebates={eventDebates}
                 rounds={roundsList}
-                leaderboard={leaderboard}
-                leaderboardLoading={leaderboardLoading}
-                leaderboardFailed={sectionFailed.leaderboard}
-                retryLeaderboard={() => { setLeaderboardLoading(true); refresh("leaderboard"); }}
                 currentUserId={userData?.id}
               />
             </>
@@ -1553,7 +1404,7 @@ function DashboardContent() {
                 compact
                 icon={Trophy}
                 title="No active tournament"
-                description="Enrol in a tournament to track your debate outcomes and standings."
+                description="Enrol in a tournament to track your debate outcomes."
               />
             </>
           )}

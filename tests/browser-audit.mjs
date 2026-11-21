@@ -585,7 +585,7 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
 
     await page.getByRole('tab', {name: 'Results'}).click();
-    await visible(page, 'All Results & Event Standings');
+    await visible(page, 'My Results');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   });
 
@@ -723,25 +723,6 @@ try {
     assert.equal(await page.getByRole('button', {name: 'Retry', exact: true}).count(), 0);
   });
 
-  await run('personal results render before standings finish', {
-    signedIn: true, assigned: true, resultsPublished: true,
-  }, async page => {
-    let release;
-    const held = new Promise(resolve => { release = resolve; });
-    await page.route(/\/api\/stats\/leaderboard\?/, async route => {
-      await held;
-      return route.fallback();
-    });
-    try {
-      await page.goto(origin + '/dashboard/events/e1/results');
-      await visible(page, 'QUALIFIED');
-      await page.getByRole('tab', {name: /Leaderboard|Standings/}).click();
-      await visible(page, 'Loading standings…');
-    } finally {
-      release();
-    }
-  });
-
   await run('focusing a tournament link preloads its route without fetching its data', {signedIn: true}, async (page) => {
     await page.goto(origin + '/dashboard');
     const link = page.getByRole('link', {name: 'Tournament Hub'});
@@ -761,28 +742,26 @@ try {
     assert.equal(eventRequests > 0, true);
   });
 
-  await run('standings can be retried without leaving personal results', {
-    signedIn: true, assigned: true, resultsPublished: true,
-  }, async page => {
-    let attempts = 0;
-    await page.route(/\/api\/stats\/leaderboard\?/, async route => {
-      attempts += 1;
-      if (attempts > 1) return route.fallback();
-      return route.fulfill({status: 503, json: {success: false, error: 'Standings temporarily unavailable'}});
+
+  for (const path of ['/dashboard', '/dashboard/events/e1/results']) {
+    await run('debater personal results work without standings on ' + path, {
+      signedIn: true, assigned: true, resultsPublished: true,
+    }, async page => {
+      let requests = 0;
+      page.on('request', request => {
+        if (new URL(request.url()).pathname === '/api/stats/leaderboard') requests++;
+      });
+      await page.goto(origin + path);
+      if (path === '/dashboard') await page.getByRole('tab', {name: 'Results', exact: true}).click();
+      await visible(page, 'QUALIFIED');
+      assert.equal(await page.getByRole('tab', {name: 'Standings', exact: true}).count(), 0);
+      assert.equal(await page.locator('[data-podium]').count(), 0);
+      assert.equal(await page.getByText(/Rank #/).count(), 0);
+      assert.equal(requests, 0);
     });
-    await page.goto(origin + '/dashboard/events/e1/results');
-    await visible(page, 'QUALIFIED');
-    await page.getByRole('tab', {name: 'Standings'}).click();
-    await visible(page, 'Could not refresh standings.');
-    await page.getByRole('button', {name: 'Retry', exact: true}).click();
-    await visible(page, 'No standings yet');
-    await page.getByRole('tab', {name: 'My Results'}).click();
-    await visible(page, 'QUALIFIED');
-  });
+  }
 
   for (const {path, tab, theme, width} of [
-    {path: '/dashboard', tab: 'Results', theme: 'light', width: 390},
-    {path: '/dashboard/events/e1/results', tab: 'Standings', theme: 'dark', width: 390},
     {path: '/admin/leaderboard', theme: 'dark', width: 1280},
   ]) {
     await run(`podium highlights the top three rows on ${path}`, {

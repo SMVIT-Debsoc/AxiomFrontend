@@ -8,18 +8,15 @@ import {
   XCircle,
   CheckCircle2,
   Clock,
-  Lock,
 } from "lucide-react";
 import {usePageRequests} from "../../hooks/usePageRequests";
 import {
   EventApi,
   DebateApi,
   UserApi,
-  StatsApi,
   CheckInApi,
 } from "../../services/api";
-import {cn, getPodiumMedal} from "../../lib/utils";
-import StandingRank from "../../components/ui/StandingRank";
+import {cn} from "../../lib/utils";
 import {useEventSocket, useLiveRefresh, useSocket, SocketEvents} from "../../hooks/useSocket";
 import {UserAvatar} from "../../components/ui/UserAvatar";
 import {ResultsSkeleton} from "../../components/ui/Skeleton";
@@ -40,14 +37,9 @@ function ResultsPage({eventId}) {
   const [rounds, setRounds] = useState([]);
   const [myDebates, setMyDebates] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
-  const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("my-results");
 
   const [personalLoading, setPersonalLoading] = useState(true);
-  const [standingsLoaded, setStandingsLoaded] = useState(false);
-  const [standingsFailed, setStandingsFailed] = useState(false);
-  const [standingsRetrying, setStandingsRetrying] = useState(false);
   const [personalFailed, setPersonalFailed] = useState(false);
   const [eliminationStatus, setEliminationStatus] = useState(null);
 
@@ -73,12 +65,6 @@ function ResultsPage({eventId}) {
         setPersonalFailed(debates.status === "rejected");
         if (profile.status === "fulfilled" && profile.value?.success) setCurrentUser(profile.value.user);
         if (debates.status === "fulfilled" && debates.value?.success) setMyDebates(debates.value.debates || []);
-      } else if (field === "standings") {
-        const response = await StatsApi.getLeaderboard(token, eventId, 100, options);
-        if (isCurrent()) {
-          setLeaderboard(response.data?.leaderboard || response.leaderboard || []);
-          setStandingsFailed(false);
-        }
       } else if (field === "elimination") {
         if (!latestPublishedRoundId) {
           if (isCurrent()) setEliminationStatus(null);
@@ -91,17 +77,12 @@ function ResultsPage({eventId}) {
       }
     } catch (error) {
       if (isCurrent()) {
-        if (field === "standings") setStandingsFailed(true);
         console.error("Failed to fetch results", error);
       }
     } finally {
       if (isCurrent()) {
         if (field === "event") setLoading(false);
         if (field === "personal") setPersonalLoading(false);
-        if (field === "standings") {
-          setStandingsLoaded(true);
-          setStandingsRetrying(false);
-        }
       }
     }
   }, "event");
@@ -116,9 +97,6 @@ function ResultsPage({eventId}) {
     rounds.some((r) => r.resultsPublished) ||
       myEventDebates.some((d) => d.resultsPublished || d.round?.resultsPublished)
   );
-  useEffect(() => {
-    if (hasPublishedResults) refresh("standings");
-  }, [hasPublishedResults, refresh]);
 
   useEffect(() => {
     if (latestPublishedRoundId) refresh("elimination");
@@ -126,7 +104,6 @@ function ResultsPage({eventId}) {
 
   useLiveRefresh(() => {
     refresh(...RESULTS_FIELDS);
-    if (hasPublishedResults) refresh("standings");
     if (latestPublishedRoundId) refresh("elimination");
   }, {enabled: Boolean(eventId), eventId, intervalMs: 12000, jitterMs: 3000, invalidateCache: false});
 
@@ -136,10 +113,6 @@ function ResultsPage({eventId}) {
     },
     onResultsPublished: () => {
       refresh(...RESULTS_FIELDS, "elimination");
-      if (hasPublishedResults) refresh("standings");
-    },
-    onLeaderboardUpdate: () => {
-      if (hasPublishedResults) refresh("standings");
     },
     onPairingsPublished: () => refresh(...RESULTS_FIELDS),
     onRoundStatusChange: () => refresh("event"),
@@ -153,10 +126,6 @@ function ResultsPage({eventId}) {
       refresh("personal", "elimination");
     });
   }, [subscribe, refresh]);
-
-  const myLeaderboardEntry = hasPublishedResults
-    ? leaderboard.find((entry) => entry.user?.id === currentUser?.id)
-    : null;
 
   const completedPublished = [...myEventDebates]
     .filter(
@@ -226,7 +195,7 @@ function ResultsPage({eventId}) {
             <Trophy className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <div className="axiom-eyebrow">Tournament Standing</div>
+            <div className="axiom-eyebrow">Tournament Results</div>
             <h1 className="text-xl sm:text-2xl font-heading font-semibold tracking-tight text-foreground">
               Results
             </h1>
@@ -243,11 +212,6 @@ function ResultsPage({eventId}) {
           <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
             Your Performance
           </span>
-          {myLeaderboardEntry && (
-            <span className="ax-chip ax-chip--info font-mono uppercase">
-              Rank #{myLeaderboardEntry.rank}
-            </span>
-          )}
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="rounded-xl bg-muted/40 border border-border/70 px-3 py-3">
@@ -277,242 +241,135 @@ function ResultsPage({eventId}) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div
-        role="tablist"
-        aria-label="Results sections"
-        className="flex items-center gap-4 border-b border-border"
+      <h2 className="text-sm font-semibold">My Results</h2>
+      <Motion.div
+        initial={{opacity: 0}}
+        animate={{opacity: 1}}
+        className="space-y-3"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "my-results"}
-          onClick={() => setActiveTab("my-results")}
-          className={cn(
-            "min-h-11 px-2 pb-2 text-xs font-mono uppercase tracking-wider font-semibold transition-all border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
-            activeTab === "my-results"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          My Results
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "leaderboard"}
-          onClick={() => setActiveTab("leaderboard")}
-          className={cn(
-            "min-h-11 px-2 pb-2 text-xs font-mono uppercase tracking-wider font-semibold transition-all border-b-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-t",
-            activeTab === "leaderboard"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Standings
-        </button>
-      </div>
+        {isEliminatedInEvent && (
+          <GameOverCard
+            eventName={event?.name || "AXIOM 4.0"}
+            roundsDebated={myEventDebates.filter((d) => d.status === "COMPLETED").length || myEventDebates.length}
+            wins={eventWins}
+            roundLabel={eliminatedRoundLabel}
+            compact
+          />
+        )}
+        {personalFailed && (
+          <SectionRetry message="Could not refresh your results." busy={personalLoading} onRetry={() => {
+            setPersonalLoading(true);
+            refresh("personal");
+          }} />
+        )}
+        {personalLoading && !myEventDebates.length ? (
+          <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading your results…</p>
+        ) : myEventDebates.length === 0 && personalFailed ? null : myEventDebates.length === 0 ? (
+          <EmptyState
+            compact
+            icon={Trophy}
+            title="No results yet"
+            description="No debate results yet for this event."
+          />
+        ) : (
+          myEventDebates.map((debate, index) => {
+            const round =
+              rounds.find((r) => r.id === debate.roundId) || debate.round;
+            const isDebater1 = debate.debater1Id === currentUser?.id;
+            const side = isDebater1
+              ? debate.debater1Position || "GOV"
+              : debate.debater2Position || "OPP";
+            const opponent = isDebater1 ? debate.debater2 : debate.debater1;
+            const published = Boolean(
+              debate.resultsPublished || round?.resultsPublished
+            );
+            const qualified = Boolean(debate.isPromoted);
 
-      {/* Tab Content */}
-      {activeTab === "my-results" && (
-        <Motion.div
-          initial={{opacity: 0}}
-          animate={{opacity: 1}}
-          className="space-y-3"
-        >
-          {isEliminatedInEvent && (
-            <GameOverCard
-              eventName={event?.name || "AXIOM 4.0"}
-              roundsDebated={myEventDebates.filter((d) => d.status === "COMPLETED").length || myEventDebates.length}
-              wins={eventWins}
-              roundLabel={eliminatedRoundLabel}
-              compact
-            />
-          )}
-          {personalFailed && (
-            <SectionRetry message="Could not refresh your results." busy={personalLoading} onRetry={() => {
-              setPersonalLoading(true);
-              refresh("personal");
-            }} />
-          )}
-          {personalLoading && !myEventDebates.length ? (
-            <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading your results…</p>
-          ) : myEventDebates.length === 0 && personalFailed ? null : myEventDebates.length === 0 ? (
-            <EmptyState
-              compact
-              icon={Trophy}
-              title="No results yet"
-              description="No debate results yet for this event."
-            />
-          ) : (
-            myEventDebates.map((debate, index) => {
-              const round =
-                rounds.find((r) => r.id === debate.roundId) || debate.round;
-              const isDebater1 = debate.debater1Id === currentUser?.id;
-              const side = isDebater1
-                ? debate.debater1Position || "GOV"
-                : debate.debater2Position || "OPP";
-              const opponent = isDebater1 ? debate.debater2 : debate.debater1;
-              const published = Boolean(
-                debate.resultsPublished || round?.resultsPublished
-              );
-              const qualified = Boolean(debate.isPromoted);
-
-              return (
-                <Motion.div
-                  key={debate.id}
-                  initial={{opacity: 0, y: 10}}
-                  animate={{opacity: 1, y: 0}}
-                  transition={{delay: index * 0.04}}
-                  className={cn(
-                    "rounded-xl p-4 transition-all",
-                    debate.status === "COMPLETED" && published && qualified
-                      ? "ax-signal-win"
-                      : debate.status === "COMPLETED" &&
-                        published &&
-                        !qualified
-                      ? "ax-signal-loss"
-                      : debate.status === "COMPLETED" && !published
-                      ? "ax-signal-warn"
-                      : "bg-card border border-border"
+            return (
+              <Motion.div
+                key={debate.id}
+                initial={{opacity: 0, y: 10}}
+                animate={{opacity: 1, y: 0}}
+                transition={{delay: index * 0.04}}
+                className={cn(
+                  "rounded-xl p-4 transition-all",
+                  debate.status === "COMPLETED" && published && qualified
+                    ? "ax-signal-win"
+                    : debate.status === "COMPLETED" &&
+                      published &&
+                      !qualified
+                    ? "ax-signal-loss"
+                    : debate.status === "COMPLETED" && !published
+                    ? "ax-signal-warn"
+                    : "bg-card border border-border"
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold">
+                      {round?.name || `Round ${round?.roundNumber || "?"}`}
+                    </span>
+                    <span
+                      className={cn(
+                        "ax-chip font-mono uppercase",
+                        side === "GOV" ? "ax-chip--gov" : "ax-chip--opp"
+                      )}
+                    >
+                      {side}
+                    </span>
+                  </div>
+                  {debate.status === "COMPLETED" && published ? (
+                    <div
+                      className={cn(
+                        "ax-chip font-mono uppercase",
+                        qualified ? "ax-chip--win" : "ax-chip--loss"
+                      )}
+                    >
+                      {qualified ? (
+                        <>
+                          <CheckCircle2
+                            className="w-3 h-3"
+                            aria-hidden="true"
+                          />
+                          QUALIFIED
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-3 h-3" aria-hidden="true" />
+                          ELIMINATED
+                        </>
+                      )}
+                    </div>
+                  ) : debate.status === "COMPLETED" && !published ? (
+                    <div className="ax-chip ax-chip--warn font-mono uppercase">
+                      <Clock className="w-3 h-3" aria-hidden="true" />
+                      AWAITING SELECTION
+                    </div>
+                  ) : (
+                    <span className="ax-chip ax-chip--idle font-mono uppercase">
+                      {debate.status}
+                    </span>
                   )}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold">
-                        {round?.name || `Round ${round?.roundNumber || "?"}`}
-                      </span>
-                      <span
-                        className={cn(
-                          "ax-chip font-mono uppercase",
-                          side === "GOV" ? "ax-chip--gov" : "ax-chip--opp"
-                        )}
-                      >
-                        {side}
-                      </span>
-                    </div>
-                    {debate.status === "COMPLETED" && published ? (
-                      <div
-                        className={cn(
-                          "ax-chip font-mono uppercase",
-                          qualified ? "ax-chip--win" : "ax-chip--loss"
-                        )}
-                      >
-                        {qualified ? (
-                          <>
-                            <CheckCircle2
-                              className="w-3 h-3"
-                              aria-hidden="true"
-                            />
-                            QUALIFIED
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-3 h-3" aria-hidden="true" />
-                            ELIMINATED
-                          </>
-                        )}
-                      </div>
-                    ) : debate.status === "COMPLETED" && !published ? (
-                      <div className="ax-chip ax-chip--warn font-mono uppercase">
-                        <Clock className="w-3 h-3" aria-hidden="true" />
-                        AWAITING SELECTION
-                      </div>
-                    ) : (
-                      <span className="ax-chip ax-chip--idle font-mono uppercase">
-                        {debate.status}
-                      </span>
-                    )}
-                  </div>
+                </div>
 
-                  <div className="flex items-center gap-3.5 pt-1">
-                    <UserAvatar user={opponent} size="sm" className="shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        vs {opponent?.firstName || "Unknown"}{" "}
-                        {opponent?.lastName || "Debater"}
-                      </p>
-                      <p className="text-xs opacity-75 truncate">
-                        {opponent?.college || "Affiliation unlisted"}
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3.5 pt-1">
+                  <UserAvatar user={opponent} size="sm" className="shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      vs {opponent?.firstName || "Unknown"}{" "}
+                      {opponent?.lastName || "Debater"}
+                    </p>
+                    <p className="text-xs opacity-75 truncate">
+                      {opponent?.college || "Affiliation unlisted"}
+                    </p>
                   </div>
-                </Motion.div>
+                </div>
+              </Motion.div>
               );
             })
           )}
         </Motion.div>
-      )}
 
-      {activeTab === "leaderboard" && (
-        <Motion.div
-          initial={{opacity: 0}}
-          animate={{opacity: 1}}
-          className="space-y-3"
-        >
-          {hasPublishedResults && standingsFailed && (
-            <SectionRetry message="Could not refresh standings." busy={standingsRetrying} onRetry={() => {
-              setStandingsRetrying(true);
-              refresh("standings");
-            }} />
-          )}
-          {!hasPublishedResults ? (
-            <EmptyState
-              compact
-              icon={Lock}
-              title="Standings not published yet"
-              description="Official tournament standings unlock once round results are published by the adjudication desk."
-            />
-          ) : !standingsLoaded ? (
-            <p role="status" className="py-8 text-center text-sm text-muted-foreground">Loading standings…</p>
-          ) : standingsFailed && leaderboard.length === 0 ? null : leaderboard.length === 0 ? (
-            <EmptyState
-              compact
-              icon={Trophy}
-              title="No standings yet"
-              description="Standings will appear as completed ballots are recorded."
-            />
-          ) : (
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <div className="divide-y divide-border/60">
-                {leaderboard.map((entry) => {
-                  const isMe = entry.user?.id === currentUser?.id;
-                  const medal = getPodiumMedal(entry.rank);
-
-                  return (
-                    <div
-                      key={entry.user?.id || entry.rank}
-                      data-podium={medal}
-                      className={cn(
-                        "standing-row flex items-center gap-3 px-4 py-3 text-sm",
-                        isMe && !medal && "ax-signal-info"
-                      )}
-                    >
-                      <StandingRank rank={entry.rank} medal={medal} />
-                      <UserAvatar user={entry.user} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="min-w-0 break-words font-heading font-semibold text-foreground">
-                            {entry.user?.firstName} {entry.user?.lastName}
-                          </p>
-                          {isMe && (
-                            <span className="ax-chip ax-chip--info font-mono uppercase shrink-0">
-                              You
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {entry.user?.college || "Affiliation unlisted"}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </Motion.div>
-      )}
     </div>
   );
 }

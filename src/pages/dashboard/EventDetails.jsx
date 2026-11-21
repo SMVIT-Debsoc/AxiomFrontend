@@ -208,7 +208,7 @@ function EventOverview({id, preview}) {
     },
     onResultsPublished: (data) => {
       if (data?.published) {
-        toast.success("Results Published!", "Round results and standings are now visible.");
+        toast.success("Results Published!", "Round results are now visible.");
       }
       refresh("overview", "personal");
     },
@@ -803,7 +803,7 @@ function EventOverview({id, preview}) {
                       to={`/dashboard/events/${id}/results`}
                       className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2.5 text-xs font-semibold text-primary hover:border-primary/40 transition-colors"
                     >
-                      Open Full Results &amp; Standings
+                      Open My Results
                     </DashboardLink>
                   </Motion.div>
                 </AnimatePresence>
