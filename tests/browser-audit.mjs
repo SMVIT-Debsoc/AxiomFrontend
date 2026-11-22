@@ -1138,6 +1138,46 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   });
 
+  // Room judge assignment regression checks.
+  for (const scenario of ["saved", "cancelled", "conflict"]) {
+    await run(`assign one judge to a room: ${scenario}`, {
+      signedIn: true, admin: true, assigned: true, published: true,
+    }, async (page, state) => {
+      const version = "2026-11-22T09:00:00.000Z";
+      Object.assign(state.debate, {roomId: "room1", updatedAt: version});
+      const second = {...state.debate, id: "d2", judgeName: "Second Judge"};
+      const otherRoom = {...state.debate, id: "d3", roomId: "room2", room: {id: "room2", name: "Other Room"}, judgeName: "Other Judge"};
+      state.round.debates = [state.debate, second, otherRoom];
+      let requests = 0;
+      await page.route(url => url.pathname === "/api/debates/round/r1/room/room1/judge", async route => {
+        requests++;
+        const body = route.request().postDataJSON();
+        assert.equal(body.judgeName, "Room Judge");
+        assert.deepEqual(body.expectedDebates.map((d) => d.id).sort(), ["d1", "d2"]);
+        if (scenario === "conflict") {
+          return route.fulfill({status: 409, json: {success: false, error: "Debates in this room changed. Review the refreshed room and try again."}});
+        }
+        const debates = [state.debate, second].map((d) => ({
+          id: d.id, judgeName: body.judgeName, adjudicator: null, adjudicatorId: null, updatedAt: version,
+        }));
+        return route.fulfill({json: {success: true, debates}});
+      });
+      await page.goto(origin + "/admin?station=director&debate=d1", {timeout: 30000});
+      await page.getByLabel("Judge", {exact: true}).fill("Room Judge");
+      page.once("dialog", dialog => scenario === "cancelled" ? dialog.dismiss() : dialog.accept());
+      await page.getByRole("button", {name: "Apply to room (2 debates)", exact: true}).click();
+      if (scenario === "saved") {
+        await visible(page.locator('[data-debate-id="d2"]'), "Room Judge");
+        await visible(page.locator('[data-debate-id="d3"]'), "Other Judge");
+        assert.equal(await page.getByLabel("Judge", {exact: true}).inputValue(), "Room Judge");
+      } else if (scenario === "conflict") {
+        await visible(page, "Debates in this room changed. Review the refreshed room and try again.");
+        assert.equal(await page.getByLabel("Judge", {exact: true}).inputValue(), "Room Judge");
+      }
+      assert.equal(requests, scenario === "cancelled" ? 0 : 1);
+    });
+  }
+
   await run('mobile admin live, people, and leaderboard views render cards without horizontal overflow', {signedIn: true, admin: true, assigned: true, published: true}, async page => {
     await page.setViewportSize({width: 390, height: 844});
     for (const path of ['/admin', '/admin/people', '/admin/results?tab=leaderboard']) {

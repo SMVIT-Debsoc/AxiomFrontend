@@ -577,6 +577,31 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
     const assignJudge = useStableHandler((debateId, judgeName) => updateDebateFields(debateId, {judgeName}, {
         success: judgeName ? `Assigned ${judgeName}` : "Judge cleared",
     }));
+    const assignRoomJudge = useStableHandler(async (roomId, judgeName) => {
+        if (!roundId || !roomId || !judgeName.trim()) return false;
+        const affected = debates.filter((d) => d.roomId === roomId);
+        if (!affected.length) return false;
+        const roomName = rooms.find((r) => r.id === roomId)?.name || "this room";
+        const res = await run("room-judge", async () => {
+            const token = await getToken();
+            return AdminApi.apiRequest(
+                `/debates/round/${encodeURIComponent(roundId)}/room/${encodeURIComponent(roomId)}/judge`,
+                "PUT",
+                {judgeName: judgeName.trim(), expectedDebates: affected.map((d) => ({id: d.id, updatedAt: d.updatedAt}))},
+                token,
+            );
+        }, {
+            confirm: `Assign ${judgeName.trim()} to all ${affected.length} debates in ${roomName} this round? Existing judge assignments in this room will be replaced.`,
+            success: `Judge assigned to ${affected.length} debates in ${roomName}`,
+            onSuccess: (result) => {
+                const updates = new Map(result.debates.map((d) => [d.id, d]));
+                patchDebates([...updates.keys()], (prev) => prev.map((d) => updates.has(d.id) ? {...d, ...updates.get(d.id)} : d));
+                refreshSupport("rooms");
+            },
+            onConflict: softRefetch,
+        });
+        return Boolean(res);
+    });
     const assignRoom = useStableHandler((debateId, roomId) => updateDebateFields(debateId, {roomId: roomId || null}, {
         success: roomId ? `Moved to ${rooms.find((r) => r.id === roomId)?.name || "room"}` : "Room cleared",
     }));
@@ -815,7 +840,7 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
         // refresh
         softRefetch, refreshRound, refreshSupport, refreshRoundsList,
         // actions
-        toggleCheckIn, applyCheckIn, updateCheckInWindow, updateRoundStatus, assignJudge, assignRoom,
+        toggleCheckIn, applyCheckIn, updateCheckInWindow, updateRoundStatus, assignJudge, assignRoomJudge, assignRoom,
         togglePromotePerformer, applyPromotionDelta, promoteAllWinners, previewPairings, generatePairings,
         allocateRooms, togglePublish, publishResults, saveMotion, applyResultSaved, ballotReplaced,
         addRound, addRoom,

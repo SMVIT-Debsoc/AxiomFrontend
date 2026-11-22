@@ -265,8 +265,9 @@ export default function AdminLive() {
                         debates={debates}
                         admins={admins}
                         nowMs={nowMs}
-                        saving={live.savingDebateId === openDebateObj.id}
+                        saving={live.savingDebateId === openDebateObj.id || live.isBusy("room-judge")}
                         onAssignJudge={live.assignJudge}
+                        onAssignRoomJudge={live.assignRoomJudge}
                         onAssignRoom={live.assignRoom}
                         onOpenBallot={openBallot}
                         onClose={() => setOpen(null)}

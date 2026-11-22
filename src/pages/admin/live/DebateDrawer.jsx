@@ -11,7 +11,7 @@ import DebateTime from "./DebateTime";
  * Debate drawer: judge + room edits (conflict-safe via useRoundLive) and the
  * way into the ballot sheet. Render with key={debate.id}.
  */
-export default function DebateDrawer({debate, round, rooms, debates, admins, nowMs, saving, onAssignJudge, onAssignRoom, onOpenBallot, onClose}) {
+export default function DebateDrawer({debate, round, rooms, debates, admins, nowMs, saving, onAssignJudge, onAssignRoomJudge, onAssignRoom, onOpenBallot, onClose}) {
     const currentJudge = judgeOf(debate);
     const [judgeDraft, setJudgeDraft] = useState(null);
     const [roomDraft, setRoomDraft] = useState(null);
@@ -25,10 +25,15 @@ export default function DebateDrawer({debate, round, rooms, debates, admins, now
     const roomUse = new Map();
     for (const d of debates) if (d.roomId && d.id !== debate.id) roomUse.set(d.roomId, (roomUse.get(d.roomId) || 0) + 1);
 
+    const roomDebateCount = debates.filter((d) => d.roomId === debate.roomId).length;
+
     const close = () => { if (confirmDiscard()) onClose(); };
     const saveJudge = async (e) => {
         e.preventDefault();
         if (await onAssignJudge(debate.id, judgeValue.trim())) setJudgeDraft(null);
+    };
+    const saveRoomJudge = async () => {
+        if (await onAssignRoomJudge(debate.roomId, judgeValue.trim())) setJudgeDraft(null);
     };
     const saveRoom = async () => {
         if (await onAssignRoom(debate.id, roomValue || null)) setRoomDraft(null);
@@ -71,12 +76,23 @@ export default function DebateDrawer({debate, round, rooms, debates, admins, now
                             onChange={(e) => setJudgeDraft(e.target.value)}
                             onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setJudgeDraft(null); } }}
                             placeholder="Judge name"
+                            maxLength={80}
                             className="min-h-11 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-base sm:text-sm"
                         />
                         <button type="submit" disabled={!judgeDirty || saving} className="ax-ghost-btn min-h-11 shrink-0">
                             {saving && judgeDirty ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : "Save"}
                         </button>
                     </div>
+                    {debate.roomId && (
+                        <button
+                            type="button"
+                            onClick={saveRoomJudge}
+                            disabled={!judgeValue.trim() || roomDirty || saving}
+                            className="ax-ghost-btn min-h-11 w-full text-xs"
+                        >
+                            Apply to room ({roomDebateCount} debates)
+                        </button>
+                    )}
                 </form>
 
                 <div className="space-y-1.5">
