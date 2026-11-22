@@ -542,8 +542,8 @@ export const OpsApi = {
         apiRequest(`/admin/rounds/${roundId}/ballot-links`, "GET", null, token),
     getPublicBallot: (ballotToken) =>
         apiRequest(`/ballot/${encodeURIComponent(ballotToken)}`, "GET", null, null, {requireAuth: false, skipCache: true}),
-    submitPublicBallot: (ballotToken, {debater1Score, debater2Score, winnerId, judgeName}) =>
-        apiRequest(`/ballot/${encodeURIComponent(ballotToken)}`, "POST", {debater1Score, debater2Score, winnerId, judgeName}, null, {requireAuth: false}),
+    submitPublicBallot: (ballotToken, {debater1Score, debater2Score, winnerId, judgeName, remarks}) =>
+        apiRequest(`/ballot/${encodeURIComponent(ballotToken)}`, "POST", {debater1Score, debater2Score, winnerId, judgeName, remarks}, null, {requireAuth: false}),
 
     // Venue check-in: rotating short code shown as a QR on Display / Desk
     getVenueCode: (roundId, token) =>

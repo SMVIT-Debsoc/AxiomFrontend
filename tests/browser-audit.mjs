@@ -1138,6 +1138,78 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   });
 
+  // Optional judge ballot remarks regression checks.
+  for (const scenario of ["remarks", "blank", "retry"]) {
+    await run(`judge ballot optional remarks: ${scenario}`, {}, async page => {
+      const token = "remarks-fixture-" + scenario;
+      const payload = {
+        debateId: "d1", eventName: "Audit Tournament", roundName: "Round 1",
+        roomName: "Room A", gov: {id: "u1", name: "Gov Debater"},
+        opp: {id: "u2", name: "Opp Debater"}, submitted: null, locked: false
+      };
+      let calls = 0;
+      let lastPost;
+      await page.route(url => url.pathname === "/api/ballot/" + token, async route => {
+        if (route.request().method() === "POST") {
+          lastPost = route.request().postDataJSON();
+          calls++;
+          if (scenario === "retry" && calls === 1) {
+            return route.fulfill({status: 503, json: {success: false, error: "Please retry"}});
+          }
+          payload.submitted = {...lastPost, at: "2026-11-22T10:00:00.000Z"};
+          return route.fulfill({json: {success: true, data: {debateId: "d1", updatedAt: payload.submitted.at}}});
+        }
+        return route.fulfill({json: {success: true, data: payload}});
+      });
+      await page.setViewportSize({width: 390, height: 844});
+      await page.goto(origin + "/ballot/" + token, {timeout: 30000});
+      await page.getByRole("textbox", {name: /GOV score/}).fill("80");
+      await page.getByRole("textbox", {name: /OPP score/}).fill("75");
+      await page.getByLabel("Your name (judge)", {exact: true}).fill("Judge");
+      const remarks = page.getByLabel("Remarks (optional)", {exact: true});
+      const submit = page.getByRole("button", {name: "Submit ballot", exact: true});
+      const text = Array.from({length: 100}, (_,i) => "word" + i).join(" ");
+      if (scenario === "remarks") {
+        await remarks.fill(text + " extra");
+        await visible(page, "101/100 words");
+        assert.equal(await submit.isDisabled(), true);
+        await page.reload();
+        assert.equal(await remarks.inputValue(), text + " extra");
+        await remarks.fill(text);
+        await visible(page, "100/100 words");
+      } else if (scenario === "retry") {
+        await remarks.fill("Useful feedback for both debaters.");
+      }
+      assert.equal(await submit.isEnabled(), true);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await submit.click();
+      if (scenario === "retry") {
+        await visible(page, "Please retry");
+        await page.reload();
+        assert.equal(await remarks.inputValue(), "Useful feedback for both debaters.");
+        await page.getByRole("button", {name: "Submit ballot", exact: true}).click();
+      }
+      await visible(page, "Ballot received");
+      assert.equal(lastPost.winnerId, "u1");
+      assert.equal(lastPost.remarks, scenario === "blank" ? "" : scenario === "remarks" ? text : "Useful feedback for both debaters.");
+      if (scenario === "remarks") {
+        await page.reload();
+        await visible(page.getByRole("region", {name: "Submitted remarks"}), text);
+        await page.getByRole("button", {name: "Edit ballot", exact: true}).click();
+        assert.equal(await remarks.inputValue(), text);
+        await remarks.fill("");
+        await page.getByRole("button", {name: "Submit changes", exact: true}).click();
+        await visible(page, "Ballot received");
+        assert.equal(lastPost.remarks, "");
+        payload.submitted.remarks = "Final feedback";
+        payload.locked = true;
+        await page.reload();
+        await visible(page.getByRole("region", {name: "Submitted remarks"}), "Final feedback");
+        assert.equal(await page.getByRole("button", {name: "Edit ballot", exact: true}).count(), 0);
+      }
+    });
+  }
+
   // Room judge assignment regression checks.
   for (const scenario of ["saved", "cancelled", "conflict"]) {
     await run(`assign one judge to a room: ${scenario}`, {

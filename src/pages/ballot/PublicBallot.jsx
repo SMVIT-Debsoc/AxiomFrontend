@@ -66,6 +66,7 @@ export default function PublicBallot() {
       s2: draft?.s2 ?? "",
       winnerId: draft?.winnerId ?? "",
       judgeName: draft?.judgeName ?? readStorage(JUDGE_NAME_KEY) ?? "",
+      remarks: draft?.remarks ?? "",
       dirty: Boolean(draft),
     };
   });
@@ -90,6 +91,7 @@ export default function PublicBallot() {
           s2: String(data.submitted.debater2Score ?? ""),
           winnerId: data.submitted.winnerId || "",
           judgeName: data.submitted.judgeName || prev.judgeName,
+          remarks: data.submitted.remarks ?? "",
           dirty: false,
         }));
         if (!hasDraft) setView("done");
@@ -108,13 +110,15 @@ export default function PublicBallot() {
   const bothScored = Number.isFinite(s1) && Number.isFinite(s2);
   const tie = bothScored && s1 === s2;
   const winnerId = resolveWinnerId(form.s1, form.s2, form.winnerId, govId, oppId);
-  const ready = bothScored && Boolean(winnerId) && form.judgeName.trim().length > 0;
+  const remarksWordCount = form.remarks.trim() ? form.remarks.trim().split(/\s+/u).length : 0;
+  const remarksTooLong = remarksWordCount > 100;
+  const ready = bothScored && Boolean(winnerId) && form.judgeName.trim().length > 0 && !remarksTooLong;
 
   const update = (patch) => {
     setSubmitError(null);
     setForm((prev) => {
       const next = {...prev, ...patch, dirty: true};
-      writeStorage(draftKey(token), JSON.stringify({s1: next.s1, s2: next.s2, winnerId: next.winnerId, judgeName: next.judgeName}));
+      writeStorage(draftKey(token), JSON.stringify({s1: next.s1, s2: next.s2, winnerId: next.winnerId, judgeName: next.judgeName, remarks: next.remarks}));
       return next;
     });
   };
@@ -125,12 +129,13 @@ export default function PublicBallot() {
     setSubmitting(true);
     setSubmitError(null);
     const judgeName = form.judgeName.trim();
+    const remarks = form.remarks.trim();
     writeStorage(JUDGE_NAME_KEY, judgeName);
     try {
-      const response = await OpsApi.submitPublicBallot(token, {debater1Score: s1, debater2Score: s2, winnerId, judgeName});
+      const response = await OpsApi.submitPublicBallot(token, {debater1Score: s1, debater2Score: s2, winnerId, judgeName, remarks});
       writeStorage(draftKey(token), null);
-      setLastResult({debater1Score: s1, debater2Score: s2, winnerId, judgeName, updatedAt: response?.data?.updatedAt});
-      setBallot((prev) => (prev ? {...prev, submitted: {debater1Score: s1, debater2Score: s2, winnerId, judgeName, at: response?.data?.updatedAt || new Date().toISOString()}} : prev));
+      setLastResult({debater1Score: s1, debater2Score: s2, winnerId, judgeName, remarks, updatedAt: response?.data?.updatedAt});
+      setBallot((prev) => (prev ? {...prev, submitted: {debater1Score: s1, debater2Score: s2, winnerId, judgeName, remarks, at: response?.data?.updatedAt || new Date().toISOString()}} : prev));
       setForm((prev) => ({...prev, dirty: false}));
       setView("done");
     } catch (failure) {
@@ -222,6 +227,12 @@ export default function PublicBallot() {
             {shown?.judgeName && <span className="block text-sm text-muted-foreground">Judge: {shown.judgeName}</span>}
           </p>
         </section>
+        {shown?.remarks && (
+          <section aria-label="Submitted remarks" className="ax-card p-4">
+            <h2 className="m-0 mb-2 text-sm font-semibold">Remarks</h2>
+            <p className="m-0 whitespace-pre-wrap break-words text-sm">{shown.remarks}</p>
+          </section>
+        )}
         {!ballot.locked && (
           <button type="button" onClick={() => setView("form")} className="ax-ghost-btn w-full !min-h-12">Edit ballot</button>
         )}
@@ -300,6 +311,31 @@ export default function PublicBallot() {
           />
         </label>
 
+        <div>
+          <label htmlFor="ballot-remarks" className="mb-1 block text-sm font-semibold text-muted-foreground">
+            Remarks (optional)
+          </label>
+          <textarea
+            id="ballot-remarks"
+            rows={4}
+            value={form.remarks}
+            onChange={(event) => update({remarks: event.target.value})}
+            disabled={submitting}
+            aria-describedby={remarksTooLong ? "remarks-count remarks-error" : "remarks-count"}
+            aria-invalid={remarksTooLong}
+            className="w-full resize-y rounded-xl border-[1.5px] border-input bg-card px-3 py-2 text-base"
+            placeholder="Feedback about the debaters"
+          />
+          <p id="remarks-count" role="status" className="m-0 mt-1 text-right text-xs text-muted-foreground">
+            {remarksWordCount}/100 words
+          </p>
+          {remarksTooLong && (
+            <p id="remarks-error" className="m-0 mt-1 text-sm text-red-500">
+              Remarks must be at most 100 words.
+            </p>
+          )}
+        </div>
+
         {submitError && (
           <div role="alert" className="ax-state-flag rounded-2xl border px-4 py-3 text-sm">
             <p className="m-0 font-semibold">{submitError.message || "Could not send the ballot."}</p>
@@ -313,7 +349,7 @@ export default function PublicBallot() {
           </button>
           {!ready && (
             <p className="m-0 py-2 text-center text-xs text-muted-foreground">
-              {!bothScored ? "Enter both scores." : !winnerId ? "Choose the winner." : "Add your name."}
+              {!bothScored ? "Enter both scores." : !winnerId ? "Choose the winner." : !form.judgeName.trim() ? "Add your name." : "Shorten remarks to 100 words."}
             </p>
           )}
         </div>

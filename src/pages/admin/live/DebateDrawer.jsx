@@ -117,6 +117,13 @@ export default function DebateDrawer({debate, round, rooms, debates, admins, now
                     </div>
                 </div>
 
+                {debate.ballotRemarks && (
+                    <section aria-label="Judge remarks" className="space-y-1.5">
+                        <h3 className="m-0 text-xs font-bold uppercase tracking-[0.06em] text-muted-foreground">Judge remarks</h3>
+                        <p className="m-0 whitespace-pre-wrap break-words text-sm">{debate.ballotRemarks}</p>
+                    </section>
+                )}
+
                 <p className="m-0 text-xs text-muted-foreground">
                     <DebateTime startTime={debate.startTime} endTime={debate.endTime} />
                 </p>
