@@ -46,13 +46,14 @@ test('check-in mutation invalidates both check-in and rounds caches cleanly', as
   }
 });
 
-test('AllocateRoomsModal enforces 7m default speaker time, 11m buffer, 5m gap, and 25m minimum floor', async () => {
+test('AllocateRoomsModal keeps timing defaults and permits debates shorter than 25 minutes', async () => {
   // Moved out of AdminRoundManagement (now a redirect into Live).
   const roundMgmt = await readSrc('src/pages/admin/live/modals/AllocateRoomsModal.jsx');
   assert.match(roundMgmt, /speakingTime:\s*7/);
   assert.match(roundMgmt, /bufferTime:\s*11/);
   assert.match(roundMgmt, /gap:\s*5/);
-  assert.match(roundMgmt, /Math\.max\(25,\s*speaking\s*\*\s*2\s*\+\s*effectiveBuffer\)/);
+  assert.match(roundMgmt, /const debateDuration = speaking \* 2 \+ buffer;/);
+  assert.doesNotMatch(roundMgmt, /minBufferNeeded|minimum enforced|Math\.max\(25/);
   assert.match(roundMgmt, /ax-room-selected/);
 });
 

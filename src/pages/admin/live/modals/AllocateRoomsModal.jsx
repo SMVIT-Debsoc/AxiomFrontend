@@ -26,9 +26,8 @@ export default function AllocateRoomsModal({
     });
 
     const speaking = Number(formData.speakingTime);
-    const minBufferNeeded = Math.max(0, 25 - speaking * 2);
-    const effectiveBuffer = Math.max(Number(formData.bufferTime), minBufferNeeded);
-    const debateDuration = Math.max(25, speaking * 2 + effectiveBuffer);
+    const buffer = Number(formData.bufferTime);
+    const debateDuration = speaking * 2 + buffer;
     const totalInterval = debateDuration + Number(formData.gap);
     const activeRoomsCount = selectedRoomIds.length || 1;
     const debatesPerRoom = Math.ceil(totalDebates / activeRoomsCount) || 0;
@@ -53,7 +52,7 @@ export default function AllocateRoomsModal({
             await onConfirm({
                 ...formData,
                 speakingTime: speaking,
-                bufferTime: effectiveBuffer,
+                bufferTime: buffer,
                 gap: Number(formData.gap),
                 roomIds: selectedRoomIds,
                 startTime: new Date(formData.startTime).toISOString(),
@@ -166,20 +165,17 @@ export default function AllocateRoomsModal({
                                         <label htmlFor="allocation-buffer" className="text-[11px] font-semibold text-muted-foreground">
                                             Prep, POIs &amp; Adjudication Buffer
                                         </label>
-                                        <span className="ax-signal-info inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border border-indigo-500/35 bg-indigo-500/12 text-indigo-700 dark:text-indigo-200">
-                                            25m minimum enforced
-                                        </span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <input
                                             id="allocation-buffer"
-                                            aria-valuetext={`${effectiveBuffer} minutes`}
+                                            aria-valuetext={`${buffer} minutes`}
                                             type="range"
                                             min="0"
                                             max="25"
-                                            value={effectiveBuffer}
+                                            value={buffer}
                                             onChange={(e) => {
-                                                const val = Math.max(minBufferNeeded, Number(e.target.value));
+                                                const val = Number(e.target.value);
                                                 setFormData((prev) => ({
                                                     ...prev,
                                                     bufferTime: val,
@@ -188,7 +184,7 @@ export default function AllocateRoomsModal({
                                             className="flex-1 accent-indigo-600"
                                         />
                                         <span className="w-11 text-center font-bold text-xs text-primary bg-primary/10 py-1 rounded font-mono">
-                                            {effectiveBuffer}m
+                                            {buffer}m
                                         </span>
                                     </div>
                                 </div>
@@ -225,7 +221,7 @@ export default function AllocateRoomsModal({
                                 Schedule Summary
                             </h4>
                             <p className="text-xs font-medium text-foreground pb-1.5 border-b border-border/60">
-                                2 × {speaking}m speeches + {effectiveBuffer}m buffer = <span className="font-bold text-primary">{debateDuration}m</span> debate · +{formData.gap}m changeover
+                                2 × {speaking}m speeches + {buffer}m buffer = <span className="font-bold text-primary">{debateDuration}m</span> debate · +{formData.gap}m changeover
                             </p>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Debates per Room</span>
