@@ -65,6 +65,8 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
     const [resultsPublished, setResultsPublished] = useState(false);
     const [loading, setLoading] = useState(true);
     const [roundsLoaded, setRoundsLoaded] = useState(false);
+    const [roundsError, setRoundsError] = useState(null);
+    const [roundError, setRoundError] = useState(null);
     const [pendingCheckIns, setPendingCheckIns] = useState(() => new Set());
     const [promotingIds, setPromotingIds] = useState(() => new Set());
     const [savingDebateId, setSavingDebateId] = useState(null);
@@ -99,12 +101,15 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
             if (selectedEvent.current !== eventId) return;
             const list = sortRounds(res.success ? res.rounds || [] : []);
             setRounds(list);
+            setRoundsError(null);
             if (selectPreferred || (activeRound.current && !list.some((r) => r.id === activeRound.current))) {
                 const live = choose(list);
                 setRoundIdState(live?.id || null);
                 if (!live) setLoading(false);
             }
-        } catch {
+        } catch (error) {
+            if (selectedEvent.current !== eventId) return;
+            setRoundsError(error.message || "Failed to load rounds");
             toast.error("Error", "Failed to load rounds");
             setLoading(false);
         }
@@ -114,6 +119,7 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
         setRounds([]);
         setRoundIdState(null);
         setRoundsLoaded(false);
+        setRoundsError(null);
         userChoseRound.current = false;
         setLoading(Boolean(eventId));
         if (!eventId) return undefined;
@@ -125,11 +131,16 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
                 if (cancelled) return;
                 const list = sortRounds(res.success ? res.rounds || [] : []);
                 setRounds(list);
+                setRoundsError(null);
                 const live = choose(list);
                 setRoundIdState(live?.id || null);
                 if (!live) setLoading(false);
-            } catch {
-                if (!cancelled) { toast.error("Error", "Failed to load rounds"); setLoading(false); }
+            } catch (error) {
+                if (!cancelled) {
+                    setRoundsError(error.message || "Failed to load rounds");
+                    toast.error("Error", "Failed to load rounds");
+                    setLoading(false);
+                }
             } finally {
                 if (!cancelled) setRoundsLoaded(true);
             }
@@ -145,6 +156,7 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
 
     useEffect(() => {
         setRound(null);
+        setRoundError(null);
         setCheckIns([]);
         setDebates([]);
         setPerformers([]);
@@ -163,6 +175,7 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
             if (!isCurrent() || !response.success) return;
             if (field === "round" && response.round.eventId === eventId) {
                 const fresh = response.round;
+                setRoundError(null);
                 const roundPatched = patchLog.since(startedAt, "round");
                 setRound((prev) => mergeRecord(fresh, prev?.id === fresh.id ? prev : null, roundPatched));
                 setCheckIns((prev) => mergeEntities(fresh.checkIns || [], prev, patchLog.since(startedAt, "checkIn"), "userId"));
@@ -172,8 +185,11 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
             } else if (field === "performers") {
                 setPerformers((prev) => mergeEntities(response.performers || [], prev, patchLog.since(startedAt, "performer"), "userId"));
             }
-        } catch {
-            if (isCurrent() && field === "round" && !options.skipCache) toast.error("Error", "Failed to load round data");
+        } catch (error) {
+            if (isCurrent() && field === "round") {
+                setRoundError(error.message || "Failed to load round data");
+                if (!options.skipCache) toast.error("Error", "Failed to load round data");
+            }
         } finally {
             if (isCurrent() && field === "round") setLoading(false);
         }
@@ -190,6 +206,11 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
     }, undefined, eventId);
 
     const softRefetch = useCallback(() => refreshRound(...LIVE_ROUND_FIELDS), [refreshRound]);
+    const retryRoundData = useStableHandler(async () => {
+        setLoading(true);
+        if (roundsError) await refreshRoundsList(true);
+        else refreshRound("round");
+    });
     const debouncedRefetch = useDebouncedCallback(softRefetch, 800);
     // Ballot rushes (many results in seconds across admin tabs) collapse into one performers GET.
     const debouncedRefreshPerformers = useDebouncedCallback(() => refreshRound("performers"), 2500);
@@ -835,10 +856,10 @@ export function useRoundLive({eventId, preferredRoundId = null, openDebateIdRef}
     return {
         // data
         rounds, roundId, setRoundId, round, debates, checkIns, rooms, people, performers,
-        presentIds, eliminatedSet, resultsPublished, loading, roundsLoaded,
+        presentIds, eliminatedSet, resultsPublished, loading, roundsLoaded, roundsError, roundError,
         pendingCheckIns, promotingIds, savingDebateId, busy, isBusy, promotionsVersion,
         // refresh
-        softRefetch, refreshRound, refreshSupport, refreshRoundsList,
+        softRefetch, refreshRound, refreshSupport, refreshRoundsList, retryRoundData,
         // actions
         toggleCheckIn, applyCheckIn, updateCheckInWindow, updateRoundStatus, assignJudge, assignRoomJudge, assignRoom,
         togglePromotePerformer, applyPromotionDelta, promoteAllWinners, previewPairings, generatePairings,

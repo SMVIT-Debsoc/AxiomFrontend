@@ -212,6 +212,15 @@ export default function AdminLive() {
         return <div className="grid min-h-[50vh] place-items-center"><LoadingIndicator label="Loading live round" /></div>;
     }
     if (!event) return <EmptyBlock title="No event yet" body="Create an event and its rounds to run it from here." to="/admin/events" cta="Set up an event" />;
+    if (!round && (live.roundsError || live.roundError || rounds.length > 0)) {
+        return (
+            <div role="alert" className="ax-card mx-auto mt-10 max-w-lg space-y-4 p-8 text-center">
+                <h1 className="font-display text-4xl font-normal text-primary">Couldn't load round data</h1>
+                <p className="text-sm text-muted-foreground">{live.roundsError || live.roundError || "Round data is unavailable. Please try again."}</p>
+                <button type="button" onClick={live.retryRoundData} className="ax-primary-btn mx-auto">Retry</button>
+            </div>
+        );
+    }
     if (!rounds.length || !round) {
         return (
             <div className="ax-card mx-auto mt-10 max-w-lg space-y-4 p-8 text-center">

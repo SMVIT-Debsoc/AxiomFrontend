@@ -1138,6 +1138,27 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   });
 
+  // Admin round load error regression checks.
+  for (const scenario of ["list failure", "detail failure", "empty"]) {
+    await run(`admin round loading: ${scenario}`, {signedIn: true, admin: true, assigned: true, published: true}, async page => {
+      const path = scenario === "detail failure" ? "/api/rounds/r1" : "/api/rounds/event/e1";
+      await page.route(url => url.pathname === path, route => route.fulfill({
+        status: scenario === "empty" ? 200 : 500,
+        json: scenario === "empty" ? {success: true, rounds: []} : {success: false, error: "Round data unavailable"}
+      }), scenario === "empty" ? {} : {times: 1});
+      await page.goto(origin + "/admin?station=director", {timeout: 30000});
+      if (scenario === "empty") {
+        await visible(page, "Audit Tournament has no rounds yet");
+        await page.getByRole("button", {name: "+ Add Round 1", exact: true}).waitFor();
+      } else {
+        await visible(page, "Couldn't load round data");
+        assert.equal(await page.getByRole("button", {name: "+ Add Round 1", exact: true}).count(), 0);
+        await page.getByRole("button", {name: "Retry", exact: true}).click();
+        await page.getByRole("region", {name: "Rooms board"}).waitFor();
+      }
+    });
+  }
+
   // Optional judge ballot remarks regression checks.
   for (const scenario of ["remarks", "blank", "retry"]) {
     await run(`judge ballot optional remarks: ${scenario}`, {}, async page => {
