@@ -5,6 +5,7 @@ import {useDirtyGuard} from "../../../hooks/useDirtyGuard";
 import {cn} from "../../../lib/utils";
 import {debateState, flagLabel, flagsOf, fullName, judgeOf, roomNameOf, STATE_LABELS} from "../../../lib/liveStations";
 import {SideSheet, StateDot} from "./ui";
+import DebateTime from "./DebateTime";
 
 /**
  * Debate drawer: judge + room edits (conflict-safe via useRoundLive) and the
@@ -100,11 +101,9 @@ export default function DebateDrawer({debate, round, rooms, debates, admins, now
                     </div>
                 </div>
 
-                {debate.startTime && (
-                    <p className="m-0 text-xs text-muted-foreground">
-                        Slot starts {new Date(debate.startTime).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}
-                    </p>
-                )}
+                <p className="m-0 text-xs text-muted-foreground">
+                    <DebateTime startTime={debate.startTime} endTime={debate.endTime} />
+                </p>
             </div>
         </SideSheet>
     );

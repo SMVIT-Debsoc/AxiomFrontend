@@ -7,6 +7,7 @@ import {
     debateState, firstName, flagsOf, flagLabel, fullName, judgeOf, roomNameOf, STATE_LABELS,
 } from "../../../lib/liveStations";
 import {StateDot} from "./ui";
+import DebateTime from "./DebateTime";
 
 const NO_ADMINS = [];
 
@@ -45,7 +46,7 @@ const RoomTile = memo(function RoomTile({debate, state, flags, lockAdmins, highl
     const judge = judgeOf(debate);
     const room = roomNameOf(debate);
     return (
-        <li data-debate-id={debate.id} style={{contentVisibility: "auto", containIntrinsicSize: "auto 104px"}}>
+        <li data-debate-id={debate.id} style={{contentVisibility: "auto", containIntrinsicSize: "auto 124px"}}>
             <button
                 type="button"
                 onClick={() => onOpen(debate.id)}
@@ -67,6 +68,9 @@ const RoomTile = memo(function RoomTile({debate, state, flags, lockAdmins, highl
                     {firstName(debate.debater1)} <span className="text-muted-foreground">v</span> {firstName(debate.debater2)}
                 </span>
                 <span className="truncate text-[11px] text-muted-foreground">{judge || "No judge"}</span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                    <DebateTime startTime={debate.startTime} endTime={debate.endTime} />
+                </span>
                 <span className="mt-auto flex items-center justify-between gap-1">
                     <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{STATE_LABELS[state]}</span>
                     {debate.status === "COMPLETED" && (
@@ -97,6 +101,9 @@ export function RoomTable({debates, round, nowMs, admins, highlightId, onOpen}) 
                             <span className="min-w-0 flex-1">
                                 <span className="block truncate font-heading text-sm font-bold">{roomNameOf(d) || "No room"}</span>
                                 <span className="block truncate text-xs">{fullName(d.debater1)} vs {fullName(d.debater2)}</span>
+                                <span className="block text-[11px] tabular-nums text-muted-foreground">
+                                    <DebateTime startTime={d.startTime} endTime={d.endTime} />
+                                </span>
                                 {flags.length > 0 && <span className="block truncate text-[11px] font-semibold">{flags.map(flagLabel).join(" · ")}</span>}
                             </span>
                             <span className="shrink-0 text-[11px] font-bold uppercase text-muted-foreground">{STATE_LABELS[state]}</span>
@@ -112,6 +119,7 @@ export function RoomTable({debates, round, nowMs, admins, highlightId, onOpen}) 
                             <th scope="col" className="py-2 pr-3">GOV</th>
                             <th scope="col" className="py-2 pr-3">OPP</th>
                             <th scope="col" className="py-2 pr-3">Judge</th>
+                            <th scope="col" className="py-2 pr-3">Time (IST)</th>
                             <th scope="col" className="py-2 pr-3">State</th>
                             <th scope="col" className="py-2 pr-3">Flags</th>
                             <th scope="col" className="py-2 text-right">Score</th>
@@ -134,6 +142,9 @@ export function RoomTable({debates, round, nowMs, admins, highlightId, onOpen}) 
                                 <td className="py-2 pr-3 font-semibold">{fullName(d.debater1)}</td>
                                 <td className="py-2 pr-3 font-semibold">{fullName(d.debater2)}</td>
                                 <td className="py-2 pr-3 text-muted-foreground">{judgeOf(d) || "—"}</td>
+                                <td className="py-2 pr-3 tabular-nums">
+                                    <DebateTime startTime={d.startTime} endTime={d.endTime} />
+                                </td>
                                 <td className="py-2 pr-3">
                                     <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-semibold", `ax-state-${state}`)}>
                                         <StateDot state={state} />{STATE_LABELS[state]}
